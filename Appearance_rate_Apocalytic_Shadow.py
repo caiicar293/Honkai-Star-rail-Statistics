@@ -819,8 +819,7 @@ class HonkaiStatistics_APOC:
                              
     def print_uids_by_archetype(self, archetype):
         # Print the list of UIDs by team
-        self.csv_path = fr".\MocStats\data\raw_csvs\{self.version}_as.csv"
-        self.df = pd.read_csv(self.csv_path)
+        
         new = self.df
         fil = new[(new['uid'].isin(self.archetypes[archetype]['uids'])) & (new['floor'] == self.floor)]
         pd.set_option('display.width', 1000)  # Adjust the total width of the output

@@ -121,10 +121,10 @@ class HonkaiAnalyzer:
 if __name__ == "__main__":
     analyzer_apoc = HonkaiAnalyzer(
         character="Firefly",
-        version_list=["2.3.1", "2.4.1", "2.5.1", "2.6.1", "2.7.1", "3.0.3", "3.1.3", "3.2.3","3.3.3","3.4.3","3.5.3","3.6.3.2","3.7.3","3.8.1"],
+        version_list=["2.3.1", "2.4.1", "2.5.1", "2.6.1", "2.7.1", "3.0.3", "3.1.3", "3.2.3","3.3.3","3.4.3","3.5.3","3.6.3.2","3.7.3","3.8.2"],
         mode="APOC",
         floor=4,         # Customizable
-        by_ed=2  # Customizable
+        by_ed=0  # Customizable
     )
     analyzer_apoc.analyze()
     analyzer_apoc.show_summary()
@@ -132,10 +132,10 @@ if __name__ == "__main__":
 
     analyzer_pure = HonkaiAnalyzer(
         character="Firefly",
-        version_list=["2.3.2", "2.4.2", "2.5.2", "2.6.2", "2.7.2", "3.1.1", "3.2.1","3.3.1","3.4.1","3.5.1","3.6.1","3.7.1","3.8.1"],
+        version_list=["2.3.2", "2.4.2", "2.5.2", "2.6.2", "2.7.2", "3.1.1", "3.2.1","3.3.1","3.4.1","3.5.1","3.6.1","3.7.1","3.8.1","3.8.2"],
         mode="PURE",
         floor=4,
-        by_ed=2
+        by_ed=0
     )
     analyzer_pure.analyze()
     analyzer_pure.show_summary()
@@ -143,10 +143,10 @@ if __name__ == "__main__":
 
     analyzer_moc = HonkaiAnalyzer(
         character="Firefly",
-        version_list=["2.3.3", "2.4.3", "2.5.3", "2.6.3", "2.7.3", "3.1.2", "3.2.2","3.3.2","3.4.2","3.5.2","3.6.2","3.7.2","3.8.1"],
+        version_list=["2.3.3", "2.4.3", "2.5.3", "2.6.3", "2.7.3", "3.1.2", "3.2.2","3.3.2","3.4.2","3.5.2","3.6.2","3.7.2","3.8.2"],
         mode="MOC",
         floor=12,
-        by_ed=2
+        by_ed=0
     )
     analyzer_moc.analyze()
     analyzer_moc.show_summary()

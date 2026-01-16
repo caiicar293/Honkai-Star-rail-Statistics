@@ -805,7 +805,18 @@ class  HonkaiStatistics_Pure:
 
         # Printing the DataFrame
         print(fil.to_string(index=False))
-                             
+        
+    def find_user(self, uid):
+        # Print the list of UIDs by team
+        
+        new = self.df
+        fil = new[(new['uid']==uid)]
+        pd.set_option('display.width', 1000)  # Adjust the total width of the output
+        pd.set_option('display.max_columns', None)  # Ensure all columns are shown
+
+        # Printing the DataFrame
+        print(fil.to_string(index=False))
+                                 
     def plot_statistics(self, team_key):
         team_key = tuple(team_key)  # Convert list to tuple for dictionary lookup
         if team_key in self.teams:

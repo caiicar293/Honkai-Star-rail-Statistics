@@ -10,18 +10,30 @@ from timeit import default_timer as timer
 import json
 import networkx as nx
 import requests
+from itertools import chain,product
+import math
+
 
 class  HonkaiStatistics_Pure:
-    def __init__(self, version, floor, node=0, by_ed=6,by_ed_inclusive=False,by_ed_inclusive_combined=False, by_points =0, by_char = None ,by_points_combined = 0,not_char=False,sustain_condition=None,star_num=None):
+    def __init__(self, version, floor, node=0, by_ed=6,by_ed_inclusive=False,by_ed_inclusive_combined=False, by_points =0, by_char = None ,by_points_combined = 0,not_char=False,sustain_condition=None,star_num=None
+                 ,_method=False,_load_csv=pd.DataFrame(),_load_chars=pd.DataFrame()):
         self.version = version
-        url = f"https://huggingface.co/datasets/LvlUrArti/MocData/resolve/main/{version}_pf.csv"
-        self.df = pd.read_csv(url)
+        if  _load_csv.empty and _load_chars.empty:
+            
+            url = f"https://huggingface.co/datasets/LvlUrArti/MocData/resolve/main/{version}_pf.csv"
+            self.df = pd.read_csv(url)
+            
+
+            url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
+            response = requests.get(url)
+            response.raise_for_status()  # raise error if request fails
+            info = response.json()  # parse JSON     
+            self.rol = pd.DataFrame.from_dict(info, orient='index')
         
-        url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
-        response = requests.get(url)
-        response.raise_for_status()  # raise error if request fails
-        info = response.json()  # parse JSON    
-        self.rol = pd.DataFrame.from_dict(info, orient='index')
+        else:
+            self.df=_load_csv
+            self.rol=_load_chars
+            
         
         # Initialize dictionary
         self.teams = {}
@@ -46,6 +58,7 @@ class  HonkaiStatistics_Pure:
         self.by_char = by_char
         self.sustain_condition = sustain_condition
         self.star_num = star_num
+        self._method = _method
         
         if self.star_num:
             self.df = self.df[(self.df['star_num'] == self.star_num)]
@@ -142,7 +155,7 @@ class  HonkaiStatistics_Pure:
                     self.chars[v] = {'Samples': 0, 'Points': [], 'uids': [],'Eidolons':{0:0,1:0 ,2:0,3:0,4:0,5:0,6:0}, "Index":index,"Sustains":0}
                     index+=1
                 
-                import math
+              
                 if not math.isnan(e):
                     # Update Eidolons
                     self.chars[v]['Eidolons'][e] +=1
@@ -158,114 +171,115 @@ class  HonkaiStatistics_Pure:
                    
                 self.chars[v]['Sustains']+=add
                 
-            # Sort and handle missing or NaN values
-            n = sorted([(x), y, z, w], key=lambda d: self.chars[d]['Index'])
-            n = tuple(n)  # Convert to tuple to use as a key in the dictionary
-            
-            arch = [x for x in n if x is not None
-                and x in self.rol.index
-                and self.rol.loc[x, 'role'] == "Damage Dealer"]
-            
-            arch_t = tuple(arch)
-            
-            # Initialize nested dictionary for the team if not already present
-            if n not in self.teams:
-                self.teams[n] = {'Samples': 0, 'Points': [], 'uids':[]}
-            
-            # Update the sample count
-            self.teams[n]['Samples'] += 1
-            
-            # Append the round_num (i) to the 'Points' list
-            self.teams[n]['Points'].append(i)
-            
-            # Appends uids to the uids list
-            self.teams[n]['uids'].append(p)
-            
-            
+            if not self._method:     
+                # Sort and handle missing or NaN values
+                n = sorted([(x), y, z, w], key=lambda d: self.chars[d]['Index'])
+                n = tuple(n)  # Convert to tuple to use as a key in the dictionary
                 
-            # Initialize nested dictionary for the team if not already present
-            if arch_t not in self.archetypes:
-                self.archetypes[arch_t] = {'Samples': 0, 'Points': [], 'uids':[]}
-            
-            # Update the sample count
-            self.archetypes[arch_t]['Samples'] += 1
-            
-            # Append the round_num (i) to the 'Points' list
-            self.archetypes[arch_t]['Points'].append(i)
-            
-            # Appends uids to the uids list
-            self.archetypes[arch_t]['uids'].append(p)
-            
-            if self.node ==0:
-                if p not in self.individual_teams:
-                    self.individual_teams[p] = {'Teams':[],'Points': 0,"Max Eidolon":maxei}
-                    self.individual_archetypes[p] = {'Archetypes':[],'Points': 0,"Max Eidolon":maxei}
-                    
-                self.individual_teams[p]['Teams'].append(n)
-                self.individual_teams[p]['Points'] += i
-                self.individual_archetypes[p]['Archetypes'].append(arch_t)
-                self.individual_archetypes[p]['Points'] += i
+                arch = [x for x in n if x is not None
+                    and x in self.rol.index
+                    and self.rol.loc[x, 'role'] == "Damage Dealer"]
                 
-                if maxei > self.individual_teams[p]["Max Eidolon"]:
-                    self.individual_teams[p]['Max Eidolon'] = maxei
-                    self.individual_archetypes[p]['Max Eidolon'] = maxei
-
-            
-        if self.node ==0:   
-            dc = self.individual_teams
-            bc = self.individual_archetypes
-            for x,y in zip(dc,bc):
-                if (self.by_ed_inclusive_combined == False and len(dc[x]['Teams']) ==2) or\
-                    (self.by_ed_inclusive_combined == True and (dc[x]['Max Eidolon']) ==self.by_ed and len(dc[x]['Teams']) ==2):
-                    
-                    g = tuple(dc[x]['Teams'])
-                    g1 = tuple(bc[y]['Archetypes'])
-                    
-                    if self.individual_teams[x]['Points'] < self.by_points_combined:
-                        continue
-     
-                    if g not in self.combined_teams:
-                        self.combined_teams[g] = {'Samples': 0, 'Points': [], 'uids':[]}
-                    
-                    if g1 not in self.combined_archetypes:
-                        self.combined_archetypes[g1] = {'Samples': 0, 'Points': [], 'uids':[]}
-                            
-                    # Update the sample count
-                    self.combined_teams[g]['Samples'] += 1
-                    self.combined_archetypes[g1]['Samples'] += 1
-                    
-                    # Append the round_num (i) to the 'Avg Cycles' list
-                    self.combined_teams[g]['Points'].append(dc[x]['Points'])
-                    self.combined_archetypes[g1]['Points'].append(dc[y]['Points'])
-                    
-                    
-                    # Appends uids to the uids list
-                    self.combined_teams[g]['uids'].append(x)
-                    self.combined_archetypes[g1]['uids'].append(y)
-                    
-                    if dc[x]['Points'] not in self.cyc_combined:
-                            self.cyc_combined[dc[x]['Points']] = {'Eidolons':{0:0,1:0 ,2:0,3:0,4:0,5:0,6:0}}
-                    
-                    self.cyc_combined[dc[x]['Points']]['Eidolons'][dc[x]['Max Eidolon']]+=1  
-        
-        from itertools import chain,product
-        
-        for pair in self.combined_teams:
-            pairs = chain(product(pair[0],pair[1]))
-            for j in pairs:
-                if j not in self.combined_chars:
-                    self.combined_chars[j] = {'Samples': 0, 'Points': [], 'uids':[]}
+                arch_t = tuple(arch)
+                
+                # Initialize nested dictionary for the team if not already present
+                if n not in self.teams:
+                    self.teams[n] = {'Samples': 0, 'Points': [], 'uids':[]}
                 
                 # Update the sample count
-                self.combined_chars[j]['Samples'] += self.combined_teams[pair]['Samples'] 
+                self.teams[n]['Samples'] += 1
                 
                 # Append the round_num (i) to the 'Points' list
-                self.combined_chars[j]['Points'].extend(self.combined_teams[pair]['Points'])
+                self.teams[n]['Points'].append(i)
                 
                 # Appends uids to the uids list
-                self.combined_chars[j]['uids'].extend(self.combined_teams[pair]['uids'])
+                self.teams[n]['uids'].append(p)
+            
+            
+                
+                # Initialize nested dictionary for the team if not already present
+                if arch_t not in self.archetypes:
+                    self.archetypes[arch_t] = {'Samples': 0, 'Points': [], 'uids':[]}
+                
+                # Update the sample count
+                self.archetypes[arch_t]['Samples'] += 1
+                
+                # Append the round_num (i) to the 'Points' list
+                self.archetypes[arch_t]['Points'].append(i)
+                
+                # Appends uids to the uids list
+                self.archetypes[arch_t]['uids'].append(p)
+                
+                if self.node ==0:
+                    if p not in self.individual_teams:
+                        self.individual_teams[p] = {'Teams':[],'Points': 0,"Max Eidolon":maxei}
+                        self.individual_archetypes[p] = {'Archetypes':[],'Points': 0,"Max Eidolon":maxei}
+                        
+                    self.individual_teams[p]['Teams'].append(n)
+                    self.individual_teams[p]['Points'] += i
+                    self.individual_archetypes[p]['Archetypes'].append(arch_t)
+                    self.individual_archetypes[p]['Points'] += i
                     
-        flatten = ([(v['uids']) for v in self.teams.values()])
+                    if maxei > self.individual_teams[p]["Max Eidolon"]:
+                        self.individual_teams[p]['Max Eidolon'] = maxei
+                        self.individual_archetypes[p]['Max Eidolon'] = maxei
+
+        if not self._method:     
+            if self.node ==0:   
+                dc = self.individual_teams
+                bc = self.individual_archetypes
+                for x,y in zip(dc,bc):
+                    if (self.by_ed_inclusive_combined == False and len(dc[x]['Teams']) ==2) or\
+                        (self.by_ed_inclusive_combined == True and (dc[x]['Max Eidolon']) ==self.by_ed and len(dc[x]['Teams']) ==2):
+                        
+                        g = tuple(dc[x]['Teams'])
+                        g1 = tuple(bc[y]['Archetypes'])
+                        
+                        if self.individual_teams[x]['Points'] < self.by_points_combined:
+                            continue
+        
+                        if g not in self.combined_teams:
+                            self.combined_teams[g] = {'Samples': 0, 'Points': [], 'uids':[]}
+                        
+                        if g1 not in self.combined_archetypes:
+                            self.combined_archetypes[g1] = {'Samples': 0, 'Points': [], 'uids':[]}
+                                
+                        # Update the sample count
+                        self.combined_teams[g]['Samples'] += 1
+                        self.combined_archetypes[g1]['Samples'] += 1
+                        
+                        # Append the round_num (i) to the 'Avg Cycles' list
+                        self.combined_teams[g]['Points'].append(dc[x]['Points'])
+                        self.combined_archetypes[g1]['Points'].append(dc[y]['Points'])
+                        
+                        
+                        # Appends uids to the uids list
+                        self.combined_teams[g]['uids'].append(x)
+                        self.combined_archetypes[g1]['uids'].append(y)
+                        
+                        if dc[x]['Points'] not in self.cyc_combined:
+                                self.cyc_combined[dc[x]['Points']] = {'Eidolons':{0:0,1:0 ,2:0,3:0,4:0,5:0,6:0}}
+                        
+                        self.cyc_combined[dc[x]['Points']]['Eidolons'][dc[x]['Max Eidolon']]+=1  
+        
+        if not self._method: 
+        
+            for pair in self.combined_teams:
+                pairs = chain(product(pair[0],pair[1]))
+                for j in pairs:
+                    if j not in self.combined_chars:
+                        self.combined_chars[j] = {'Samples': 0, 'Points': [], 'uids':[]}
+                    
+                    # Update the sample count
+                    self.combined_chars[j]['Samples'] += self.combined_teams[pair]['Samples'] 
+                    
+                    # Append the round_num (i) to the 'Points' list
+                    self.combined_chars[j]['Points'].extend(self.combined_teams[pair]['Points'])
+                    
+                    # Appends uids to the uids list
+                    self.combined_chars[j]['uids'].extend(self.combined_teams[pair]['uids'])
+                    
+        flatten = ([(v['uids']) for v in self.chars.values()])
         flatten2 = ([(v['uids']) for v in self.combined_chars.values()])
         self.total_samples = len(set(list(chain(*flatten))))
         self.total_samples2 = len(set(list(chain(*flatten2))))
@@ -649,7 +663,7 @@ class  HonkaiStatistics_Pure:
             data.append({
                     'Rank': len(data) + 1,
                     'Character': char,
-                    'Appearance Rate (%)': round(appearance_rate, 2),
+                    'Appearance Rate (%)': round(appearance_rate, 3),
                     'Samples': char_data['Samples'],
                     'Min Score': min(char_data['Points']),
                     '25th Percentile': round(np.percentile(char_data['Points'], 25), 2),
@@ -1103,14 +1117,13 @@ class  HonkaiStatistics_Pure:
             print("No cycle data available")
             
     def show_common_partners(self, char,output=True):
-        honkai_stats = HonkaiStatistics_Pure(version=self.version, floor = self.floor, node=self.node,by_points=self.by_points, by_char=char,by_ed=self.by_ed)
+        honkai_stats = HonkaiStatistics_Pure(version=self.version, floor = self.floor, node=self.node,by_points=self.by_points, by_char=char,by_ed=self.by_ed,_method=True,_load_csv=self.df,_load_chars=self.rol)
         return honkai_stats.print_appearance_rate_by_char(output=output)
            
     def apirori(self, sort_by='Samples', ascending=False, output=True, antecedent_filter=None, consequent_filter=None):
         # Step 1: Get character appearance data
         t1 = time.time()
-        data = HonkaiStatistics_Pure(version=self.version, floor=self.floor, node=self.node, by_points=self.by_points, by_ed=self.by_ed)
-        data_char = data.print_appearance_rate_by_char(output=False)
+        data_char = self.print_appearance_rate_by_char(output=False)
         t2 = time.time()
         print(f"Time to get character appearance data: {t2 - t1:.4f} seconds")
 

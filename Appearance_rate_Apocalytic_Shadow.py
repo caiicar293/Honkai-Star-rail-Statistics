@@ -11,7 +11,7 @@ import json
 import networkx as nx
 import requests
 from itertools import chain,product
-
+import math
 
 class HonkaiStatistics_APOC:
     def __init__(self, version, floor, node=0, by_ed=6,by_ed_inclusive=False,by_ed_inclusive_combined=False, by_score =0, by_char = None, by_scores_combined = 0,not_char=False,sustain_condition=None,star_num=None
@@ -59,13 +59,7 @@ class HonkaiStatistics_APOC:
         self.sustain_condition = sustain_condition
         self.star_num = star_num
         self._method = _method
-        
-        
-        
-        
-     
-            
-            
+          
         if self.star_num:
             self.df = self.df[(self.df['star_num'] == self.star_num)]
         
@@ -161,7 +155,7 @@ class HonkaiStatistics_APOC:
                     self.chars[v] = {'Samples': 0, 'Scores': [], 'uids': [],'Eidolons':{0:0,1:0 ,2:0,3:0,4:0,5:0,6:0}, "Index":index,"Sustains":0}
                     index+=1
                 
-                import math
+               
                 if not math.isnan(e):
                     # Update Eidolons
                     self.chars[v]['Eidolons'][e] +=1

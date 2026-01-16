@@ -34,7 +34,7 @@ class HonkaiStatistics_Anomaly:
             
        
         
-        
+        self.df = self.df[(self.df['hard_mode'] == False)]
         # Initialize dictionary
         self.teams = {}
         self.chars = {}
@@ -1014,7 +1014,59 @@ class HonkaiStatistics_Anomaly:
             plt.show()
         else:
             print("No cycle data available")
+            
+    def plot_statistics_archetype(self, archetype):
         
+        if archetype in self.archetypes:
+            scores = self.archetypes[archetype]['Avg Cycles']
+            sample_size = self.archetypes[archetype]['Samples']  # Get the sample size
+            if scores:
+                # Calculate statistics
+                median = statistics.median(scores)
+                mode = statistics.mode(scores) if len(scores) > 1 else scores[0]
+                mean = statistics.mean(scores)
+                std_dev = statistics.stdev(scores) if len(scores) > 1 else 0
+                
+                # Print the Counter of all scores sorted by score value
+                score_counts = Counter(scores)
+                print(f"Cycle Counts for Archetype {archetype}:")
+                total = 0
+                print(f"Sample Size: {sample_size}")
+                
+                for score_value in sorted(score_counts):  # Sort by score value
+                    count = score_counts[score_value]
+                    total += count
+                    # Calculate the percentile based on the total counts
+                    percentile = (1 - (total / sample_size)) * 100
+                    print(f"Scores: {score_value}, Count: {count}, Percentile: {percentile:.2f}%")
+                    
+                # Create frequency graph (histogram)
+                plt.figure(figsize=(12, 6))
+                plt.hist(scores, bins='auto', alpha=0.5, color='blue', edgecolor='black', label='Scores Frequency')
+                
+                # Overlay statistics on the histogram
+                plt.axvline(mean, color='orange', linestyle='dashed', linewidth=1, label=f'Mean: {mean:.2f}')
+                plt.axvline(median, color='green', linestyle='dashed', linewidth=1, label=f'Median: {median:.2f}')
+                plt.axvline(mode, color='red', linestyle='dashed', linewidth=1, label=f'Mode: {mode:.2f}')
+                plt.axvline(mean + std_dev, color='purple', linestyle='dashed', linewidth=1, label=f'Std Dev: {std_dev:.2f}')
+                plt.axvline(mean - std_dev, color='purple', linestyle='dashed', linewidth=1)
+
+                # Add titles and labels for histogram
+                plt.title(f"Scores Frequency for Archetype {archetype} for version {self.version}, Node {self.node} , up to {self.by_ed} Eidolon")
+                plt.xlabel('Scores')
+                plt.ylabel('Frequency')
+                plt.legend()
+
+                # Display sample size on the histogram
+                plt.text(mean, max(plt.ylim()) * 0.8, f'Sample Size: {sample_size}', 
+                         horizontalalignment='center', fontsize=10, color='black')
+
+                plt.show()
+            else:
+                print(f"No score data available for Archetype {archetype}")
+        else:
+            print(f"Archetype {archetype} not found in the dictionary") 
+                
     def plot_statistics_all_combined(self,culmitive=False):
         cycles = []
         for char in self.combined_teams:

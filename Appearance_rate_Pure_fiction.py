@@ -806,6 +806,17 @@ class  HonkaiStatistics_Pure:
         # Printing the DataFrame
         print(fil.to_string(index=False))
         
+    def print_uids_by_archetypes_combined(self, archetype):
+        # Print the list of UIDs by team
+      
+        new = self.df
+        fil = new[(new['uid'].isin(self.combined_archetypes[archetype]['uids'])) & (new['floor'] == self.floor)]
+        pd.set_option('display.width', 1000)  # Adjust the total width of the output
+        pd.set_option('display.max_columns', None)  # Ensure all columns are shown
+
+        # Printing the DataFrame
+        print(fil.to_string(index=False))
+        
     def find_user(self, uid):
         # Print the list of UIDs by team
         

@@ -31,8 +31,6 @@ class HonkaiStatistics_Anomaly:
         else:
             self.df=_load_csv
             self.rol=_load_chars
-            
-       
         
         self.df = self.df[(self.df['hard_mode'] == False)]
         # Initialize dictionary
@@ -785,6 +783,17 @@ class HonkaiStatistics_Anomaly:
             fil = new[(new['uid'].isin(self.archetypes[archetype]['uids'])) & (new['floor'] == self.floor)]
         else:
             fil = new[(new['uid'].isin(self.archetypes[archetype]['uids'])) ]
+        pd.set_option('display.width', 1000)  # Adjust the total width of the output
+        pd.set_option('display.max_columns', None)  # Ensure all columns are shown
+
+        # Printing the DataFrame
+        print(fil.to_string(index=False))
+    
+    def print_uids_by_archetypes_combined(self, archetype):
+        # Print the list of UIDs by team
+      
+        new = self.df
+        fil = new[(new['uid'].isin(self.combined_archetypes[archetype]['uids'])) & (new['floor'] == self.floor)]
         pd.set_option('display.width', 1000)  # Adjust the total width of the output
         pd.set_option('display.max_columns', None)  # Ensure all columns are shown
 

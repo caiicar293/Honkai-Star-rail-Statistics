@@ -74,7 +74,7 @@ class HonkaiStatistics:
                    "Fu Xuan", "Luocha", "Huohuo", "Dr. Ratio", "Black Swan", 
                    "Sparkle", "Acheron", "Aventurine", "Robin", "Boothill", 
                    "Firefly", "Yunli", "Jiaoqiu", "Feixiao", "Lingsha","Rappa","Sunday","Fugue","The Herta","Aglaea","Tribbie","Mydei","Castorice","Anaxa","Hyacine","Cipher","Phainon","Archer","Saber","Hysilens","Cerydra","Evernight","Dan Heng • Permansor Terrae","Cyrene"
-                   ,"The Dahila"]
+                   ,"The Dahlia"]
         
         # Loop through characters and round_num
         index = 0
@@ -1252,9 +1252,7 @@ class HonkaiStatistics:
 
         
     def network_graph(self, sort_by="Weighted_Degree", weight_option="Samples", output=True, graph=False, clusters=True):
-   
-
-            # Get your apriori data
+        # Get your apriori data
         d = self.apirori(output=False)
         df = pd.DataFrame({
             "Antecedent": d["Antecedent"],
@@ -1272,20 +1270,31 @@ class HonkaiStatistics:
         for idx, row in df.iterrows():
             a = row["Antecedent"]
             b = row["Consequent"]
-            w = float(row[weight_option])  # ensure numeric
-            G.add_edge(a, b, weight=w)
+            w = float(row[weight_option])
+            # We need a 'distance' attribute for Betweenness/Closeness
+            # High weight (samples) should mean small distance
+            dist = 1.0 / w if w > 0 else 0 
+            G.add_edge(a, b, weight=w, distance=dist)
 
         # ---- CENTRALITY MEASURES ----
         weighted_degree = dict(G.degree(weight="weight"))
         degree = dict(G.degree())
+        
+        # Eigenvector uses weight as 'influence' (higher is better)
         eigen_centrality = nx.eigenvector_centrality(G, weight="weight", max_iter=1000)
+        
+        # Betweenness and Closeness use 'distance' (lower is better/closer)
+        betweenness = nx.betweenness_centrality(G, weight="distance")
+        closeness = nx.closeness_centrality(G, distance="distance")
 
         # ---- CREATE DATAFRAME ----
         centrality_df = pd.DataFrame({
             "Character": list(G.nodes()),
             "Weighted_Degree": [weighted_degree[n] for n in G.nodes()],
             "Degree": [degree[n] for n in G.nodes()],
-            "Eigenvector": [eigen_centrality[n] for n in G.nodes()]
+            "Eigenvector": [eigen_centrality[n] for n in G.nodes()],
+            "Betweenness": [betweenness[n] for n in G.nodes()],
+            "Closeness": [closeness[n] for n in G.nodes()]
         })
 
         # ---- SORT RESULTS ----
@@ -1293,22 +1302,26 @@ class HonkaiStatistics:
             sort_by = "Weighted_Degree"
         centrality_df = centrality_df.sort_values(by=sort_by, ascending=False).reset_index(drop=True)
 
-        # ---- GRAPH ----
+        # ---- GRAPH (Visualizing the Meta) ----
         if graph:
-            plt.figure(figsize=(90, 50))
-            pos = nx.spring_layout(G, k=2.0, iterations=500)
+            plt.figure(figsize=(90, 50)) # Adjusted for better visibility
+            pos = nx.spring_layout(G, k=0.5, iterations=50) # Tighter layout
 
-            nx.draw_networkx_nodes(G, pos, node_color='skyblue', node_size=150)
+            # Nodes sized by Eigenvector (Influence)
+            node_sizes = [centrality_df.loc[centrality_df['Character'] == n, 'Eigenvector'].values[0] * 5000 for n in G.nodes()]
+            
+            nx.draw_networkx_nodes(G, pos, node_color='skyblue', node_size=node_sizes, alpha=0.8)
+            
             edges = G.edges(data=True)
             max_weight = max([d['weight'] for (_, _, d) in edges])
             nx.draw_networkx_edges(
                 G, pos,
                 width=[d['weight']/max_weight * 5 for (_, _, d) in edges],
-                alpha=0.6,
+                alpha=0.4,
                 edge_color='gray'
             )
-            nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
-            plt.title("Character Network Graph", fontsize=16)
+            nx.draw_networkx_labels(G, pos, font_size=8, font_weight='bold')
+            plt.title(f"HSR Team Network: Sized by Eigenvector", fontsize=16)
             plt.axis('off')
             plt.show()
 
@@ -1316,5 +1329,5 @@ class HonkaiStatistics:
         if output:
             print(centrality_df.to_string(index=False))
             return
-
+        
         return centrality_df

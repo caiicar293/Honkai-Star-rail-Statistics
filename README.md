@@ -73,9 +73,9 @@ The project utilizes an **Object-Oriented** architecture centered around the `Ho
 ```python
 from Appearance_rate import HonkaiStatistics
 
-# Analyze Memory of Chaos, Floor 12, Version 2.4
+# Analyze Memory of Chaos, Floor 12, Version 2.3.3
 # Restrict to E0-E2 characters clearing within 10 cycles
-moc_stats = HonkaiStatistics(version="2.4", floor=12, by_ed=2, by_cycle=10)
+moc_stats = HonkaiStatistics(version="2.3.3", floor=12, by_ed=2, by_cycle=10)
 
 # 1. Print Character Appearance Rates (for Damage Dealers)
 moc_stats.print_appearance_rate_by_char(damage_dealers_only=True)

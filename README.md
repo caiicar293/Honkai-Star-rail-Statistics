@@ -1,12 +1,12 @@
 
 
-# Honkai: Star Rail Statistical Analysis Suite
+# Honkai Star Rail Statistical Analysis Suite
 
-An advanced data science and graph theory toolkit designed to analyze the "Meta" of *Honkai: Star Rail*. This suite processes large-scale player data to determine character appearance rates, team synergies, and performance benchmarks across all major end-game modes.
+An advanced data science and graph theory toolkit designed to analyze the data of Honkai Star Rail. This suite processes large-scale player data to determine character appearance rates, team synergies, and performance benchmarks across all major end-game modes.
 
 ## 🚀 Key Features
 
-* **Multi-Mode Support:** Dedicated analysis engines for Memory of Chaos (MoC), Pure Fiction, and Apocalyptic Shadow.
+* **Multi-Mode Support:** Dedicated analysis engines for Memory of Chaos (MoC), Pure Fiction, and Apocalyptic Shadow and Anomaly Arbitration.
 * **Graph Theory Integration:** Uses `NetworkX` and **Eigenvector Centrality** to visualize and rank character influence within team compositions.
 * **Data Mining:** Implements the **Apriori Algorithm** to discover hidden character synergies and "market basket" team associations.
 * **Performance Benchmarking:** Calculates percentiles (, , ) for cycles and scores to provide a realistic view of character power.

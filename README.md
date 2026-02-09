@@ -19,7 +19,7 @@ An advanced data science and graph theory toolkit designed to analyze the "Meta"
 | `Appearance_rate.py` | **Memory of Chaos** | Cycles used to clear. |
 | `Appearance_rate_Pure_fiction.py` | **Pure Fiction** | Total points scored. |
 | `Appearance_rate_Apocalytic_Shadow.py` | **Apocalyptic Shadow** | Action Value / Scores. |
-| `Appearance_rate_anomaly.py` | **General/Events** | Variant data & anomaly detection. |
+| `Appearance_rate_anomaly.py` | **Anomaly Arbitration** | Cycles used to clear. |
 
 ## 🛠️ Requirements
 
@@ -35,8 +35,8 @@ The project is built using an Object-Oriented approach. You can initialize the s
 ```python
 from Appearance_rate import HonkaiStatistics
 
-# Initialize MoC Version 2.1, Floor 12
-stats = HonkaiStatistics(version="2.1", floor=12)
+# Initialize MoC Version 2.3.3, Floor 12
+stats = HonkaiStatistics(version="2.3.3", floor=12)
 
 # Generate a Synergy Network Graph
 stats.network_graph(graph=True)

@@ -74,7 +74,7 @@ class HonkaiStatistics:
                    "Fu Xuan", "Luocha", "Huohuo", "Dr. Ratio", "Black Swan", 
                    "Sparkle", "Acheron", "Aventurine", "Robin", "Boothill", 
                    "Firefly", "Yunli", "Jiaoqiu", "Feixiao", "Lingsha","Rappa","Sunday","Fugue","The Herta","Aglaea","Tribbie","Mydei","Castorice","Anaxa","Hyacine","Cipher","Phainon","Archer","Saber","Hysilens","Cerydra","Evernight","Dan Heng • Permansor Terrae","Cyrene"
-                   ,"The Dahlia"]
+                   ,"The Dahlia","Yao Guang"]
         
         # Loop through characters and round_num
         index = 0
@@ -520,7 +520,7 @@ class HonkaiStatistics:
             rows.append({
                 'Rank': rank,
                 'Archetype': f"({', '.join(formatted_archetype)})",
-                'Appearance Rate (%)': round(appearance_rate, 2),
+                'Appearance Rate (%)': round(appearance_rate, 6),
                 'Samples': data['Samples'],
                 'Min Cycles': min(data['Avg Cycles']),
                 '25th Percentile Cycles': round(np.percentile(data['Avg Cycles'], 25), 2),

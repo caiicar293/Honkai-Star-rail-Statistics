@@ -76,7 +76,8 @@ class  HonkaiStatistics_Pure:
                    "Blade", "Argenti", "Topaz & Numby", "Ruan Mei", "Silver Wolf", 
                    "Fu Xuan", "Luocha", "Huohuo", "Dr. Ratio", "Black Swan", 
                    "Sparkle", "Acheron", "Aventurine", "Robin", "Boothill", 
-                   "Firefly", "Yunli", "Jiaoqiu", "Feixiao", "Lingsha","Rappa","Sunday","Fugue","The Herta","Aglaea","Tribbie","Mydei","Castorice","Anaxa","Hyacine","Cipher","Phainon","Saber","Archer","Hysilens","Cerydra","Evernight","Dan Heng • Permansor Terrae","Cyrene","The Dahlia"]
+                   "Firefly", "Yunli", "Jiaoqiu", "Feixiao", "Lingsha","Rappa","Sunday","Fugue","The Herta","Aglaea","Tribbie","Mydei","Castorice","Anaxa","Hyacine","Cipher","Phainon","Saber","Archer","Hysilens","Cerydra","Evernight","Dan Heng • Permansor Terrae","Cyrene","The Dahlia"
+                   ,"Yao Guang"]
         
         # Loop through characters and round_num
         index = 0

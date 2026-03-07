@@ -14,13 +14,13 @@ from Appearance_rate_all_time_char import HonkaiAnalyzer
 
 
 
-versions = ["2.3.3", "2.4.3", "2.5.3", "2.6.3", "2.7.3", "3.1.2", "3.2.2","3.3.2","3.4.2","3.5.2","3.6.2","3.7.2","3.8.2","4.0.1"]
+versions = ["2.3.3", "2.4.3", "2.5.3", "2.6.3", "2.7.3", "3.1.2", "3.2.2","3.3.2","3.4.2","3.5.2","3.6.2","3.7.2","3.8.2","4.0.1","4.0.2"]
 all_dfs = []
 g = HonkaiStatistics(version=versions[-1], floor=12, by_ed=6)
 b = g.chars
 # 1. Collect data from all versions
 for v in versions:
-    h = HonkaiStatistics(version=v, floor=12, by_ed=1)
+    h = HonkaiStatistics(version=v, floor=12, by_ed=0)
     df_version = h.print_archetypes(output=False)
     all_dfs.append(df_version)
 

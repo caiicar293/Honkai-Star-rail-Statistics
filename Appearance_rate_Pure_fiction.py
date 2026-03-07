@@ -179,7 +179,7 @@ class  HonkaiStatistics_Pure:
                 
                 arch = [x for x in n if x is not None
                     and x in self.rol.index
-                    and self.rol.loc[x, 'role'] == "Damage Dealer"]
+                    and set(self.rol.loc[x, 'role']).intersection({"dps", "specialist"})]
                 
                 arch_t = tuple(arch)
                 
@@ -687,7 +687,7 @@ class  HonkaiStatistics_Pure:
         
         rol = self.rol
         if damage_dealers_only:
-             df = df[df['Character'].apply(lambda x: pd.notna(x) and x in rol.index and rol.loc[x, 'role'] == "Damage Dealer")]
+             df = df[df['Character'].apply(lambda x: pd.notna(x) and x in rol.index and bool(set(self.rol.loc[x, 'role']).intersection({"dps", "specialist"})))]
              df['Rank'] = range(1, len(df) + 1)
         if output:
             print(df.to_string(index=False))
@@ -741,8 +741,8 @@ class  HonkaiStatistics_Pure:
        
         rol = self.rol
         if damage_dealers_only:
-             df = df[df['Character 1'].apply(lambda x: pd.notna(x) and x in rol.index and rol.loc[x, 'role'] == "Damage Dealer")]
-             df = df[df['Character 2'].apply(lambda x: pd.notna(x) and x in rol.index and rol.loc[x, 'role'] == "Damage Dealer")]
+             df = df[df['Character 1'].apply(lambda x: pd.notna(x) and x in rol.index and set(self.rol.loc[x, 'role']).intersection({"dps", "specialist"}))]
+             df = df[df['Character 2'].apply(lambda x: pd.notna(x) and x in rol.index and set(self.rol.loc[x, 'role']).intersection({"dps", "specialist"}))]
              df['Rank'] = range(1, len(df) + 1)
         if ch1_filter:
             df = df[df['Character 1'] == ch1_filter]

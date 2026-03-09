@@ -29,7 +29,7 @@ class HonkaiStatistics:
             response.raise_for_status()  # raise error if request fails
             info = response.json()  # parse JSON     
             self.rol = pd.DataFrame.from_dict(info, orient='index')
-        
+            self.rol['Index'] = range(len(self.rol))
         else:
             self.df=_load_csv
             self.rol=_load_chars
@@ -169,7 +169,7 @@ class HonkaiStatistics:
                 
             if not self._method:     
                 # Sort and handle missing or NaN values
-                n = sorted([(x), y, z, w], key=lambda d: self.chars[d]['Index'])
+                n = sorted([(x), y, z, w], key = lambda d: self.rol['Index'].get(d, 999))
                 n = tuple(n)  # Convert to tuple to use as a key in the dictionary
                 
             
@@ -747,8 +747,8 @@ class HonkaiStatistics:
        
         rol = self.rol
         if damage_dealers_only:
-             df = df[df['Character 1'].apply(lambda x: pd.notna(x) and x in rol.index and set(self.rol.loc[x, 'role']).intersection({"dps", "specialist"}))]
-             df = df[df['Character 2'].apply(lambda x: pd.notna(x) and x in rol.index and set(self.rol.loc[x, 'role']).intersection({"dps", "specialist"}))]
+             df = df[df['Character 1'].apply(lambda x: pd.notna(x) and x in rol.index and bool(set(self.rol.loc[x, 'role']).intersection({"dps", "specialist"})))]
+             df = df[df['Character 2'].apply(lambda x: pd.notna(x) and x in rol.index and bool(set(self.rol.loc[x, 'role']).intersection({"dps", "specialist"})))]
              df['Rank'] = range(1, len(df) + 1)
         if ch1_filter:
             df = df[df['Character 1'] == ch1_filter]

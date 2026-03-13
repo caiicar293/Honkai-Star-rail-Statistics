@@ -74,7 +74,7 @@ class HonkaiStatistics:
                    "Fu Xuan", "Luocha", "Huohuo", "Dr. Ratio", "Black Swan", 
                    "Sparkle", "Acheron", "Aventurine", "Robin", "Boothill", 
                    "Firefly", "Yunli", "Jiaoqiu", "Feixiao", "Lingsha","Rappa","Sunday","Fugue","The Herta","Aglaea","Tribbie","Mydei","Castorice","Anaxa","Hyacine","Cipher","Phainon","Archer","Saber","Hysilens","Cerydra","Evernight","Dan Heng • Permansor Terrae","Cyrene"
-                   ,"The Dahlia","Yao Guang"]
+                   ,"The Dahlia","Yao Guang","Sparxie"]
         
         # Loop through characters and round_num
         index = 0

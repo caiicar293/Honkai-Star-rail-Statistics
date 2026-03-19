@@ -17,7 +17,7 @@ class HonkaiTeamWarehouse:
         self.config = {
             "MOC": {
                 "class": HonkaiStatistics,
-                "table": "moc_stats_team",
+                "table": "moc_stats_teams",
                 "versions": [
         "2.3.3", "2.4.3", "2.5.3", "2.6.3", "2.7.3", 
         "3.1.2", "3.2.2", "3.3.2", "3.4.2", "3.5.2", 
@@ -27,7 +27,7 @@ class HonkaiTeamWarehouse:
             },
             "PURE_FICTION": {
                 "class": HonkaiStatistics_Pure,
-                "table": "pure_fiction_stats_team",
+                "table": "pure_fiction_stats_teams",
                 "versions": [
         "2.3.2", "2.4.2", "2.5.2", "2.6.2", "2.7.2", 
         "3.1.1", "3.2.1", "3.3.1", "3.4.1", "3.5.1", 
@@ -37,17 +37,17 @@ class HonkaiTeamWarehouse:
             },
             "APOC": {
                 "class": HonkaiStatistics_APOC,
-                "table": "apoc_stats_team",
+                "table": "apoc_stats_teams",
                 "versions": [
         "2.3.1", "2.4.1", "2.5.1", "2.6.1", "2.7.1", 
         "3.0.3", "3.1.3", "3.2.3", "3.3.3", "3.4.3", 
-        "3.5.3", "3.6.3.2", "3.7.3", "3.8.3", "4.0.2"
+        "3.5.3", "3.6.3", "3.7.3", "3.8.3", "4.0.2"
     ],
                 "default_floor": 4
             },
             "ANOMALY": {
                 "class": HonkaiStatistics_Anomaly,
-                "table": "anomaly_stats_team",
+                "table": "anomaly_stats_teams",
                 "versions": ["3.6.3", "3.7.3", "3.8.4", "4.0.2"],
                 "default_floor": 0
             }

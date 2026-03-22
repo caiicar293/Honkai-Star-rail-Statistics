@@ -1,4 +1,4 @@
-import sqlite3
+import duckdb
 import pandas as pd
 import warnings
 
@@ -11,7 +11,7 @@ from Appearance_rate_anomaly import HonkaiStatistics_Anomaly
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 class HonkaiTeamWarehouse:
-    def __init__(self, db_name="honkai_star_rail_stats2.db"):
+    def __init__(self, db_name="honkai_star_rail_stats.duckdb"):
         self.db_name = db_name
         # Configuration for all game modes
         self.config = {
@@ -51,22 +51,19 @@ class HonkaiTeamWarehouse:
             "ANOMALY": {
                 "class": HonkaiStatistics_Anomaly,
                 "table": "anomaly_stats_teams",
-                "dual_table": "anomaly_stats_dual_teams",
+                "dual_table": "anomaly_stats_triple_teams",
                 "versions": ["3.6.3", "3.7.3", "3.8.4", "4.0.2"],
-                "default_floor": 0 # Usually floor 0 for dual analysis
+                "default_floor": 0
             }
         }
 
     def _standardize(self, df, mode, version, eidolon, floor, node=None):
-        """Standardizes column names for SQL compatibility."""
+        """Standardizes column names for DuckDB/SQL compatibility."""
         df['version'] = version
         df['mode'] = mode
         df['floor'] = floor
         df['eidolon_level'] = eidolon
-        if node is not None: 
-            df['node'] = node
-        else:
-            df['node'] = "Both"
+        df['node'] = node if node is not None else "Both"
 
         rename_map = {
             'Appearance Rate (%)': 'Appearance_Rate_pct',
@@ -84,9 +81,10 @@ class HonkaiTeamWarehouse:
         }
         df.rename(columns=rename_map, inplace=True)
         
+        # Clean column names for DuckDB
         df.columns = [c.replace(' ', '_').replace('(', '').replace(')', '').replace('%', 'pct').replace('•', '') for c in df.columns]
         
-        # Format Team columns (Handles 'Team', 'Team_1', 'Team_2', etc.)
+        # Ensure Team columns are strings
         team_cols = [c for c in df.columns if 'Team' in c]
         for col in team_cols:
             df[col] = df[col].astype(str)
@@ -94,9 +92,11 @@ class HonkaiTeamWarehouse:
         return df
 
     def run_dual(self, target_mode=None, target_version=None, eidolons=[0, 1, 2, 6]):
-        """Runs the Dual-Team (Both Sides) pipeline."""
+        """Runs the Dual-Team (Both Sides) pipeline using DuckDB."""
         modes_to_run = [target_mode] if target_mode else self.config.keys()
-        conn = sqlite3.connect(self.db_name)
+        
+        # Connect to DuckDB
+        conn = duckdb.connect(self.db_name)
 
         for mode in modes_to_run:
             cfg = self.config[mode]
@@ -107,28 +107,29 @@ class HonkaiTeamWarehouse:
             for v in versions:
                 for e in eidolons:
                     try:
-                        # Dual analysis usually uses the default floor or floor 0
-                        # Note: Node is not passed for dual side functions
                         scraper = cfg["class"](version=v, floor=cfg["default_floor"], by_ed=e)
-                        
-                        # Call the "Both Sides" team method
                         df = scraper.print_appearance_rates_both_sides(output=False)
 
                         if df is not None and not df.empty:
                             df_clean = self._standardize(df, mode, v, e, cfg["default_floor"])
-                            df_clean.to_sql(cfg["dual_table"], conn, if_exists='append', index=False)
+                            # DuckDB can register the dataframe and insert directly
+                            conn.execute(f"INSERT INTO {cfg['dual_table']} SELECT * FROM df_clean") if self._table_exists(conn, cfg['dual_table']) else conn.execute(f"CREATE TABLE {cfg['dual_table']} AS SELECT * FROM df_clean")
+                            
                             print(f"Added Dual: {mode} | Ver {v} | E{e}")
                         
                     except Exception as ex:
                         print(f"Error at Dual {mode} {v} E{e}: {ex}")
+                
+                # Commit after each version to ensure visibility in viewers
+                conn.commit()
 
         conn.close()
         print("\nDual Team Pipeline Complete.")
 
     def run(self, target_mode=None, target_version=None, eidolons=[0, 1, 2, 6]):
-        """Runs the standard single-node team appearance rate pipeline."""
+        """Runs the standard single-node team pipeline using DuckDB."""
         modes_to_run = [target_mode] if target_mode else self.config.keys()
-        conn = sqlite3.connect(self.db_name)
+        conn = duckdb.connect(self.db_name)
 
         for mode in modes_to_run:
             cfg = self.config[mode]
@@ -149,23 +150,30 @@ class HonkaiTeamWarehouse:
                                 scraper = cfg["class"](version=v, floor=cfg["default_floor"], by_ed=e, node=val)
                                 current_floor, current_node = cfg["default_floor"], val
 
-                            df = scraper.print_appearance_rates_both_sides(output=False)
+                            df = scraper.print_appearance_rates(output=False)
 
                             if df is not None and not df.empty:
                                 df_clean = self._standardize(df, mode, v, e, current_floor, current_node)
-                                df_clean.to_sql(cfg["table"], conn, if_exists='append', index=False)
+                                # Efficient DuckDB insertion
+                                if self._table_exists(conn, cfg['table']):
+                                    conn.execute(f"INSERT INTO {cfg['table']} SELECT * FROM df_clean")
+                                else:
+                                    conn.execute(f"CREATE TABLE {cfg['table']} AS SELECT * FROM df_clean")
+                                
                                 print(f"Added: {mode} | Ver {v} | E{e} | Node/Floor {val}")
                         
                         except Exception as ex:
                             print(f"Error at {mode} {v} E{e}: {ex}")
+                
+                conn.commit()
 
         conn.close()
 
+    def _table_exists(self, conn, table_name):
+        """Helper to check if table exists in DuckDB."""
+        return conn.execute(f"SELECT count(*) FROM information_schema.tables WHERE table_name = '{table_name}'").fetchone()[0] > 0
+
 if __name__ == "__main__":
     pipeline = HonkaiTeamWarehouse()
-    
-    # Run the standard individual node pipeline
-    pipeline.run()
-    
-    # Run the new combined both-sides pipeline
+    # pipeline.run()
     pipeline.run_dual()

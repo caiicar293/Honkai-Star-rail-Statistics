@@ -993,7 +993,7 @@ class HonkaiStatistics:
             
     
                 
-    def plot_statistics_all(self,culmitive=False):
+    def plot_statistics_all(self,cumulative =False,output=True):
         cycles = []
         for char in self.teams:
             cycles += self.teams[char]['Avg Cycles']
@@ -1031,7 +1031,7 @@ class HonkaiStatistics:
                 for i in range(7):
                     e_count = eidolons.get(i, 0)
                     
-                    if culmitive:
+                    if cumulative :
                         row[f"E{i} (%)"] = round(((e_count+cul[i]) / total) * 100, 2) if count > 0 else 0
                         cul[i]+=e_count
                     else:
@@ -1045,33 +1045,37 @@ class HonkaiStatistics:
             # Optional: reorder columns for readability
             df = df[["Cycles", "Count", "Percentile (%)",
                     "E0 (%)", "E1 (%)", "E2 (%)", "E3 (%)", "E4 (%)", "E5 (%)", "E6 (%)"]]
-
-            # Print DataFrame
-            print(f"Sample Size: {sample_size}")
-            print(df.to_string(index=False))
-
-            # Create histogram
-            plt.figure(figsize=(12, 6))
-            plt.hist(cycles, bins='auto', alpha=0.5, color='blue', edgecolor='black', label='Scores Frequency')
             
-            plt.axvline(mean, color='orange', linestyle='dashed', linewidth=1, label=f'Mean: {mean:.2f}')
-            plt.axvline(median, color='green', linestyle='dashed', linewidth=1, label=f'Median: {median:.2f}')
-            plt.axvline(mode, color='red', linestyle='dashed', linewidth=1, label=f'Mode: {mode:.2f}')
-            plt.axvline(mean + std_dev, color='purple', linestyle='dashed', linewidth=1, label=f'Std Dev: {std_dev:.2f}')
-            plt.axvline(mean - std_dev, color='purple', linestyle='dashed', linewidth=1)
+            if output:
+               
+                # Print DataFrame
+                print(f"Sample Size: {sample_size}")
+                print(df.to_string(index=False))
+            
+                # Create histogram
+                plt.figure(figsize=(12, 6))
+                plt.hist(cycles, bins='auto', alpha=0.5, color='blue', edgecolor='black', label='Scores Frequency')
+                
+                plt.axvline(mean, color='orange', linestyle='dashed', linewidth=1, label=f'Mean: {mean:.2f}')
+                plt.axvline(median, color='green', linestyle='dashed', linewidth=1, label=f'Median: {median:.2f}')
+                plt.axvline(mode, color='red', linestyle='dashed', linewidth=1, label=f'Mode: {mode:.2f}')
+                plt.axvline(mean + std_dev, color='purple', linestyle='dashed', linewidth=1, label=f'Std Dev: {std_dev:.2f}')
+                plt.axvline(mean - std_dev, color='purple', linestyle='dashed', linewidth=1)
 
-            plt.title(f"Avg Cycles Frequency for all for version {self.version}, Node {self.node}, up to {self.by_ed} Eidolon")
-            plt.xlabel('Avg Cycles')
-            plt.ylabel('Frequency')
-            plt.legend()
-            plt.text(mean, max(plt.ylim()) * 0.8, f'Sample Size: {sample_size}',
-                        horizontalalignment='center', fontsize=10, color='black')
-            plt.show()
+                plt.title(f"Avg Cycles Frequency for all for version {self.version}, Node {self.node}, up to {self.by_ed} Eidolon")
+                plt.xlabel('Avg Cycles')
+                plt.ylabel('Frequency')
+                plt.legend()
+                plt.text(mean, max(plt.ylim()) * 0.8, f'Sample Size: {sample_size}',
+                            horizontalalignment='center', fontsize=10, color='black')
+                plt.show()
+                return
+            return df
         else:
             print("No cycle data available")
         
     
-    def plot_statistics_all_combined(self,culmitive=False):
+    def plot_statistics_all_combined(self,cumulative =False,output= True):
         cycles = []
         for char in self.combined_teams:
             cycles += self.combined_teams[char]['Avg Cycles']
@@ -1109,7 +1113,7 @@ class HonkaiStatistics:
                 for i in range(7):
                     e_count = eidolons.get(i, 0)
                     
-                    if culmitive:
+                    if cumulative :
                         row[f"E{i} (%)"] = round(((e_count+cul[i]) / total) * 100, 2) if count > 0 else 0
                         cul[i]+=e_count
                     else:
@@ -1125,26 +1129,30 @@ class HonkaiStatistics:
                     "E0 (%)", "E1 (%)", "E2 (%)", "E3 (%)", "E4 (%)", "E5 (%)", "E6 (%)"]]
 
             # Print DataFrame
-            print(f"Sample Size: {sample_size}")
-            print(df.to_string(index=False))
+            if output:
+                
+                print(f"Sample Size: {sample_size}")
+                print(df.to_string(index=False))
 
-            # Create histogram
-            plt.figure(figsize=(12, 6))
-            plt.hist(cycles, bins='auto', alpha=0.5, color='blue', edgecolor='black', label='Scores Frequency')
-            
-            plt.axvline(mean, color='orange', linestyle='dashed', linewidth=1, label=f'Mean: {mean:.2f}')
-            plt.axvline(median, color='green', linestyle='dashed', linewidth=1, label=f'Median: {median:.2f}')
-            plt.axvline(mode, color='red', linestyle='dashed', linewidth=1, label=f'Mode: {mode:.2f}')
-            plt.axvline(mean + std_dev, color='purple', linestyle='dashed', linewidth=1, label=f'Std Dev: {std_dev:.2f}')
-            plt.axvline(mean - std_dev, color='purple', linestyle='dashed', linewidth=1)
+                # Create histogram
+                plt.figure(figsize=(12, 6))
+                plt.hist(cycles, bins='auto', alpha=0.5, color='blue', edgecolor='black', label='Scores Frequency')
+                
+                plt.axvline(mean, color='orange', linestyle='dashed', linewidth=1, label=f'Mean: {mean:.2f}')
+                plt.axvline(median, color='green', linestyle='dashed', linewidth=1, label=f'Median: {median:.2f}')
+                plt.axvline(mode, color='red', linestyle='dashed', linewidth=1, label=f'Mode: {mode:.2f}')
+                plt.axvline(mean + std_dev, color='purple', linestyle='dashed', linewidth=1, label=f'Std Dev: {std_dev:.2f}')
+                plt.axvline(mean - std_dev, color='purple', linestyle='dashed', linewidth=1)
 
-            plt.title(f"Avg Cycles Frequency for all for version {self.version}, Node {self.node}, up to {self.by_ed} Eidolon")
-            plt.xlabel('Avg Cycles')
-            plt.ylabel('Frequency')
-            plt.legend()
-            plt.text(mean, max(plt.ylim()) * 0.8, f'Sample Size: {sample_size}',
-                        horizontalalignment='center', fontsize=10, color='black')
-            plt.show()
+                plt.title(f"Avg Cycles Frequency for all for version {self.version}, Node {self.node}, up to {self.by_ed} Eidolon")
+                plt.xlabel('Avg Cycles')
+                plt.ylabel('Frequency')
+                plt.legend()
+                plt.text(mean, max(plt.ylim()) * 0.8, f'Sample Size: {sample_size}',
+                            horizontalalignment='center', fontsize=10, color='black')
+                plt.show()
+                return
+            return df
         else:
             print("No cycle data available")
             

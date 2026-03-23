@@ -2,48 +2,54 @@ import duckdb
 import pandas as pd
 
 # 1. Connect to your persistent DuckDB file
-con = duckdb.connect("honkai_star_rail_stats.duckdb")
+con = duckdb.connect("honkai_star_rail_stats2.duckdb")
 
-# 2. Updated Configuration
-# Note: We specify the 'node' value for each mode to handle the Anomaly edge case.
-configs = {
-    "MOC": {"table": "moc_stats_teams", "floor": 12, "perf": "MIN", "node_val": "0"},
-    "APOC": {"table": "apoc_stats_teams", "floor": 4, "perf": "MAX", "node_val": "0"},
-    "PURE_FICTION": {"table": "pure_fiction_stats_teams", "floor": 4, "perf": "MAX", "node_val": "0"},
-    # Anomaly usually uses 'Both' because it's a single run, not split nodes.
-    "ANOMALY": {"table": "anomaly_stats_teams", "floor": 4, "perf": "MIN", "node_val": "'Both'"}
-}
+# 2. Updated Configuration Task List
+# node_val: None means the column doesn't exist (Anomaly Case)
+analysis_tasks = [
+    {"mode": "MOC", "table": "moc_stats", "floor": 12, "perf": "MIN", "node_val": "0"},
+    {"mode": "APOC", "table": "apoc_stats", "floor": 4, "perf": "MAX", "node_val": "0"},
+    {"mode": "PURE_FICTION", "table": "pure_fiction_stats", "floor": 4, "perf": "MAX", "node_val": "0"},
+    {"mode": "ANOMALY_F0", "table": "anomaly_stats", "floor": 0, "perf": "MIN", "node_val": None},
+    {"mode": "ANOMALY_F4", "table": "anomaly_stats", "floor": 4, "perf": "MIN", "node_val": None}
+]
 
 all_data = []
 
 print(">>> Analyzing Archetypes for all modes and eidolons...")
 
-for mode, cfg in configs.items():
-    print(f"Aggregating {mode} data (Floor {cfg['floor']} | Node {cfg['node_val']})...")
+for task in analysis_tasks:
+    mode = task["mode"]
     
-    # The query now uses a dynamic node filter and groups by eidolon_level
+    # Dynamically build the node filter
+    # If node_val is None, we just inject a "True" statement (1=1) to keep the SQL valid
+    node_filter = f"AND node = {task['node_val']}" if task['node_val'] is not None else ""
+    
+    print(f"Aggregating {mode} data (Floor {task['floor']})...")
+    
     query = f"""
         SELECT 
             '{mode}' as Game_Mode,
             eidolon_level,
             Archetype, 
             ROUND(AVG(Appearance_Rate_pct), 2) as Avg_Appearance_Rate,
+            ROUND(AVG(Average_Score), 2) as Simple_Avg_,
             ROUND(SUM(Average_Score * Samples) / SUM(Samples), 2) as Weighted_Avg_Score,
-            {cfg['perf']}(Average_Score) as Best_Version_Avg,
+            {task['perf']}(Average_Score) as Best_Version_Avg,
             SUM(Samples) as Total_Samples
-        FROM {cfg['table']}
+        FROM {task['table']}
         WHERE Samples > 0 
-          AND floor = {cfg['floor']}
-          AND node = {cfg['node_val']}
+          AND floor = {task['floor']}
+          {node_filter}
         GROUP BY 1, 2, 3
     """
     
     try:
-        df_mode = con.execute(query).df()
-        if not df_mode.empty:
-            all_data.append(df_mode)
+        df_task = con.execute(query).df()
+        if not df_task.empty:
+            all_data.append(df_task)
         else:
-            print(f"  ! No data found for {mode} with these filters.")
+            print(f"  ! No data found for {mode} Floor {task['floor']}.")
     except Exception as e:
         print(f"  ! Error processing {mode}: {e}")
 
@@ -51,25 +57,20 @@ for mode, cfg in configs.items():
 if all_data:
     final_summary_df = pd.concat(all_data, ignore_index=True)
     
-    # Use a transaction to ensure data safety
     con.execute("BEGIN TRANSACTION")
     try:
-        # 1. DELETE the old table if it exists
         con.execute("DROP TABLE IF EXISTS archetype_meta_summary")
-        
-        # 2. ADD the new one from your combined DataFrame
         con.execute("CREATE TABLE archetype_meta_summary AS SELECT * FROM final_summary_df")
-        
-        # 3. COMMIT the changes (makes them permanent)
         con.execute("COMMIT")
-        print(f"\n>>> Success! Replaced old table with {len(final_summary_df)} new rows.")
+        print(f"\n>>> Success! Updated 'archetype_meta_summary' with {len(final_summary_df)} rows.")
         
     except Exception as e:
-        # If anything fails, undo the deletion and go back to the old state
         con.execute("ROLLBACK")
         print(f"\n>>> ERROR: Replacement failed, rolled back to old table. {e}")
 
-    # Show a sample of the results
-    print(final_summary_df.sort_values(['Game_Mode', 'eidolon_level']).head(10))
+    # Display preview
+    print(final_summary_df.sort_values(['Game_Mode', 'eidolon_level']).head(15))
 else:
-    print("\n>>> Warning: No new data to add.")
+    print("\n>>> Warning: No data was aggregated.")
+
+con.close()

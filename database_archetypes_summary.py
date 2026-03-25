@@ -4,7 +4,6 @@ import pandas as pd
 class HonkaiMetaAnalyzer:
     def __init__(self, db_path="honkai_star_rail_stats2.duckdb"):
         self.db_path = db_path
-        # Define the metadata for each mode
         self.tasks = [
             {"mode": "MOC", "table": "moc_stats", "floor": 12, "perf": "MIN", "node_col": "node", "node_val": "0"},
             {"mode": "APOC", "table": "apoc_stats", "floor": 4, "perf": "MAX", "node_col": "node", "node_val": "0"},
@@ -14,14 +13,10 @@ class HonkaiMetaAnalyzer:
         ]
 
     def _generate_query(self, task, limit_recent=False):
-        """Generates the SQL query for a specific task and version window."""
-        node_filter = ""
-        if task['node_col'] is not None:
-            node_filter = f"AND {task['node_col']} = {task['node_val']}"
-
+        node_filter = f"AND {task['node_col']} = {task['node_val']}" if task['node_col'] is not None else ""
+        
         recent_filter = ""
         if limit_recent:
-            # Subquery to grab only the top 3 distinct versions for this specific table
             recent_filter = f"AND version IN (SELECT DISTINCT version FROM {task['table']} ORDER BY version DESC LIMIT 3)"
 
         return f"""
@@ -29,10 +24,17 @@ class HonkaiMetaAnalyzer:
                 '{task['mode']}' as Game_Mode,
                 eidolon_level,
                 Archetype, 
-                ROUND(AVG(Appearance_Rate_pct), 2) as Avg_Appearance_Rate,
+                -- Appearance Logic
+                ROUND(AVG(Appearance_Rate_pct), 2) as Simple_Avg_Appearance,
+                
+                -- Scoring Logic
+                ROUND(AVG(Average_Score), 2) as Simple_Avg_Score,
                 ROUND(SUM(Average_Score * Samples) / SUM(Samples), 2) as Weighted_Avg_Score,
                 {task['perf']}(Average_Score) as Best_Version_Avg,
-                SUM(Samples) as Total_Samples
+                
+                -- Metadata
+                SUM(Samples) as Total_Samples,
+                STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC) as Versions_Used
             FROM {task['table']}
             WHERE Samples > 0 
               AND floor = {task['floor']}
@@ -46,23 +48,20 @@ class HonkaiMetaAnalyzer:
         all_history = []
         all_recent = []
 
-        print(f">>> Connecting to {self.db_path}...")
-
         for task in self.tasks:
             try:
-                # 1. Process Full History
+                # Full History
                 df_h = con.execute(self._generate_query(task, limit_recent=False)).df()
                 if not df_h.empty: all_history.append(df_h)
 
-                # 2. Process Recent (Top 3 Versions)
+                # Recent (Last 3)
                 df_r = con.execute(self._generate_query(task, limit_recent=True)).df()
                 if not df_r.empty: all_recent.append(df_r)
                 
-                print(f"  + Processed {task['mode']} (Floor {task['floor']})")
+                print(f"  + Successfully aggregated {task['mode']}")
             except Exception as e:
-                print(f"  ! Error processing {task['mode']}: {e}")
+                print(f"  ! Error on {task['mode']}: {e}")
 
-        # 3. Save to Database with Transactions
         con.execute("BEGIN TRANSACTION")
         try:
             if all_history:
@@ -76,14 +75,13 @@ class HonkaiMetaAnalyzer:
                 con.execute("CREATE TABLE archetype_recent_meta_summary AS SELECT * FROM recent_df")
             
             con.execute("COMMIT")
-            print("\n>>> Success! Summary tables refreshed in DuckDB.")
+            print("\n>>> Analysis complete. Tables 'archetype_meta_summary' and 'archetype_recent_meta_summary' are ready.")
         except Exception as e:
             con.execute("ROLLBACK")
-            print(f"\n>>> CRITICAL ERROR: Transaction failed and rolled back. {e}")
+            print(f"\n>>> Error during DB write: {e}")
         finally:
             con.close()
 
-# --- Execution ---
 if __name__ == "__main__":
     analyzer = HonkaiMetaAnalyzer()
     analyzer.run_analysis()

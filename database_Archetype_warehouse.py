@@ -17,7 +17,7 @@ load_dotenv()
 
 
 class HonkaiArchetypeWarehouse:
-    def __init__(self, db_name="honkai_star_rail_archetypes.duckdb"):
+    def __init__(self, db_name="honkai_star_rail_stats2.duckdb"):
         self.db_name = db_name
         
         # Helper to get lists from env

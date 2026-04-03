@@ -60,7 +60,10 @@ class HonkaiArchetypeWarehouse:
         df['mode'] = mode
         df['floor'] = floor
         df['eidolon_level'] = eidolon
-        df['node'] = node if node is not None else "Both"
+        if mode == "ANOMALY":
+            df['node'] = "N/A" # Force N/A for single-mode anomaly
+        else:
+            df['node'] = node if node is not None else "Both"
 
         rename_map = {
             'Appearance Rate (%)': 'Appearance_Rate_pct',
@@ -104,7 +107,7 @@ class HonkaiArchetypeWarehouse:
                 for e in eidolons:
                     try:
                         scraper = cfg["class"](version=v, floor=cfg["default_floor"], by_ed=e)
-                        df = scraper.print_dual_archetypes(output=False)
+                        df = scraper.print_archetypes_both_sides(output=False)
 
                         if df is not None and not df.empty:
                             # Drop statistical noise
@@ -152,7 +155,7 @@ class HonkaiArchetypeWarehouse:
                                 current_floor, current_node = cfg["default_floor"], val
 
                             # Target the single-archetype method
-                            df = scraper.print_archetype_appearance_rates(output=False)
+                            df = scraper.print_archetypes(output=False)
 
                             if df is not None and not df.empty:
                                 df = df.drop(columns=[c for c in ['Skewness', 'Kurtosis'] if c in df.columns], errors='ignore')

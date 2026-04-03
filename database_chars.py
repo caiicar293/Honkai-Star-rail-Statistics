@@ -57,7 +57,11 @@ class HonkaiCharacterWarehouse:
         df['mode'] = mode
         df['floor'] = floor
         df['eidolon_level'] = eidolon
-        df['node'] = node if node is not None else "Both"
+        # --- ANOMALY NODE HANDLING ---
+        if mode == "ANOMALY":
+            # For Anomaly, we explicitly set this to N/A or None to avoid 
+            # confusing it with side-specific data.
+            df['node'] = "N/A"
 
         rename_map = {
             'Appearance Rate (%)': 'Appearance_Rate_pct',

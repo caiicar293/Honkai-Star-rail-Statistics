@@ -60,7 +60,10 @@ class HonkaiTeamsWarehouse:
         df['mode'] = mode
         df['floor'] = floor
         df['eidolon_level'] = eidolon
-        df['node'] = node if node is not None else "Both"
+        if mode == "ANOMALY":
+            df['node'] = "N/A" # Force N/A for single-mode anomaly
+        else:
+            df['node'] = node if node is not None else "Both"
 
         rename_map = {
             'Appearance Rate (%)': 'Appearance_Rate_pct',

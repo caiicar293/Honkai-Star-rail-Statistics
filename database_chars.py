@@ -1,15 +1,16 @@
 import duckdb
 import pandas as pd
 import warnings
+import os
+import requests
+from dotenv import load_dotenv
 
 # Import all scrapers
 from Appearance_rate import HonkaiStatistics
 from Appearance_rate_Pure_fiction import HonkaiStatistics_Pure
 from Appearance_rate_Apocalytic_Shadow import HonkaiStatistics_APOC
 from Appearance_rate_anomaly import HonkaiStatistics_Anomaly
-import os
-from dotenv import load_dotenv
-# Load the .env file
+
 load_dotenv()
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -17,52 +18,62 @@ class HonkaiCharacterWarehouse:
     def __init__(self, db_name="honkai_star_rail_stats2.duckdb"):
         self.db_name = db_name
         
-        
         # Helper to get lists from env
         def get_env_list(key):
             val = os.getenv(key)
             return val.split(",") if val else []
         
-        
         self.config = {
-            "MOC": {
-                "class": HonkaiStatistics,
-                "versions": get_env_list("MOC_VERSIONS"),
-                "default_floor": 12,
-                "has_node": True
-            },
-            "PURE_FICTION": {
-                "class": HonkaiStatistics_Pure,
-                "versions":  get_env_list("PF_VERSIONS"),
-                "default_floor": 4,
-                "has_node": True
-            },
-            "APOC": {
-                "class": HonkaiStatistics_APOC,
-                "versions": get_env_list("APOC_VERSIONS"),
-                "default_floor": 4,
-                "has_node": True
-            },
-            "ANOMALY": {
-                "class": HonkaiStatistics_Anomaly,
-                "versions": get_env_list("ANOMALY_VERSIONS"),
-                "default_floor": None, 
-                "has_node": False
-            }
+            "MOC": {"class": HonkaiStatistics, "versions": get_env_list("MOC_VERSIONS"), "default_floor": 12, "has_node": True},
+            "PURE_FICTION": {"class": HonkaiStatistics_Pure, "versions": get_env_list("PF_VERSIONS"), "default_floor": 4, "has_node": True},
+            "APOC": {"class": HonkaiStatistics_APOC, "versions": get_env_list("APOC_VERSIONS"), "default_floor": 4, "has_node": True},
+            "ANOMALY": {"class": HonkaiStatistics_Anomaly, "versions": get_env_list("ANOMALY_VERSIONS"), "default_floor": None, "has_node": False}
         }
+        
+        # Pre-fetch Character Metadata to avoid repeated API calls
+        self.char_map = self._fetch_character_metadata()
+
+    def _fetch_character_metadata(self):
+        """Fetches and processes character metadata from GitHub."""
+        try:
+            print("Fetching character metadata for enrichment...")
+            url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
+            response = requests.get(url)
+            json_data = response.json()
+            
+            char_map = {}
+            for name, info in json_data.items():
+                meta = {k: v for k, v in info.items() if k != 'slug'}
+                if 'role' in meta and isinstance(meta['role'], list):
+                    meta['role'] = ", ".join(meta['role'])
+                char_map[name] = meta
+            return char_map
+        except Exception as e:
+            print(f"Warning: Metadata enrichment failed to load: {e}")
+            return {}
 
     def _standardize(self, df, mode, version, eidolon, floor, node=None):
-        """Standardizes character stats and strips unwanted metrics."""
+        """Standardizes stats and enriches with Character Metadata."""
+        # 1. Basic Metadata
         df['version'] = version
         df['mode'] = mode
         df['floor'] = floor
         df['eidolon_level'] = eidolon
-        # --- ANOMALY NODE HANDLING ---
+        
         if mode == "ANOMALY":
-            # For Anomaly, we explicitly set this to N/A or None to avoid 
-            # confusing it with side-specific data.
             df['node'] = "N/A"
+        else:
+            df['node'] = node 
 
+        # 2. Enrich from JSON (The "32 column" fix)
+        if self.char_map:
+            # We assume the scraper's name column is 'Character'
+            # This adds Rarity, Path, Element, etc.
+            sample_meta = next(iter(self.char_map.values()))
+            for meta_key in sample_meta.keys():
+                df[meta_key] = df['Character'].map(lambda x: self.char_map.get(x, {}).get(meta_key))
+
+        # 3. Rename and Clean
         rename_map = {
             'Appearance Rate (%)': 'Appearance_Rate_pct',
             'Average Cycles': 'Average_Score',
@@ -82,7 +93,6 @@ class HonkaiCharacterWarehouse:
         }
         df.rename(columns=rename_map, inplace=True)
         
-        # Explicitly remove Skewness and Kurtosis
         df = df.drop(columns=[c for c in ['Skewness', 'Kurtosis'] if c in df.columns], errors='ignore')
 
         # SQL compatible headers
@@ -91,7 +101,6 @@ class HonkaiCharacterWarehouse:
         return df
 
     def run(self, target_mode=None, target_version=None, eidolons=[0, 1, 2, 6]):
-        """Executes character pipeline with optional mode and version targeting."""
         conn = duckdb.connect(self.db_name)
         modes_to_run = [target_mode] if target_mode else self.config.keys()
 
@@ -102,12 +111,10 @@ class HonkaiCharacterWarehouse:
             print(f"\n>>> Running Character Pipeline: {mode}")
 
             for v in versions:
-                # Anomaly iterates floors 0-4; others use the default endgame floor (12 or 4)
                 floors = [0, 1, 2, 3, 4] if mode == "ANOMALY" else [cfg["default_floor"]]
                 
                 for f in floors:
                     for e in eidolons:
-                        # Logic for Node-based modes (0=Both, 1=Side1, 2=Side2)
                         nodes = [0, 1, 2] if cfg["has_node"] else [None]
 
                         for n in nodes:
@@ -120,16 +127,17 @@ class HonkaiCharacterWarehouse:
                                 df = h.print_appearance_rate_by_char(output=False)
 
                                 if df is not None and not df.empty:
+                                    # ENRICHMENT HAPPENS HERE
                                     df_clean = self._standardize(df, mode, v, e, f, n)
                                     
-                                    # Insert or Create table
                                     try:
-                                        conn.execute("INSERT INTO character_stats SELECT * FROM df_clean")
+                                        # Use 'BY NAME' to handle potential column order shifts
+                                        conn.execute("INSERT INTO character_stats SELECT * FROM df_clean BY NAME")
                                     except duckdb.CatalogException:
                                         conn.execute("CREATE TABLE character_stats AS SELECT * FROM df_clean")
                                         print("Created Table: character_stats")
 
-                                    print(f"Success: {mode} | {v} | E{e} | Floor {f} | Node {n}")
+                                    print(f"Success: {mode} | {v} | E{e} | F{f} | N{n}")
                                 
                             except Exception as ex:
                                 print(f"Error at {mode} {v} E{e} F{f}: {ex}")
@@ -139,8 +147,4 @@ class HonkaiCharacterWarehouse:
 
 if __name__ == "__main__":
     warehouse = HonkaiCharacterWarehouse()
-    
-    # Usage Examples:
-    # warehouse.run() # Run everything
-    # warehouse.run(target_mode="MOC", target_version="4.0.2") # Target specific
     warehouse.run()

@@ -60,9 +60,7 @@ class HonkaiArchetypeWarehouse:
         df['mode'] = mode
         df['floor'] = floor
         df['eidolon_level'] = eidolon
-        if mode == "ANOMALY":
-            df['node'] = "N/A" # Force N/A for single-mode anomaly
-        else:
+        if mode != "ANOMALY":
             df['node'] = node if node is not None else "Both"
 
         rename_map = {

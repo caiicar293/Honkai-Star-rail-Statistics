@@ -77,7 +77,7 @@ class  HonkaiStatistics_Pure:
                    "Fu Xuan", "Luocha", "Huohuo", "Dr. Ratio", "Black Swan", 
                    "Sparkle", "Acheron", "Aventurine", "Robin", "Boothill", 
                    "Firefly", "Yunli", "Jiaoqiu", "Feixiao", "Lingsha","Rappa","Sunday","Fugue","The Herta","Aglaea","Tribbie","Mydei","Castorice","Anaxa","Hyacine","Cipher","Phainon","Saber","Archer","Hysilens","Cerydra","Evernight","Dan Heng • Permansor Terrae","Cyrene","The Dahlia"
-                   ,"Yao Guang","Sparxie"]
+                   ,"Yao Guang","Sparxie","Ashveil"]
         
         # Loop through characters and round_num
         index = 0
@@ -770,7 +770,7 @@ class  HonkaiStatistics_Pure:
         print(f"Score:{points}\nEidolon:{self.by_ed} \nNode:{self.node} \nFloor:{self.floor}")
 
         
-        for team in hon2.dic:
+        for team in hon2.teams:
              print(f"\nTeam:{team}")
              hon2.print_uids_by_team(team)
     

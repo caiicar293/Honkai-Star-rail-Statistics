@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-class HonkaiDualTeamWarehouse:
+class HonkaiTeamsWarehouse:
     def __init__(self, db_name="honkai_star_rail_stats2.duckdb"):
         self.db_name = db_name
         # Configuration for all game modes
@@ -171,6 +171,6 @@ class HonkaiDualTeamWarehouse:
         return conn.execute(f"SELECT count(*) FROM information_schema.tables WHERE table_name = '{table_name}'").fetchone()[0] > 0
 
 if __name__ == "__main__":
-    pipeline = HonkaiDualTeamWarehouse()
+    pipeline = HonkaiTeamsWarehouse()
     # pipeline.run()
     pipeline.run_dual()

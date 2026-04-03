@@ -1,25 +1,27 @@
-from database_dual_archetypes_warehouse import HonkaiDualArchetypeWarehouse
-from database_Dual_Teams_Warehouse import HonkaiDualTeamWarehouse
 from database_chars import HonkaiCharacterWarehouse
 from database_Archetype_warehouse import HonkaiArchetypeWarehouse
-from database_Team_Warehouse import HonkaiTeamWarehouse
+from database_Teams_Warehouse import HonkaiTeamsWarehouse
+from clean_data import clear_data_from_warehouse
 
 
-dual_arches = HonkaiDualArchetypeWarehouse()
-dual_arches.run(target_version= "4.1.1")
+#For replacing a mode
+DB = "honkai_star_rail_stats2.duckdb"
+VER = "4.0.2"
 
+# --- TOGGLE MODES HERE ---
+# Set to None to clear the version everywhere
+# Set to a list to target specific archetypes/teams
+MODES_TO_DELETE = ["MOC", "MOC_BOTH_SIDES"] 
 
-dual_teams = HonkaiDualTeamWarehouse()
-dual_teams.run(target_version= "4.1.1")
+clear_data_from_warehouse(DB, VER, target_modes=MODES_TO_DELETE)
 
-teams = HonkaiDualTeamWarehouse()
+arche = HonkaiArchetypeWarehouse()
+arche.run(target_version= "4.1.1")
+arche.run_dual(target_version= "4.1.1")
+
+teams = HonkaiTeamsWarehouse()
 teams.run(target_version= "4.1.1")
-
-
-
-archetypes = HonkaiArchetypeWarehouse()
-archetypes.run(target_version="4.1.1")
-
+teams.run_dual(target_version= "4.1.1")
 
 chars= HonkaiCharacterWarehouse()
 chars.run(target_version="4.1.1")

@@ -56,7 +56,7 @@ class HonkaiCharacterWarehouse:
         df['version'] = version
         df['mode'] = mode
         df['floor'] = floor
-        df['requested_eidolon_level'] = eidolon
+        df['eidolon_level'] = eidolon
         df['node'] = node if node is not None else "Both"
 
         rename_map = {

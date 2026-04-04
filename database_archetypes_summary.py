@@ -5,11 +5,11 @@ class HonkaiMetaAnalyzer:
     def __init__(self, db_path="honkai_star_rail_stats2.duckdb"):
         self.db_path = db_path
         self.tasks = [
-            {"mode": "MOC", "table": "moc_stats", "floor": 12, "perf": "MIN", "node_col": "node", "node_val": "0"},
-            {"mode": "APOC", "table": "apoc_stats", "floor": 4, "perf": "MAX", "node_col": "node", "node_val": "0"},
-            {"mode": "PURE_FICTION", "table": "pure_fiction_stats", "floor": 4, "perf": "MAX", "node_col": "node", "node_val": "0"},
-            {"mode": "ANOMALY_F0", "table": "anomaly_stats", "floor": 0, "perf": "MIN", "node_col": None, "node_val": None},
-            {"mode": "ANOMALY_F4", "table": "anomaly_stats", "floor": 4, "perf": "MIN", "node_col": None, "node_val": None}
+            {"mode": "MOC", "table": "moc_stats_archetypes", "floor": 12, "perf": "MIN", "node_col": "node", "node_val": "0"},
+            {"mode": "APOC", "table": "apoc_stats_archetypes", "floor": 4, "perf": "MAX", "node_col": "node", "node_val": "0"},
+            {"mode": "PURE_FICTION", "table": "pure_fiction_stats_archetypes", "floor": 4, "perf": "MAX", "node_col": "node", "node_val": "0"},
+            {"mode": "ANOMALY_F0", "table": "anomaly_stats_archetypes", "floor": 0, "perf": "MIN", "node_col": None, "node_val": None},
+            {"mode": "ANOMALY_F4", "table": "anomaly_stats_archetypes", "floor": 4, "perf": "MIN", "node_col": None, "node_val": None}
         ]
 
     def _generate_query(self, task, limit_recent=False):

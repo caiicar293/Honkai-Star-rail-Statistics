@@ -30,7 +30,6 @@ class HonkaiCharacterWarehouse:
             "ANOMALY": {"class": HonkaiStatistics_Anomaly, "versions": get_env_list("ANOMALY_VERSIONS"), "default_floor": None, "has_node": False}
         }
         
-        # Pre-fetch Character Metadata to avoid repeated API calls
         self.char_map = self._fetch_character_metadata()
 
     def _fetch_character_metadata(self):
@@ -60,20 +59,20 @@ class HonkaiCharacterWarehouse:
         df['floor'] = floor
         df['eidolon_level'] = eidolon
         
+        # 2. Node Handling (0, 1, 2)
         if mode == "ANOMALY":
-            df['node'] = "N/A"
+            df['node'] = None
         else:
-            df['node'] = node 
+            # Ensures node is 0, 1, or 2 (as passed from the loop)
+            df['node'] = str(node) if node is not None else "0"
 
-        # 2. Enrich from JSON (The "32 column" fix)
+        # 3. Enrich from JSON
         if self.char_map:
-            # We assume the scraper's name column is 'Character'
-            # This adds Rarity, Path, Element, etc.
             sample_meta = next(iter(self.char_map.values()))
             for meta_key in sample_meta.keys():
                 df[meta_key] = df['Character'].map(lambda x: self.char_map.get(x, {}).get(meta_key))
 
-        # 3. Rename and Clean
+        # 4. Rename and Clean
         rename_map = {
             'Appearance Rate (%)': 'Appearance_Rate_pct',
             'Average Cycles': 'Average_Score',
@@ -92,7 +91,6 @@ class HonkaiCharacterWarehouse:
             '75th Percentile': 'Percentile_75'
         }
         df.rename(columns=rename_map, inplace=True)
-        
         df = df.drop(columns=[c for c in ['Skewness', 'Kurtosis'] if c in df.columns], errors='ignore')
 
         # SQL compatible headers
@@ -102,21 +100,29 @@ class HonkaiCharacterWarehouse:
 
     def run(self, target_mode=None, target_version=None, eidolons=[0, 1, 2, 6]):
         conn = duckdb.connect(self.db_name)
-        modes_to_run = [target_mode] if target_mode else self.config.keys()
+        modes_to_run = [target_mode] if target_mode else list(self.config.keys())
+
+        # Define the EXACT order of the 32 columns based on your SQL schema
+        target_columns = [
+            "Rank", "Character", "Appearance_Rate_pct", "Samples", "Min_Score",
+            "Percentile_25", "Median_Score", "Percentile_75", "Average_Score",
+            "Std_Dev", "Max_Score", "Sustain_Samples", "Sustain_Percentage",
+            "Eidolon_0_pct", "Eidolon_1_pct", "Eidolon_2_pct", "Eidolon_3_pct",
+            "Eidolon_4_pct", "Eidolon_5_pct", "Eidolon_6_pct", "version", "mode",
+            "floor", "eidolon_level", "node", "id", "rarity", "path",
+            "element", "availability", "release_phase", "role"
+        ]
 
         for mode in modes_to_run:
             cfg = self.config[mode]
             versions = [target_version] if target_version else cfg["versions"]
-            
             print(f"\n>>> Running Character Pipeline: {mode}")
 
             for v in versions:
                 floors = [0, 1, 2, 3, 4] if mode == "ANOMALY" else [cfg["default_floor"]]
-                
                 for f in floors:
                     for e in eidolons:
                         nodes = [0, 1, 2] if cfg["has_node"] else [None]
-
                         for n in nodes:
                             try:
                                 if mode == "ANOMALY":
@@ -127,14 +133,23 @@ class HonkaiCharacterWarehouse:
                                 df = h.print_appearance_rate_by_char(output=False)
 
                                 if df is not None and not df.empty:
-                                    # ENRICHMENT HAPPENS HERE
                                     df_clean = self._standardize(df, mode, v, e, f, n)
                                     
+                                    # FORCED REORDERING: Ensures 32 columns in the right order
+                                    for col in target_columns:
+                                        if col not in df_clean.columns:
+                                            df_clean[col] = None
+                                    
+                                    df_final = df_clean[target_columns]
+
+                                    # INSERTION
                                     try:
-                                        # Use 'BY NAME' to handle potential column order shifts
-                                        conn.execute("INSERT INTO character_stats SELECT * FROM df_clean BY NAME")
+                                        # Using a view avoids 'BY NAME' parser errors
+                                        conn.register('temp_df', df_final)
+                                        conn.execute("INSERT INTO character_stats SELECT * FROM temp_df")
+                                        conn.unregister('temp_df')
                                     except duckdb.CatalogException:
-                                        conn.execute("CREATE TABLE character_stats AS SELECT * FROM df_clean")
+                                        conn.execute("CREATE TABLE character_stats AS SELECT * FROM df_final")
                                         print("Created Table: character_stats")
 
                                     print(f"Success: {mode} | {v} | E{e} | F{f} | N{n}")
@@ -147,4 +162,4 @@ class HonkaiCharacterWarehouse:
 
 if __name__ == "__main__":
     warehouse = HonkaiCharacterWarehouse()
-    warehouse.run()
+    warehouse.run(target_version="4.1.1",target_mode="ANOMALY")

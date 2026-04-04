@@ -48,7 +48,7 @@ class HonkaiArchetypeWarehouse:
             "ANOMALY": {
                 "class": HonkaiStatistics_Anomaly,
                 "table": "anomaly_stats_archetypes",
-                "dual_table": "anomaly_stats_dual_archetypes",
+                "dual_table": "anomaly_stats_triple_archetypes",
                 "versions": get_env_list("ANOMALY_VERSIONS"),
                 "default_floor": 0
             }
@@ -182,4 +182,4 @@ if __name__ == "__main__":
     
     # Choose which to run:
     # pipeline.run()       # Standard Side 1 / Side 2 / Both nodes
-    pipeline.run_dual()    # Combined Both Sides only
+    pipeline.run_dual(target_mode="ANOMALY",target_version="4.1.1")    # Combined Both Sides only

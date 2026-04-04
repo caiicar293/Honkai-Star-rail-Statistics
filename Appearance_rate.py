@@ -13,7 +13,7 @@ from itertools import chain,product
 import math
 from itertools import chain,product
 
-
+import orjson
 class HonkaiStatistics:
     def __init__(self, version, floor, node=0, by_ed=6 , by_cycle =30,by_ed_inclusive=False,by_ed_inclusive_combined=False, by_char = None,by_cycles_combined = 30,not_char=False,sustain_condition=None,
                  star_num=None ,_method=False,_load_csv=pd.DataFrame(),_load_chars=pd.DataFrame()):
@@ -24,10 +24,14 @@ class HonkaiStatistics:
             self.df = pd.read_csv(url)
             
 
-            url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
-            response = requests.get(url)
-            response.raise_for_status()  # raise error if request fails
-            info = response.json()  # parse JSON     
+            # url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
+            # response = requests.get(url)
+            # response.raise_for_status()  # raise error if request fails
+            # info = response.json()  # parse JSON     
+            
+            with open('characters.json', 'rb') as f: # Open in binary mode for orjson
+                info = orjson.loads(f.read()) # Read entire file and parse with orjson
+            
             self.rol = pd.DataFrame.from_dict(info, orient='index')
             self.rol['Index'] = range(len(self.rol))
         else:

@@ -13,6 +13,7 @@ from Appearance_rate_anomaly import HonkaiStatistics_Anomaly
 
 load_dotenv()
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+import orjson
 
 class HonkaiCharacterWarehouse:
     def __init__(self, db_name="honkai_star_rail_stats2.duckdb"):
@@ -36,10 +37,11 @@ class HonkaiCharacterWarehouse:
         """Fetches and processes character metadata from GitHub."""
         try:
             print("Fetching character metadata for enrichment...")
-            url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
-            response = requests.get(url)
-            json_data = response.json()
-            
+            # url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
+            # response = requests.get(url)
+            # json_data = response.json()
+            with open('characters.json', 'rb') as f: # Open in binary mode for orjson
+                json_data = orjson.loads(f.read()) # Read entire file and parse with orjson
             char_map = {}
             for name, info in json_data.items():
                 meta = {k: v for k, v in info.items() if k != 'slug'}

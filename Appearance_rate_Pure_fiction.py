@@ -12,6 +12,7 @@ import networkx as nx
 import requests
 from itertools import chain,product
 import math
+import orjson
 
 
 class  HonkaiStatistics_Pure:
@@ -24,10 +25,12 @@ class  HonkaiStatistics_Pure:
             self.df = pd.read_csv(url)
             
 
-            url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
-            response = requests.get(url)
-            response.raise_for_status()  # raise error if request fails
-            info = response.json()  # parse JSON     
+            # url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
+            # response = requests.get(url)
+            # response.raise_for_status()  # raise error if request fails
+            # info = response.json()  # parse JSON     
+            with open('characters.json', 'rb') as f: # Open in binary mode for orjson
+                info = orjson.loads(f.read()) # Read entire file and parse with orjson
             self.rol = pd.DataFrame.from_dict(info, orient='index')
             self.rol['Index'] = range(len(self.rol))
         else:

@@ -15,7 +15,7 @@ load_dotenv()
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 class HonkaiArchetypeWarehouse:
-    def __init__(self, db_name="honkai_star_rail_stats2.duckdb"):
+    def __init__(self, db_name=os.getenv("DB_File")):
         self.db_name = db_name
         
         # Helper to get lists from env

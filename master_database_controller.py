@@ -5,26 +5,26 @@ from clean_data import clear_data_from_warehouse
 
 
 # --- CONFIGURATION ---
-DB = "honkai_star_rail_stats2.duckdb"
-VER = "4.0.2"  # Version to delete
-curr_v = "4.1.1"    # Version to add
+# DB = "honkai_star_rail_stats2.duckdb"
+# VER = "4.0.2"  # Version to delete
+# curr_v = "4.1.1"    # Version to add
 
-# --- 1. CLEANUP ---
-MODES_TO_DELETE = ["MOC"] 
-clear_data_from_warehouse(DB, VER, target_modes=MODES_TO_DELETE)
+# # --- 1. CLEANUP ---
+# MODES_TO_DELETE = ["MOC"] 
+# clear_data_from_warehouse(DB, VER, target_modes=MODES_TO_DELETE)
 
 # --- 2. RUN PIPELINES ---
 # These will insert the 3.6.3 data into your tables
 arche = HonkaiArchetypeWarehouse()
-arche.run(target_version=curr_v)
-arche.run_dual(target_version=curr_v)
+arche.run()
+arche.run_dual()
 
 teams = HonkaiTeamsWarehouse()
-teams.run(target_version=curr_v)
-teams.run_dual(target_version=curr_v)
+teams.run()
+teams.run_dual()
 
 chars = HonkaiCharacterWarehouse()
-chars.run(target_version=curr_v)
+chars.run()
 
 # # --- 3. GLOBAL REORDERING ---
 # def reorder_all_tables_by_samples_desc(db_name):

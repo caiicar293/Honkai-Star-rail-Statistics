@@ -75,34 +75,33 @@ class  HonkaiStatistics_Pure:
 
     def _process_data(self):
        
-        exempts = ["Kafka", "Jing Yuan", "Seele", "Jingliu", "Dan Heng • Imbibitor Lunae",
-                   "Blade", "Argenti", "Topaz & Numby", "Ruan Mei", "Silver Wolf", 
-                   "Fu Xuan", "Luocha", "Huohuo", "Dr. Ratio", "Black Swan", 
-                   "Sparkle", "Acheron", "Aventurine", "Robin", "Boothill", 
-                   "Firefly", "Yunli", "Jiaoqiu", "Feixiao", "Lingsha","Rappa","Sunday","Fugue","The Herta","Aglaea","Tribbie","Mydei","Castorice","Anaxa","Hyacine","Cipher","Phainon","Saber","Archer","Hysilens","Cerydra","Evernight","Dan Heng • Permansor Terrae","Cyrene","The Dahlia"
-                   ,"Yao Guang","Sparxie","Ashveil"]
+       # Convert rol DataFrame to dict for faster access (do once)
+        char_dict = self.rol.to_dict('index')
         
         # Loop through characters and round_num
         index = 0
-        sustains= [ "Fu Xuan", "Luocha", "Huohuo", "Aventurine", "Lingsha", "Gallagher","Bailu", "Gepard", "Lynx","Natasha","Hyacine","Dan Heng • Permansor Terrae"]
-        for (p,x, y, z, w, i, cons1, cons2, cons3, cons4) in (zip(self.df['uid'],self.df['ch1'], self.df['ch2'], 
-                                                              self.df['ch3'], self.df['ch4'], 
-                                                              self.df['round_num'], 
-                                                              self.df['cons1'], self.df['cons2'], 
-                                                              self.df['cons3'], self.df['cons4'] )):
+        # Iterate using itertuples for better performance
+        for row in self.df.itertuples(index=False):
+            # Unpack values from named tuple
+            p = row.uid
+            x, y, z, w = row.ch1, row.ch2, row.ch3, row.ch4
+            i = row.round_num
+            cons1, cons2, cons3, cons4 = row.cons1, row.cons2, row.cons3, row.cons4
+            
+            # Check eidolon limits using direct dict lookup for availability
             if not self.by_ed_inclusive:
-                if (x in exempts and cons1 > self.by_ed) or \
-                (y in exempts and cons2 > self.by_ed) or \
-                (z in exempts and cons3 > self.by_ed) or \
-                (w in exempts and cons4 > self.by_ed):
+                # Direct dictionary access instead of 'in exempts'
+                if (char_dict.get(x, {}).get('availability') == 'Limited 5*' and cons1 > self.by_ed) or \
+                (char_dict.get(y, {}).get('availability') == 'Limited 5*' and cons2 > self.by_ed) or \
+                (char_dict.get(z, {}).get('availability') == 'Limited 5*' and cons3 > self.by_ed) or \
+                (char_dict.get(w, {}).get('availability') == 'Limited 5*' and cons4 > self.by_ed):
                     continue
-                
             else:
                 n=[x, y, z, w]    
                 ei = [cons1,cons2,cons3,cons4]
                 maxei =0 
                 for (v,e) in zip(n,ei):
-                    if v not in exempts:
+                    if char_dict.get(v, {}).get('availability') != 'Limited 5*':
                         continue
                     
                     if e > maxei:
@@ -120,26 +119,43 @@ class  HonkaiStatistics_Pure:
                 elif self.by_char not in [x, y, z, w]:
                     continue 
                 
-            n=[x, y, z, w]    
-            ei = [cons1,cons2,cons3,cons4]
-            # Append individual character
-            add =0
-            if self.sustain_condition ==True:
-                
-                if not bool(set(sustains) & set(n)):
+            n = [x, y, z, w]    
+            ei = [cons1, cons2, cons3, cons4]
+            
+            # Check sustain using direct dict lookup for role
+            add = 0
+            if self.sustain_condition == True:
+                # Check if ANY character has 'sustain' in role
+                has_sustain = False
+                for v in n:
+                    role = char_dict.get(v, {}).get('role', [])
+                    if 'sustain' in role:
+                        has_sustain = True
+                        break
+                if not has_sustain:
                     continue
-                add=1    
-            elif self.sustain_condition ==False:
-                
-                if bool(set(sustains) & set(n)):
+                add = 1    
+            elif self.sustain_condition == False:
+                # Check if ANY character has 'sustain' in role
+                has_sustain = False
+                for v in n:
+                    role = char_dict.get(v, {}).get('role', [])
+                    if 'sustain' in role:
+                        has_sustain = True
+                        break
+                if has_sustain:
                     continue
             else:
-                if bool(set(sustains) & set(n)):
-                    add = 1     
+                # Just count if sustain exists
+                for v in n:
+                    role = char_dict.get(v, {}).get('role', [])
+                    if 'sustain' in role:
+                        add = 1
+                        break     
             
             maxei =0 
             for (v,e) in zip(n,ei):
-                if v not in exempts:
+                if char_dict.get(v, {}).get('availability') != 'Limited 5*':
                     continue
                 
                 if e > maxei:
@@ -156,8 +172,15 @@ class  HonkaiStatistics_Pure:
             for (v,e ) in zip(n,ei):
                 if v not in self.chars:
                     # Initialize dictionary entry for the character
-                    self.chars[v] = {'Samples': 0, 'Points': [], 'uids': [],'Eidolons':{0:0,1:0 ,2:0,3:0,4:0,5:0,6:0}, "Index":index,"Sustains":0}
-                    index+=1
+                    self.chars[v] = {
+                        'Samples': 0, 
+                        'Points': [], 
+                        'uids': [],
+                        'Eidolons': {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}, 
+                        "Index": index,
+                        "Sustains": 0
+                    }
+                    index += 1
                 
               
                 if not math.isnan(e):

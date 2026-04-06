@@ -1,9 +1,11 @@
 import duckdb
 import pandas as pd
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
 class HonkaiMetaAnalyzer:
-    def __init__(self, db_path="honkai_star_rail_stats2.duckdb"):
-        self.db_path = db_path
+    def __init__(self, db_name=os.getenv("DB_File")):
+        self.db_path = db_name
         self.tasks = [
             {"mode": "MOC", "table": "moc_stats_archetypes", "floor": 12, "perf": "MIN", "node_col": "node", "node_val": "0"},
             {"mode": "APOC", "table": "apoc_stats_archetypes", "floor": 4, "perf": "MAX", "node_col": "node", "node_val": "0"},

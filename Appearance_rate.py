@@ -90,164 +90,108 @@ class HonkaiStatistics:
         self._process_data()
 
     def _process_data(self):
-        # Convert rol DataFrame to dict for faster access (do once)
+        # 1. PRE-COMPUTE LOOKUP TABLES (Massive Speedup)
+        # Instead of calling .get().get() or set.intersection() inside the loop,
+        # we calculate the truth values ONCE for all characters.
         char_dict = self.rol.to_dict('index')
         
-        # Loop through characters and round_num
+        is_limited = {k: v.get('availability') == 'Limited 5*' for k, v in char_dict.items()}
+        is_sustain = {k: 'sustain' in v.get('role', []) for k, v in char_dict.items()}
+        
+        # Pre-calculate if a character is a dps/specialist
+        target_roles = {"dps", "specialist"}
+        is_dps_spec = {k: bool(set(v.get('role', [])).intersection(target_roles)) for k, v in char_dict.items()}
+        
+        char_index = {k: v.get('Index', 999) for k, v in char_dict.items()}
+
+        # 2. HANDLE NaNs FAST
+        # math.isnan() inside a loop is slow. Fill empty eidolons with -1 beforehand.
+        eidolon_cols = ['cons1', 'cons2', 'cons3', 'cons4']
+        self.df[eidolon_cols] = self.df[eidolon_cols].fillna(-1)
+
         index = 0
-        # Iterate using itertuples for better performance
+        
+        # 3. ITERATE
         for row in self.df.itertuples(index=False):
-            # Unpack values from named tuple
-            p = row.uid
-            x, y, z, w = row.ch1, row.ch2, row.ch3, row.ch4
-            i = row.round_num
-            cons1, cons2, cons3, cons4 = row.cons1, row.cons2, row.cons3, row.cons4
+            p, i = row.uid, row.round_num
+            chars = (row.ch1, row.ch2, row.ch3, row.ch4)
+            cons = (row.cons1, row.cons2, row.cons3, row.cons4)
             
-            # Check eidolon limits using direct dict lookup for availability
-            if not self.by_ed_inclusive:
-                # Direct dictionary access instead of 'in exempts'
-                if (char_dict.get(x, {}).get('availability') == 'Limited 5*' and cons1 > self.by_ed) or \
-                (char_dict.get(y, {}).get('availability') == 'Limited 5*' and cons2 > self.by_ed) or \
-                (char_dict.get(z, {}).get('availability') == 'Limited 5*' and cons3 > self.by_ed) or \
-                (char_dict.get(w, {}).get('availability') == 'Limited 5*' and cons4 > self.by_ed):
-                    continue
-            else:
-                n = [x, y, z, w]    
-                ei = [cons1, cons2, cons3, cons4]
-                maxei = 0 
-                for (v, e) in zip(n, ei):
-                    # Direct dict lookup for availability
-                    if char_dict.get(v, {}).get('availability') != 'Limited 5*':
-                        continue
+            # --- EIDOLON LIMIT CHECK ---
+            maxei = 0
+            skip = False
+            for c, e in zip(chars, cons):
+                if is_limited.get(c, False):
+                    if not self.by_ed_inclusive and e > self.by_ed:
+                        skip = True
+                        break
                     if e > maxei:
                         maxei = e
-                if maxei != self.by_ed:
-                    continue
-                    
+            
+            if skip or (self.by_ed_inclusive and maxei != self.by_ed):
+                continue
+                
             if i > self.by_cycle:
                 continue
-            
+                
+            # --- CHARACTER FILTER ---
             if self.by_char:
-                if self.not_char:
-                    if self.by_char in [x, y, z, w]:
-                        continue
-                elif self.by_char not in [x, y, z, w]:
+                if self.not_char and self.by_char in chars:
+                    continue
+                elif not self.not_char and self.by_char not in chars:
                     continue 
             
-            n = [x, y, z, w]    
-            ei = [cons1, cons2, cons3, cons4]
+            # --- SUSTAIN CHECK ---
+            has_sustain = any(is_sustain.get(c, False) for c in chars)
             
-            # Check sustain using direct dict lookup for role
-            add = 0
-            if self.sustain_condition == True:
-                # Check if ANY character has 'sustain' in role
-                has_sustain = False
-                for v in n:
-                    role = char_dict.get(v, {}).get('role', [])
-                    if 'sustain' in role:
-                        has_sustain = True
-                        break
-                if not has_sustain:
-                    continue
-                add = 1    
-            elif self.sustain_condition == False:
-                # Check if ANY character has 'sustain' in role
-                has_sustain = False
-                for v in n:
-                    role = char_dict.get(v, {}).get('role', [])
-                    if 'sustain' in role:
-                        has_sustain = True
-                        break
-                if has_sustain:
-                    continue
-            else:
-                # Just count if sustain exists
-                for v in n:
-                    role = char_dict.get(v, {}).get('role', [])
-                    if 'sustain' in role:
-                        add = 1
-                        break
+            if self.sustain_condition is True and not has_sustain:
+                continue
+            elif self.sustain_condition is False and has_sustain:
+                continue
+                
+            add = 1 if has_sustain else 0
             
-            # Get max eidolon for Limited 5* characters only
-            maxei = 0 
-            for (v, e) in zip(n, ei):
-                if char_dict.get(v, {}).get('availability') != 'Limited 5*':
-                    continue
-                if e > maxei:
-                    maxei = e
-            
+            # --- UPDATE CYCLES ---
             if i not in self.cyc:
                 self.cyc[i] = {'Eidolons': {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}}
+            self.cyc[i]['Eidolons'][maxei] = self.cyc[i]['Eidolons'].get(maxei, 0) + 1
             
-            self.cyc[i]['Eidolons'][maxei] += 1    
-            
-            for (v, e) in zip(n, ei):
-                if v not in self.chars:
-                    # Initialize dictionary entry for the character
-                    self.chars[v] = {
-                        'Samples': 0, 
-                        'Avg Cycles': [], 
-                        'uids': [],
+            # --- UPDATE CHARACTERS ---
+            for c, e in zip(chars, cons):
+                if c not in self.chars:
+                    self.chars[c] = {
+                        'Samples': 0, 'Avg Cycles': [], 'uids': [],
                         'Eidolons': {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}, 
-                        "Index": index,
-                        "Sustains": 0
+                        "Index": index, "Sustains": 0
                     }
                     index += 1
                 
-                if not math.isnan(e):
-                    # Update Eidolons
-                    self.chars[v]['Eidolons'][e] += 1
-                
-                # Update the sample count
-                self.chars[v]['Samples'] += 1
-
-                # Append the round_num (i) to the 'Avg Cycles' list
-                self.chars[v]['Avg Cycles'].append(i)
-
-                # Append uids to the uids list
-                self.chars[v]['uids'].append(p)
-                
-                self.chars[v]['Sustains'] += add
+                if e >= 0: # Replaces math.isnan(e)
+                    self.chars[c]['Eidolons'][e] += 1
+                    
+                self.chars[c]['Samples'] += 1
+                self.chars[c]['Avg Cycles'].append(i)
+                self.chars[c]['uids'].append(p)
+                self.chars[c]['Sustains'] += add
             
-            if not self._method:     
-                # Sort and handle missing or NaN values
-                n = sorted([x, y, z, w], key=lambda d: self.rol['Index'].get(d, 999))
-                n = tuple(n)
+            # --- TEAMS & ARCHETYPES ---
+            if not self._method: 
+                # Sort once using our fast pre-computed index
+                n = tuple(sorted(chars, key=lambda d: char_index.get(d, 999)))
                 
-                # Build archetype using direct dict lookup for role
-                arch = [
-                    x for x in n 
-                    if x is not None
-                    and x in char_dict
-                    and set(char_dict[x].get('role', [])).intersection({"dps", "specialist"})
-                ]
+                # Build archetype using fast O(1) lookup
+                arch_t = tuple(c for c in n if c is not None and is_dps_spec.get(c, False))
                 
-                arch_t = tuple(arch)
-                
-                # Initialize nested dictionary for the team if not already present
                 if n not in self.teams:
                     self.teams[n] = {'Samples': 0, 'Avg Cycles': [], 'uids': []}
-                
-                # Update the sample count
                 self.teams[n]['Samples'] += 1
-                
-                # Append the round_num (i) to the 'Avg Cycles' list
                 self.teams[n]['Avg Cycles'].append(i)
-                
-                # Appends uids to the uids list
                 self.teams[n]['uids'].append(p)
                 
-                # Initialize nested dictionary for the archetype if not already present
                 if arch_t not in self.archetypes:
                     self.archetypes[arch_t] = {'Samples': 0, 'Avg Cycles': [], 'uids': []}
-                
-                # Update the sample count
                 self.archetypes[arch_t]['Samples'] += 1
-                
-                # Append the round_num (i) to the 'Avg Cycles' list
                 self.archetypes[arch_t]['Avg Cycles'].append(i)
-                
-                # Appends uids to the uids list
                 self.archetypes[arch_t]['uids'].append(p)
                 
                 if self.node == 0:
@@ -264,63 +208,58 @@ class HonkaiStatistics:
                         self.individual_teams[p]['Max Eidolon'] = maxei
                         self.individual_archetypes[p]['Max Eidolon'] = maxei
         
-        if not self._method:     
-            if self.node == 0:   
-                dc = self.individual_teams
-                bc = self.individual_archetypes
-                for x, y in zip(dc, bc):
-                    if (self.by_ed_inclusive_combined == False and len(dc[x]['Teams']) == 2) or \
-                    (self.by_ed_inclusive_combined == True and (dc[x]['Max Eidolon']) == self.by_ed and len(dc[x]['Teams']) == 2):
+        # --- COMBINE TEAMS ---
+        if not self._method and self.node == 0:   
+            # FIXED: Avoid zipping dictionary keys, access via UID mapping directly
+            for uid, team_data in self.individual_teams.items():
+                arch_data = self.individual_archetypes[uid]
+                
+                team_count = len(team_data['Teams'])
+                max_eidolon = team_data['Max Eidolon']
+                
+                valid_combined = (self.by_ed_inclusive_combined is False and team_count == 2) or \
+                                 (self.by_ed_inclusive_combined is True and max_eidolon == self.by_ed and team_count == 2)
+                
+                if valid_combined:
+                    if team_data['Avg Cycles'] > self.by_cycles_combined:
+                        continue
                         
-                        g = tuple(dc[x]['Teams'])
-                        g1 = tuple(bc[y]['Archetypes'])
-                        
-                        if self.individual_teams[x]['Avg Cycles'] > self.by_cycles_combined:
-                            continue
-            
-                        if g not in self.combined_teams:
-                            self.combined_teams[g] = {'Samples': 0, 'Avg Cycles': [], 'uids': []}
-                        
-                        if g1 not in self.combined_archetypes:
-                            self.combined_archetypes[g1] = {'Samples': 0, 'Avg Cycles': [], 'uids': []}
-                        
-                        # Update the sample count
-                        self.combined_teams[g]['Samples'] += 1
-                        self.combined_archetypes[g1]['Samples'] += 1
-                        
-                        # Append the round_num (i) to the 'Avg Cycles' list
-                        self.combined_teams[g]['Avg Cycles'].append(dc[x]['Avg Cycles'])
-                        self.combined_archetypes[g1]['Avg Cycles'].append(dc[y]['Avg Cycles'])
-                        
-                        # Appends uids to the uids list
-                        self.combined_teams[g]['uids'].append(x)
-                        self.combined_archetypes[g1]['uids'].append(y)
-                        
-                        if dc[x]['Avg Cycles'] not in self.cyc_combined:
-                            self.cyc_combined[dc[x]['Avg Cycles']] = {'Eidolons': {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}}
-                        
-                        self.cyc_combined[dc[x]['Avg Cycles']]['Eidolons'][dc[x]['Max Eidolon']] += 1 
+                    g = tuple(team_data['Teams'])
+                    g1 = tuple(arch_data['Archetypes'])
+                    avg_cyc = team_data['Avg Cycles']
+                    
+                    if g not in self.combined_teams:
+                        self.combined_teams[g] = {'Samples': 0, 'Avg Cycles': [], 'uids': []}
+                    if g1 not in self.combined_archetypes:
+                        self.combined_archetypes[g1] = {'Samples': 0, 'Avg Cycles': [], 'uids': []}
+                    
+                    self.combined_teams[g]['Samples'] += 1
+                    self.combined_archetypes[g1]['Samples'] += 1
+                    
+                    self.combined_teams[g]['Avg Cycles'].append(avg_cyc)
+                    self.combined_archetypes[g1]['Avg Cycles'].append(arch_data['Avg Cycles'])
+                    
+                    self.combined_teams[g]['uids'].append(uid)
+                    self.combined_archetypes[g1]['uids'].append(uid)
+                    
+                    if avg_cyc not in self.cyc_combined:
+                        self.cyc_combined[avg_cyc] = {'Eidolons': {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}}
+                    self.cyc_combined[avg_cyc]['Eidolons'][max_eidolon] += 1 
         
         if not self._method:
-            for pair in self.combined_teams:
-                pairs = chain(product(pair[0], pair[1]))
+            for pair_keys, pair_data in self.combined_teams.items():
+                pairs = chain(product(pair_keys[0], pair_keys[1]))
                 for j in pairs:
                     if j not in self.combined_chars:
                         self.combined_chars[j] = {'Samples': 0, 'Avg Cycles': [], 'uids': []}
                     
-                    # Update the sample count
-                    self.combined_chars[j]['Samples'] += self.combined_teams[pair]['Samples'] 
-                    
-                    # Append the round_num (i) to the 'Avg Cycles' list
-                    self.combined_chars[j]['Avg Cycles'].extend(self.combined_teams[pair]['Avg Cycles'])
-                    
-                    # Appends uids to the uids list
-                    self.combined_chars[j]['uids'].extend(self.combined_teams[pair]['uids'])
+                    self.combined_chars[j]['Samples'] += pair_data['Samples'] 
+                    self.combined_chars[j]['Avg Cycles'].extend(pair_data['Avg Cycles'])
+                    self.combined_chars[j]['uids'].extend(pair_data['uids'])
         
-        flatten = [v['uids'] for v in self.chars.values()]
-        flatten2 = [v['uids'] for v in self.combined_chars.values()]
-        self.total_samples = len(set(list(chain(*flatten))))
-        self.total_samples2 = len(set(list(chain(*flatten2))))
+        # Flattening uids
+        self.total_samples = len(set(chain.from_iterable(v['uids'] for v in self.chars.values())))
+        self.total_samples2 = len(set(chain.from_iterable(v['uids'] for v in self.combined_chars.values())))
       
       
     def print_appearance_rates(self,by_avg_cycle = False,by_min_cycle = False,by_char1 = None,by_char2 = None,by_char3 = None,by_char4 = None,least=None,

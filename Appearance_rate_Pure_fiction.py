@@ -13,29 +13,42 @@ import requests
 from itertools import chain,product
 import math
 import orjson
-
+import os
 
 class  HonkaiStatistics_Pure:
     def __init__(self, version, floor, node=0, by_ed=6,by_ed_inclusive=False,by_ed_inclusive_combined=False, by_points =0, by_char = None ,by_points_combined = 0,not_char=False,sustain_condition=None,star_num=None
                  ,_method=False,_load_csv=pd.DataFrame(),_load_chars=pd.DataFrame()):
         self.version = version
-        if  _load_csv.empty and _load_chars.empty:
-            
+        if _load_csv.empty and _load_chars.empty:
+            folder = "raw_data"
+            parquet_path = os.path.join(folder, f"{version}_pf.parquet")
             url = f"https://huggingface.co/datasets/LvlUrArti/MocData/resolve/main/{version}_pf.csv"
-            self.df = pd.read_csv(url)
-            
 
-            # url = "https://raw.githubusercontent.com/LvlUrArti/MocStats/main/data/characters.json"
-            # response = requests.get(url)
-            # response.raise_for_status()  # raise error if request fails
-            # info = response.json()  # parse JSON     
-            with open('characters.json', 'rb') as f: # Open in binary mode for orjson
-                info = orjson.loads(f.read()) # Read entire file and parse with orjson
+            # Use try-except for maximum "Success Path" speed
+            try:
+                # 1. Attempt the fastest read immediately
+                self.df = pd.read_parquet(parquet_path)
+            except (FileNotFoundError, Exception): 
+                # 2. Fallback only if the file is missing or corrupted
+                self.df = pd.read_csv(url)
+                
+                # Ensure directory exists before saving
+                if not os.path.exists(folder):
+                    os.makedirs(folder)
+                
+                # Save for next time so future runs use the 'try' block
+                self.df.to_parquet(parquet_path, engine="pyarrow", compression="snappy")
+
+            # Load character metadata
+            with open('characters.json', 'rb') as f:
+                info = orjson.loads(f.read())
+            
             self.rol = pd.DataFrame.from_dict(info, orient='index')
             self.rol['Index'] = range(len(self.rol))
+            
         else:
-            self.df=_load_csv
-            self.rol=_load_chars
+            self.df = _load_csv
+            self.rol = _load_chars
             
         
         # Initialize dictionary

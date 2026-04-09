@@ -145,16 +145,94 @@ class HonkaiStatistics_V2_Pure:
 
         # 5. AGGREGATE CHARACTERS (The "Unpivot" trick)
         # Instead of a loop, we melt the 4 columns into 1 long column
-        self.char_stats = (
-            lf.select(["uid", "round_num", "has_sustain"] + char_cols + cons_cols)
-            .unpivot(index=["uid", "round_num", "has_sustain"], on=char_cols, value_name="Character")
-            # This is tricky: we need the matching eidolon. For simplicity, we filter in a specialized way or map.
-            # Optimized: Just group by character and calculate stats
-            .group_by("Character")
+        chars = self.lf.unpivot(
+            index=["uid", "round_num","has_sustain"], 
+            on=char_cols, 
+            value_name="Character"
+        ).drop("variable")
+
+        # Unpivot values
+        cons = self.lf.unpivot(
+            index=["uid", "round_num","has_sustain"], 
+            on=cons_cols, 
+            value_name="cons"
+        ).drop(["uid", "round_num","has_sustain", "variable"])    
+                    
+        # 1. Combine and Clean
+        # We map -1 to 0 so they merge with the E0 data
+        base_data = (
+            pl.concat([chars, cons], how="horizontal")
+            .with_columns([
+                pl.col("Character").fill_null("Empty Slot"),
+                # Replace -1 with 0 so it groups with Eidolon 0
+                pl.col("cons").replace(-1, 0)
+            ])
+        )
+
+        # 2. Calculate TOTALS per Character
+        totals = (
+            base_data.group_by("Character")
+            .agg([
+                pl.count("uid").alias("Total_Samples"),
+                pl.col("round_num").alias("Total_Points"), # Kept as list
+                pl.col("has_sustain").sum().alias("Total_Sustains"),
+                pl.col("uid").unique().alias("uids")
+            ])
+        )
+
+        # 3. Calculate metrics per Eidolon (0-6 only)
+        per_eidolon = (
+            base_data.group_by("Character", "cons")
+            .agg([
+                pl.count("uid").alias("Samples"),
+                pl.col("round_num").alias("Points"), # Kept as list
+                pl.col("has_sustain").sum().alias("Sustains")
+            ])
+            .with_columns(
+                ("Eidolon " + pl.col("cons").cast(pl.String)).alias("Eidolon_Level")
+            )
+            .collect()
+        )
+
+        # 4. Pivot
+        # aggregate_function="first" preserves the Points lists
+        pivoted = per_eidolon.pivot(
+            on="Eidolon_Level",
+            index="Character",
+            values=["Samples", "Points", "Sustains"],
+            aggregate_function="first" 
+        )
+
+        # 5. Join and Final Selection
+        final_df = (
+            totals.collect()
+            .join(pivoted, on="Character", how="left")
+        )
+
+        # Organize columns: Character -> Totals -> E0...E6
+        eidolon_cols = sorted([c for c in final_df.columns if "Eidolon" in c])
+        header_cols = ["Character", "Total_Samples", "Total_Points", "Total_Sustains","uids"]
+
+        self.char_stats = final_df.select(header_cols + eidolon_cols)
+        # 2. TEAM AGGREGATION
+
+        self.team_stats = (
+            lf.with_columns(
+                pl.concat_list(char_cols).alias("temp_team")
+            )
+            .with_columns(
+                pl.col("temp_team").list.eval(
+                    # We use pl.element() to refer to the team list
+                    # and sort it by mapping each member to its index
+                    pl.element().sort_by(
+                        pl.element().replace_strict(char_to_index, default=999)
+                    )
+                ).alias("team_key")
+            )
+            .group_by("team_key")
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("round_num").alias("Points"),
-                pl.col("has_sustain").sum().alias("Sustains"),
                 pl.col("uid").unique().alias("uids")
             ])
             .collect()
@@ -404,26 +482,102 @@ class HonkaiStatistics_V2_Pure:
 
 
     def get_char_df(self):
-        df = self.char_stats.with_columns([
-            (pl.col("Samples") / self.total_samples * 100).round(2).alias("Appearance Rate (%)"),
-            (pl.col("Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain %"),
-            # Stats
-            pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
-            pl.col("Points").list.median().round(2).alias("Median Points"),
-            pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
-            pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
-            # Aggregations
-            pl.col("Points").list.min().alias("Min Points"),
-            pl.col("Points").list.mean().round(2).alias("Average Points"),
-            pl.col("Points").list.max().alias("Max Points")
-        ]).sort("Samples", descending=True)
+        # 1. Identify the Eidolon Sample columns
+        eidolon_sample_cols = [c for c in self.char_stats.columns if "Samples_Eidolon" in c]
 
-        return df.with_row_index("Rank", offset=1).select([
-            "Rank", "Character", "Appearance Rate (%)", "Samples", "Sustains", "Sustain %",
-            "Min Points", "25th Percentile Points", "Median Points",
-            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points"
+        # 2. Calculate the core stats and convert Eidolon counts to Percentages
+        df = self.char_stats.with_columns([
+            # Total Rates
+            (pl.col("Total_Samples") / self.total_samples * 100).round(3).alias("Appearance Rate (%)"),
+            (pl.col("Total_Sustains") / pl.col("Total_Samples") * 100).round(2).alias("Sustain_Percentage"),
+            
+            # Cycle Stats
+            pl.col("Total_Points").list.min().alias("Min Points"),
+            pl.col("Total_Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
+            pl.col("Total_Points").list.median().round(2).alias("Median Points"),
+            pl.col("Total_Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
+            pl.col("Total_Points").list.mean().round(2).alias("Average Points"),
+            pl.col("Total_Points").list.eval(pl.element().std()).list.first().round(2).alias("Std Dev Points"),
+            pl.col("Total_Points").list.max().alias("Max Points"),
+
+            # --- DYNAMIC PERCENTAGE CALCULATION ---
+            # For every column like 'Samples_Eidolon 0', divide by Total_Samples and multiply by 100
+            *[
+                ((pl.col(c) / pl.col("Total_Samples")) * 100).round(2).alias(f"{c.replace('Samples_', '')} %")
+                for c in eidolon_sample_cols
+            ]
         ])
 
+        # 3. Sort and Rank
+        df = df.sort("Total_Samples", descending=True).with_row_index("Rank", offset=1)
+
+        # 4. Get the new Percentage column names for the final selection
+        eidolon_perc_cols = sorted([c for c in df.columns if "Eidolon" in c and "%" in c])
+
+        return df.select([
+            "Rank", 
+            "Character", 
+            "Appearance Rate (%)", 
+            pl.col("Total_Samples").alias("Samples"),
+            "Min Points", 
+            "25th Percentile Points", 
+            "Median Points", 
+            "75th Percentile Points", 
+            "Average Points", 
+            "Std Dev Points", 
+            "Max Points",
+            pl.col("Total_Sustains").alias("Sustain Samples"),
+            "Sustain_Percentage",
+            *eidolon_perc_cols  # Displays "Eidolon 0 %", "Eidolon 1 %", etc.
+        ])
+        
+        
+    def get_eidolon_performance_df(self):
+        # 1. Identify the base columns from your pivot
+        # These usually look like "Points_Eidolon 0", "Sustains_Eidolon 0", etc.
+        cycle_cols = [c for c in self.char_stats.columns if "Points_Eidolon" in c]
+        sustain_cols = [c for c in self.char_stats.columns if "Sustains_Eidolon" in c]
+        sample_cols = [c for c in self.char_stats.columns if "Samples_Eidolon" in c]
+
+        stat_exprs = []
+
+        # 2. Map Points to Averages and Sustains to Percentages
+        # We use the actual column names to ensure we don't miss anything
+        for col in cycle_cols:
+            label = col.replace("Points_", "") # Result: "Eidolon 0"
+            stat_exprs.append(
+                pl.col(col).list.mean().round(2).alias(f"{label} Avg Points")
+            )
+            
+        for col in sustain_cols:
+            label = col.replace("Sustains_", "")
+            sample_col = f"Samples_{label}"
+            if sample_col in self.char_stats.columns:
+                stat_exprs.append(
+                    (pl.col(col) / pl.col(sample_col) * 100).round(2).alias(f"{label} Sustain %")
+                )
+
+        # 3. Apply transformations
+        df = self.char_stats.with_columns(stat_exprs)
+
+        # 4. Sorting
+        df = df.sort("Total_Samples", descending=True).with_row_index("Rank", offset=1)
+
+        # 5. DYNAMIC SELECTION
+        # Instead of hardcoding range(7), we look at what actually exists in the columns
+        # This finds every "Eidolon X Avg Points" and "Eidolon X Sustain %" column
+        new_stat_cols = sorted([
+            c for c in df.columns 
+            if "Avg Points" in c or "Sustain %" in c
+        ])
+
+        # We also want to include the Totals for context as seen in your table example
+        header_cols = ["Rank", "Character", "Total_Samples", "Total_Sustains"]
+        
+        # Force Polars to show everything in the console
+        pl.Config.set_tbl_cols(-1)
+        
+        return df.select(header_cols + new_stat_cols)
     def get_combined_team_df(self):
         # Total unique players/runs
         total_combined_samples = self.combined_team_stats.select(pl.col("Samples").sum()).item()

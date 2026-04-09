@@ -184,7 +184,7 @@ class HonkaiStatistics_Anomaly:
                 self.archetypes[arch_t]['Avg Cycles'].append(i)
                 self.archetypes[arch_t]['uids'].append(p)
                 
-                if self.node == 0:
+                if self.floor == 0:
                     if p not in self.individual_teams:
                         self.individual_teams[p] = {'Teams': [], 'Avg Cycles': 0, "Max Eidolon": maxei}
                         self.individual_archetypes[p] = {'Archetypes': [], 'Avg Cycles': 0, "Max Eidolon": maxei}
@@ -199,7 +199,7 @@ class HonkaiStatistics_Anomaly:
                         self.individual_archetypes[p]['Max Eidolon'] = maxei
         
         # --- COMBINE TEAMS ---
-        if not self._method and self.node == 0:
+        if not self._method and self.floor == 0:
             # Safely iterating via .items() instead of zipping keys
             for uid, team_data in self.individual_teams.items():
                 arch_data = self.individual_archetypes[uid]

@@ -25,9 +25,9 @@ class HonkaiMetaAnalyzer:
             SELECT 
                 '{task['mode']}' as Game_Mode,
                 eidolon_level,
-                Archetype, 
+                Archetype_Core, 
                 -- Appearance Logic
-                ROUND(AVG(Appearance_Rate_pct), 2) as Simple_Avg_Appearance,
+                ROUND(AVG(Usage_pct), 2) as Simple_Avg_Appearance,
                 
                 -- Scoring Logic
                 ROUND(AVG(Average_Score), 2) as Simple_Avg_Score,

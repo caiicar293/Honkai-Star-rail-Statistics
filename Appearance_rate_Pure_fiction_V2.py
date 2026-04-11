@@ -233,35 +233,13 @@ class HonkaiStatistics_V2_Pure:
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("round_num").alias("Points"),
-                pl.col("uid").unique().alias("uids")
+                pl.col("uid").unique().alias("uids"),
+                pl.col("has_sustain").sum().alias("Total_Sustains")
             ])
             .collect()
         )
 
-        # 2. TEAM AGGREGATION
-
-        self.team_stats = (
-            lf.with_columns(
-                pl.concat_list(char_cols).alias("temp_team")
-            )
-            .with_columns(
-                pl.col("temp_team").list.eval(
-                    # We use pl.element() to refer to the team list
-                    # and sort it by mapping each member to its index
-                    pl.element().sort_by(
-                        pl.element().replace_strict(char_to_index, default=999)
-                    )
-                ).alias("team_key")
-            )
-            .group_by("team_key")
-            .agg([
-                pl.count("uid").alias("Samples"),
-                pl.col("round_num").alias("Points"),
-                pl.col("uid").unique().alias("uids")
-            ])
-            .collect()
-        )
-
+        
         # 6. ARCHETYPE AGGREGATION
 
 
@@ -286,7 +264,8 @@ class HonkaiStatistics_V2_Pure:
                 pl.col("Points").list.explode().alias("Points"),
 
                 # For UIDs: list.explode them, then grab the unique ones
-                pl.col("uids").list.explode().unique().alias("uids")
+                pl.col("uids").list.explode().unique().alias("uids"),
+                pl.col("Total_Sustains").sum()
             ])
         )
 
@@ -442,6 +421,7 @@ class HonkaiStatistics_V2_Pure:
         df = self.team_stats.with_columns([
             pl.col("team_key").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
             (pl.col("Samples") / self.total_samples * 100).round(2).alias("Appearance Rate (%)"),
+            (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustainless?"),
             # Stats
             pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
             pl.col("Points").list.median().round(2).alias("Median Points"),
@@ -456,7 +436,7 @@ class HonkaiStatistics_V2_Pure:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Team", "Appearance Rate (%)", "Samples",
             "Min Points", "25th Percentile Points", "Median Points",
-            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points"
+            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points","Sustainless?"
         ])
 
     def get_archetype_df(self):
@@ -467,17 +447,21 @@ class HonkaiStatistics_V2_Pure:
               .alias("Archetype Core"),
 
           (pl.col("Samples") / self.total_samples * 100).round(2).alias("Usage %"),
+          (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
 
           # Stats
+          pl.col("Points").list.min().alias("Min Points"),
           pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th %"),
           pl.col("Points").list.median().round(2).alias("Median"),
           pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th %"),
-          pl.col("Points").list.mean().round(2).alias("Avg Points")
+          pl.col("Points").list.mean().round(2).alias("Avg Points"),
+          pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
+          pl.col("Points").list.max().alias("Max Points")
       ]).sort("Samples", descending=True)
 
       return df.with_row_index("Rank", offset=1).select([
-          "Rank", "Archetype Core", "Usage %", "Samples",
-          "25th %", "Median", "75th %", "Avg Points"
+          "Rank", "Archetype Core", "Usage %", "Samples","Sustain_Percentage",pl.col("Total_Sustains").alias("Sustain Samples"), "Min Points",
+          "25th %", "Median", "75th %", "Avg Points" ,"Max Points","Std Dev Points"
       ])
 
 
@@ -634,12 +618,13 @@ class HonkaiStatistics_V2_Pure:
             pl.col("Points").list.median().round(2).alias("Median Points"),
             pl.col("Points").list.mean().round(2).alias("Avg Points"),
             pl.col("Points").list.min().alias("Min"),
-            pl.col("Points").list.max().alias("Max")
+            pl.col("Points").list.max().alias("Max"),
+            pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
         ]).sort("Samples", descending=True)
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Core Node 1", "Core Node 2", "Appearance Rate (%)", "Samples",
-            "Min", "Median Points", "Avg Points", "Max"
+            "Min", "Median Points", "Avg Points", "Max","Std Dev Points"
         ])
 
     def get_combined_char_df(self):

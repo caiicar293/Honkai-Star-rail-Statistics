@@ -236,7 +236,8 @@ class HonkaiStatistics_V2:
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("round_num").alias("Cycles"),
-                pl.col("uid").unique().alias("uids")
+                pl.col("uid").unique().alias("uids"),
+                pl.col("has_sustain").sum().alias("Total_Sustains")
             ])
             .collect()
         )
@@ -265,7 +266,8 @@ class HonkaiStatistics_V2:
                 pl.col("Cycles").list.explode().alias("Cycles"),
 
                 # For UIDs: list.explode them, then grab the unique ones
-                pl.col("uids").list.explode().unique().alias("uids")
+                pl.col("uids").list.explode().unique().alias("uids"),
+                pl.col("Total_Sustains").sum()
             ])
         )
 
@@ -421,6 +423,7 @@ class HonkaiStatistics_V2:
         df = self.team_stats.with_columns([
             pl.col("team_key").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
             (pl.col("Samples") / self.total_samples * 100).round(2).alias("Appearance Rate (%)"),
+            (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustainless?"),
             # Stats
             pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
             pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
@@ -435,7 +438,7 @@ class HonkaiStatistics_V2:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Team", "Appearance Rate (%)", "Samples",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles","Sustainless?"
         ])
 
     def get_archetype_df(self):
@@ -446,17 +449,21 @@ class HonkaiStatistics_V2:
               .alias("Archetype Core"),
 
           (pl.col("Samples") / self.total_samples * 100).round(2).alias("Usage %"),
-
+          (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+          
           # Stats
+          pl.col("Cycles").list.min().alias("Min Cycles"),
           pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th %"),
           pl.col("Cycles").list.median().round(2).alias("Median"),
           pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th %"),
-          pl.col("Cycles").list.mean().round(2).alias("Avg Cycles")
+          pl.col("Cycles").list.mean().round(2).alias("Avg Cycles"),
+          pl.col("Cycles").list.max().alias("Max Cycles"),
+          pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
       ]).sort("Samples", descending=True)
 
       return df.with_row_index("Rank", offset=1).select([
-          "Rank", "Archetype Core", "Usage %", "Samples",
-          "25th %", "Median", "75th %", "Avg Cycles"
+          "Rank", "Archetype Core", "Usage %", "Samples","Sustain_Percentage",pl.col("Total_Sustains").alias("Sustain Samples"),
+         "Min Cycles", "25th %", "Median", "75th %", "Avg Cycles","Max Cycles","Std Dev Cycles", 
       ])
 
 

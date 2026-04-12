@@ -159,6 +159,7 @@ class HonkaiDataPlatform:
                             self._db_save(conn, self._standardize(scraper.get_char_df(), mode, v, e, f, n, is_char=True), "character_stats")
                             self._db_save(conn, self._standardize(scraper.get_archetype_df(), mode, v, e, f, n), f"{cfg['prefix']}_stats_archetypes")
                             self._db_save(conn, self._standardize(scraper.get_team_df(), mode, v, e, f, n), f"{cfg['prefix']}_stats_teams")
+                            self._db_save(conn, self._standardize(scraper.plot_statistics_all(cumulative=True,output=False), mode, v, e, f, n), f"{cfg['prefix']}_distributions")
 
                             # Combined / Dual Stats Logic
                             if n == 0 or (mode == "ANOMALY" and f == 0):
@@ -169,7 +170,7 @@ class HonkaiDataPlatform:
                                 # FIXED: Added () here too
                                 self._db_save(conn, self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_archetypes")
                                 self._db_save(conn, self._standardize(scraper.get_combined_team_df(), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_teams")
-                
+                                self._db_save(conn, self._standardize(scraper.plot_statistics_all_combined(cumulative=True,output=False), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_distributions")
                 conn.commit()
         conn.close()
         

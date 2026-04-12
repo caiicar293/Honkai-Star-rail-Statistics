@@ -3,16 +3,16 @@ import os
 import orjson
 from itertools import chain
 import matplotlib.pyplot as plt
-pl.Config.set_tbl_rows(-1)      # -1 or None shows all rows
-pl.Config.set_tbl_cols(-1)      # -1 or None shows all columns
-pl.Config.set_fmt_str_lengths(100)  # Prevents long strings from being cut off
+# pl.Config.set_tbl_rows(-1)      # -1 or None shows all rows
+# pl.Config.set_tbl_cols(-1)      # -1 or None shows all columns
+# pl.Config.set_fmt_str_lengths(100)  # Prevents long strings from being cut off
 
 class HonkaiStatistics_Anomaly_V2:
     def __init__(self, version, floor, by_ed=6, by_cycle=30, by_ed_inclusive=False,
                  by_ed_inclusive_combined=False, by_char=None, by_cycles_combined=30,
-                 not_char=False, sustain_condition=None, star_num=None):
+                 not_char=False, sustain_condition=None, star_num=None,hard_mode=False):
 
-        self.version, self.floor = version, floor
+        self.version, self.floor ,self.hard_mode = version, floor,hard_mode
         self.by_ed, self.by_cycle = by_ed, by_cycle
         self.by_ed_inclusive = by_ed_inclusive
         self.by_ed_inclusive_combined = by_ed_inclusive_combined
@@ -47,7 +47,7 @@ class HonkaiStatistics_Anomaly_V2:
         
         # Convert main DF to Lazy for optimization pipeline
         lf = self.df.lazy()
-        lf = lf.filter((pl.col('hard_mode') == False))
+        lf = lf.filter((pl.col('hard_mode') == self.hard_mode))
         
         # 3. INITIAL FILTERING (Floor/Floor/Stars)
         if self.floor == 0:

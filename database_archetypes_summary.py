@@ -36,6 +36,7 @@ class HonkaiMetaAnalyzer:
                 
                 -- Metadata
                 SUM(Samples) as Total_Samples,
+                ROUND(SUM(Sustain_Samples) * 1.0 / NULLIF(SUM(Samples), 0), 2) as Sustain_Percentage,
                 STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC) as Versions_Used
             FROM {task['table']}
             WHERE Samples > 0 

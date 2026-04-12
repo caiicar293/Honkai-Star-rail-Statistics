@@ -30,12 +30,13 @@ class HonkaiTeamMetaAnalyzer:
                 '{task['mode']}' as Game_Mode,
                 eidolon_level,
                 Team, 
+                "Sustainless?" as Sustainless,  -- Added here
                 -- Appearance Logic
                 ROUND(AVG(Appearance_Rate_pct), 2) as Simple_Avg_Appearance,
                 
                 -- Scoring Logic
                 ROUND(AVG(Average_Score), 2) as Simple_Avg_Score,
-                ROUND(SUM(Average_Score * Samples) / SUM(Samples), 2) as Weighted_Avg_Score,
+                ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2) as Weighted_Avg_Score,
                 {task['perf']}(Average_Score) as Best_Version_Avg,
                 
                 -- Metadata
@@ -44,12 +45,11 @@ class HonkaiTeamMetaAnalyzer:
                 STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC) as Versions_Used
             FROM {task['table']}
             WHERE Samples > 0 
-              AND floor = {task['floor']}
-              {node_filter}
-              {recent_filter}
-            GROUP BY 1, 2, 3
-            HAVING Total_Samples > 10  -- Optional filter to remove low-sample noise
-        """
+            AND floor = {task['floor']}
+            {node_filter}
+            {recent_filter}
+            GROUP BY 1, 2, 3, 4 -- Added 4 to include Sustainless? in the grouping
+            """
 
     def run_analysis(self):
         con = duckdb.connect(self.db_path)

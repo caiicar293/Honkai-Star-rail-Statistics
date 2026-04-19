@@ -1157,7 +1157,7 @@ class HonkaiStatistics:
         loop_times = []
         t3 = time.time()
 
-        for x in data_char['Character']:
+        for x in data_char['Character'].dropna():
             loop_start = time.time()
 
             n = self.show_common_partners(x, output=False)

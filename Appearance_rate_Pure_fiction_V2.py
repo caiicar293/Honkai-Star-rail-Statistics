@@ -615,16 +615,22 @@ class HonkaiStatistics_V2_Pure:
             (pl.col("Samples") / total_samples * 100).round(2).alias("Appearance Rate (%)"),
 
             # Stats
+            # Stats
+            pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
             pl.col("Points").list.median().round(2).alias("Median Points"),
-            pl.col("Points").list.mean().round(2).alias("Avg Points"),
-            pl.col("Points").list.min().alias("Min"),
-            pl.col("Points").list.max().alias("Max"),
+            pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
             pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
+
+            # Aggregations
+            pl.col("Points").list.min().alias("Min Points"),
+            pl.col("Points").list.mean().round(2).alias("Average Points"),
+            pl.col("Points").list.max().alias("Max Points")
         ]).sort("Samples", descending=True)
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Core Node 1", "Core Node 2", "Appearance Rate (%)", "Samples",
-            "Min", "Median Points", "Avg Points", "Max","Std Dev Points"
+            "Min Points", "25th Percentile Points", "Median Points",
+            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points"
         ])
 
     def get_combined_char_df(self):

@@ -607,15 +607,21 @@ class HonkaiStatistics_V2_APOC:
             (pl.col("Samples") / total_samples * 100).round(2).alias("Appearance Rate (%)"),
 
             # Stats
+            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
             pl.col("Scores").list.median().round(2).alias("Median Scores"),
-            pl.col("Scores").list.mean().round(2).alias("Avg Scores"),
-            pl.col("Scores").list.min().alias("Min"),
-            pl.col("Scores").list.max().alias("Max")
+            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
+            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+
+            # Aggregations
+            pl.col("Scores").list.min().alias("Min Scores"),
+            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
+            pl.col("Scores").list.max().alias("Max Scores")
         ]).sort("Samples", descending=True)
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Core Node 1", "Core Node 2", "Appearance Rate (%)", "Samples",
-            "Min", "Median Scores", "Avg Scores", "Max"
+            "Min Scores", "25th Percentile Scores", "Median Scores",
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
         ])
 
     def get_combined_char_df(self):

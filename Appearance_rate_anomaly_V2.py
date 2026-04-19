@@ -636,15 +636,21 @@ class HonkaiStatistics_Anomaly_V2:
             (pl.col("Samples") / total_samples * 100).round(2).alias("Appearance Rate (%)"),
 
             # Stats
+            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
             pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
-            pl.col("Cycles").list.mean().round(2).alias("Avg Cycles"),
-            pl.col("Cycles").list.min().alias("Min"),
-            pl.col("Cycles").list.max().alias("Max")
+            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
+            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
+
+            # Aggregations
+            pl.col("Cycles").list.min().alias("Min Cycles"),
+            pl.col("Cycles").list.mean().round(2).alias("Average Cycles"),
+            pl.col("Cycles").list.max().alias("Max Cycles")
         ]).sort("Samples", descending=True)
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Core Floor 1", "Core Floor 2" , "Core Floor 3" ,"Appearance Rate (%)", "Samples",
-            "Min", "Median Cycles", "Avg Cycles", "Max"
+            "Min Cycles", "25th Percentile Cycles", "Median Cycles",
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
         ])
 
     def get_combined_char_df(self):

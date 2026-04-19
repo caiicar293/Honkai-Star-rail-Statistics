@@ -159,7 +159,7 @@ class HonkaiDataPlatform:
                             self._db_save(conn, self._standardize(scraper.get_char_df(), mode, v, e, f, n, is_char=True), "character_stats")
                             self._db_save(conn, self._standardize(scraper.get_archetype_df(), mode, v, e, f, n), f"{cfg['prefix']}_stats_archetypes")
                             self._db_save(conn, self._standardize(scraper.get_team_df(), mode, v, e, f, n), f"{cfg['prefix']}_stats_teams")
-                            self._db_save(conn, self._standardize(scraper.plot_statistics_all(cumulative=True,output=False), mode, v, e, f, n), f"{cfg['prefix']}_distributions")
+                            self._db_save(conn, self._standardize(scraper.plot_statistics_all(cumulative=True,output=False), mode, v, e, f, n), f"{cfg['prefix']}_stats_distributions")
 
                             # Combined / Dual Stats Logic
                             if n == 0 or (mode == "ANOMALY" and f == 0):

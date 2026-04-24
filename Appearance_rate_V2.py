@@ -3,7 +3,7 @@ import os
 import orjson
 from itertools import chain
 import matplotlib.pyplot as plt
-pl.Config.set_tbl_rows(-1)      # -1 or None shows all rows
+pl.Config.set_tbl_rows(200)      # -1 or None shows all rows
 pl.Config.set_tbl_cols(-1)      # -1 or None shows all columns
 pl.Config.set_fmt_str_lengths(100)  # Prevents long strings from being cut off
 class HonkaiStatistics_V2:
@@ -722,6 +722,106 @@ class HonkaiStatistics_V2:
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
             "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
         ])
+        
+        
+    def display_top_gear(self):
+        df = self.char_stats
+        
+        # 1. Identify all Eidolon levels
+        eidolon_levels = sorted(list(set([c.split('_')[-1] for c in df.columns if "Eidolon" in c])))
+        
+        results = []
+
+        for level in eidolon_levels:
+            for gear_type in ["Lightcones", "Relics", "Planar_Set"]:
+                col_name = f"{gear_type}_{level}"
+                
+                if col_name not in df.columns:
+                    continue
+
+                # Explode and prepare base columns
+                temp = (
+                    df.select(["Character", col_name])
+                    .explode(col_name)
+                    .drop_nulls(col_name)
+                    .with_columns([
+                        pl.col(col_name).struct.field("name").alias("Gear_Name"),
+                        pl.col(col_name).struct.field("count").alias("Usage"),
+                        pl.col(col_name).struct.field("cycles").alias("_cycles_list")
+                    ])
+                    # Filter out "Info_not_found" FIRST
+                    .filter(pl.col("Gear_Name") != "Info_not_found")
+                )
+
+                # Check if there's data left after filtering to avoid errors
+                if temp.is_empty():
+                    continue
+
+                # Now calculate stats and the usage rate based on the filtered total
+                processed = (
+                    temp.with_columns([
+                        # Calculate new total usage per character after filter
+                        pl.col("Usage").sum().over("Character").alias("_total_filtered_usage")
+                    ])
+                    .with_columns([
+                        # Usage Percentage relative to the new filtered total
+                        (pl.col("Usage") / pl.col("_total_filtered_usage")).alias("Usage_Rate"),
+                        
+                        # Statistical Metrics
+                        pl.col("_cycles_list").list.mean().round(2).alias("Avg_Cycles"),
+                        pl.col("_cycles_list").list.median().alias("Median_Cycles"),
+                        pl.col("_cycles_list").list.min().alias("Min_Cycles"),
+                        pl.col("_cycles_list").list.max().alias("Max_Cycles"),
+                        pl.col("_cycles_list").list.std().round(2).alias("Std_Cycles"),
+                        pl.col("_cycles_list").list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile Cycles"),
+                        pl.col("_cycles_list").list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile Cycles"),
+                    ])
+                )
+
+                # Add metadata columns
+                full_list = processed.with_columns([
+                    pl.lit(level).alias("Eidolon"),
+                    pl.lit(gear_type).alias("Category")
+                ])
+                
+                results.append(full_list.select([
+                    "Character", "Eidolon", "Category", "Gear_Name", 
+                    "Usage", "Usage_Rate", "Avg_Cycles", "25th Percentile Cycles", 
+                    "Median_Cycles", "75th Percentile Cycles", "Min_Cycles", 
+                    "Max_Cycles", "Std_Cycles"
+                ]))
+
+        if not results:
+            return pl.DataFrame()
+
+        # Final concat and sorting
+        return (
+            pl.concat(results)
+            .sort(
+                by=[
+                    "Character", 
+                    "Eidolon", 
+                    pl.col("Category").str.slice(0, 1), # Sorts L -> P -> R
+                    "Usage"
+                ], 
+                descending=[False, False, False, True]
+            )
+        )
+
+    def display_single_char_full(self, char_name):
+        # Call the main display method to get the fully processed and sorted DataFrame
+        full_df = self.display_top_gear()
+        
+        # Filter the resulting DataFrame for the specific character
+        char_data = full_df.filter(pl.col("Character") == char_name)
+        
+        # Check if the character exists in the results
+        if char_data.is_empty():
+            return f"Character '{char_name}' not found or has no valid gear data."
+        
+        # Optional: Drop the 'Character' column since it's redundant for a single-character view
+        return char_data.drop("Character")
+
     def plot_statistics_all(self, cumulative=False, output=True):
         title = f"Avg Cycles Frequency for all for version {self.version}, Node {self.node}, up to {self.by_ed} Eidolon"
 

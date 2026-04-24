@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "starrail-duckdb": {
+      "command": "python",
+      "args": ["D:\\OneDrive\\Honkai_star_rail_Scanner\\starrail_mcp_server\\server.py"],
+      "env": {}
+    }
+  }
+}

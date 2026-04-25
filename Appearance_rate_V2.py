@@ -486,7 +486,7 @@ class HonkaiStatistics_V2:
         df = self.team_stats.with_columns([
             pl.col("team_key").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
             (pl.col("Samples") / self.total_samples * 100).round(2).alias("Appearance Rate (%)"),
-            (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustainless?"),
+            (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
             # Stats
             pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
             pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
@@ -501,7 +501,7 @@ class HonkaiStatistics_V2:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Team", "Appearance Rate (%)", "Samples",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles","Sustainless?"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles","Sustain?"
         ])
 
     def get_archetype_df(self):

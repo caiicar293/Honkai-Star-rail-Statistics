@@ -24,7 +24,7 @@ class HonkaiMetaAnalyzer:
         return f"""
             SELECT 
                 '{task['mode']}' as Game_Mode,
-                eidolon_level,
+                up_to_eidolon_level,
                 Archetype_Core, 
                 -- Appearance Logic
                 ROUND(AVG(Usage_pct), 2) as Simple_Avg_Appearance,

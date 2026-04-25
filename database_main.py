@@ -105,7 +105,7 @@ class HonkaiDataPlatform:
             pl.lit(v).alias('version'),
             pl.lit(mode).alias('mode'),
             pl.lit(f).alias('floor'),
-            pl.lit(e).alias('eidolon_level'),
+            pl.lit(e).alias('up_to_eidolon_level'),
             pl.lit(node_val, dtype=pl.Utf8).alias('node')
         ])
 
@@ -171,6 +171,9 @@ class HonkaiDataPlatform:
                                 self._db_save(conn, self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_archetypes")
                                 self._db_save(conn, self._standardize(scraper.get_combined_team_df(), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_teams")
                                 self._db_save(conn, self._standardize(scraper.plot_statistics_all_combined(cumulative=True,output=False), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_distributions")
+                                if e ==6:
+                                    self._db_save(conn, self._standardize(scraper.display_top_gear(), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_gear_usage")
+                                    
                 conn.commit()
         conn.close()
         

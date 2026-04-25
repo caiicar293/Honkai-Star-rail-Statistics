@@ -21,6 +21,7 @@ class HonkaiStatistics_Anomaly_V2:
         # 1. LOAD DATA VIA POLARS (Multi-threaded Parquet/CSV)
         folder = "raw_data"
         path = os.path.join(folder, f"{version}_aa.parquet")
+        path2 = os.path.join(folder, f"{version}_char.parquet")
         if os.path.exists(path):
             self.df = pl.read_parquet(path)
         else:
@@ -28,6 +29,14 @@ class HonkaiStatistics_Anomaly_V2:
             self.df = pl.read_csv(url)
             os.makedirs(folder, exist_ok=True)
             self.df.write_parquet(path)
+            
+        if os.path.exists(path2):    
+            self.char_df = pl.read_parquet(path2)
+        else:
+            url = f"https://huggingface.co/datasets/LvlUrArti/MocData/resolve/main/{version}_char.csv"
+            self.char_df = pl.read_csv(url)
+            os.makedirs(folder, exist_ok=True)
+            self.char_df.write_parquet(path2)
 
         # 2. LOAD CHARACTER METADATA
         with open('characters.json', 'rb') as f:
@@ -47,6 +56,7 @@ class HonkaiStatistics_Anomaly_V2:
         
         # Convert main DF to Lazy for optimization pipeline
         lf = self.df.lazy()
+        char_lf = self.char_df.lazy()
         lf = lf.filter((pl.col('hard_mode') == self.hard_mode))
         
         # 3. INITIAL FILTERING (Floor/Floor/Stars)
@@ -96,7 +106,7 @@ class HonkaiStatistics_Anomaly_V2:
 
 
 
-        self._process_data(self.lf,char_cols,cons_cols,dps_names,char_to_index)
+        self._process_data(self.lf,char_lf,char_cols,cons_cols,dps_names,char_to_index)
          # If Floor is 0, process combined data as well
 
         if self.floor == 0:
@@ -156,7 +166,7 @@ class HonkaiStatistics_Anomaly_V2:
             self._process_combined_data(self.combined,char_cols,cons_cols,dps_names,char_to_index)
 
 
-    def _process_data(self,lf,char_cols,cons_cols,dps_names,char_to_index):
+    def _process_data(self,lf,char_lf,char_cols,cons_cols,dps_names,char_to_index):
 
 
         # 5. AGGREGATE CHARACTERS (The "Unpivot" trick)
@@ -176,34 +186,82 @@ class HonkaiStatistics_Anomaly_V2:
                     
         # 1. Combine and Clean
         # We map -1 to 0 so they merge with the E0 data
+        # 1. Combine and Clean
         base_data = (
             pl.concat([chars, cons], how="horizontal")
             .with_columns([
                 pl.col("Character").fill_null("Empty Slot"),
-                # Replace -1 with 0 so it groups with Eidolon 0
                 pl.col("cons").replace(-1, 0)
             ])
         )
 
-        # 2. Calculate TOTALS per Character
-        totals = (
-            base_data.group_by("Character")
-            .agg([
-                pl.count("uid").alias("Total_Samples"),
-                pl.col("round_num").alias("Total_Cycles"), # Kept as list
-                pl.col("has_sustain").sum().alias("Total_Sustains"),
-                pl.col("uid").unique().alias("uids")
+        # Join and handle data availability labels
+        base_data = (
+            base_data.join(
+                char_lf, 
+                left_on=["uid", 'Character'], 
+                right_on=["uid", 'name'], 
+                how="left"
+            )
+            .drop(['phase', 'cons_right', 'level'])
+            .with_columns([
+                pl.col("weapon").fill_null("Info_not_found"),
+                pl.col("artifacts").fill_null("Info_not_found"),
+                pl.col("relics").fill_null("Info_not_found")
             ])
         )
 
-        # 3. Calculate metrics per Eidolon (0-6 only)
-        per_eidolon = (
-            base_data.group_by("Character", "cons")
-            .agg([
-                pl.count("uid").alias("Samples"),
-                pl.col("round_num").alias("Cycles"), # Kept as list
-                pl.col("has_sustain").sum().alias("Sustains")
+        def get_performance_stats(df, group_keys):
+            """
+            Groups data by keys (Character/Eidolon) and gear, collecting counts 
+            and a list of cycle performance for every unique build.
+            """
+            def rollup_gear(df, gear_col, alias):
+                # Step A: Aggregate Cycles per specific gear item
+                return (
+                    df.group_by(group_keys + [gear_col])
+                    .agg([
+                        pl.count("uid").alias("count"),
+                        pl.col("round_num").alias("Cycles") 
+                    ])
+                    # Step B: Roll up gear items into a List of Structs for the main group
+                    .group_by(group_keys)
+                    .agg(
+                        pl.struct([
+                            pl.col(gear_col).alias("name"), # Normalize field name inside struct
+                            "count", 
+                            "Cycles"
+                        ]).alias(alias)
+                    )
+                )
+
+            # Calculate individual gear distributions
+            w_df = rollup_gear(df, "weapon", "Lightcones")
+            a_df = rollup_gear(df, "artifacts", "Relics")
+            r_df = rollup_gear(df, "relics", "Planar_Set")
+
+            # Final top-level stats
+            is_eidolon = "cons" in group_keys
+            base_stats = df.group_by(group_keys).agg([
+                pl.count("uid").alias("Samples" if is_eidolon else "Total_Samples"),
+                pl.col("round_num").alias("Cycles" if is_eidolon else "Total_Cycles"),
+                pl.col("has_sustain").sum().alias("Sustains" if is_eidolon else "Total_Sustains"),
+                pl.col("uid").unique().alias("uids")
             ])
+
+            return (
+                base_stats
+                .join(w_df, on=group_keys, how="left")
+                .join(a_df, on=group_keys, how="left")
+                .join(r_df, on=group_keys, how="left")
+            )
+
+        # 2. Calculate TOTALS
+        totals = get_performance_stats(base_data, ["Character"])
+
+        # 3. Calculate metrics per Eidolon
+        per_eidolon = (
+            get_performance_stats(base_data, ["Character", "cons"])
             .with_columns(
                 ("Eidolon " + pl.col("cons").cast(pl.String)).alias("Eidolon_Level")
             )
@@ -211,11 +269,11 @@ class HonkaiStatistics_Anomaly_V2:
         )
 
         # 4. Pivot
-        # aggregate_function="first" preserves the Cycles lists
+        # Values now include the nested structs with performance lists
         pivoted = per_eidolon.pivot(
             on="Eidolon_Level",
             index="Character",
-            values=["Samples", "Cycles", "Sustains"],
+            values=["Samples", "Cycles", "Sustains", "Lightcones", "Relics", "Planar_Set"],
             aggregate_function="first" 
         )
 
@@ -225,11 +283,15 @@ class HonkaiStatistics_Anomaly_V2:
             .join(pivoted, on="Character", how="left")
         )
 
-        # Organize columns: Character -> Totals -> E0...E6
+        # Organize columns: Character -> Global Totals -> Per Eidolon Stats
         eidolon_cols = sorted([c for c in final_df.columns if "Eidolon" in c])
-        header_cols = ["Character", "Total_Samples", "Total_Cycles", "Total_Sustains","uids"]
+        header_cols = [
+            "Character", "Total_Samples", "Total_Cycles", "Total_Sustains", 
+            "uids", "Lightcones", "Relics", "Planar_Set"
+        ]
 
         self.char_stats = final_df.select(header_cols + eidolon_cols)
+        
 
         # 2. TEAM AGGREGATION
 
@@ -434,7 +496,7 @@ class HonkaiStatistics_Anomaly_V2:
         df = self.team_stats.with_columns([
             pl.col("team_key").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
             (pl.col("Samples") / self.total_samples * 100).round(2).alias("Appearance Rate (%)"),
-            (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustainless?"),
+            (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
             # Stats
             pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
             pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
@@ -449,7 +511,7 @@ class HonkaiStatistics_Anomaly_V2:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Team", "Appearance Rate (%)", "Samples",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles","Sustainless?"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles","Sustain?"
         ])
 
     def get_archetype_df(self):
@@ -679,6 +741,105 @@ class HonkaiStatistics_Anomaly_V2:
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
             "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
         ])
+        
+    def display_top_gear(self):
+        df = self.char_stats
+        
+        # 1. Identify all Eidolon levels
+        eidolon_levels = sorted(list(set([c.split('_')[-1] for c in df.columns if "Eidolon" in c])))
+        
+        results = []
+
+        for level in eidolon_levels:
+            for gear_type in ["Lightcones", "Relics", "Planar_Set"]:
+                col_name = f"{gear_type}_{level}"
+                
+                if col_name not in df.columns:
+                    continue
+
+                # Explode and prepare base columns
+                temp = (
+                    df.select(["Character", col_name])
+                    .explode(col_name)
+                    .drop_nulls(col_name)
+                    .with_columns([
+                        pl.col(col_name).struct.field("name").alias("Gear_Name"),
+                        pl.col(col_name).struct.field("count").alias("Usage"),
+                        pl.col(col_name).struct.field("Cycles").alias("_Cycles_list")
+                    ])
+                    # Filter out "Info_not_found" FIRST
+                    .filter(pl.col("Gear_Name") != "Info_not_found")
+                )
+
+                # Check if there's data left after filtering to avoid errors
+                if temp.is_empty():
+                    continue
+
+                # Now calculate stats and the usage rate based on the filtered total
+                processed = (
+                    temp.with_columns([
+                        # Calculate new total usage per character after filter
+                        pl.col("Usage").sum().over("Character").alias("_total_filtered_usage")
+                    ])
+                    .with_columns([
+                        # Usage Percentage relative to the new filtered total
+                        (pl.col("Usage") / pl.col("_total_filtered_usage")).alias("Usage_Rate"),
+                        
+                        # Statistical Metrics
+                        pl.col("_Cycles_list").list.mean().round(2).alias("Avg_Cycles"),
+                        pl.col("_Cycles_list").list.median().alias("Median_Cycles"),
+                        pl.col("_Cycles_list").list.min().alias("Min_Cycles"),
+                        pl.col("_Cycles_list").list.max().alias("Max_Cycles"),
+                        pl.col("_Cycles_list").list.std().round(2).alias("Std_Cycles"),
+                        pl.col("_Cycles_list").list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile Cycles"),
+                        pl.col("_Cycles_list").list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile Cycles"),
+                    ])
+                )
+
+                # Add metadata columns
+                full_list = processed.with_columns([
+                    pl.lit(level).alias("Eidolon"),
+                    pl.lit(gear_type).alias("Category")
+                ])
+                
+                results.append(full_list.select([
+                    "Character", "Eidolon", "Category", "Gear_Name", 
+                    "Usage", "Usage_Rate", "Avg_Cycles", "25th Percentile Cycles", 
+                    "Median_Cycles", "75th Percentile Cycles", "Min_Cycles", 
+                    "Max_Cycles", "Std_Cycles"
+                ]))
+
+        if not results:
+            return pl.DataFrame()
+
+        # Final concat and sorting
+        return (
+            pl.concat(results)
+            .sort(
+                by=[
+                    "Character", 
+                    "Eidolon", 
+                    pl.col("Category").str.slice(0, 1), # Sorts L -> P -> R
+                    "Usage"
+                ], 
+                descending=[False, False, False, True]
+            )
+        )
+
+    def display_single_char_full(self, char_name):
+        # Call the main display method to get the fully processed and sorted DataFrame
+        full_df = self.display_top_gear()
+        
+        # Filter the resulting DataFrame for the specific character
+        char_data = full_df.filter(pl.col("Character") == char_name)
+        
+        # Check if the character exists in the results
+        if char_data.is_empty():
+            return f"Character '{char_name}' not found or has no valid gear data."
+        
+        # Optional: Drop the 'Character' column since it's redundant for a single-character view
+        return char_data.drop("Character")
+    
     def plot_statistics_all(self, cumulative=False, output=True):
         title = f"Avg Cycles Frequency for all for version {self.version}, Floor {self.floor}, up to {self.by_ed} Eidolon"
 

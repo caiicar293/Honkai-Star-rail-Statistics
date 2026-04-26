@@ -3,7 +3,7 @@ import os
 import orjson
 from itertools import chain
 import matplotlib.pyplot as plt
-pl.Config.set_tbl_rows(200)      # -1 or None shows all rows
+pl.Config.set_tbl_rows(100)      # -1 or None shows all rows
 pl.Config.set_tbl_cols(-1)      # -1 or None shows all columns
 pl.Config.set_fmt_str_lengths(100)  # Prevents long strings from being cut off
 class HonkaiStatistics_V2:
@@ -334,9 +334,23 @@ class HonkaiStatistics_V2:
             ])
         )
 
+        new = self.team_stats.with_columns(pl.col('team_key').alias("Consequent"))
+        result = new.explode('team_key').explode('Consequent')
+        result = result.filter(
+            pl.col("team_key") != pl.col("Consequent"))
 
+        self.duos = result.group_by(pl.col('team_key').alias('Antecedent'),"Consequent").agg([# Sum up samples from all teams that share this DPS core
+                        pl.col("Samples").sum(),
+
+                        # Combine all cycle lists into one big distribution
+
+                        pl.col("Cycles").list.explode().alias("Cycles"),
+
+                        # For UIDs: list.explode them, then grab the unique ones
+                        pl.col("uids").list.explode().unique().alias("uids"),
+                        pl.col("Total_Sustains").sum()])
         
-
+        
         # Total Samples (Global)
         self.total_samples = lf.select(pl.col("uid").n_unique()).collect().item()
 
@@ -625,6 +639,58 @@ class HonkaiStatistics_V2:
         pl.Config.set_tbl_cols(-1)
         
         return df.select(header_cols + new_stat_cols)
+    
+    def get_duos_stats(self):
+        """
+        Calculates Association Rule metrics and performance distributions for character duos.
+        """
+        # 1. Prepare Character Support (P(A) and P(C))
+        # We use Total_Samples from char_stats to get individual character frequency
+        char_freq = self.char_stats.select([
+            pl.col("Character"),
+            (pl.col("Total_Samples") / self.total_samples).alias("char_support")
+        ])
+
+        # 2. Join frequencies onto the duos
+        # Duo Samples / Total Samples = P(A and C)
+        rules = (
+            self.duos.join(char_freq, left_on="Antecedent", right_on="Character", how="left")
+            .rename({"char_support": "support_A"})
+            .join(char_freq, left_on="Consequent", right_on="Character", how="left")
+            .rename({"char_support": "support_C"})
+        )
+
+        # 3. Calculate Association Metrics & Performance Stats
+        return rules.with_columns([
+            # Association Rule Metrics
+            (pl.col("Samples") / self.total_samples).alias("support"),
+        ]).with_columns([
+            (pl.col("support") / pl.col("support_A")).alias("confidence"),
+        ]).with_columns([
+            (pl.col("confidence") / pl.col("support_C")).alias("lift"),
+            (pl.col("support") - (pl.col("support_A") * pl.col("support_C"))).alias("leverage"),
+            ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction")
+        ]).select([
+            "Antecedent", 
+            "Consequent",
+            "Samples",
+            # Custom Display Metrics
+            (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
+            pl.col("confidence").round(3).alias("Confidence"),
+            pl.col("lift").round(3).alias("Lift"),
+            pl.col("leverage").round(4).alias("Leverage"),
+            pl.col("conviction").round(3).alias("Conviction"),
+            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+            
+            # Cycle Performance Stats
+            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
+            pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
+            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
+            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
+            pl.col("Cycles").list.min().alias("Min Cycles"),
+            pl.col("Cycles").list.mean().round(2).alias("Average Cycles"),
+            pl.col("Cycles").list.max().alias("Max Cycles")
+        ]).sort("Lift", descending=True)
     
     def get_combined_team_df(self):
         # Total unique players/runs

@@ -332,7 +332,21 @@ class HonkaiStatistics_V2_Pure:
                 pl.col("Total_Sustains").sum()
             ])
         )
+        new = self.team_stats.with_columns(pl.col('team_key').alias("Consequent"))
+        result = new.explode('team_key').explode('Consequent')
+        result = result.filter(
+            pl.col("team_key") != pl.col("Consequent"))
 
+        self.duos = result.group_by(pl.col('team_key').alias('Antecedent'),"Consequent").agg([# Sum up samples from all teams that share this DPS core
+                        pl.col("Samples").sum(),
+
+                        # Combine all cycle lists into one big distribution
+
+                        pl.col("Points").list.explode().alias("Points"),
+
+                        # For UIDs: list.explode them, then grab the unique ones
+                        pl.col("uids").list.explode().unique().alias("uids"),
+                        pl.col("Total_Sustains").sum()])
 
 
 
@@ -626,6 +640,59 @@ class HonkaiStatistics_V2_Pure:
         pl.Config.set_tbl_cols(-1)
         
         return df.select(header_cols + new_stat_cols)
+    
+    def get_duos_stats(self):
+        """
+        Calculates Association Rule metrics and performance distributions for character duos.
+        """
+        # 1. Prepare Character Support (P(A) and P(C))
+        # We use Total_Samples from char_stats to get individual character frequency
+        char_freq = self.char_stats.select([
+            pl.col("Character"),
+            (pl.col("Total_Samples") / self.total_samples).alias("char_support")
+        ])
+
+        # 2. Join frequencies onto the duos
+        # Duo Samples / Total Samples = P(A and C)
+        rules = (
+            self.duos.join(char_freq, left_on="Antecedent", right_on="Character", how="left")
+            .rename({"char_support": "support_A"})
+            .join(char_freq, left_on="Consequent", right_on="Character", how="left")
+            .rename({"char_support": "support_C"})
+        )
+
+        # 3. Calculate Association Metrics & Performance Stats
+        return rules.with_columns([
+            # Association Rule Metrics
+            (pl.col("Samples") / self.total_samples).alias("support"),
+        ]).with_columns([
+            (pl.col("support") / pl.col("support_A")).alias("confidence"),
+        ]).with_columns([
+            (pl.col("confidence") / pl.col("support_C")).alias("lift"),
+            (pl.col("support") - (pl.col("support_A") * pl.col("support_C"))).alias("leverage"),
+            ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction")
+        ]).select([
+            "Antecedent", 
+            "Consequent",
+            "Samples",
+            # Custom Display Metrics
+            (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
+            pl.col("confidence").round(3).alias("Confidence"),
+            pl.col("lift").round(3).alias("Lift"),
+            pl.col("leverage").round(4).alias("Leverage"),
+            pl.col("conviction").round(3).alias("Conviction"),
+            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+            
+            # Cycle Performance Stats
+            pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
+            pl.col("Points").list.median().round(2).alias("Median Points"),
+            pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
+            pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
+            pl.col("Points").list.min().alias("Min Points"),
+            pl.col("Points").list.mean().round(2).alias("Average Points"),
+            pl.col("Points").list.max().alias("Max Points")
+        ]).sort("Lift", descending=True)
+    
     def get_combined_team_df(self):
         # Total unique players/runs
         total_combined_samples = self.combined_team_stats.select(pl.col("Samples").sum()).item()

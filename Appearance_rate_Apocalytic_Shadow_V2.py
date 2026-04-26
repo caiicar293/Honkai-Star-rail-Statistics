@@ -331,7 +331,22 @@ class HonkaiStatistics_V2_APOC:
                 pl.col("Total_Sustains").sum()
             ])
         )
+        new = self.team_stats.with_columns(pl.col('team_key').alias("Consequent"))
+        result = new.explode('team_key').explode('Consequent')
+        result = result.filter(
+            pl.col("team_key") != pl.col("Consequent"))
 
+        self.duos = result.group_by(pl.col('team_key').alias('Antecedent'),"Consequent").agg([# Sum up samples from all teams that share this DPS core
+                        pl.col("Samples").sum(),
+
+                        # Combine all cycle lists into one big distribution
+
+                        pl.col("Scores").list.explode().alias("Scores"),
+
+                        # For UIDs: list.explode them, then grab the unique ones
+                        pl.col("uids").list.explode().unique().alias("uids"),
+                        pl.col("Total_Sustains").sum()])
+        
         # Total Samples (Global)
         self.total_samples = lf.select(pl.col("uid").n_unique()).collect().item()
 
@@ -687,7 +702,59 @@ class HonkaiStatistics_V2_APOC:
             "Min Scores", "25th Percentile Scores", "Median Scores",
             "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
         ])
+        
+    def get_duos_stats(self):
+        """
+        Calculates Association Rule metrics and performance distributions for character duos.
+        """
+        # 1. Prepare Character Support (P(A) and P(C))
+        # We use Total_Samples from char_stats to get individual character frequency
+        char_freq = self.char_stats.select([
+            pl.col("Character"),
+            (pl.col("Total_Samples") / self.total_samples).alias("char_support")
+        ])
 
+        # 2. Join frequencies onto the duos
+        # Duo Samples / Total Samples = P(A and C)
+        rules = (
+            self.duos.join(char_freq, left_on="Antecedent", right_on="Character", how="left")
+            .rename({"char_support": "support_A"})
+            .join(char_freq, left_on="Consequent", right_on="Character", how="left")
+            .rename({"char_support": "support_C"})
+        )
+
+        # 3. Calculate Association Metrics & Performance Stats
+        return rules.with_columns([
+            # Association Rule Metrics
+            (pl.col("Samples") / self.total_samples).alias("support"),
+        ]).with_columns([
+            (pl.col("support") / pl.col("support_A")).alias("confidence"),
+        ]).with_columns([
+            (pl.col("confidence") / pl.col("support_C")).alias("lift"),
+            (pl.col("support") - (pl.col("support_A") * pl.col("support_C"))).alias("leverage"),
+            ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction")
+        ]).select([
+            "Antecedent", 
+            "Consequent",
+            "Samples",
+            # Custom Display Metrics
+            (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
+            pl.col("confidence").round(3).alias("Confidence"),
+            pl.col("lift").round(3).alias("Lift"),
+            pl.col("leverage").round(4).alias("Leverage"),
+            pl.col("conviction").round(3).alias("Conviction"),
+            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+            
+            # Cycle Performance Stats
+            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
+            pl.col("Scores").list.median().round(2).alias("Median Scores"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
+            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+            pl.col("Scores").list.min().alias("Min Scores"),
+            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
+            pl.col("Scores").list.max().alias("Max Scores")
+        ]).sort("Lift", descending=True)
+        
     def get_combined_char_df(self):
         # Total unique pairings count
         total_combined_char_samples = self.combined.select(pl.col("uid").n_unique()).collect().item()

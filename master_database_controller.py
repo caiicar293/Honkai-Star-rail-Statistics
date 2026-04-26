@@ -1,60 +1,78 @@
-from database_chars import HonkaiCharacterWarehouse
-from database_Archetype_warehouse import HonkaiArchetypeWarehouse
-from database_Teams_Warehouse import HonkaiTeamsWarehouse
-from clean_data import clear_data_from_warehouse
+from database_main import HonkaiDataPlatform
+from database_archetypes_summary import HonkaiMetaAnalyzer
+from database_distributions_summary import StarRailStatsProcessor
+from database_teams_summary import HonkaiTeamMetaAnalyzer
 
 
-# --- CONFIGURATION ---
-# DB = "honkai_star_rail_stats2.duckdb"
-# VER = "4.0.2"  # Version to delete
-# curr_v = "4.1.1"    # Version to add
 
-# # --- 1. CLEANUP ---
-# MODES_TO_DELETE = ["MOC"] 
-# clear_data_from_warehouse(DB, VER, target_modes=MODES_TO_DELETE)
+platform = HonkaiDataPlatform()
+platform.orchestrate_update()
 
-# --- 2. RUN PIPELINES ---
-# These will insert the 3.6.3 data into your tables
-arche = HonkaiArchetypeWarehouse()
-arche.run()
-arche.run_dual()
+analyzer = HonkaiTeamMetaAnalyzer()
+analyzer.run_analysis()
 
-teams = HonkaiTeamsWarehouse()
-teams.run()
-teams.run_dual()
 
-chars = HonkaiCharacterWarehouse()
-chars.run()
+analyzer1 = HonkaiMetaAnalyzer()
+analyzer1.run_analysis()
 
-# # --- 3. GLOBAL REORDERING ---
-# def reorder_all_tables_by_samples_desc(db_name):
-#     import duckdb
-#     conn = duckdb.connect(db_name)
+
+
+processor = StarRailStatsProcessor()
+
+try:
+    # 1. Standard Modes
+        processor.process_mode("moc_stats_distributions", "Cycles", "node", "DESC", "moc_stats_distributions_summaries")
+        processor.process_mode("pure_fiction_stats_distributions", "Points", "node", "ASC", "pure_fiction_stats_distributions_summaries")
+        processor.process_mode("apoc_stats_distributions", "Scores", "node", "ASC", "apoc_stats_distributions_summaries")
+        processor.process_mode("anomaly_stats_distributions", "Cycles", "floor", "DESC", "anomaly_stats_distributions_summaries")
+
+        # 2. Multi-Modes
+        processor.process_multi_mode("moc_stats_dual_distributions", "Cycles", "DESC", "moc_stats_dual_distributions_summaries")
+        processor.process_multi_mode("pure_fiction_stats_dual_distributions", "Points", "ASC", "pure_fiction_stats_dual_distributions_summaries")
+        processor.process_multi_mode("apoc_stats_dual_distributions", "Scores", "ASC", "apoc_dual_stats_distributions_summaries")
+        processor.process_multi_mode("anomaly_stats_triple_distributions", "Cycles", "DESC", "anomaly_triple_stats_distributions_summaries")
+
+finally:
+    processor.close()
     
-#     # Identify all tables with 'version' and 'Samples' columns
-#     tables = conn.execute("""
-#         SELECT table_name FROM information_schema.columns 
-#         WHERE column_name IN ('version', 'Samples')
-#         GROUP BY table_name HAVING COUNT(*) = 2
-#     """).fetchall()
     
-#     for (table,) in tables:
-#         print(f"Sorting {table}: Version ASC, Samples DESC...")
-#         try:
-#             # Create a sorted copy
-#             conn.execute(f"""
-#                 CREATE TABLE {table}_sorted AS 
-#                 SELECT * FROM {table} 
-#                 ORDER BY version ASC, Samples DESC
-#             """)
-#             # Replace old table with sorted version
-#             conn.execute(f"DROP TABLE {table}")
-#             conn.execute(f"ALTER TABLE {table}_sorted RENAME TO {table}")
-#         except Exception as e:
-#             print(f"Failed to sort {table}: {e}")
-            
-#     conn.close()
-#     print("Database reordering complete.")
+import duckdb
+import os
+from dotenv import load_dotenv
 
-# # Run the sorter
-# reorder_all_tables_by_samples_desc(DB)
+load_dotenv()
+
+# Connect to your database
+con = duckdb.connect(os.getenv("DB_File"))
+
+# 1. Get a list of all tables ending in 'gear_usage'
+tables_to_fix = con.execute("""
+    SELECT table_name 
+    FROM information_schema.tables 
+    WHERE table_name LIKE '%gear_usage'
+""").fetchall()
+
+# 2. Loop through each table and apply the regex update
+for (table_name,) in tables_to_fix:
+    print(f"Cleaning Eidolon strings in table: {table_name}...")
+    
+    # We target 'column_name'—ensure this matches your actual column name (e.g., 'eidolon_level' or 'Eidolon')
+    # If the column name varies, you'd need to fetch that from information_schema.columns too.
+    update_query = f"""
+    UPDATE {table_name}
+    SET Eidolon = regexp_replace(
+        Eidolon, 
+        '(Eidolon\s+\d+)\.0', 
+        '\\1', 
+        'g'
+    )
+    WHERE Eidolon LIKE '%Eidolon%';
+    """
+    
+    try:
+        con.execute(update_query)
+        print(f"Successfully updated {table_name}.")
+    except Exception as e:
+        print(f"Could not update {table_name}: {e}")
+
+con.close()

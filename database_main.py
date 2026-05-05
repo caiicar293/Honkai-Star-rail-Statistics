@@ -172,9 +172,10 @@ class HonkaiDataPlatform:
                                 self._db_save(conn, self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_archetypes")
                                 self._db_save(conn, self._standardize(scraper.get_combined_team_df(), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_teams")
                                 self._db_save(conn, self._standardize(scraper.plot_statistics_all_combined(cumulative=True,output=False), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_distributions")
-                                if e ==6:
-                                    self._db_save(conn, self._standardize(scraper.display_top_gear(), mode, v, e, f, label), f"{cfg['prefix']}_stats_{suffix}_gear_usage")
-                                    
+                                
+                            if n == 0 or (mode == "ANOMALY" and f == 0) or (mode == "ANOMALY" and f == 4):  
+                                print(f"Updating Gear Stats for {mode}...")    
+                                self._db_save(conn, self._standardize(scraper.display_top_gear(), mode, v, e, f, label), f"{cfg['prefix']}_stats_gear_usage")  
                 conn.commit()
         conn.close()
         

@@ -1,0 +1,5 @@
+*.parquet
+
+*.duckdb
+__pycache__/
+.vscode/

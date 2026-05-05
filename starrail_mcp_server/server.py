@@ -12,9 +12,12 @@ from pathlib import Path
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
+import os 
+from dotenv import load_dotenv
+load_dotenv()
 
 # ── Config ───────────────────────────────────────────────────────────────────
-DB_PATH = r"C:/Users/Timothy/Documents/GitHub/Honkai-Star-rail-Statistics/honkai_star_rail_stats_polars_v4.duckdb"
+DB_PATH = f'../{os.getenv("DB_File")}'
 
 # ── Server setup ─────────────────────────────────────────────────────────────
 app = Server("starrail-duckdb")

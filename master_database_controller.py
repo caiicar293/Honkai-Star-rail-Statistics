@@ -2,7 +2,7 @@ from database_main import HonkaiDataPlatform
 from database_archetypes_summary import HonkaiMetaAnalyzer
 from database_distributions_summary import StarRailStatsProcessor
 from database_teams_summary import HonkaiTeamMetaAnalyzer
-
+from database_duos_summary import HonkaiDuosSummaryAnalyzer
 
 
 platform = HonkaiDataPlatform()
@@ -14,6 +14,9 @@ analyzer.run_analysis()
 
 analyzer1 = HonkaiMetaAnalyzer()
 analyzer1.run_analysis()
+
+analyzer2 = HonkaiDuosSummaryAnalyzer()
+analyzer2.run_analysis()
 
 
 

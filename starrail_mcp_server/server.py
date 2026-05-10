@@ -17,7 +17,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── Config ───────────────────────────────────────────────────────────────────
-DB_PATH = f'../{os.getenv("DB_File")}'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, '..', os.getenv("DB_File"))
 
 # ── Server setup ─────────────────────────────────────────────────────────────
 app = Server("starrail-duckdb")

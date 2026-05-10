@@ -782,7 +782,7 @@ class HonkaiStatistics_Legacy:
             .with_columns(
                 ((1 - pl.col("Cum_Count") / sample_size) * 100).round(2).alias("Percentile (%)")
             )
-        )
+        ).drop(pl.col("Cum_Count"))
 
         if output:
             print(f"Sample Size: {sample_size}")

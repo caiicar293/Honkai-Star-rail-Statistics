@@ -774,11 +774,10 @@ class HonkaiStatistics_Legacy:
         std_dev = df.select(pl.col(score_col).std(ddof=1).fill_null(0)).item()
 
         # For PF higher scores are better, so percentile direction flips
-        desc = (self.mode == "moc")
         stats_df = (
             df.group_by(score_col)
             .agg(pl.len().alias("Count"))
-            .sort(score_col, descending=desc)
+            .sort(score_col, descending=False if self.mode=="moc" else True)
             .with_columns(pl.col("Count").cum_sum().alias("Cum_Count"))
             .with_columns(
                 ((1 - pl.col("Cum_Count") / sample_size) * 100).round(2).alias("Percentile (%)")

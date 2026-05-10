@@ -217,7 +217,7 @@ class HonkaiStatistics_Legacy:
             combined = (
                 n1.join(n2, on="uid", how="inner")
                   .with_columns(
-                      (pl.col("n1_score") + pl.col("n2_score")).alias("total_score")
+                      ((pl.col("n1_score") + pl.col("n2_score")) if mode == "pf" else pl.col("n1_score")).alias("total_score")
                   )
             )
 

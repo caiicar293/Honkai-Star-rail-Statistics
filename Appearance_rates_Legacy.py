@@ -179,8 +179,10 @@ class HonkaiStatistics_Legacy:
         # ------------------------------------------------------------------
         if self.mode == "moc":
             self.lf = lf.filter(pl.col(self.score_col) <= self.by_cycle)
+            self.metric = "Cycles"
         else:   # pf
             self.lf = lf.filter(pl.col(self.score_col) >= self.by_points)
+            self.metric = "Points"
 
         # ------------------------------------------------------------------
         # 7. SINGLE-NODE PROCESSING
@@ -540,7 +542,7 @@ class HonkaiStatistics_Legacy:
             pl.col(col).list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile"),
             pl.col(col).list.median().round(2).alias("Median"),
             pl.col(col).list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile"),
-            pl.col(col).list.mean().round(2).alias("Average"),
+            pl.col(col).list.mean().round(2).alias(f"Average {self.metric}"),
             pl.col(col).list.eval(pl.element().std()).list.first().round(2).alias("Std Dev"),
             pl.col(col).list.max().alias("Max"),
         ]
@@ -558,7 +560,7 @@ class HonkaiStatistics_Legacy:
                 "Rank", "Character", "Appearance Rate (%)",
                 pl.col("Total_Samples").alias("Samples"),
                 "Min", "25th Percentile", "Median", "75th Percentile",
-                "Average", "Std Dev", "Max",
+                f"Average {self.metric}", "Std Dev", "Max",
                 pl.col("Total_Sustains").alias("Sustain Samples"),
                 "Sustain_Percentage",
             ])
@@ -575,7 +577,7 @@ class HonkaiStatistics_Legacy:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Team", "Appearance Rate (%)", "Samples",
             "Min", "25th Percentile", "Median", "75th Percentile",
-            "Average", "Std Dev", "Max", "Sustain?",
+            f"Average {self.metric}", "Std Dev", "Max", "Sustain?",
         ])
 
     def get_archetype_df(self):
@@ -591,7 +593,7 @@ class HonkaiStatistics_Legacy:
             "Rank", "Archetype Core", "Usage %", "Samples", "Sustain_Percentage",
             pl.col("Total_Sustains").alias("Sustain Samples"),
             "Min", "25th Percentile", "Median", "75th Percentile",
-            "Average", "Max", "Std Dev",
+            f"Average {self.metric}", "Max", "Std Dev",
         ])
 
     def get_duos_stats(self):
@@ -643,7 +645,7 @@ class HonkaiStatistics_Legacy:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Team Node 1", "Team Node 2", "Appearance Rate (%)", "Samples",
             "Min", "25th Percentile", "Median", "75th Percentile",
-            "Average", "Std Dev", "Max",
+            f"Average {self.metric}", "Std Dev", "Max",
         ])
 
     def get_combined_archetype_df(self):
@@ -661,7 +663,7 @@ class HonkaiStatistics_Legacy:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Core Node 1", "Core Node 2", "Appearance Rate (%)", "Samples",
             "Min", "25th Percentile", "Median", "75th Percentile",
-            "Average", "Std Dev", "Max",
+            f"Average {self.metric}", "Std Dev", "Max",
         ])
 
     def get_combined_char_df(self):
@@ -676,7 +678,7 @@ class HonkaiStatistics_Legacy:
             "Rank", "Character Node 1", "Character Node 2",
             "Samples", "Appearance Rate (%)",
             "Min", "25th Percentile", "Median", "75th Percentile",
-            "Average", "Std Dev", "Max",
+            f"Average {self.metric}", "Std Dev", "Max",
         ])
 
     # -----------------------------------------------------------------------
@@ -716,10 +718,10 @@ class HonkaiStatistics_Legacy:
                     .with_columns(pl.col("Usage").sum().over("Character").alias("_total_usage"))
                     .with_columns([
                         (pl.col("Usage") / pl.col("_total_usage")).alias("Usage_Rate"),
-                        pl.col("_scores").list.mean().round(2).alias("Avg"),
+                        pl.col("_scores").list.mean().round(2).alias(f"Avg {self.metric}"),
                         pl.col("_scores").list.median().alias("Median"),
-                        pl.col("_scores").list.min().alias("Min"),
-                        pl.col("_scores").list.max().alias("Max"),
+                        pl.col("_scores").list.min().alias(f"Min_{self.metric}"),
+                        pl.col("_scores").list.max().alias(f"Max_{self.metric}"),
                         pl.col("_scores").list.std().round(2).alias("Std"),
                         pl.col("_scores").list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile"),
                         pl.col("_scores").list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile"),
@@ -729,8 +731,8 @@ class HonkaiStatistics_Legacy:
                 )
                 results.append(processed.select([
                     "Character", "Eidolon", "Category", "Gear_Name",
-                    "Usage", "Usage_Rate", "Avg", "25th Percentile",
-                    "Median", "75th Percentile", "Min", "Max", "Std",
+                    "Usage", "Usage_Rate", f"Avg {self.metric}", "25th Percentile",
+                    "Median", "75th Percentile", f"Min_{self.metric}", f"Max_{self.metric}", "Std",
                 ]))
 
         if not results:
@@ -762,36 +764,47 @@ class HonkaiStatistics_Legacy:
     def _plot_score_distribution(self, df, score_col: str, output: bool, title: str):
         if hasattr(df, "collect"):
             df = df.collect()
+        
         df = df.drop_nulls(subset=[score_col])
         sample_size = len(df)
+        
         if sample_size == 0:
             print("No data available.")
             return None
 
+        # Scalar calculations
         mean    = df.select(pl.col(score_col).mean()).item()
         median  = df.select(pl.col(score_col).median()).item()
         mode    = df.select(pl.col(score_col).mode().first()).item()
         std_dev = df.select(pl.col(score_col).std(ddof=1).fill_null(0)).item()
 
-        # For PF higher scores are better, so percentile direction flips
+        # Fixed Stats Logic
         stats_df = (
             df.group_by(score_col)
             .agg(pl.len().alias("Count"))
-            .sort(score_col, descending=False if self.mode=="moc" else True)
-            .with_columns(pl.col("Count").cum_sum().alias("Cum_Count"))
+            .sort(score_col, descending=False if self.mode == "moc" else True)
+            .with_columns([
+                pl.col("Count").cum_sum().alias("Cum_Count"),
+                # Correctly rename the group_by column to your metric name
+                pl.col(score_col).alias(f"{self.metric}") 
+            ])
             .with_columns(
+                # Higher is better: (1 - Cum_Count/Total) logic
                 ((1 - pl.col("Cum_Count") / sample_size) * 100).round(2).alias("Percentile (%)")
             )
-        ).drop(pl.col("Cum_Count"))
+            .drop("Cum_Count")
+            .select([f"{self.metric}", "Count", "Percentile (%)"]) # Keep clean order
+        )
 
         if output:
             print(f"Sample Size: {sample_size}")
             with pl.Config(tbl_rows=-1):
                 print(stats_df)
 
+            import matplotlib.pyplot as plt
             plt.figure(figsize=(12, 6))
             plt.hist(df.get_column(score_col).to_list(), bins="auto", alpha=0.5,
-                     color="blue", edgecolor="black")
+                    color="blue", edgecolor="black")
             plt.axvline(mean,   color="orange", linestyle="dashed", linewidth=1, label=f"Mean: {mean:.2f}")
             plt.axvline(median, color="green",  linestyle="dashed", linewidth=1, label=f"Median: {median:.2f}")
             plt.axvline(mode,   color="red",    linestyle="dashed", linewidth=1, label=f"Mode: {mode:.2f}")

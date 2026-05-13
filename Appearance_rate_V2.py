@@ -11,7 +11,7 @@ class HonkaiStatistics_V2:
                  by_ed_inclusive_combined=False, by_char=None, by_cycles_combined=30,
                  not_char=False, sustain_condition=None, star_num=None):
 
-        self.version, self.floor, self.node = version, floor, node
+        self.version, self.floor, self.node,self.star_num = version, floor, node, star_num
         self.by_ed, self.by_cycle = by_ed, by_cycle
         self.by_ed_inclusive = by_ed_inclusive
         self.by_ed_inclusive_combined = by_ed_inclusive_combined
@@ -52,11 +52,15 @@ class HonkaiStatistics_V2:
 
 
 
-
+       
         # Convert main DF to Lazy for optimization pipeline
         lf = self.df.lazy()
         char_lf = self.char_df.lazy()
 
+        
+        if self.star_num:
+            lf = lf.filter((pl.col("star_num"))== self.star_num)
+            
         # 3. INITIAL FILTERING (Floor/Node/Stars)
         if self.node != 0:
             lf = lf.filter((pl.col("floor") == self.floor) & (pl.col("node") == self.node))

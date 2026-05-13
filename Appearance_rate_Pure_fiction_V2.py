@@ -3,13 +3,15 @@ import os
 import orjson
 from itertools import chain
 import matplotlib.pyplot as plt
-
+pl.Config.set_tbl_rows(-1)      # -1 or None shows all rows
+pl.Config.set_tbl_cols(-1)      # -1 or None shows all columns
+pl.Config.set_fmt_str_lengths(100)  # Prevents long strings from being cut off
 class HonkaiStatistics_V2_Pure:
     def __init__(self, version, floor, node=0, by_ed=6, by_points =0, by_ed_inclusive=False,
                  by_ed_inclusive_combined=False, by_char=None, by_points_combined = 0,
                  not_char=False, sustain_condition=None, star_num=None):
 
-        self.version, self.floor, self.node = version, floor, node
+        self.version, self.floor, self.node ,self.star_num= version, floor, node,star_num
         self.by_ed, self.by_points = by_ed, by_points
         self.by_ed_inclusive = by_ed_inclusive
         self.by_ed_inclusive_combined = by_ed_inclusive_combined
@@ -49,12 +51,15 @@ class HonkaiStatistics_V2_Pure:
         ]).lazy()
 
 
-
+        
 
         # Convert main DF to Lazy for optimization pipeline
         lf = self.df.lazy()
         char_lf = self.char_df.lazy()
-
+        
+        if self.star_num:
+            lf = lf.filter((pl.col("star_num"))== self.star_num)
+            
         # 3. INITIAL FILTERING (Floor/Node/Stars)
         if self.node != 0:
             lf = lf.filter((pl.col("floor") == self.floor) & (pl.col("node") == self.node))

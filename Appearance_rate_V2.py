@@ -54,7 +54,7 @@ class HonkaiStatistics_V2:
 
        
         # Convert main DF to Lazy for optimization pipeline
-        lf = self.df.lazy()
+        lf = self.df.lazy().unique(subset=["uid","node"],maintain_order=False)
         char_lf = self.char_df.lazy()
 
         

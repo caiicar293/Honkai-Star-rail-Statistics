@@ -2,6 +2,7 @@ import polars as pl
 import os
 import orjson
 import polars.selectors as cs
+import duckdb
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,7 +24,7 @@ class HonkaiStatistics_builds:
             "CRIT DMG sub", "Effect RES sub", "Effect Hit Rate sub", "Break Effect sub"
         ]
 
-        # Categorical columns for usage metrics (from your image)
+        # Categorical columns for usage metrics
         self.relic_slots = ["Body", "Feet", "Sphere", "Rope"]
         
         self.stats = self._build_stats()
@@ -56,7 +57,7 @@ class HonkaiStatistics_builds:
                 # Add version tag
                 pl.lit(version).alias("version_name")
             ])
-            # Step 3: Conditional Variant Mapping (Fixed)
+            # Step 3: Conditional Variant Mapping
             .with_columns([
                 pl.when((pl.col("character") == "March 7th") & (pl.col("path") == "Preservation"))
                 .then(pl.lit("Ice March 7th"))
@@ -87,7 +88,6 @@ class HonkaiStatistics_builds:
                 .alias("character")
             ])
         )
-    
 
     def _build_stats(self):
         lazy_frames = []
@@ -116,7 +116,7 @@ class HonkaiStatistics_builds:
                     .agg(pl.len().alias("count"))
                     .with_columns(
                         usage_pct=(pl.col("count") / pl.col("count").sum().over("character") * 100).round(1)
-                    ).sort(pl.col('count'),descending=True)
+                    ).sort(pl.col('count'), descending=True)
                     .select([
                         "character",
                         pl.struct([
@@ -129,7 +129,9 @@ class HonkaiStatistics_builds:
                     .agg(pl.col(f"{slot}_data"))
                 )
                 usage_dfs.append(slot_usage)
+        
         valid_cols = [col for col in self.target_cols if col in available_cols]
+        
         # 3. Numeric Stats Logic
         numeric_stats = (
             full_raw.group_by("character")
@@ -137,14 +139,13 @@ class HonkaiStatistics_builds:
                 pl.len().alias("total_sample_size"),
                 pl.col("version_name").n_unique().alias("num_versions"),
                 cs.by_name(valid_cols).mean().name.prefix("Avg_")
-                
             ])
         )
+        
         # 3.5 Extra Stats Logic (Perfectly Organized Per-Stat Dictionaries)
         extra_stats = (
             full_raw.group_by("character")
             .agg([
-                # Compute all distribution layers concurrently in Rust-land
                 cs.by_name(valid_cols).min().name.prefix("min_"),
                 cs.by_name(valid_cols).quantile(0.05).name.prefix("p05_"),
                 cs.by_name(valid_cols).quantile(0.25).name.prefix("p25_"),
@@ -156,7 +157,6 @@ class HonkaiStatistics_builds:
             ])
             .select([
                 "character",
-                # Nest by combat stat category, keeping internal key order strictly chronological
                 pl.struct([
                     pl.struct([
                         pl.col(f"min_{col}").alias("min"),
@@ -176,8 +176,6 @@ class HonkaiStatistics_builds:
         # 4. Final Join
         final_df = numeric_stats
         
-    
-        
         # Join the relic usage frames
         for usage in usage_dfs:
             final_df = final_df.join(usage, on="character", how="left")
@@ -186,6 +184,43 @@ class HonkaiStatistics_builds:
         final_df = final_df.join(extra_stats, on="character", how="left")
         
         return final_df.sort("total_sample_size", descending=True).collect()
-# Usage
-# h = HonkaiStatistics_builds(mode="all")
-# print(h.stats.select(["character", "total_sample_size", "Body_data"]))
+
+    def save_to_db(self, table_name=None):
+        """
+        Saves the processed self.stats DataFrame directly into DuckDB.
+        Automatically defaults table names based on context if none specified.
+        """
+        db_path = os.getenv("DB_File")
+        if not db_path:
+            raise ValueError("Environment variable 'DB_File' is not specified in your configuration.")
+
+        if table_name is None:
+            if self.mode == "all":
+                table_name = "character_builds_all_versions"
+            else:
+                # Sanitizes specific version formats (e.g., '2.3.3' to 'character_builds_v2_3_3')
+                safe_ver = str(self.mode).replace(".", "_")
+                table_name = f"character_builds_v{safe_ver}"
+
+        print(f"Connecting to DuckDB instance: {db_path}")
+        # Establish connection to your targeted DuckDB storage instance
+        conn = duckdb.connect(db_path)
+        
+        try:
+            # Reference the data directly. DuckDB handles Polars List and Struct types 
+            # natively without needing to cast them to strings!
+            export_df = self.stats
+            
+            # Atomically replace or create the table with the proper nested types
+            print(f"Writing data to table '{table_name}'...")
+            conn.execute(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM export_df")
+            
+            # Fetch confirmation counts
+            row_count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+            print(f"Success: Updated '{table_name}' with {row_count} entries.")
+            
+        except Exception as e:
+            print(f"Error executing database ingestion: {e}")
+            raise e
+        finally:
+            conn.close()

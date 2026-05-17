@@ -3,6 +3,7 @@ import os
 import orjson
 from itertools import chain
 import matplotlib.pyplot as plt
+import polars.selectors as cs
 pl.Config.set_tbl_rows(-1)      # -1 or None shows all rows
 pl.Config.set_tbl_cols(-1)      # -1 or None shows all columns
 pl.Config.set_fmt_str_lengths(100)  # Prevents long strings from being cut off
@@ -54,8 +55,21 @@ class HonkaiStatistics_V2_Pure:
         
 
         # Convert main DF to Lazy for optimization pipeline
-        lf = self.df.lazy().unique(subset=["uid","node"],maintain_order=False)
-        char_lf = self.char_df.lazy()
+        corrupt_bullets = ["â€¢", "Ã¢â‚¬Â¢"]
+        clean_bullets = ["•", "•"]
+        lf = self.df.lazy().unique(subset=["uid", "node"], maintain_order=False).with_columns([
+            cs.string()
+            .str.replace_many(corrupt_bullets, clean_bullets)
+            .str.replace_all(r"\band\b", "&")
+            .str.replace_all(r"^March 7th$", "Ice March 7th"),  # Strict full-string match
+        ])
+
+        char_lf = self.char_df.lazy().with_columns([
+            cs.string()
+            .str.replace_many(corrupt_bullets, clean_bullets)
+            .str.replace_all(r"\band\b", "&")
+            .str.replace_all(r"^March 7th$", "Ice March 7th"),  # Strict full-string match
+        ])
         
         if self.star_num:
             lf = lf.filter((pl.col("star_num"))== self.star_num)

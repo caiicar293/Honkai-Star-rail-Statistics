@@ -1051,5 +1051,19 @@
       "8010"
     ]
   }
+  ,
+  "Evanescia": {
+    "id": "1506",
+    "rarity": 5,
+    "path": "Elation",
+    "element": "Physical",
+    "availability": "Limited 5*",
+    "slug": "evanescia",
+    "release_phase": "4.2.2",
+    "role": [
+      "dps"
+    ]
+  
 }
 
+}

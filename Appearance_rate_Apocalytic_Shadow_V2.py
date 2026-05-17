@@ -3,6 +3,7 @@ import os
 import orjson
 from itertools import chain
 import matplotlib.pyplot as plt
+import polars.selectors as cs
 
 class HonkaiStatistics_V2_APOC:
     def __init__(self, version, floor, node=0, by_ed=6, by_score =0, by_ed_inclusive=False,
@@ -52,8 +53,21 @@ class HonkaiStatistics_V2_APOC:
 
 
         # Convert main DF to Lazy for optimization pipeline
-        lf = self.df.lazy()
-        char_lf = self.char_df.lazy()
+        corrupt_bullets = ["â€¢", "Ã¢â‚¬Â¢"]
+        clean_bullets = ["•", "•"]
+        lf = self.df.lazy().unique(subset=["uid", "node"], maintain_order=False).with_columns([
+            cs.string()
+            .str.replace_many(corrupt_bullets, clean_bullets)
+            .str.replace_all(r"\band\b", "&")
+            .str.replace_all(r"^March 7th$", "Ice March 7th"),  # Strict full-string match
+        ])
+
+        char_lf = self.char_df.lazy().with_columns([
+            cs.string()
+            .str.replace_many(corrupt_bullets, clean_bullets)
+            .str.replace_all(r"\band\b", "&")
+            .str.replace_all(r"^March 7th$", "Ice March 7th"),  # Strict full-string match
+        ])
         
         if self.star_num:
             lf = lf.filter((pl.col("star_num"))== self.star_num)

@@ -25,6 +25,7 @@ import polars as pl
 import os
 import orjson
 import matplotlib.pyplot as plt
+import polars.selectors as cs
 
 pl.Config.set_tbl_rows(100)
 pl.Config.set_tbl_cols(-1)
@@ -143,8 +144,21 @@ class HonkaiStatistics_Legacy:
         # ------------------------------------------------------------------
         # 4. FLOOR NORMALISATION + FILTERING
         # ------------------------------------------------------------------
-        lf      = self.df.lazy()
-        char_lf = self.char_df.lazy()
+         # Convert main DF to Lazy for optimization pipeline
+        corrupt_bullets = ["â€¢", "Ã¢â‚¬Â¢"]
+        clean_bullets = ["•", "•"]
+        lf      = self.df.lazy().with_columns([
+            cs.string()
+            .str.replace_many(corrupt_bullets, clean_bullets)
+            .str.replace_all(r"\band\b", "&")
+            .str.replace_all(r"^March 7th$", "Ice March 7th"),  # Strict full-string match
+        ])
+        char_lf = self.char_df.lazy().with_columns([
+            cs.string()
+            .str.replace_many(corrupt_bullets, clean_bullets)
+            .str.replace_all(r"\band\b", "&")
+            .str.replace_all(r"^March 7th$", "Ice March 7th"),  # Strict full-string match
+        ])
 
         # Auto-detect string floors (e.g. "Ethereal Shipcraft Stage 6")
         if lf.collect_schema()["floor"] == pl.String:

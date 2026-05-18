@@ -55,7 +55,7 @@ class HonkaiStatistics_Anomaly_V2:
 
         
         # Convert main DF to Lazy for optimization pipeline
-        lf = self.df.lazy().unique(subset=["uid","floor"],maintain_order=False)
+        lf = self.df.lazy()
         char_lf = self.char_df.lazy()
         lf = lf.filter((pl.col('hard_mode') == self.hard_mode))
         

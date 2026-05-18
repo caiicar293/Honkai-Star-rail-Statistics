@@ -57,7 +57,7 @@ class HonkaiStatistics_V2_Pure:
         # Convert main DF to Lazy for optimization pipeline
         corrupt_bullets = ["â€¢", "Ã¢â‚¬Â¢"]
         clean_bullets = ["•", "•"]
-        lf = self.df.lazy().unique(subset=["uid", "node"], maintain_order=False).with_columns([
+        lf = self.df.lazy().with_columns([
             cs.string()
             .str.replace_many(corrupt_bullets, clean_bullets)
             .str.replace_all(r"\band\b", "&")

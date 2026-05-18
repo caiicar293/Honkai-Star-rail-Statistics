@@ -5,12 +5,16 @@ from itertools import chain
 import matplotlib.pyplot as plt
 import polars.selectors as cs
 
+pl.Config.set_tbl_rows(100)
+pl.Config.set_tbl_cols(-1)
+pl.Config.set_fmt_str_lengths(100)
+
 class HonkaiStatistics_V2_APOC:
     def __init__(self, version, floor, node=0, by_ed=6, by_score =0, by_ed_inclusive=False,
                  by_ed_inclusive_combined=False, by_char=None, by_scores_combined = 0,
                  not_char=False, sustain_condition=None, star_num=None):
 
-        self.version, self.floor, self.node ,self.node= version, floor, node,star_num
+        self.version, self.floor, self.node ,self.star_num= version, floor, node,star_num
         self.by_ed, self.by_score = by_ed, by_score
         self.by_ed_inclusive = by_ed_inclusive
         self.by_ed_inclusive_combined = by_ed_inclusive_combined
@@ -55,7 +59,7 @@ class HonkaiStatistics_V2_APOC:
         # Convert main DF to Lazy for optimization pipeline
         corrupt_bullets = ["â€¢", "Ã¢â‚¬Â¢"]
         clean_bullets = ["•", "•"]
-        lf = self.df.lazy().unique(subset=["uid", "node"], maintain_order=False).with_columns([
+        lf = self.df.lazy().with_columns([
             cs.string()
             .str.replace_many(corrupt_bullets, clean_bullets)
             .str.replace_all(r"\band\b", "&")

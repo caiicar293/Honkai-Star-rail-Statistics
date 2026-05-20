@@ -12,7 +12,7 @@ pl.Config.set_tbl_rows(100)      # -1 or None shows all rows
 pl.Config.set_tbl_cols(-1)      # -1 or None shows all columns
 pl.Config.set_fmt_str_lengths(100)  # Prevents long strings from being cut off
 
-class HonkaiStatistics_V2:
+class HonkaiStatistics_V2_Batch:
     def __init__(self, version, floor, node=0, by_ed=6, by_cycle=30, by_ed_inclusive=False,
                  by_ed_inclusive_combined=False, by_char=None, by_cycles_combined=30,
                  not_char=False, sustain_condition=None, star_num=None):

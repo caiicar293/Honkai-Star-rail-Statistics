@@ -455,7 +455,6 @@ class HonkaiStatistics_V2_Batch:
             group_cols.append("node")
 
         # 3. Compute overall stats per group (or globally if no group columns exist)
-        # This prevents cross-contaminating metrics across different versions/eidolon levels
         stats_exprs = [
             pl.len().alias("sample_size"),
             pl.col(round_num).mean().alias("mean"),
@@ -474,14 +473,17 @@ class HonkaiStatistics_V2_Batch:
         for i in range(7):
             agg_cols.append((pl.col(eidolon_col) == i).sum().alias(f"E{i}_Count"))
 
-        # Crucial step: group by cycle counts AND your version/level identifiers
+        # Sort explicitly by group and cycle count to ensure cumulative math runs in order
         main_group_keys = group_cols + [round_num]
         stats_df = df.group_by(main_group_keys).agg(agg_cols).sort(main_group_keys)
 
         # 5. Join sample sizes back to correctly compute running totals and percentiles per track
-        stats_df = stats_df.join(group_stats, on=group_cols, how="left") if group_cols else stats_df.with_columns(group_stats.struct("*"))
+        if group_cols:
+            stats_df = stats_df.join(group_stats, on=group_cols, how="left")
+        else:
+            stats_df = stats_df.with_columns(group_stats.struct("*"))
 
-        # Calculate cumulative counts securely isolated inside each unique partition block
+        # Calculate cumulative totals securely isolated inside each unique partition block
         if group_cols:
             stats_df = stats_df.with_columns(
                 pl.col("Count").cum_sum().over(group_cols).alias("Cum_Count")
@@ -489,16 +491,26 @@ class HonkaiStatistics_V2_Batch:
         else:
             stats_df = stats_df.with_columns(pl.col("Count").cum_sum().alias("Cum_Count"))
 
-        # Percentage distribution math
+        # Percentage distribution math (What % of players cleared in <= this many cycles)
         stats_df = stats_df.with_columns(
-            ((1 - (pl.col("Cum_Count") / pl.col("sample_size"))) * 100).round(2).alias("Percentile (%)")
+            ((pl.col("Cum_Count") / pl.col("sample_size")) * 100).round(2).alias("Percentile (%)")
         )
 
+        # Fix: Safely calculate Eidolon percentages over group blocks
         e_exprs = []
         for i in range(7):
             if cumulative:
-                e_exprs.append(((pl.col(f"E{i}_Count").cum_sum() / pl.col("Cum_Count")) * 100).round(2).alias(f"E{i} (%)"))
+                if group_cols:
+                    # Calculate cumulative eidolon counts strictly within this group, divided by total samples in this group up to this cycle
+                    e_exprs.append(
+                        ((pl.col(f"E{i}_Count").cum_sum().over(group_cols) / pl.col("Cum_Count")) * 100).round(2).alias(f"E{i} (%)")
+                    )
+                else:
+                    e_exprs.append(
+                        ((pl.col(f"E{i}_Count").cum_sum() / pl.col("Cum_Count")) * 100).round(2).alias(f"E{i} (%)")
+                    )
             else:
+                # Non-cumulative: Just show the Eidolon distribution exactly inside this specific cycle bucket
                 e_exprs.append(((pl.col(f"E{i}_Count") / pl.col("Count")) * 100).round(2).alias(f"E{i} (%)"))
 
         # 6. Final Select layout mapping
@@ -510,11 +522,9 @@ class HonkaiStatistics_V2_Batch:
 
         # 7. Safe Outputting & Plotting Block
         if output:
-            # If there are groups, we loop over each dataset block cleanly so the chart prints correctly
             unique_groups = df.select(group_cols).unique().to_dicts() if group_cols else [{}]
 
             for group in unique_groups:
-                # Filter main data and stats reference rows to this iteration item
                 filtered_df = df
                 filtered_final = final_df
                 for col, val in group.items():
@@ -524,10 +534,8 @@ class HonkaiStatistics_V2_Batch:
                 if len(filtered_df) == 0:
                     continue
 
-                # Pull metrics safely out of our calculated sub-group mapping
                 m_info = group_stats.filter([pl.col(c) == v for c, v in group.items()]).to_dicts()[0] if group_cols else group_stats.to_dicts()[0]
                 
-                # Format display meta title tags
                 group_tag = " | ".join([f"{k}: {v}" for k, v in group.items()])
                 display_title = f"{title} ({group_tag})" if group_tag else title
 

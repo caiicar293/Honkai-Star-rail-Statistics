@@ -96,6 +96,10 @@ class HonkaiStatistics_V2:
 
         # Wrap this where you combine your arrays into a single master LazyFrame
         if self.lazy_frames:
+            floor_filter = (
+                pl.col("floor") == self.floor if self.node == 0 
+                else (pl.col("floor") == self.floor) & (pl.col("node") == self.node)
+            )
             # 1. Combine them vertically (faster than diagonal if schema matches)
             combined_stage = pl.concat(self.lazy_frames, how="vertical")
             combined_char = pl.concat(self.char_lazy_frames, how="vertical")
@@ -116,7 +120,7 @@ class HonkaiStatistics_V2:
             )
 
         # Optional: Diagonal concatenation handles schema drifting automatically
-        lf = pl.concat(self.lazy_frames, how="diagonal")
+        lf = pl.concat(self.lazy_frames, how="diagonal").filter(floor_filter)
         char_lf = pl.concat(self.char_lazy_frames, how="diagonal")
         
         # 2. LOAD CHARACTER METADATA
@@ -137,12 +141,8 @@ class HonkaiStatistics_V2:
             
         # 3. INITIAL FILTERING (Floor/Node/Stars)
         if self.node != 0:
-            lf = lf.filter((pl.col("floor") == self.floor) & (pl.col("node") == self.node))
-        else:
-            lf = lf.filter(pl.col("floor") == self.floor)
-
-        if hasattr(self, 'star_num') and self.star_num:
-            lf = lf.filter(pl.col("star_num") == self.star_num)
+            lf = lf.filter((pl.col("node") == self.node))
+       
 
         # 4. EIDOLON & SUSTAIN LOGIC (Vectorized)
         char_cols = ["ch1", "ch2", "ch3", "ch4"]

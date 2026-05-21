@@ -97,11 +97,7 @@ class HonkaiStatistics_V2_Batch:
 
         # Wrap this where you combine your arrays into a single master LazyFrame
         if self.lazy_frames:
-            # --- FIX: Make this block string-safe for node="all" ---
-            if self.node in (0, "all"):
-                floor_filter = pl.col("floor") == self.floor
-            else:
-                floor_filter = (pl.col("floor") == self.floor) & (pl.col("node") == self.node)
+            
 
             # 1. Combine them vertically (faster than diagonal if schema matches)
             combined_stage = pl.concat(self.lazy_frames, how="vertical")
@@ -138,10 +134,6 @@ class HonkaiStatistics_V2_Batch:
         if self.star_num:
             lf = lf.filter((pl.col("star_num")) == self.star_num)
             
-        # 3. INITIAL FILTERING (Floor/Node/Stars)
-        if self.node not in (0, "all"):
-            lf = lf.filter(pl.col("node") == self.node)
-       
 
         # 4. EIDOLON & SUSTAIN LOGIC (Vectorized)
         char_cols = ["ch1", "ch2", "ch3", "ch4"]

@@ -1209,31 +1209,28 @@ class HonkaiStatistics_Legacy_Batch:
         group_keys = seg_keys + ["Character"]
 
         def rollup_gear(df, gear_col, alias):
-            # 1. Group by keys + cons + gear_col to get base aggregate counts/scores
-            base_grouped = (
-                df.group_by(group_keys + ["cons", gear_col])
+            return (
+                df.group_by(group_keys + [gear_col, "cons"])
                 .agg([
-                    pl.count("uid").alias("count"), 
-                    pl.col(self.score_col).alias("scores")
+                    pl.count("uid").alias("count"),
+                    pl.col(self.score_col).alias("scores"),
                 ])
+                .group_by(group_keys + ["cons"])
+                .agg(
+                    pl.struct([pl.col(gear_col).alias("name"), "count", "scores"]).alias(alias)
+                )
+                .with_columns(
+                    (pl.lit(f"{alias}_Eidolon ") + pl.col("cons").cast(pl.String)).alias("_col_label")
+                )
+                .collect()
+                .pivot(on="_col_label", index=group_keys, values=alias, aggregate_function="first")
+                .lazy()
             )
-            
-            # 2. Fan out into distinct list-of-struct columns per Eidolon level (0-6)
-            # This produces the `Lightcones_0`, `Relics_1` columns your display function expects
-            aggs = [
-                pl.struct([pl.col(gear_col).alias("name"), "count", "scores"])
-                .filter(pl.col("cons") == i)
-                .alias(f"{alias}_{i}")
-                for i in range(7)
-            ]
-            
-            return base_grouped.group_by(group_keys).agg(aggs)
 
         w_df = rollup_gear(base_data, "weapon",    "Lightcones")
         a_df = rollup_gear(base_data, "artifacts", "Relics")
         r_df = rollup_gear(base_data, "relics",    "Planar_Set")
 
-        # Include Eidolon sample counts to satisfy the `if "Eidolon" in c` trigger
         agg_base = (
             base_data.group_by(group_keys)
             .agg([
@@ -1241,17 +1238,12 @@ class HonkaiStatistics_Legacy_Batch:
                 pl.col(self.score_col).alias("Total_Scores"),
                 pl.col("has_sustain").sum().alias("Total_Sustains"),
                 pl.col("uid").unique().alias("uids"),
-                # Anchor columns that `display_top_gear` will parse to find the 'level' suffix
-                *[
-                    pl.count("uid").filter(pl.col("cons") == i).alias(f"Total_Samples_Eidolon_{i}")
-                    for i in range(7)
-                ]
             ])
             .join(w_df, on=group_keys, how="left")
             .join(a_df, on=group_keys, how="left")
             .join(r_df, on=group_keys, how="left")
         )
-        
+
         self.char_stats = agg_base.collect()
 
         # Team stats
@@ -1608,22 +1600,41 @@ class HonkaiStatistics_Legacy_Batch:
             .sort(vk + ["Lift"], descending=[True, True, False, True])
         )
         
-    def display_top_gear(self):
-        df = self.char_stats
+    def display_top_gear(self, char_name: str | None = None) -> pl.DataFrame:
+        """
+        Flat DataFrame: one row per (version, floor, node, Character, Eidolon, Category, Gear_Name).
 
+        Columns
+        -------
+        version, floor, node, Character, Eidolon, Category, Gear_Name,
+        Usage, Usage_Rate,
+        Avg_{metric}, 25th Percentile {metric}, Median_{metric},
+        75th Percentile {metric}, Min_{metric}, Max_{metric}, Std_{metric}
+
+        Parameters
+        ----------
+        char_name : str | None
+            If given, filters the output to that character only.
+        """
+        m   = self.metric
+        df  = self.char_stats
+        vk  = self._VER_KEYS  # ["version", "floor", "node"]
+
+        # Gear col names are e.g. "Lightcones_Eidolon 0", "Relics_Eidolon 6"
         eidolon_levels = sorted(
-            {c.split("_")[-1] for c in df.columns if "Eidolon" in c}
+            {c.split("_Eidolon ")[-1] for c in df.columns if "_Eidolon " in c},
+            key=lambda x: int(x),
         )
 
         results = []
         for level in eidolon_levels:
             for gear_type in ["Lightcones", "Relics", "Planar_Set"]:
-                col_name = f"{gear_type}_{level}"
+                col_name = f"{gear_type}_Eidolon {level}"
                 if col_name not in df.columns:
                     continue
 
                 temp = (
-                    df.select(["version","floor","Character", col_name])
+                    df.select(vk + ["Character", col_name])
                     .explode(col_name)
                     .drop_nulls(col_name)
                     .with_columns([
@@ -1632,42 +1643,63 @@ class HonkaiStatistics_Legacy_Batch:
                         pl.col(col_name).struct.field("scores").alias("_scores"),
                     ])
                     .filter(pl.col("Gear_Name") != "Info_not_found")
+                    .drop(col_name)
                 )
                 if temp.is_empty():
                     continue
 
                 processed = (
                     temp
-                    .with_columns(pl.col("Usage").sum().over("version","floor","Character").alias("_total_usage"))
+                    .with_columns(
+                        pl.col("Usage").sum().over(vk + ["Character"]).alias("_total_usage")
+                    )
                     .with_columns([
                         (pl.col("Usage") / pl.col("_total_usage")).alias("Usage_Rate"),
-                        pl.col("_scores").list.mean().round(2).alias(f"Avg {self.metric}"),
-                        pl.col("_scores").list.median().alias("Median"),
-                        pl.col("_scores").list.min().alias(f"Min_{self.metric}"),
-                        pl.col("_scores").list.max().alias(f"Max_{self.metric}"),
-                        pl.col("_scores").list.std().round(2).alias("Std"),
-                        pl.col("_scores").list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile"),
-                        pl.col("_scores").list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile"),
-                        pl.lit(level).alias("Eidolon"),
+                        pl.col("_scores").list.mean().round(2).alias(f"Avg_{m}"),
+                        pl.col("_scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {m}"),
+                        pl.col("_scores").list.median().round(2).alias(f"Median_{m}"),
+                        pl.col("_scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {m}"),
+                        pl.col("_scores").list.min().alias(f"Min_{m}"),
+                        pl.col("_scores").list.max().alias(f"Max_{m}"),
+                        pl.col("_scores").list.std(ddof=1).round(2).alias(f"Std_{m}"),
+                        pl.lit(f"Eidolon {level}").alias("Eidolon"),
                         pl.lit(gear_type).alias("Category"),
                     ])
+                    .drop(["_scores", "_total_usage"])
                 )
-                results.append(processed.select([
-                    "version","floor","Character", "Eidolon", "Category", "Gear_Name",
-                    "Usage", "Usage_Rate", f"Avg {self.metric}", "25th Percentile",
-                    "Median", "75th Percentile", f"Min_{self.metric}", f"Max_{self.metric}", "Std",
-                ]))
+
+                results.append(processed.select(
+                    vk + [
+                        "Character", "Eidolon", "Category", "Gear_Name",
+                        "Usage", "Usage_Rate",
+                        f"Avg_{m}", f"25th Percentile {m}", f"Median_{m}",
+                        f"75th Percentile {m}", f"Min_{m}", f"Max_{m}", f"Std_{m}",
+                    ]
+                ))
 
         if not results:
             return pl.DataFrame()
 
-        return (
-            pl.concat(results)
+        out = (
+            pl.concat(results, how="diagonal")
             .sort(
-                ["version","floor","Character", "Eidolon", "Category", "Usage"],
-                descending=[True,False,False, False, False, True],
+                vk + ["Character", "Eidolon", "Category", "Usage"],
+                descending=[True, True, False, False, False, False, True],
             )
         )
+
+        if char_name is not None:
+            out = out.filter(pl.col("Character") == char_name)
+
+        return out
+
+    def display_single_char_full(self, char_name: str) -> pl.DataFrame | str:
+        """Gear rows for a single character, without the Character column."""
+        out = self.display_top_gear(char_name=char_name)
+        if out.is_empty():
+            return f"Character '{char_name}' not found or has no valid gear data."
+        return out.drop("Character")
+
         
     # --- Combined getters ---
 

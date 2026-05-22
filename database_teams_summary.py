@@ -87,6 +87,7 @@ class HonkaiTeamMetaAnalyzer:
                 -- Score
                 ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
                 ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Score,
+                ROUND(SUM(Median_Score * Samples) / NULLIF(SUM(Samples), 0), 2)       AS Weighted_Avg_Median,
                 {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
 
                 -- Metadata

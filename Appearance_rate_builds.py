@@ -55,7 +55,7 @@ class HonkaiStatistics_builds:
                 .str.replace_all(r"\band\b", "&"),
                     
                 # Add version tag
-                pl.lit(version).alias("version_name")
+                pl.lit(version).alias("version")
             ])
             # Step 3: Conditional Variant Mapping
             .with_columns([
@@ -137,7 +137,7 @@ class HonkaiStatistics_builds:
             full_raw.group_by("character")
             .agg([
                 pl.len().alias("total_sample_size"),
-                pl.col("version_name").n_unique().alias("num_versions"),
+                pl.col("version").n_unique().alias("num_versions"),
                 cs.by_name(valid_cols).mean().name.prefix("Avg_")
             ])
         )

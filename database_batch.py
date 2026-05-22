@@ -255,7 +255,7 @@ class HonkaiDataPlatform:
             conn.execute(f"""
                 CREATE OR REPLACE TABLE {table} AS
                 SELECT * FROM {table}
-                ORDER BY version,up_eidolon,node
+                ORDER BY version DESC,up_eidolon DESC,node DESC
             """)
         except Exception:
             pass
@@ -380,7 +380,7 @@ class HonkaiDataPlatform:
           
             print(f"  [LEGACY] Gear for {mode} v{v}")
             self._db_save(conn,
-                self._standardize(scraper.display_top_gear(), mode, v, e, f,n, era),
+                self._standardize(scraper.display_top_gear().filter(pl.col('node')==0), mode, v, e, f,n, era),
                 f"{prefix}_stats_gear_usage")
 
     # ------------------------------------------------------------------
@@ -462,4 +462,4 @@ class HonkaiDataPlatform:
 
 if __name__ == "__main__":
     platform = HonkaiDataPlatform()
-    platform.orchestrate_update()
+    platform.orchestrate_update(target_mode="PURE_FICTION_LEGACY")

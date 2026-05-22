@@ -55,7 +55,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         stage_lf = stage_lf.with_columns([
             pl.col("uid").cast(pl.String),
             cs.contains("cons").cast(pl.Float64),
-            pl.lit(version).alias("version_name")
+            pl.lit(version).alias("version")
         ])
 
         # --- PIPELINE 2: CHARACTER INDIVIDUAL BUILD RECORDS ---
@@ -71,7 +71,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         char_lf = char_lf.with_columns([
             pl.col("uid").cast(pl.String),
             cs.contains("cons").cast(pl.Float64),
-            pl.lit(version).alias("version_name")
+            pl.lit(version).alias("version")
         ])
 
         return stage_lf, char_lf
@@ -185,12 +185,12 @@ class HonkaiStatistics_V2_APOC_Batch:
         
         # If node is 0, process combined data as well
         if self.node == 0 or self.node=="all":
-            # We must include version_name so we can join properly
-            base_cols_for_n = ["uid", "version_name","up_to_eidolon_level" ,"node", "round_num", "max_eidolon"] + char_cols
+            # We must include version so we can join properly
+            base_cols_for_n = ["uid", "version","up_to_eidolon_level" ,"node", "round_num", "max_eidolon"] + char_cols
             lf_base_for_combined = lf.select(base_cols_for_n)
 
             n1 = lf_base_for_combined.filter(pl.col("node") == 1).select([
-                pl.col("uid"), pl.col("version_name"),"up_to_eidolon_level",
+                pl.col("uid"), pl.col("version"),"up_to_eidolon_level",
                 pl.concat_list(char_cols).alias("n1_chars").list.eval(
                         pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))),
                 pl.col("round_num").alias("n1_Scores"),
@@ -198,15 +198,15 @@ class HonkaiStatistics_V2_APOC_Batch:
             ])
 
             n2 = lf_base_for_combined.filter(pl.col("node") == 2).select([
-                pl.col("uid"), pl.col("version_name"),"up_to_eidolon_level",
+                pl.col("uid"), pl.col("version"),"up_to_eidolon_level",
                 pl.concat_list(char_cols).alias("n2_chars").list.eval(
                         pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))),
                 pl.col("round_num").alias("n2_Scores"),
                 pl.col("max_eidolon").alias("n2_max_ed")
             ])
 
-            # JOIN on uid AND version_name
-            combined = n1.join(n2, on=["uid", "version_name","up_to_eidolon_level"], how="inner")
+            # JOIN on uid AND version
+            combined = n1.join(n2, on=["uid", "version","up_to_eidolon_level"], how="inner")
 
             combined = combined.with_columns([
                 (pl.col("n1_Scores")+pl.col("n2_Scores")).alias("total_Scores"),
@@ -242,7 +242,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         ).drop("variable")
 
         cons = self.lf.unpivot(
-            index=["uid", "round_num", "has_sustain", "version_name","up_to_eidolon_level","node"], 
+            index=["uid", "round_num", "has_sustain", "version","up_to_eidolon_level","node"], 
             on=cons_cols, 
             value_name="cons"
         ).drop(["uid", "round_num", "has_sustain", "variable"])    
@@ -258,8 +258,8 @@ class HonkaiStatistics_V2_APOC_Batch:
         base_data = (
             base_data.join(
                 char_lf, 
-                left_on=["uid", 'Character', "version_name"], 
-                right_on=["uid", 'name', "version_name"], 
+                left_on=["uid", 'Character', "version"], 
+                right_on=["uid", 'name', "version"], 
                 how="left"
             )
             .drop(['phase', 'cons_right', 'level'])
@@ -271,8 +271,8 @@ class HonkaiStatistics_V2_APOC_Batch:
         )
 
         def get_performance_stats(df, group_keys):
-            # Enforce that "version_name" exists exactly once in keys
-            keys = list(set(group_keys + ["version_name","up_to_eidolon_level","node"]))
+            # Enforce that "version" exists exactly once in keys
+            keys = list(set(group_keys + ["version","up_to_eidolon_level","node"]))
 
             def rollup_gear(df, gear_col, alias):
                 return (
@@ -320,24 +320,24 @@ class HonkaiStatistics_V2_APOC_Batch:
 
         pivoted = per_eidolon.pivot(
             on="Eidolon_Level",
-            index=["version_name","up_to_eidolon_level","node", "Character"],
+            index=["version","up_to_eidolon_level","node", "Character"],
             values=["Samples", "Scores", "Sustains", "Lightcones", "Relics", "Planar_Set"],
             aggregate_function="first" 
         )
 
         final_df = (
             totals.collect()
-            .join(pivoted, on=["version_name","up_to_eidolon_level","node", "Character"], how="left")
+            .join(pivoted, on=["version","up_to_eidolon_level","node", "Character"], how="left")
         )
 
         eidolon_cols = sorted([c for c in final_df.columns if "Eidolon" in c])
         header_cols = [
-            "version_name","up_to_eidolon_level","node", "Character", "Total_Samples", "Total_Scores", "Total_Sustains", 
+            "version","up_to_eidolon_level","node", "Character", "Total_Samples", "Total_Scores", "Total_Sustains", 
             "uids", "Lightcones", "Relics", "Planar_Set"
         ]
         self.char_stats = final_df.select(header_cols + eidolon_cols)
 
-        # 2. TEAM AGGREGATION - Grouping by version_name
+        # 2. TEAM AGGREGATION - Grouping by version
         self.team_stats = (
             lf.with_columns(pl.concat_list(char_cols).alias("temp_team"))
             .with_columns(
@@ -345,7 +345,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                     pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))
                 ).alias("team_key")
             )
-            .group_by(["version_name","up_to_eidolon_level","node", "team_key"])
+            .group_by(["version","up_to_eidolon_level","node", "team_key"])
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("round_num").alias("Scores"),
@@ -362,7 +362,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 .list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null()))
                 .alias("archetype_key")
             )
-            .group_by(["version_name","up_to_eidolon_level","node", "archetype_key"])
+            .group_by(["version","up_to_eidolon_level","node", "archetype_key"])
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
@@ -375,7 +375,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         result = new.explode('team_key').explode('Consequent')
         result = result.filter(pl.col("team_key") != pl.col("Consequent"))
 
-        self.duos = result.group_by(["version_name","up_to_eidolon_level","node", pl.col('team_key').alias('Antecedent'), "Consequent"]).agg([
+        self.duos = result.group_by(["version","up_to_eidolon_level","node", pl.col('team_key').alias('Antecedent'), "Consequent"]).agg([
             pl.col("Samples").sum(),
             pl.col("Scores").list.explode().alias("Scores"),
             pl.col("uids").list.explode().unique().alias("uids"),
@@ -383,12 +383,12 @@ class HonkaiStatistics_V2_APOC_Batch:
         ])
         
         # Calculate samples per version for denominator calculations
-        self.total_samples_df = lf.group_by("version_name","up_to_eidolon_level","node").agg(pl.col("uid").n_unique().alias("version_total_samples")).collect()
+        self.total_samples_df = lf.group_by("version","up_to_eidolon_level","node").agg(pl.col("uid").n_unique().alias("version_total_samples")).collect()
 
     def _process_combined_data(self, combined, char_cols, cons_cols, dps_names, char_to_index):
         # 5. AGGREGATE COMBINED TEAMS
         self.combined_team_stats = (
-            combined.group_by(["version_name","up_to_eidolon_level", "n1_chars", "n2_chars"])
+            combined.group_by(["version","up_to_eidolon_level", "n1_chars", "n2_chars"])
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("total_Scores").alias("Scores"),
@@ -403,7 +403,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 pl.col("n1_chars").list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null())).alias("n1_archetype"),
                 pl.col("n2_chars").list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null())).alias("n2_archetype")
             ])
-            .group_by(["version_name","up_to_eidolon_level", "n1_archetype", "n2_archetype"])
+            .group_by(["version","up_to_eidolon_level", "n1_archetype", "n2_archetype"])
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
@@ -413,10 +413,10 @@ class HonkaiStatistics_V2_APOC_Batch:
 
         # 6. CHARACTER PAIRING
         self.combined_char_stats = (
-            combined.select(["uid", "version_name","up_to_eidolon_level","total_Scores", "n1_chars", "n2_chars"])
+            combined.select(["uid", "version","up_to_eidolon_level","total_Scores", "n1_chars", "n2_chars"])
             .explode("n1_chars")
             .explode("n2_chars")
-            .group_by(["version_name","up_to_eidolon_level", "n1_chars", "n2_chars"])
+            .group_by(["version","up_to_eidolon_level", "n1_chars", "n2_chars"])
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("total_Scores").alias("Scores")
@@ -424,7 +424,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             .collect()
         )
 
-        self.combined_total_samples_df = combined.group_by("version_name","up_to_eidolon_level").agg(pl.col("uid").n_unique().alias("combined_version_total_samples")).collect()
+        self.combined_total_samples_df = combined.group_by("version","up_to_eidolon_level").agg(pl.col("uid").n_unique().alias("combined_version_total_samples")).collect()
 
 
     def _plot_cycle_distribution(self, df: pl.DataFrame, round_num: str, eidolon_col: str, cumulative: bool, output: bool, title: str):
@@ -440,8 +440,8 @@ class HonkaiStatistics_V2_APOC_Batch:
 
         # 2. Dynamic grouping columns determination
         group_cols = []
-        if "version_name" in df.columns:
-            group_cols.append("version_name")
+        if "version" in df.columns:
+            group_cols.append("version")
         if "up_to_eidolon_level" in df.columns:
             group_cols.append("up_to_eidolon_level")
         if "node" in df.columns:
@@ -567,7 +567,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         return final_df
 
     def get_team_df(self):
-        df = self.team_stats.join(self.total_samples_df, on=["version_name","up_to_eidolon_level","node"], how="left").with_columns([
+        df = self.team_stats.join(self.total_samples_df, on=["version","up_to_eidolon_level","node"], how="left").with_columns([
             pl.col("team_key").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
             (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
             (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
@@ -578,16 +578,16 @@ class HonkaiStatistics_V2_APOC_Batch:
             pl.col("Scores").list.min().alias("Min Scores"),
             pl.col("Scores").list.mean().round(2).alias("Average Scores"),
             pl.col("Scores").list.max().alias("Max Scores")
-        ]).sort(["version_name", "Samples"], descending=[True, True])
+        ]).sort(["version", "Samples"], descending=[True, True])
 
         return df.with_row_index("Rank", offset=1).select([
-            "Rank", "version_name","up_to_eidolon_level","node", "Team", "Appearance Rate (%)", "Samples",
+            "Rank", "version","up_to_eidolon_level","node", "Team", "Appearance Rate (%)", "Samples",
             "Min Scores", "25th Percentile Scores", "Median Scores",
             "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores", "Sustain?"
         ])
 
     def get_archetype_df(self):
-      df = self.archetypes_stats.join(self.total_samples_df, on=["version_name","up_to_eidolon_level","node"], how="left").with_columns([
+      df = self.archetypes_stats.join(self.total_samples_df, on=["version","up_to_eidolon_level","node"], how="left").with_columns([
           pl.col("archetype_key").list.join(" + ")
               .map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
               .alias("Archetype Core"),
@@ -600,10 +600,10 @@ class HonkaiStatistics_V2_APOC_Batch:
           pl.col("Scores").list.mean().round(2).alias("Avg Scores"),
           pl.col("Scores").list.max().alias("Max Scores"),
           pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
-      ]).sort(["version_name", "Samples"], descending=[True, True])
+      ]).sort(["version", "Samples"], descending=[True, True])
 
       return df.with_row_index("Rank", offset=1).select([
-          "Rank", "version_name","up_to_eidolon_level","node", "Archetype Core", "Usage %", "Samples", "Sustain_Percentage",
+          "Rank", "version","up_to_eidolon_level","node", "Archetype Core", "Usage %", "Samples", "Sustain_Percentage",
           pl.col("Total_Sustains").alias("Sustain Samples"),
           "Min Scores", "25th %", "Median", "75th %", "Avg Scores", "Max Scores", "Std Dev Scores"
       ])
@@ -611,7 +611,7 @@ class HonkaiStatistics_V2_APOC_Batch:
     def get_char_df(self):
         eidolon_sample_cols = [c for c in self.char_stats.columns if "Samples_Eidolon" in c]
 
-        df = self.char_stats.join(self.total_samples_df, on=["version_name","up_to_eidolon_level","node"], how="left").with_columns([
+        df = self.char_stats.join(self.total_samples_df, on=["version","up_to_eidolon_level","node"], how="left").with_columns([
             (pl.col("Total_Samples") / pl.col("version_total_samples") * 100).round(3).alias("Appearance Rate (%)"),
             (pl.col("Total_Sustains") / pl.col("Total_Samples") * 100).round(2).alias("Sustain_Percentage"),
             pl.col("Total_Scores").list.min().alias("Min Scores"),
@@ -627,11 +627,11 @@ class HonkaiStatistics_V2_APOC_Batch:
             ]
         ])
 
-        df = df.sort(["version_name", "Total_Samples"], descending=[True, True]).with_row_index("Rank", offset=1)
+        df = df.sort(["version", "Total_Samples"], descending=[True, True]).with_row_index("Rank", offset=1)
         eidolon_perc_cols = sorted([c for c in df.columns if "Eidolon" in c and "%" in c])
 
         return df.select([
-            "Rank", "version_name","up_to_eidolon_level","node", "Character", "Appearance Rate (%)", 
+            "Rank", "version","up_to_eidolon_level","node", "Character", "Appearance Rate (%)", 
             pl.col("Total_Samples").alias("Samples"),
             "Min Scores", "25th Percentile Scores", "Median Scores", 
             "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores",
@@ -655,10 +655,10 @@ class HonkaiStatistics_V2_APOC_Batch:
                 stat_exprs.append((pl.col(col) / pl.col(sample_col) * 100).round(2).alias(f"{label} Sustain %"))
 
         df = self.char_stats.with_columns(stat_exprs)
-        df = df.sort(["version_name","up_to_eidolon_level","node", "Total_Samples"], descending=[True, True]).with_row_index("Rank", offset=1)
+        df = df.sort(["version","up_to_eidolon_level","node", "Total_Samples"], descending=[True, True]).with_row_index("Rank", offset=1)
 
         new_stat_cols = sorted([c for c in df.columns if "Avg Scores" in c or "Sustain %" in c])
-        header_cols = ["Rank", "version_name","up_to_eidolon_level","node","Character", "Total_Samples", "Total_Sustains"]
+        header_cols = ["Rank", "version","up_to_eidolon_level","node","Character", "Total_Samples", "Total_Sustains"]
         
         pl.Config.set_tbl_cols(-1)
         return df.select(header_cols + new_stat_cols)
@@ -667,9 +667,9 @@ class HonkaiStatistics_V2_APOC_Batch:
         # 1. Make sure we join on BOTH keys so we don't accidentally duplicate rows
         char_freq = (
             self.char_stats.lazy()
-            .join(self.total_samples_df.lazy(), on=["version_name", "up_to_eidolon_level","node"], how="left")
+            .join(self.total_samples_df.lazy(), on=["version", "up_to_eidolon_level","node"], how="left")
             .select([
-                "version_name", "up_to_eidolon_level","node", "Character",
+                "version", "up_to_eidolon_level","node", "Character",
                 (pl.col("Total_Samples") / pl.col("version_total_samples")).alias("char_support")
             ])
         )
@@ -677,11 +677,11 @@ class HonkaiStatistics_V2_APOC_Batch:
         # 2. Start with .lazy() here so it plays nice with char_freq
         rules = (
             self.duos.lazy()
-            .join(char_freq, left_on=["version_name", "up_to_eidolon_level","node", "Antecedent"], right_on=["version_name", "up_to_eidolon_level","node", "Character"], how="left")
+            .join(char_freq, left_on=["version", "up_to_eidolon_level","node", "Antecedent"], right_on=["version", "up_to_eidolon_level","node", "Character"], how="left")
             .rename({"char_support": "support_A"})
-            .join(char_freq, left_on=["version_name", "up_to_eidolon_level","node", "Consequent"], right_on=["version_name", "up_to_eidolon_level","node", "Character"], how="left")
+            .join(char_freq, left_on=["version", "up_to_eidolon_level","node", "Consequent"], right_on=["version", "up_to_eidolon_level","node", "Character"], how="left")
             .rename({"char_support": "support_C"})
-            .join(self.total_samples_df.lazy(), on=["version_name", "up_to_eidolon_level","node"], how="left")
+            .join(self.total_samples_df.lazy(), on=["version", "up_to_eidolon_level","node"], how="left")
         )
 
         return rules.with_columns([
@@ -693,7 +693,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             (pl.col("support") - (pl.col("support_A") * pl.col("support_C"))).alias("leverage"),
             ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction")
         ]).select([
-            "version_name", "up_to_eidolon_level","node", "Antecedent", "Consequent", "Samples",
+            "version", "up_to_eidolon_level","node", "Antecedent", "Consequent", "Samples",
             (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
             pl.col("confidence").round(3).alias("Confidence"),
             pl.col("lift").round(3).alias("Lift"),
@@ -709,10 +709,10 @@ class HonkaiStatistics_V2_APOC_Batch:
             pl.col("Scores").list.min().alias("Min Scores"),
             pl.col("Scores").list.mean().round(2).alias("Average Scores"),
             pl.col("Scores").list.max().alias("Max Scores")
-        ]).sort(["version_name","node", "Lift"], descending=[True,False, True]).collect()
+        ]).sort(["version","node", "Lift"], descending=[True,False, True]).collect()
     
     def get_combined_team_df(self):
-        df = self.combined_team_stats.join(self.combined_total_samples_df, on=["version_name","up_to_eidolon_level"], how="left").with_columns([
+        df = self.combined_team_stats.join(self.combined_total_samples_df, on=["version","up_to_eidolon_level"], how="left").with_columns([
             pl.col("n1_chars").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team Node 1"),
             pl.col("n2_chars").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team Node 2"),
             (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
@@ -723,16 +723,16 @@ class HonkaiStatistics_V2_APOC_Batch:
             pl.col("Scores").list.min().alias("Min Scores"),
             pl.col("Scores").list.mean().round(2).alias("Average Scores"),
             pl.col("Scores").list.max().alias("Max Scores")
-        ]).sort(["version_name","up_to_eidolon_level", "Samples"], descending=[True,False, True])
+        ]).sort(["version","up_to_eidolon_level", "Samples"], descending=[True,False, True])
 
         return df.with_row_index("Rank", offset=1).select([
-            "Rank", "version_name","up_to_eidolon_level", "Team Node 1", "Team Node 2", "Appearance Rate (%)", "Samples",
+            "Rank", "version","up_to_eidolon_level", "Team Node 1", "Team Node 2", "Appearance Rate (%)", "Samples",
             "Min Scores", "25th Percentile Scores", "Median Scores",
             "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
         ])
 
     def get_combined_archetype_df(self):
-        df = self.combined_archetypes_stats.join(self.combined_total_samples_df, on=["version_name","up_to_eidolon_level"], how="left").with_columns([
+        df = self.combined_archetypes_stats.join(self.combined_total_samples_df, on=["version","up_to_eidolon_level"], how="left").with_columns([
             pl.col("n1_archetype").list.join(" + ")
                 .map_elements(lambda s: f"[{s}]" if s != "" else "[Other]", return_dtype=pl.String).alias("Core Node 1"),
             pl.col("n2_archetype").list.join(" + ")
@@ -745,16 +745,16 @@ class HonkaiStatistics_V2_APOC_Batch:
             pl.col("Scores").list.min().alias("Min Scores"),
             pl.col("Scores").list.mean().round(2).alias("Average Scores"),
             pl.col("Scores").list.max().alias("Max Scores")
-        ]).sort(["version_name", "Samples"], descending=[True, True])
+        ]).sort(["version", "Samples"], descending=[True, True])
 
         return df.with_row_index("Rank", offset=1).select([
-            "Rank", "version_name","up_to_eidolon_level", "Core Node 1", "Core Node 2", "Appearance Rate (%)", "Samples",
+            "Rank", "version","up_to_eidolon_level", "Core Node 1", "Core Node 2", "Appearance Rate (%)", "Samples",
             "Min Scores", "25th Percentile Scores", "Median Scores",
             "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
         ])
 
     def get_combined_char_df(self):
-        df = self.combined_char_stats.join(self.combined_total_samples_df, on=["version_name","up_to_eidolon_level"], how="left").with_columns([
+        df = self.combined_char_stats.join(self.combined_total_samples_df, on=["version","up_to_eidolon_level"], how="left").with_columns([
             pl.col("n1_chars").alias("Character Node 1"),
             pl.col("n2_chars").alias("Character Node 2"),
             (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
@@ -765,10 +765,10 @@ class HonkaiStatistics_V2_APOC_Batch:
             pl.col("Scores").list.min().alias("Min Scores"),
             pl.col("Scores").list.mean().round(2).alias("Average Scores"),
             pl.col("Scores").list.max().alias("Max Scores")
-        ]).sort(["version_name", "Samples"], descending=[True, True])
+        ]).sort(["version", "Samples"], descending=[True, True])
 
         return df.with_row_index("Rank", offset=1).select([
-            "Rank", "version_name","up_to_eidolon_level", "Character Node 1", "Character Node 2", "Samples", "Appearance Rate (%)",
+            "Rank", "version","up_to_eidolon_level", "Character Node 1", "Character Node 2", "Samples", "Appearance Rate (%)",
             "Min Scores", "25th Percentile Scores", "Median Scores",
             "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
         ])
@@ -785,7 +785,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                     continue
 
                 temp = (
-                    df.select(["version_name","up_to_eidolon_level","node" ,"Character", col_name])
+                    df.select(["version","up_to_eidolon_level","node" ,"Character", col_name])
                     .explode(col_name)
                     .drop_nulls(col_name)
                     .with_columns([
@@ -801,7 +801,7 @@ class HonkaiStatistics_V2_APOC_Batch:
 
                 processed = (
                     temp.with_columns([
-                        pl.col("Usage").sum().over(["version_name","up_to_eidolon_level","node", "Character"]).alias("_total_filtered_usage")
+                        pl.col("Usage").sum().over(["version","up_to_eidolon_level","node", "Character"]).alias("_total_filtered_usage")
                     ])
                     .with_columns([
                         (pl.col("Usage") / pl.col("_total_filtered_usage")).alias("Usage_Rate"),
@@ -821,7 +821,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 ])
                 
                 results.append(full_list.select([
-                    "version_name","up_to_eidolon_level","node", "Character", "Eidolon", "Category", "Gear_Name", 
+                    "version","up_to_eidolon_level","node", "Character", "Eidolon", "Category", "Gear_Name", 
                     "Usage", "Usage_Rate", "Avg_Scores", "25th Percentile Scores", 
                     "Median_Scores", "75th Percentile Scores", "Min_Scores", 
                     "Max_Scores", "Std_Scores"
@@ -833,7 +833,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         return (
             pl.concat(results)
             .sort(
-                by=["version_name","up_to_eidolon_level","node", "Character", "Eidolon", pl.col("Category").str.slice(0, 1), "Usage"], 
+                by=["version","up_to_eidolon_level","node", "Character", "Eidolon", pl.col("Category").str.slice(0, 1), "Usage"], 
                 descending=[True,False,True, False, False, False, True]
             )
         )

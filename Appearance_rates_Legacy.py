@@ -844,3 +844,906 @@ class HonkaiStatistics_Legacy:
             df=self.combined, score_col="total_score", output=output,
             title=f"Combined Score Distribution — v{self.version} [{self.mode.upper()}], floor {self.floor}",
         )
+
+
+# =============================================================================
+# BATCH CLASS  (lazy / concat-first approach — mirrors Appearance_rate_V2_batch)
+# =============================================================================
+
+from dotenv import load_dotenv
+load_dotenv()
+
+# ---------------------------------------------------------------------------
+# Floor ranges per sub-mode
+# MOC_LEGACY     : versions 1.0.3 – 1.5.2  → max floor 10, nodes 1 & 2
+# MOC_LATE_LEGACY: versions 1.6.1 – 2.1.4  → max floor 12, nodes 1 & 2
+# PF_LEGACY      : versions 1.6.2 – 2.1.3  → max floor  4, nodes 1 & 2
+# ---------------------------------------------------------------------------
+_LEGACY_SUBMODE_CONFIG = {
+    "moc_legacy": {
+        "env_key":   "MOC_VERSIONS_LEGACY",
+        "mode":      "moc",
+        "max_floor": 10,
+        "nodes":     [1, 2],
+    },
+    "moc_late_legacy": {
+        "env_key":   "MOC_VERSIONS_LATE_LEGACY",
+        "mode":      "moc",
+        "max_floor": 12,
+        "nodes":     [1, 2],
+    },
+    "pf_legacy": {
+        "env_key":   "PF_VERSIONS_LEGACY",
+        "mode":      "pf",
+        "max_floor": 4,
+        "nodes":     [1, 2],
+    },
+}
+
+
+class HonkaiStatistics_Legacy_Batch:
+    """
+    Batch version of HonkaiStatistics_Legacy — lazy / concat-first approach.
+
+    Mirrors the architecture of Appearance_rate_V2_batch:
+      1. _load_data()           — per version: download/cache parquet, apply
+                                  schema corrections (floor normalisation,
+                                  missing gear columns), return LazyFrames.
+      2. _build_lazy_sequences() — loop versions, collect lazy lists, concat
+                                  once, run the full pipeline once on the
+                                  combined frame.
+      3. get_*()                — return plain DataFrames segmented by
+                                  [version, floor, node].
+
+    Sub-modes
+    ---------
+    "moc_legacy"      — MOC_VERSIONS_LEGACY,      floors 1-10, nodes 1 & 2
+    "moc_late_legacy" — MOC_VERSIONS_LATE_LEGACY,  floors 1-12, nodes 1 & 2
+    "pf_legacy"       — PF_VERSIONS_LEGACY,         floors 1-4,  nodes 1 & 2
+    "all_moc"         — both moc_legacy + moc_late_legacy combined
+
+    Parameters
+    ----------
+    sub_mode : str
+        One of the keys above (case-insensitive).
+    floor : int | "all"
+        Specific floor to include, or "all" for all floors in the sub-mode.
+    node : int | "all"
+        0 = combined only, 1/2 = single node,
+        "all" = nodes 1, 2, and the synthetic node-0 combined rows.
+    by_cycle : int
+        MoC upper-cycle threshold.  Default 10 000 (no filter).
+    by_points : int | float
+        PF lower-points threshold.
+    by_cycle_combined : int
+        MoC combined threshold.
+    by_points_combined : int | float
+        PF combined threshold.
+    """
+
+    def __init__(
+        self,
+        sub_mode: str,
+        floor="all",
+        node="all",
+        by_cycle: int = 10_000,
+        by_points: int | float = 0,
+        by_cycle_combined: int = 10_000,
+        by_points_combined: int | float = 0,
+    ):
+        sub_mode = sub_mode.lower()
+
+        if sub_mode == "all_moc":
+            self._submodes = ["moc_legacy", "moc_late_legacy"]
+        elif sub_mode in _LEGACY_SUBMODE_CONFIG:
+            self._submodes = [sub_mode]
+        else:
+            raise ValueError(
+                f"Unknown sub_mode {sub_mode!r}. "
+                f"Choose from: {list(_LEGACY_SUBMODE_CONFIG)} + 'all_moc'"
+            )
+
+        # Determine mode (moc or pf) — all_moc is always moc
+        self.mode = _LEGACY_SUBMODE_CONFIG[self._submodes[0]]["mode"]
+        self.metric = "Cycles" if self.mode == "moc" else "Points"
+        self.score_col = "round_num"
+        self.folder = "raw_data"
+
+        self.floor              = floor
+        self.node               = node
+        self.by_cycle           = by_cycle
+        self.by_points          = by_points
+        self.by_cycle_combined  = by_cycle_combined
+        self.by_points_combined = by_points_combined
+
+        self.lazy_frames      = []
+        self.char_lazy_frames = []
+
+        self._build_lazy_sequences()
+
+    # ------------------------------------------------------------------
+    # Per-version data loader with schema normalisation
+    # ------------------------------------------------------------------
+
+    def _load_data(self, version: str, mode: str):
+        """
+        Load a single version's parquet files, apply all schema corrections
+        that vary per version, and return two fully normalised LazyFrames.
+
+        Schema corrections done here (so the concat later can be vertical):
+          - Floor: string → Int64 (versions ≤ 1.4.x)
+          - Duplicate rows removed (versions ≤ 1.4.1)
+          - Gear columns: weapon / artifacts / relics guaranteed present
+            (filled with null if missing — struct col added as null col)
+          - cons column in char file guaranteed present (0 if absent)
+          - version tag stamped onto both frames
+        """
+        suffix = "_pf" if mode == "pf" else ""
+        path       = os.path.join(self.folder, f"{version}{suffix}.parquet")
+        path_char  = os.path.join(self.folder, f"{version}_char.parquet")
+
+        corrupt_bullets = ["\u00e2\u20ac\u00a2", "\u00c3\u00a2\u00e2\u201a\u00ac\u00c2\u00a2"]
+        clean_bullets   = ["\u2022", "\u2022"]
+
+        # --- Stage file ---
+        if not os.path.exists(path):
+            url = f"https://huggingface.co/datasets/LvlUrArti/MocData/resolve/main/{version}{suffix}.csv"
+            tmp = pl.read_csv(url).unique()   # deduplicate on CSV load too
+            os.makedirs(self.folder, exist_ok=True)
+            tmp.write_parquet(path)
+        else:
+            # Deduplicate eagerly on first access (<=1.4.1 parquets may have dupes)
+            tmp = pl.read_parquet(path).unique()
+            tmp.write_parquet(path)           # overwrite cleaned version
+
+        stage_lf = pl.scan_parquet(path)
+
+        # Floor: cast string → Int64 if needed (check schema without collecting)
+        if stage_lf.collect_schema()["floor"] == pl.String:
+            stage_lf = stage_lf.with_columns(
+                pl.col("floor")
+                .str.replace_all(r"<[^>]+>", "")
+                .str.extract(r".*?(\d+)\D*$", group_index=1)
+                .cast(pl.Int64)
+                .alias("floor")
+            )
+
+        stage_lf = stage_lf.with_columns([
+            pl.col("uid").cast(pl.String),
+            pl.lit(version).alias("version"),
+            cs.string().exclude("uid")
+              .str.replace_many(corrupt_bullets, clean_bullets)
+              .str.replace_all(r"\band\b", "&")
+              .str.replace_all(r"^March 7th$", "Ice March 7th"),
+        ])
+
+        # --- Char file ---
+        if not os.path.exists(path_char):
+            url = f"https://huggingface.co/datasets/LvlUrArti/MocData/resolve/main/{version}_char.csv"
+            tmp = pl.read_csv(url)
+            os.makedirs(self.folder, exist_ok=True)
+            tmp.write_parquet(path_char)
+
+        char_schema = pl.scan_parquet(path_char).collect_schema()
+
+        char_lf = pl.scan_parquet(path_char).with_columns([
+            pl.col("uid").cast(pl.String),
+            pl.lit(version).alias("version"),
+            cs.string().exclude("uid")
+              .str.replace_many(corrupt_bullets, clean_bullets)
+              .str.replace_all(r"\band\b", "&")
+              .str.replace_all(r"^March 7th$", "Ice March 7th"),
+        ])
+
+        # Guarantee gear columns exist (versions like 1.0.3 may be missing some)
+        for gear_col in ["weapon", "artifacts", "relics"]:
+            if gear_col not in char_schema.names():
+                char_lf = char_lf.with_columns(pl.lit(None).cast(pl.String).alias(gear_col))
+
+        # Guarantee cons column exists (not present in very early versions)
+        if "cons" not in char_schema.names():
+            char_lf = char_lf.with_columns(pl.lit(0).cast(pl.Int64).alias("cons"))
+
+        # Drop columns that collide on join downstream
+        for drop_col in ["phase", "level"]:
+            if drop_col in char_schema.names():
+                char_lf = char_lf.drop(drop_col)
+
+        return stage_lf, char_lf
+
+    # ------------------------------------------------------------------
+    # Lazy sequence builder  (mirrors _build_lazy_sequences in V2 batch)
+    # ------------------------------------------------------------------
+
+    def _build_lazy_sequences(self):
+        """
+        1. Loop through every version across all selected sub-modes.
+        2. Call _load_data() per version — schema is normalised there.
+        3. Concat all stage frames vertically (schemas now match).
+        4. Apply sustain flag, score filter, floor/node synthetic rows.
+        5. Run _process_data() and _process_combined_data() once.
+        """
+        with open("characters.json", "rb") as f:
+            info = orjson.loads(f.read())
+
+        rol_df = pl.DataFrame([
+            {
+                "char":       k,
+                "is_sustain": "sustain" in v.get("role", []),
+                "is_dps":     bool(set(v.get("role", [])).intersection({"dps", "specialist"})),
+                "sort_index": i,
+            }
+            for i, (k, v) in enumerate(info.items())
+        ])
+        sustain_names = rol_df.filter(pl.col("is_sustain")).get_column("char").to_list()
+        dps_names     = rol_df.filter(pl.col("is_dps")).get_column("char").to_list()
+        char_to_index = dict(zip(rol_df["char"], rol_df["sort_index"]))
+        char_cols     = ["ch1", "ch2", "ch3", "ch4"]
+
+        # --- collect lazy frames per version ---
+        for sm in self._submodes:
+            cfg      = _LEGACY_SUBMODE_CONFIG[sm]
+            raw      = os.getenv(cfg["env_key"], "")
+            versions = [v.strip() for v in raw.split(",") if v.strip()]
+            for v in versions:
+                stage_lf, char_lf = self._load_data(v, cfg["mode"])
+                self.lazy_frames.append(stage_lf)
+                self.char_lazy_frames.append(char_lf)
+
+        if not self.lazy_frames:
+            raise RuntimeError("No data loaded — check .env keys.")
+
+        # --- concat once (vertical is safe: _load_data normalised schemas) ---
+        lf      = pl.concat(self.lazy_frames,      how="diagonal")
+        char_lf = pl.concat(self.char_lazy_frames, how="diagonal")
+
+        # --- floor filter ---
+        if self.floor != "all":
+            lf = lf.filter(pl.col("floor") == self.floor)
+
+        # --- sustain flag ---
+        lf = lf.with_columns(
+            pl.any_horizontal([pl.col(c).is_in(sustain_names) for c in char_cols])
+              .alias("has_sustain")
+        )
+
+        # --- score filter ---
+        if self.mode == "moc":
+            lf = lf.filter(pl.col(self.score_col) <= self.by_cycle)
+        else:
+            lf = lf.filter(pl.col(self.score_col) >= self.by_points)
+
+        self.lf = lf
+
+        # --- combined (cross-node) data ---
+        base_cols = ["uid", "version", "floor", "node", self.score_col] + char_cols
+        lf_base   = lf.select(base_cols)
+
+        n1 = lf_base.filter(pl.col("node") == 1).select([
+            "uid", "version", "floor",
+            pl.concat_list(char_cols)
+              .list.eval(pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999)))
+              .alias("n1_chars"),
+            pl.col(self.score_col).alias("n1_score"),
+        ])
+        n2 = lf_base.filter(pl.col("node") == 2).select([
+            "uid", "version", "floor",
+            pl.concat_list(char_cols)
+              .list.eval(pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999)))
+              .alias("n2_chars"),
+            pl.col(self.score_col).alias("n2_score"),
+        ])
+
+        combined = n1.join(n2, on=["uid", "version", "floor"], how="inner")
+
+        if self.mode == "moc":
+            combined = combined.with_columns(pl.col("n1_score").alias("total_score"))
+            self.combined = combined.filter(pl.col("total_score") <= self.by_cycle_combined)
+        else:
+            combined = combined.with_columns((pl.col("n1_score") + pl.col("n2_score")).alias("total_score"))
+            self.combined = combined.filter(pl.col("total_score") >= self.by_points_combined)
+
+        self._process_combined_data(self.combined, dps_names, char_to_index)
+
+        # --- synthetic node=0 rows (mirrors V2 batch node trick) ---
+        lf_node0 = lf.with_columns(
+            pl.when(pl.col("node").is_in([1, 2]))
+              .then(0)
+              .otherwise(pl.col("node"))
+              .alias("node")
+        )
+
+        if self.node == "all":
+            # node="all": keep original node rows PLUS the relabelled node-0 rows
+            self.lf = pl.concat([lf_node0, lf], how="diagonal")
+        elif self.node in (0, "0"):
+            # combined only
+            self.lf = lf_node0
+        else:
+            # single node filter
+            self.lf = lf.filter(pl.col("node") == int(self.node))
+
+        self._process_data(self.lf, char_lf, char_cols, dps_names, char_to_index)
+
+    # ------------------------------------------------------------------
+    # Core aggregation pipeline
+    # ------------------------------------------------------------------
+
+    def _process_data(self, lf, char_lf, char_cols, dps_names, char_to_index):
+        seg_keys = ["version", "floor", "node"]
+
+        # Unpivot chars + join char build data
+        chars_long = (
+            lf.unpivot(
+                index=["uid", self.score_col, "has_sustain"] + seg_keys,
+                on=char_cols,
+                value_name="Character",
+            )
+            .drop("variable")
+            .with_columns(pl.col("Character").fill_null("Empty Slot"))
+        )
+
+        base_data = (
+            chars_long
+            .join(
+                char_lf,
+                left_on=["uid", "Character", "version"],
+                right_on=["uid", "name",      "version"],
+                how="left",
+            )
+            .with_columns([
+                pl.col("weapon")   .fill_null("Info_not_found"),
+                pl.col("artifacts").fill_null("Info_not_found"),
+                pl.col("relics")   .fill_null("Info_not_found"),
+                # Cast to Int32 so our range(7) filters match safely
+                pl.col("cons")     .fill_null(0).cast(pl.Int32), 
+            ])
+        )
+        
+        # Drop any residual cols that collide
+        for drop_col in ["phase", "level", "cons_right"]:
+            schema = base_data.collect_schema().names()
+            if drop_col in schema:
+                base_data = base_data.drop(drop_col)
+
+        group_keys = seg_keys + ["Character"]
+
+        def rollup_gear(df, gear_col, alias):
+            # 1. Group by keys + cons + gear_col to get base aggregate counts/scores
+            base_grouped = (
+                df.group_by(group_keys + ["cons", gear_col])
+                .agg([
+                    pl.count("uid").alias("count"), 
+                    pl.col(self.score_col).alias("scores")
+                ])
+            )
+            
+            # 2. Fan out into distinct list-of-struct columns per Eidolon level (0-6)
+            # This produces the `Lightcones_0`, `Relics_1` columns your display function expects
+            aggs = [
+                pl.struct([pl.col(gear_col).alias("name"), "count", "scores"])
+                .filter(pl.col("cons") == i)
+                .alias(f"{alias}_{i}")
+                for i in range(7)
+            ]
+            
+            return base_grouped.group_by(group_keys).agg(aggs)
+
+        w_df = rollup_gear(base_data, "weapon",    "Lightcones")
+        a_df = rollup_gear(base_data, "artifacts", "Relics")
+        r_df = rollup_gear(base_data, "relics",    "Planar_Set")
+
+        # Include Eidolon sample counts to satisfy the `if "Eidolon" in c` trigger
+        agg_base = (
+            base_data.group_by(group_keys)
+            .agg([
+                pl.count("uid").alias("Total_Samples"),
+                pl.col(self.score_col).alias("Total_Scores"),
+                pl.col("has_sustain").sum().alias("Total_Sustains"),
+                pl.col("uid").unique().alias("uids"),
+                # Anchor columns that `display_top_gear` will parse to find the 'level' suffix
+                *[
+                    pl.count("uid").filter(pl.col("cons") == i).alias(f"Total_Samples_Eidolon_{i}")
+                    for i in range(7)
+                ]
+            ])
+            .join(w_df, on=group_keys, how="left")
+            .join(a_df, on=group_keys, how="left")
+            .join(r_df, on=group_keys, how="left")
+        )
+        
+        self.char_stats = agg_base.collect()
+
+        # Team stats
+        self.team_stats = (
+            lf.with_columns(
+                pl.concat_list(char_cols)
+                  .list.eval(pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999)))
+                  .alias("team_key")
+            )
+            .group_by(seg_keys + ["team_key"])
+            .agg([
+                pl.count("uid").alias("Samples"),
+                pl.col(self.score_col).alias("Scores"),
+                pl.col("uid").unique().alias("uids"),
+                pl.col("has_sustain").sum().alias("Total_Sustains"),
+            ])
+            .collect()
+        )
+
+        # Archetypes
+        self.archetypes_stats = (
+            self.team_stats
+            .with_columns(
+                pl.col("team_key")
+                  .list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null()))
+                  .alias("archetype_key")
+            )
+            .group_by(seg_keys + ["archetype_key"])
+            .agg([
+                pl.col("Samples").sum(),
+                pl.col("Scores").list.explode().alias("Scores"),
+                pl.col("uids").list.explode().unique().alias("uids"),
+                pl.col("Total_Sustains").sum(),
+            ])
+        )
+
+        # Duos
+        exploded = (
+            self.team_stats
+            .with_columns(pl.col("team_key").alias("Consequent"))
+            .explode("team_key")
+            .explode("Consequent")
+            .filter(pl.col("team_key") != pl.col("Consequent"))
+        )
+        self.duos = exploded.group_by(
+            seg_keys + [pl.col("team_key").alias("Antecedent"), "Consequent"]
+        ).agg([
+            pl.col("Samples").sum(),
+            pl.col("Scores").list.explode().alias("Scores"),
+            pl.col("uids").list.explode().unique().alias("uids"),
+            pl.col("Total_Sustains").sum(),
+        ])
+
+        self.total_samples_df = (
+            lf.group_by(seg_keys)
+            .agg(pl.col("uid").n_unique().alias("version_total_samples"))
+            .collect()
+        )
+
+    def _process_combined_data(self, combined, dps_names, char_to_index):
+        cmb_keys = ["version", "floor"]
+
+        self.combined_team_stats = (
+            combined.group_by(cmb_keys + ["n1_chars", "n2_chars"])
+            .agg([
+                pl.count("uid").alias("Samples"),
+                pl.col("total_score").alias("Scores"),
+                pl.col("uid").unique().alias("uids"),
+            ])
+            .collect()
+        )
+
+        self.combined_archetypes_stats = (
+            self.combined_team_stats
+            .with_columns([
+                pl.col("n1_chars").list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null())).alias("n1_archetype"),
+                pl.col("n2_chars").list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null())).alias("n2_archetype"),
+            ])
+            .group_by(cmb_keys + ["n1_archetype", "n2_archetype"])
+            .agg([
+                pl.col("Samples").sum(),
+                pl.col("Scores").list.explode().alias("Scores"),
+                pl.col("uids").list.explode().unique().alias("uids"),
+            ])
+        )
+
+        self.combined_char_stats = (
+            combined.select(cmb_keys + ["uid", "total_score", "n1_chars", "n2_chars"])
+            .explode("n1_chars")
+            .explode("n2_chars")
+            .group_by(cmb_keys + ["n1_chars", "n2_chars"])
+            .agg([
+                pl.count("uid").alias("Samples"),
+                pl.col("total_score").alias("Scores"),
+            ])
+            .collect()
+        )
+
+        self.combined_total_samples_df = (
+            combined.group_by(cmb_keys)
+            .agg(pl.col("uid").n_unique().alias("combined_version_total_samples"))
+            .collect()
+        )
+        
+    def _plot_score_distribution(self, df, score_col: str, output: bool, title: str):
+        if hasattr(df, "collect"):
+            df = df.collect()
+        
+        df = df.drop_nulls(subset=[score_col])
+        
+        if len(df) == 0:
+            print("No data available.")
+            return None
+
+        # 1. Dynamic grouping columns determination
+        group_cols = []
+        if "version" in df.columns:
+            group_cols.append("version")
+        if "node" in df.columns:
+            group_cols.append("node")    
+        if "floor" in df.columns:
+            group_cols.append("floor")
+
+        # 2. Compute overall descriptive stats per group (or globally if ungrouped)
+        stats_exprs = [
+            pl.len().alias("sample_size"),
+            pl.col(score_col).mean().alias("mean"),
+            pl.col(score_col).median().alias("median"),
+            pl.col(score_col).mode().first().alias("mode"),
+            pl.col(score_col).std(ddof=1).fill_null(0).alias("std_dev")
+        ]
+        
+        if group_cols:
+            group_stats = df.group_by(group_cols).agg(stats_exprs)
+        else:
+            group_stats = df.select(stats_exprs)
+
+        # 3. Process main distribution frequencies
+        # MoC (cycles): Lower is better -> sort ascending. PF/AS (points): Higher is better -> sort descending.
+        is_lower_better = (self.mode.lower() == "moc")
+        
+        main_group_keys = group_cols + [score_col]
+        stats_df = df.group_by(main_group_keys).agg(pl.len().alias("Count"))
+        
+        # Sort correctly so that the best performing scores appear first
+        if group_cols:
+            stats_df = stats_df.sort(group_cols + [score_col], descending=[False] * len(group_cols) + [not is_lower_better])
+            stats_df = stats_df.join(group_stats, on=group_cols, how="left")
+            
+            # Calculate rolling metrics safely isolated within each group partition
+            stats_df = stats_df.with_columns([
+                pl.col("Count").cum_sum().over(group_cols).alias("Cum_Count"),
+                (pl.col("Count").cum_sum().over(group_cols) - pl.col("Count")).alias("Strictly_Better_Count")
+            ])
+        else:
+            stats_df = stats_df.sort(score_col, descending=not is_lower_better)
+            stats_df = stats_df.with_columns([
+                pl.col("Count").cum_sum().alias("Cum_Count"),
+                (pl.col("Count").cum_sum() - pl.col("Count")).alias("Strictly_Better_Count")
+            ])
+
+        # 4. Standard competitive percentile rank: 100 - (percentage of people who performed strictly better + mid-point of ties)
+        stats_df = stats_df.with_columns(
+            (100 - ((pl.col("Strictly_Better_Count") + (pl.col("Count"))) / pl.col("sample_size") * 100)).round(2).alias("Percentile (%)")
+        )
+
+        # Clean up structure and map score to your custom metric name alias
+        metric_alias = getattr(self, "metric", score_col)
+        final_df = stats_df.select(
+            group_cols + [pl.col(score_col).alias(str(metric_alias)), "Count", "Percentile (%)"]
+        )
+
+        # 5. Safe Outputting & Plotting Block
+        if output:
+            import matplotlib.pyplot as plt
+            unique_groups = df.select(group_cols).unique().to_dicts() if group_cols else [{}]
+
+            for group in unique_groups:
+                # Filter main data and stats frame for plotting loops
+                filtered_df = df
+                filtered_final = final_df
+                for col, val in group.items():
+                    filtered_df = filtered_df.filter(pl.col(col) == val)
+                    filtered_final = filtered_final.filter(pl.col(col) == val)
+
+                if len(filtered_df) == 0:
+                    continue
+
+                # Extract the specific row of summary stats for this unique group mapping
+                if group_cols:
+                    m_info = group_stats.filter([pl.col(c) == v for c, v in group.items()]).to_dicts()[0]
+                else:
+                    m_info = group_stats.to_dicts()[0]
+                
+                group_tag = " | ".join([f"{k}: {v}" for k, v in group.items()])
+                display_title = f"{title} ({group_tag})" if group_tag else title
+
+                print(f"\n--- {group_tag if group_tag else 'Global Score Distribution'} ---")
+                print(f"Sample Size: {m_info['sample_size']}")
+                with pl.Config(tbl_rows=-1):
+                    print(filtered_final)
+
+                # Matplotlib Visual Renderer
+                scores_list = filtered_df.get_column(score_col).to_list()
+
+                plt.figure(figsize=(12, 6))
+                plt.hist(scores_list, bins='auto', alpha=0.5, color='blue', edgecolor='black', label='Score Frequency')
+
+                # Render summary baseline parameters
+                plt.axvline(m_info['mean'], color='orange', linestyle='dashed', linewidth=1, label=f"Mean: {m_info['mean']:.2f}")
+                plt.axvline(m_info['median'], color='green', linestyle='dashed', linewidth=1, label=f"Median: {m_info['median']:.2f}")
+                plt.axvline(m_info['mode'], color='red', linestyle='dashed', linewidth=1, label=f"Mode: {m_info['mode']:.2f}")
+                plt.axvline(m_info['mean'] + m_info['std_dev'], color='purple', linestyle='dashed', linewidth=1, label=f"±Std Dev: {m_info['std_dev']:.2f}")
+                plt.axvline(m_info['mean'] - m_info['std_dev'], color='purple', linestyle='dashed', linewidth=1)
+
+                plt.title(display_title)
+                plt.xlabel(str(metric_alias))
+                plt.ylabel('Frequency')
+                plt.legend()
+                plt.show()
+            
+            return
+
+        return final_df
+    
+    # ------------------------------------------------------------------
+    # Shared stats expression helper
+    # ------------------------------------------------------------------
+
+    def _score_stats_exprs(self, col: str) -> list[pl.Expr]:
+        m = self.metric
+        return [
+            pl.col(col).list.min().alias(f"Min {m}"),
+            pl.col(col).list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {m}"),
+            pl.col(col).list.median().round(2).alias(f"Median {m}"),
+            pl.col(col).list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {m}"),
+            pl.col(col).list.mean().round(2).alias(f"Average {m}"),
+            pl.col(col).list.eval(pl.element().std()).list.first().round(2).alias(f"Std Dev {m}"),
+            pl.col(col).list.max().alias(f"Max {m}"),
+        ]
+
+    # ------------------------------------------------------------------
+    # Public getters
+    # ------------------------------------------------------------------
+
+    _VER_KEYS = ["version", "floor", "node"]
+    _CMB_KEYS = ["version", "floor"]
+
+    def get_char_df(self) -> pl.DataFrame:
+        vk = self._VER_KEYS
+        m  = self.metric
+        df = (
+            self.char_stats
+            .join(self.total_samples_df, on=vk, how="left")
+            .with_columns([
+                (pl.col("Total_Samples") / pl.col("version_total_samples") * 100).round(3).alias("Appearance Rate (%)"),
+                (pl.col("Total_Sustains") / pl.col("Total_Samples") * 100).round(2).alias("Sustain_Percentage"),
+                *self._score_stats_exprs("Total_Scores"),
+            ])
+            .sort(vk + ["Total_Samples"], descending=[True, True, False, True])
+            .with_row_index("Rank", offset=1)
+        )
+        return df.select([
+            "Rank", *vk, "Character", "Appearance Rate (%)",
+            pl.col("Total_Samples").alias("Samples"),
+            f"Min {m}", f"25th Percentile {m}", f"Median {m}",
+            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}",
+            pl.col("Total_Sustains").alias("Sustain Samples"), "Sustain_Percentage",
+        ])
+
+    def get_team_df(self) -> pl.DataFrame:
+        vk = self._VER_KEYS
+        m  = self.metric
+        df = (
+            self.team_stats
+            .join(self.total_samples_df, on=vk, how="left")
+            .with_columns([
+                pl.col("team_key").list.join(", ")
+                  .map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
+                (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+                (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
+                *self._score_stats_exprs("Scores"),
+            ])
+            .sort(vk + ["Samples"], descending=[True, True, False, True])
+            .with_row_index("Rank", offset=1)
+        )
+        return df.select([
+            "Rank", *vk, "Team", "Appearance Rate (%)", "Samples",
+            f"Min {m}", f"25th Percentile {m}", f"Median {m}",
+            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}", "Sustain?",
+        ])
+
+    def get_archetype_df(self) -> pl.DataFrame:
+        vk = self._VER_KEYS
+        m  = self.metric
+        df = (
+            self.archetypes_stats
+            .join(self.total_samples_df, on=vk, how="left")
+            .with_columns([
+                pl.col("archetype_key").list.join(" + ")
+                  .map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
+                  .alias("Archetype Core"),
+                (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Usage %"),
+                (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+                *self._score_stats_exprs("Scores"),
+            ])
+            .sort(vk + ["Samples"], descending=[True, True, False, True])
+            .with_row_index("Rank", offset=1)
+        )
+        return df.select([
+            "Rank", *vk, "Archetype Core", "Usage %", "Samples",
+            "Sustain_Percentage", pl.col("Total_Sustains").alias("Sustain Samples"),
+            f"Min {m}", f"25th Percentile {m}", f"Median {m}",
+            f"75th Percentile {m}", f"Average {m}", f"Max {m}", f"Std Dev {m}",
+        ])
+
+    def get_duos_stats(self) -> pl.DataFrame:
+        vk = self._VER_KEYS
+        m  = self.metric
+
+        char_freq = (
+            self.char_stats
+            .join(self.total_samples_df, on=vk, how="left")
+            .select(vk + ["Character",
+                          (pl.col("Total_Samples") / pl.col("version_total_samples")).alias("char_support")])
+        )
+        rules = (
+            self.duos
+            .join(char_freq, left_on=vk + ["Antecedent"], right_on=vk + ["Character"], how="left")
+            .rename({"char_support": "support_A"})
+            .join(char_freq, left_on=vk + ["Consequent"], right_on=vk + ["Character"], how="left")
+            .rename({"char_support": "support_C"})
+            .join(self.total_samples_df, on=vk, how="left")
+        )
+        return (
+            rules
+            .with_columns((pl.col("Samples") / pl.col("version_total_samples")).alias("support"))
+            .with_columns((pl.col("support") / pl.col("support_A")).alias("confidence"))
+            .with_columns([
+                (pl.col("confidence") / pl.col("support_C")).alias("lift"),
+                (pl.col("support") - pl.col("support_A") * pl.col("support_C")).alias("leverage"),
+                ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction"),
+            ])
+            .select(vk + [
+                "Antecedent", "Consequent", "Samples",
+                (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
+                pl.col("confidence").round(3).alias("Confidence"),
+                pl.col("lift").round(3).alias("Lift"),
+                pl.col("leverage").round(4).alias("Leverage"),
+                pl.col("conviction").round(3).alias("Conviction"),
+                (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+                *self._score_stats_exprs("Scores"),
+            ])
+            .sort(vk + ["Lift"], descending=[True, True, False, True])
+        )
+        
+    def display_top_gear(self):
+        df = self.char_stats
+
+        eidolon_levels = sorted(
+            {c.split("_")[-1] for c in df.columns if "Eidolon" in c}
+        )
+
+        results = []
+        for level in eidolon_levels:
+            for gear_type in ["Lightcones", "Relics", "Planar_Set"]:
+                col_name = f"{gear_type}_{level}"
+                if col_name not in df.columns:
+                    continue
+
+                temp = (
+                    df.select(["version","floor","Character", col_name])
+                    .explode(col_name)
+                    .drop_nulls(col_name)
+                    .with_columns([
+                        pl.col(col_name).struct.field("name").alias("Gear_Name"),
+                        pl.col(col_name).struct.field("count").alias("Usage"),
+                        pl.col(col_name).struct.field("scores").alias("_scores"),
+                    ])
+                    .filter(pl.col("Gear_Name") != "Info_not_found")
+                )
+                if temp.is_empty():
+                    continue
+
+                processed = (
+                    temp
+                    .with_columns(pl.col("Usage").sum().over("version","floor","Character").alias("_total_usage"))
+                    .with_columns([
+                        (pl.col("Usage") / pl.col("_total_usage")).alias("Usage_Rate"),
+                        pl.col("_scores").list.mean().round(2).alias(f"Avg {self.metric}"),
+                        pl.col("_scores").list.median().alias("Median"),
+                        pl.col("_scores").list.min().alias(f"Min_{self.metric}"),
+                        pl.col("_scores").list.max().alias(f"Max_{self.metric}"),
+                        pl.col("_scores").list.std().round(2).alias("Std"),
+                        pl.col("_scores").list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile"),
+                        pl.col("_scores").list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile"),
+                        pl.lit(level).alias("Eidolon"),
+                        pl.lit(gear_type).alias("Category"),
+                    ])
+                )
+                results.append(processed.select([
+                    "version","floor","Character", "Eidolon", "Category", "Gear_Name",
+                    "Usage", "Usage_Rate", f"Avg {self.metric}", "25th Percentile",
+                    "Median", "75th Percentile", f"Min_{self.metric}", f"Max_{self.metric}", "Std",
+                ]))
+
+        if not results:
+            return pl.DataFrame()
+
+        return (
+            pl.concat(results)
+            .sort(
+                ["version","floor","Character", "Eidolon", "Category", "Usage"],
+                descending=[True,False,False, False, False, True],
+            )
+        )
+        
+    # --- Combined getters ---
+
+    def _assert_combined(self):
+        if not hasattr(self, "combined_team_stats"):
+            raise RuntimeError("No combined data — check node setting.")
+
+    def get_combined_team_df(self) -> pl.DataFrame:
+        self._assert_combined()
+        ck = self._CMB_KEYS
+        m  = self.metric
+        df = (
+            self.combined_team_stats
+            .join(self.combined_total_samples_df, on=ck, how="left")
+            .with_columns([
+                pl.col("n1_chars").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team Node 1"),
+                pl.col("n2_chars").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team Node 2"),
+                (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+                *self._score_stats_exprs("Scores"),
+            ])
+            .sort(ck + ["Samples"], descending=[True, True, True])
+            .with_row_index("Rank", offset=1)
+        )
+        return df.select(["Rank", *ck, "Team Node 1", "Team Node 2", "Appearance Rate (%)", "Samples",
+                          f"Min {m}", f"25th Percentile {m}", f"Median {m}",
+                          f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}"])
+
+    def get_combined_archetype_df(self) -> pl.DataFrame:
+        self._assert_combined()
+        ck = self._CMB_KEYS
+        m  = self.metric
+        df = (
+            self.combined_archetypes_stats
+            .join(self.combined_total_samples_df, on=ck, how="left")
+            .with_columns([
+                pl.col("n1_archetype").list.join(" + ").map_elements(lambda s: f"[{s}]" if s != "" else "[Other]", return_dtype=pl.String).alias("Core Node 1"),
+                pl.col("n2_archetype").list.join(" + ").map_elements(lambda s: f"[{s}]" if s != "" else "[Other]", return_dtype=pl.String).alias("Core Node 2"),
+                (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+                *self._score_stats_exprs("Scores"),
+            ])
+            .sort(ck + ["Samples"], descending=[True, True, True])
+            .with_row_index("Rank", offset=1)
+        )
+        return df.select(["Rank", *ck, "Core Node 1", "Core Node 2", "Appearance Rate (%)", "Samples",
+                          f"Min {m}", f"25th Percentile {m}", f"Median {m}",
+                          f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}"])
+
+    def get_combined_char_df(self) -> pl.DataFrame:
+        self._assert_combined()
+        ck = self._CMB_KEYS
+        m  = self.metric
+        df = (
+            self.combined_char_stats
+            .join(self.combined_total_samples_df, on=ck, how="left")
+            .with_columns([
+                pl.col("n1_chars").alias("Character Node 1"),
+                pl.col("n2_chars").alias("Character Node 2"),
+                (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+                *self._score_stats_exprs("Scores"),
+            ])
+            .sort(ck + ["Samples"], descending=[True, True, True])
+            .with_row_index("Rank", offset=1)
+        )
+        return df.select(["Rank", *ck, "Character Node 1", "Character Node 2",
+                          "Samples", "Appearance Rate (%)",
+                          f"Min {m}", f"25th Percentile {m}", f"Median {m}",
+                          f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}"])
+
+    def plot_statistics_all(self, output: bool = True):
+        return self._plot_score_distribution(
+            df=self.lf, score_col=self.score_col, output=output,
+            title=f"Score Distribution — [{self.mode.upper()}], floor {self.floor}, node {self.node}",
+        )
+
+    def plot_statistics_all_combined(self, output: bool = True):
+        return self._plot_score_distribution(
+            df=self.combined, score_col="total_score", output=output,
+            title=f"Combined Score Distribution — [{self.mode.upper()}], floor {self.floor}",
+        )

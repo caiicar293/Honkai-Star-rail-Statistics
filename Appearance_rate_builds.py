@@ -19,8 +19,8 @@ class HonkaiStatistics_builds:
         
         # Numeric columns for weighted averages
         self.target_cols = [
-            "HP", "ATK", "DEF", "SPD", "CRIT Rate", "CRIT DMG", "Break Effect",
-            "SPD sub", "HP sub", "ATK sub", "DEF sub", "CRIT Rate sub", 
+            "HP", "ATK", "DEF", "SPD", "CRIT Rate", "CRIT DMG", "DMG Boost","Outgoing Healing Boost",
+            "Energy Regeneration Rate","Effect RES","Effect Hit Rate","Break Effect","SPD sub", "HP sub", "ATK sub", "DEF sub", "CRIT Rate sub", 
             "CRIT DMG sub", "Effect RES sub", "Effect Hit Rate sub", "Break Effect sub"
         ]
 

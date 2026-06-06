@@ -295,6 +295,9 @@ class HonkaiDataPlatform:
             self._standardize(scraper.get_archetype_df(), mode, v, e, f, n, era),
             f"{prefix}_stats_archetypes")
         self._db_save(conn,
+            self._standardize(scraper.get_eidolon_performance_df(), mode, v, e, f, n, era),
+            f"{prefix}_stats_eidolon_performance")
+        self._db_save(conn,
             self._standardize(scraper.get_team_df(), mode, v, e, f, n, era),
             f"{prefix}_stats_teams")
         self._db_save(conn,

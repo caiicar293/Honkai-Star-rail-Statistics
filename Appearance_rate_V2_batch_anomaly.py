@@ -180,7 +180,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
                 pl.lit(self.by_ed).alias("up_to_eidolon_level")
             )
 
-        self.lf = lf.filter(pl.col("round_num") <= self.by_cycle)
+        self.lf = lf
       
         
         # If floor is 0, process combined data as well
@@ -684,7 +684,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
                 stat_exprs.append((pl.col(col) / pl.col(sample_col) * 100).round(2).alias(f"{label} Sustain %"))
 
         df = self.char_stats.with_columns(stat_exprs)
-        df = df.sort(["version","up_to_eidolon_level","floor", "Total_Samples"], descending=[True, True]).with_row_index("Rank", offset=1)
+        df = df.sort(["version","up_to_eidolon_level","floor", "Total_Samples"], descending=[True, True,True,True]).with_row_index("Rank", offset=1)
 
         new_stat_cols = sorted([c for c in df.columns if "Avg Cycles" in c or "Sustain %" in c])
         header_cols = ["Rank", "version","up_to_eidolon_level","floor","Character", "Total_Samples", "Total_Sustains"]

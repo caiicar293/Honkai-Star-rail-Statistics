@@ -122,8 +122,7 @@ class HonkaiStatistics_V2:
 
 
 
-        self._process_data(self.lf,char_lf,char_cols,cons_cols,dps_names,char_to_index)
-         # If node is 0, process combined data as well
+        
 
         if self.node == 0:
             # Explicitly select base columns needed for n1 and n2 before splitting
@@ -168,7 +167,7 @@ class HonkaiStatistics_V2:
 
             self.combined = combined.filter(pl.col("total_cycles") <= self.by_cycles_combined)
             self._process_combined_data(self.combined,char_cols,cons_cols,dps_names,char_to_index)
-
+        self._process_data(self.lf,char_lf,char_cols,cons_cols,dps_names,char_to_index)
 
     def _process_data(self,lf,char_lf,char_cols,cons_cols,dps_names,char_to_index):
 
@@ -431,6 +430,28 @@ class HonkaiStatistics_V2:
             ])
             .collect()
         )
+        
+        self.adjusted_teams = self.combined_team_stats.unpivot(
+                    index=["uids", "Cycles","Samples"],
+                    on=['n1_chars', 'n2_chars'],
+                    value_name="Team"
+                ).drop("variable").explode("Cycles") .group_by("Team").agg([
+                    # 1. Counts the number of UNIQUE cycles in the list for this character
+                    pl.col("uids").explode().unique().count().alias("Samples"), 
+                    pl.col("uids").explode(),
+                    # 2. Calculates the true average of those cycles
+                    pl.col("Cycles")
+                ])
+            
+        self.adjusted_char_stats = self.adjusted_teams.explode("Team").rename({"Team": "Character"}).group_by("Character").agg([
+                    # 1. Counts the number of UNIQUE cycles in the list for this character
+                    pl.col("uids").explode().unique().count().alias("Samples"), 
+                 
+                    pl.col("uids").explode(),
+                    # 2. Calculates the true average of those cycles
+                    pl.col("Cycles").explode()
+                ])
+            
 
     def _plot_cycle_distribution(self, df: pl.DataFrame, round_num: str, eidolon_col: str, cumulative: bool, output: bool, title: str):
           """Core helper to calculate stats and plot cycle distributions."""
@@ -807,7 +828,65 @@ class HonkaiStatistics_V2:
             "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
         ])
         
+    def get_adjusted_teams_df(self):
+        # Total unique players/uids across your combined data
+        # (Adjust 'self.combined' or 'uid' names here to match your class properties)
+        total_combined_samples = self.combined.select(pl.col("uid").n_unique()).collect().item()
         
+        df = self.adjusted_teams.with_columns([
+            # Re-extract Node 1 and Node 2 from the combined "Team" list/tuple
+            
+            
+            # Appearance Calculations
+            (pl.col("Samples") / total_combined_samples * 100).round(2).alias("Appearance Rate (%)"),
+            
+            # Stats
+            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
+            pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
+            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
+            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
+            
+            # Aggregations
+            pl.col("Cycles").list.min().alias("Min Cycles"),
+            pl.col("Cycles").list.mean().round(2).alias("Average Cycles"),
+            pl.col("Cycles").list.max().alias("Max Cycles")
+        ]).sort("Samples", descending=True)
+
+        return df.with_row_index("Rank", offset=1).select([
+            "Rank", "Team", "Samples", "Appearance Rate (%)",
+            "Min Cycles", "25th Percentile Cycles", "Median Cycles",
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
+        ])
+     
+    def get_adjusted_char_df(self):
+    
+        total_combined_samples = self.combined.select(pl.col("uid").n_unique()).collect().item()
+        
+        df = self.adjusted_char_stats.with_columns([
+            # Pass character name straight through
+            pl.col("Character").alias("Character"),
+            
+            # Appearance Calculations
+            (pl.col("Samples") / total_combined_samples * 100).round(2).alias("Appearance Rate (%)"),
+            
+            # Stats
+            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
+            pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
+            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
+            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
+            
+            # Aggregations
+            pl.col("Cycles").list.min().alias("Min Cycles"),
+            pl.col("Cycles").list.mean().round(2).alias("Average Cycles"),
+            pl.col("Cycles").list.max().alias("Max Cycles")
+        ]).sort("Samples", descending=True)
+
+        return df.with_row_index("Rank", offset=1).select([
+            "Rank", "Character", "Samples", "Appearance Rate (%)",
+            "Min Cycles", "25th Percentile Cycles", "Median Cycles",
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
+    ])
+       
     def display_top_gear(self):
         df = self.char_stats
         

@@ -574,14 +574,26 @@ class HonkaiStatistics_V2_APOC:
             pl.col("Total_Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
             pl.col("Total_Scores").list.mean().round(2).alias("Average Scores"),
             pl.col("Total_Scores").list.eval(pl.element().std()).list.first().round(2).alias("Std Dev Scores"),
+            
+            # --- ADD SKEWNESS CALCULATION ---
+            pl.col("Total_Scores").list.eval(pl.element().skew()).list.first().round(2).alias("Skew Scores"),
+            
             pl.col("Total_Scores").list.max().alias("Max Scores"),
 
             # --- DYNAMIC PERCENTAGE CALCULATION ---
-            # For every column like 'Samples_Eidolon 0', divide by Total_Samples and multiply by 100
             *[
                 ((pl.col(c) / pl.col("Total_Samples")) * 100).round(2).alias(f"{c.replace('Samples_', '')} %")
                 for c in eidolon_sample_cols
             ]
+        ]).with_columns([
+            # --- ADD CONDITIONAL ADJUSTED AVERAGE ---
+            # We use .abs() > 0.8 to catch both severe positive and negative skews.
+            # If skewed, it uses Median Scores; otherwise, it falls back to standard Average Scores.
+            pl.when(pl.col("Skew Scores").abs() > 0.8)
+            .then(pl.col("Median Scores"))
+            .otherwise(pl.col("Average Scores"))
+            .round(2)
+            .alias("Adjusted Average Scores")
         ])
 
         # 3. Sort and Rank
@@ -601,10 +613,12 @@ class HonkaiStatistics_V2_APOC:
             "75th Percentile Scores", 
             "Average Scores", 
             "Std Dev Scores", 
+            "Skew Scores",               # Added to final select
+            "Adjusted Average Scores",    # Added to final select
             "Max Scores",
             pl.col("Total_Sustains").alias("Sustain Samples"),
             "Sustain_Percentage",
-            *eidolon_perc_cols  # Displays "Eidolon 0 %", "Eidolon 1 %", etc.
+            *eidolon_perc_cols  
         ])
         
     def get_eidolon_performance_df(self):

@@ -218,8 +218,11 @@ class HonkaiDataPlatform:
 
         # Final column name sanitise
         df.columns = [
-            c.replace(' ', '_').replace('(', '').replace(')', '')
-             .replace('%', 'pct').strip()
+            c.replace(' (%)', '_pct')
+            .replace('(%)', '_pct')
+            .replace(' ', '_').replace('(', '').replace(')', '')
+            .replace('%', 'pct').strip('_')
+            .replace('__', '_')   # collapse double underscores
             for c in df.columns
         ]
 
@@ -279,7 +282,7 @@ class HonkaiDataPlatform:
     # ------------------------------------------------------------------
     def _process_modern(self, conn, mode, cfg, v, e, f, n, eidolons):
         era = "MODERN"
-        print(f"  [MODERN] {mode} v{v} E{e} Floor{f} Node{n}")
+        print(f"  [MODERN] {mode} v={v} e={e} floor={f} node={n}")
         try:
             scraper = self._build_modern_scraper(cfg, v, e, f, n)
         except Exception as ex:
@@ -309,10 +312,19 @@ class HonkaiDataPlatform:
                 mode, v, e, f, n, era),
             f"{prefix}_stats_distributions")
 
-        if n == 0 or (mode == "ANOMALY" and f == 0):
+        # For non-ANOMALY: combined triggers on node=0/"all"
+        # For ANOMALY:     combined triggers on floor=0/"all" (floor is the equivalent axis)
+        if mode == "ANOMALY":
+            combined_trigger = f in (0, "all")
+            gear_trigger     = f in (0, 4, "all")
+        else:
+            combined_trigger = n in (0, "all")
+            gear_trigger     = n in (0, "all")
+
+        if combined_trigger:
             label  = "Both" if mode != "ANOMALY" else None
             suffix = "dual" if mode != "ANOMALY" else "triple"
-            print(f"  [MODERN] Combined {suffix.upper()} for {mode} v{v} E{e}")
+            print(f"  [MODERN] Combined {suffix.upper()} for {mode} v={v} e={e}")
             self._db_save(conn,
                 self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, label, era),
                 f"{prefix}_stats_{suffix}_archetypes")
@@ -325,11 +337,10 @@ class HonkaiDataPlatform:
                     mode, v, e, f, label, era),
                 f"{prefix}_stats_{suffix}_distributions")
 
-        if n == 0 or (mode == "ANOMALY" and f in (0, 4)):
-        
-            print(f"  [MODERN] Gear for {mode} v{v} E{e}")
+        if gear_trigger:
+            print(f"  [MODERN] Gear for {mode} v={v} e={e}")
             self._db_save(conn,
-                self._standardize(scraper.display_top_gear(), mode, v, e, f,n, era),
+                self._standardize(scraper.display_top_gear(), mode, v, e, f, n, era),
                 f"{prefix}_stats_gear_usage")
 
     # ------------------------------------------------------------------
@@ -363,7 +374,7 @@ class HonkaiDataPlatform:
                 mode, v, e, f, n, era),
             f"{prefix}_stats_distributions")
 
-        if n == 0 or v =="all":
+        if n == 0 or v =="all" or n=="all":
             label  = "Both"
             suffix = "dual"
             print(f"  [LEGACY] Combined {suffix.upper()} for {mode} v{v}")
@@ -379,7 +390,7 @@ class HonkaiDataPlatform:
                     mode, v, e, f, label, era),
                 f"{prefix}_stats_{suffix}_distributions")
 
-        if n == 0 or v =="all":
+        if n == 0 or v =="all" or n=="all":
           
             print(f"  [LEGACY] Gear for {mode} v{v}")
             self._db_save(conn,
@@ -391,64 +402,46 @@ class HonkaiDataPlatform:
         self,
         target_mode=None,
         target_version=None,
-        eidolons=None,
+        modern_strategy="all_at_once",  # all_at_once | per_version | per_node | per_eidolon | granular
+        legacy_strategy="all_at_once",  # all_at_once | per_version
     ):
-        if eidolons is None:
-            eidolons = "all"
-
         conn = duckdb.connect(self.db_name)
         modes_to_run = [target_mode] if target_mode else list(self.config.keys())
-
-        # ------------------------------------------------------------------
-        # PASS 1 — MODERN (creates tables with full schema including era col)
-        # ------------------------------------------------------------------
-        print("=" * 60)
-        print("PASS 1: MODERN data")
-        print("=" * 60)
         modern_modes = [m for m in modes_to_run if self.config[m]["era"] == "MODERN"]
-
-        for mode in modern_modes:
-            cfg      = self.config[mode]
-            versions = ["all"]
-            for v in versions:
-                floors = [0, 1, 2, 3, 4] if mode == "ANOMALY" else [cfg["floor"]]
-                for f in floors:
-                    nodes = [0, 1, 2] if cfg["has_node"] else [None]
-                    for n in nodes:
-                        for e in [eidolons]:
-                            self._process_modern(conn, mode, cfg, v, e, f, n, eidolons)
-            conn.commit()
-
-        # ------------------------------------------------------------------
-        # PASS 2 — LEGACY (BY NAME fills missing eidolon cols with NULL)
-        # ------------------------------------------------------------------
-        print("=" * 60)
-        print("PASS 2: LEGACY data")
-        print("=" * 60)
         legacy_modes = [m for m in modes_to_run if self.config[m]["era"] == "LEGACY"]
 
-        for mode in legacy_modes:
-            cfg      = self.config[mode]
-            versions = ["all"]
-            for v in versions:
-                floors = [cfg["floor"]]
-                for f in floors:
-                    nodes = [0, 1, 2] if cfg["has_node"] else [None]
-                    for n in ["all"]:
-                        self._process_legacy(conn, mode, cfg, v, f, n)
-            conn.commit()
+        def specific_versions(cfg):
+            if target_version:
+                return [target_version]
+            return cfg["versions"]
+
+        EIDOLONS = [0, 1, 2, 6]
 
         # ------------------------------------------------------------------
-        # PASS 3 — Sort every table by version
+        # PASS 1 — MODERN
         # ------------------------------------------------------------------
         print("=" * 60)
-        print("PASS 3: Sorting all tables by version")
+        print(f"PASS 1: MODERN  [strategy={modern_strategy}]")
+        print("=" * 60)
+        self._orchestrate_modern(conn, modern_modes, modern_strategy, specific_versions, EIDOLONS)
+
+        # ------------------------------------------------------------------
+        # PASS 2 — LEGACY
+        # ------------------------------------------------------------------
+        print("=" * 60)
+        print(f"PASS 2: LEGACY  [strategy={legacy_strategy}]")
+        print("=" * 60)
+        self._orchestrate_legacy(conn, legacy_modes, legacy_strategy, specific_versions)
+
+        # ------------------------------------------------------------------
+        # PASS 3 — Sort
+        # ------------------------------------------------------------------
+        print("=" * 60)
+        print("PASS 3: Sorting all tables")
         print("=" * 60)
         all_tables = conn.execute(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = 'main'"
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
         ).fetchall()
-
         for (tbl,) in all_tables:
             print(f"  Sorting {tbl}...")
             self._sort_table(conn, tbl)
@@ -456,13 +449,108 @@ class HonkaiDataPlatform:
         conn.commit()
         conn.close()
         print("Done.")
-        
-         # ------------------------------------------------------------------
-        # PASS 4 — Create Builds Table
+
+        # ------------------------------------------------------------------
+        # PASS 4 — Builds
         # ------------------------------------------------------------------
         builds = HonkaiStatistics_builds()
-        builds.save_to_db()     
+        builds.save_to_db()
+
+    # ------------------------------------------------------------------
+    def _orchestrate_modern(self, conn, modern_modes, strategy, specific_versions, EIDOLONS):
+        for mode in modern_modes:
+            cfg = self.config[mode]
+
+            # ANOMALY iterates floors the same way non-ANOMALY iterates nodes
+            if mode == "ANOMALY":
+                floors = [0, 4, "all"]   # 0=normal, 4=hard, "all"=aggregate
+                nodes  = [None]
+            else:
+                floors = [cfg["floor"]]
+                nodes  = [0, 1, 2] if cfg["has_node"] else [None]
+
+            if strategy == "all_at_once":
+                # Single scraper call — version/node/floor/eidolon all aggregated internally
+                if mode == "ANOMALY":
+                    self._process_modern(conn, mode, cfg, v="all", e="all", f="all", n=None, eidolons="all")
+                else:
+                    for f in floors:
+                        self._process_modern(conn, mode, cfg, v="all", e="all", f=f, n="all", eidolons="all")
+                conn.commit()
+
+            elif strategy == "per_version":
+                for v in specific_versions(cfg):
+                    if mode == "ANOMALY":
+                        self._process_modern(conn, mode, cfg, v=v, e="all", f="all", n=None, eidolons="all")
+                    else:
+                        for f in floors:
+                            self._process_modern(conn, mode, cfg, v=v, e="all", f=f, n="all", eidolons="all")
+                    print(f"  [commit] {mode} version {v} done")
+                    conn.commit()
+
+            elif strategy == "per_node":
+                # For ANOMALY this means per_floor
+                if mode == "ANOMALY":
+                    for f in [0, 4]:   # explicit floors, no "all"
+                        self._process_modern(conn, mode, cfg, v="all", e="all", f=f, n=None, eidolons="all")
+                else:
+                    for f in floors:
+                        for n in nodes:
+                            self._process_modern(conn, mode, cfg, v="all", e="all", f=f, n=n, eidolons="all")
+                conn.commit()
+
+            elif strategy == "per_eidolon":
+                if mode == "ANOMALY":
+                    for e in EIDOLONS:
+                        self._process_modern(conn, mode, cfg, v="all", e=e, f="all", n=None, eidolons=e)
+                else:
+                    for e in EIDOLONS:
+                        for f in floors:
+                            self._process_modern(conn, mode, cfg, v="all", e=e, f=f, n="all", eidolons=e)
+                conn.commit()
+
+            elif strategy == "granular":
+                if mode == "ANOMALY":
+                    for v in specific_versions(cfg):
+                        for f in [0, 4]:
+                            for e in EIDOLONS:
+                                self._process_modern(conn, mode, cfg, v=v, e=e, f=f, n=None, eidolons=e)
+                        print(f"  [commit] {mode} version {v} done")
+                        conn.commit()
+                else:
+                    for v in specific_versions(cfg):
+                        for f in floors:
+                            for n in nodes:
+                                for e in EIDOLONS:
+                                    self._process_modern(conn, mode, cfg, v=v, e=e, f=f, n=n, eidolons=e)
+                        print(f"  [commit] {mode} version {v} done")
+                        conn.commit()
+
+            else:
+                raise ValueError(f"Unknown modern_strategy: {strategy!r}")
+
+    # ------------------------------------------------------------------
+    def _orchestrate_legacy(self, conn, legacy_modes, strategy, specific_versions):
+        for mode in legacy_modes:
+            cfg = self.config[mode]
+            f   = cfg["floor"]
+
+            if strategy == "all_at_once":
+                self._process_legacy(conn, mode, cfg, v="all", f=f, n="all")
+                conn.commit()
+
+            elif strategy == "per_version":
+                for v in specific_versions(cfg):
+                    self._process_legacy(conn, mode, cfg, v=v, f=f, n="all")
+                    print(f"  [commit] {mode} legacy version {v} done")
+                    conn.commit()
+
+            else:
+                raise ValueError(f"Unknown legacy_strategy: {strategy!r}")
 
 if __name__ == "__main__":
     platform = HonkaiDataPlatform()
-    platform.orchestrate_update(target_mode="PURE_FICTION_LEGACY")
+    # Default — both use all_at_once
+    platform.orchestrate_update()
+
+    

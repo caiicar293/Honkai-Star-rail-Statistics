@@ -143,7 +143,9 @@ class HonkaiGearEidolonSummaryAnalyzer:
         return f"""
             WITH agg AS (
                 SELECT
-                    '{task['mode']}'                                                        AS Game_Mode,
+                    '{task['mode']}'   
+                    AS Game_Mode,
+                    at_eidolon_level,
                     up_to_eidolon_level,
                     Character,
                     Eidolon,
@@ -167,13 +169,13 @@ class HonkaiGearEidolonSummaryAnalyzer:
                   {floor_filter}
                   {node_filter}
                   {recent_filter}
-                GROUP BY 1, 2, 3, 4, 5, 6
+                GROUP BY 1, 2, 3, 4, 5, 6,7
             )
             SELECT
                 *,
                 ROUND(
                     Total_Usage::DOUBLE / NULLIF(SUM(Total_Usage) OVER (
-                        PARTITION BY Game_Mode, up_to_eidolon_level, Character, Eidolon, Category
+                        PARTITION BY Game_Mode, at_eidolon_level, up_to_eidolon_level, Character, Eidolon, Category
                     ), 0),
                     4
                 )                                                                           AS Usage_Rate
@@ -201,7 +203,9 @@ class HonkaiGearEidolonSummaryAnalyzer:
 
         return f"""
             SELECT
-                '{task['mode']}'                                                        AS Game_Mode,
+                '{task['mode']}'    
+                AS Game_Mode,
+                at_eidolon_level,
                 up_to_eidolon_level,
                 Character,
 
@@ -218,7 +222,7 @@ class HonkaiGearEidolonSummaryAnalyzer:
               {floor_filter}
               {node_filter}
               {recent_filter}
-            GROUP BY 1, 2, 3
+            GROUP BY 1, 2, 3, 4
         """
 
     # ── Runner ───────────────────────────────────────────────────────────────────

@@ -170,6 +170,7 @@ class CharacterMetaAnalyzer:
             SELECT
                 '{display}'                                                                  AS Game_Mode,
                 Character,
+                at_eidolon_level,
                 up_to_eidolon_level,
 
                 {meta_cols},
@@ -201,7 +202,7 @@ class CharacterMetaAnalyzer:
               {floor_filter}
               {node_filter}
               {recent_filter}
-            GROUP BY 1, 2, 3
+            GROUP BY 1, 2, 3, 4
         """
 
     # ------------------------------------------------------------------

@@ -77,6 +77,7 @@ class HonkaiMetaAnalyzer:
         return f"""
             SELECT
                 '{task['mode']}' AS Game_Mode,
+                at_eidolon_level,
                 up_to_eidolon_level,
                 Archetype_Core,
 
@@ -98,7 +99,7 @@ class HonkaiMetaAnalyzer:
               {floor_filter}
               {node_filter}
               {recent_filter}
-            GROUP BY 1, 2, 3
+            GROUP BY 1, 2, 3, 4
         """
 
     def run_analysis(self):

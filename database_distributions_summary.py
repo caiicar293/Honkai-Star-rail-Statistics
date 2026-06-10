@@ -10,12 +10,13 @@ class StarRailStatsProcessor:
 
     def _get_weighted_stats_query(self, table_name, value_col, node_col=None):
         """Internal helper to generate the weighted statistics CTE."""
-        partition_clause = f"PARTITION BY version, up_to_eidolon_level {f', {node_col}' if node_col else ''}"
+        partition_clause = f"PARTITION BY version, at_eidolon_level, up_to_eidolon_level {f', {node_col}' if node_col else ''}"
         
         return f"""
         WITH base_stats AS (
             SELECT 
                 version,
+                at_eidolon_level,
                 up_to_eidolon_level,
                 {f"{node_col}," if node_col else ""}
                 {value_col},
@@ -31,6 +32,7 @@ class StarRailStatsProcessor:
             SELECT 
                 version,
                 {f"{node_col}," if node_col else ""}
+                at_eidolon_level,
                 up_to_eidolon_level,
                 total_count AS Total_Samples,
                 sum_x / total_count AS Average_Value,
@@ -59,19 +61,20 @@ class StarRailStatsProcessor:
         CREATE OR REPLACE TABLE {target_table} AS
         WITH stats_calc AS ({stats_query}),
         metadata_snapshot AS (
-            SELECT version, {node_col}, up_to_eidolon_level,
+            SELECT version, {node_col}, at_eidolon_level, up_to_eidolon_level,
                    E0_pct, E1_pct, E2_pct, E3_pct, E4_pct, E5_pct, E6_pct
             FROM {table_name}
-            QUALIFY ROW_NUMBER() OVER(PARTITION BY version, {node_col}, up_to_eidolon_level ORDER BY {value_col} {rank_order}) = 1
+            QUALIFY ROW_NUMBER() OVER(PARTITION BY version, {node_col}, at_eidolon_level, up_to_eidolon_level ORDER BY {value_col} {rank_order}) = 1
         )
         SELECT 
-            s.version, s.{node_col}, s.up_to_eidolon_level, s.Total_Samples, s.Average_Value,
+            s.version, s.{node_col}, s.at_eidolon_level, s.up_to_eidolon_level, s.Total_Samples, s.Average_Value,
             s.Min_Val, s.P25, s.Median, s.P75, s.Max_Val, s.Std_Dev,
             m.E0_pct, m.E1_pct, m.E2_pct, m.E3_pct, m.E4_pct, m.E5_pct, m.E6_pct
         FROM stats_calc s
         LEFT JOIN metadata_snapshot m 
-            ON s.version = m.version AND s.{node_col} = m.{node_col} AND s.up_to_eidolon_level = m.up_to_eidolon_level
-        ORDER BY s.version ASC, s.{node_col} ASC, s.up_to_eidolon_level ASC
+            ON s.version = m.version AND s.{node_col} = m.{node_col} 
+               AND s.at_eidolon_level = m.at_eidolon_level AND s.up_to_eidolon_level = m.up_to_eidolon_level
+        ORDER BY s.version ASC, s.{node_col} ASC, s.at_eidolon_level ASC, s.up_to_eidolon_level ASC
         """
         self.con.execute(query)
         self.con.table(target_table).show(max_rows=5, max_width=10000)
@@ -85,18 +88,19 @@ class StarRailStatsProcessor:
         CREATE OR REPLACE TABLE {target_table} AS
         WITH stats_calc AS ({stats_query}),
         metadata_snapshot AS (
-            SELECT version, up_to_eidolon_level,
+            SELECT version, at_eidolon_level, up_to_eidolon_level,
                    E0_pct, E1_pct, E2_pct, E3_pct, E4_pct, E5_pct, E6_pct
             FROM {table_name}
-            QUALIFY ROW_NUMBER() OVER(PARTITION BY version, up_to_eidolon_level ORDER BY {value_col} {rank_order}) = 1
+            QUALIFY ROW_NUMBER() OVER(PARTITION BY version, at_eidolon_level, up_to_eidolon_level ORDER BY {value_col} {rank_order}) = 1
         )
         SELECT 
-            s.version, s.up_to_eidolon_level, s.Total_Samples, s.Average_Value,
+            s.version, s.at_eidolon_level, s.up_to_eidolon_level, s.Total_Samples, s.Average_Value,
             s.Min_Val, s.P25, s.Median, s.P75, s.Max_Val, s.Std_Dev,
             m.E0_pct, m.E1_pct, m.E2_pct, m.E3_pct, m.E4_pct, m.E5_pct, m.E6_pct
         FROM stats_calc s
-        LEFT JOIN metadata_snapshot m ON s.version = m.version AND s.up_to_eidolon_level = m.up_to_eidolon_level
-        ORDER BY s.version ASC, s.up_to_eidolon_level ASC
+        LEFT JOIN metadata_snapshot m 
+            ON s.version = m.version AND s.at_eidolon_level = m.at_eidolon_level AND s.up_to_eidolon_level = m.up_to_eidolon_level
+        ORDER BY s.version ASC, s.at_eidolon_level ASC, s.up_to_eidolon_level ASC
         """
         self.con.execute(query)
         self.con.table(target_table).show(max_rows=5, max_width=10000)

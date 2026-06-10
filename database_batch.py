@@ -200,6 +200,7 @@ class HonkaiDataPlatform:
             'mode': pl.lit(mode),
             'era': pl.lit(era),
             'floor': pl.lit(f),
+            'at_eidolon_level': pl.lit(0), # Default for standardization if not provided
             'up_to_eidolon_level': pl.lit(e),
             'node': pl.lit(node_val, dtype=pl.Utf8),
         }

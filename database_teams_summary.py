@@ -77,6 +77,7 @@ class HonkaiTeamMetaAnalyzer:
         return f"""
             SELECT
                 '{task['mode']}' AS Game_Mode,
+                at_eidolon_level,
                 up_to_eidolon_level,
                 Team,
                 "Sustain?" AS Sustain,
@@ -99,7 +100,7 @@ class HonkaiTeamMetaAnalyzer:
               {floor_filter}
               {node_filter}
               {recent_filter}
-            GROUP BY 1, 2, 3, 4
+            GROUP BY 1, 2, 3, 4,5
         """
 
     def run_analysis(self):

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{{ mode_label }} {{ version }} — Character Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #090c14; --bg2: #0d1220;
+    --panel: #141c2e; --panel2: #1a2338;
+    --border: #1e2d47; --border2: #243552;
+    --accent: #38bdf8; --accent2: #7dd3fc;
+    --gold: #fbbf24; --teal: #2dd4bf;
+    --purple: #a78bfa; --red: #f87171; --green: #4ade80;
+    --muted: #4a5d7a;
+    --text: #e2eaf6; --text2: #8fa3c0; --text3: #506070;
+    --dim0: #6366f1; --dim1: #38bdf8; --dim2: #f472b6;
+    --dim3: #fb923c; --dim4: #a78bfa;
+    --e0: #94a3b8; --e1: #4ade80; --e2: #38bdf8; --e6: #fbbf24;
+    /* Element colours */
+    --el-fire: #f87171; --el-ice: #93c5fd; --el-lightning: #c084fc;
+    --el-wind: #6ee7b7; --el-quantum: #818cf8; --el-imaginary: #fde68a;
+    --el-physical: #cbd5e1;
+    /* Path colours */
+    --path-hunt: #fb923c; --path-destruction: #f87171; --path-erudition: #38bdf8;
+    --path-harmony: #a78bfa; --path-nihility: #64748b; --path-abundance: #4ade80;
+    --path-preservation: #fbbf24; --path-remembrance: #7dd3fc; --path-elation: #f472b6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Exo 2', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  .container { position: relative; z-index: 1; max-width: 1800px; margin: 0 auto; padding: 24px; }
+
+  /* HEADER */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); gap: 20px; flex-wrap: wrap; }
+  .header-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.25); border-radius: 4px; padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+  .header-badge::before { content: '●'; font-size: 7px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .header h1 { font-family: 'Rajdhani', sans-serif; font-size: 36px; font-weight: 700; letter-spacing: 0.06em; line-height: 1; }
+  .header h1 span { color: var(--accent); }
+  .header-sub { font-size: 13px; color: var(--text2); margin-top: 5px; font-family: 'Share Tech Mono', monospace; letter-spacing: 0.05em; }
+  .header-meta { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .meta-chip { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; text-align: center; min-width: 90px; }
+  .meta-chip .val { font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700; color: var(--accent); display: block; line-height: 1; }
+  .meta-chip .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; }
+
+  /* CONTROLS */
+  .controls { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end; }
+  .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; }
+  .btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
+  .btn-toggle { background: var(--panel); border: 1px solid var(--border); color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 5px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; white-space: nowrap; }
+  .btn-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-toggle.dim-0.active { background: rgba(99,102,241,0.12);  border-color: var(--dim0); color: var(--dim0); }
+  .btn-toggle.dim-1.active { background: rgba(56,189,248,0.12);  border-color: var(--dim1); color: var(--dim1); }
+  .btn-toggle.dim-2.active { background: rgba(244,114,182,0.12); border-color: var(--dim2); color: var(--dim2); }
+  .btn-toggle.dim-3.active { background: rgba(251,146,60,0.12);  border-color: var(--dim3); color: var(--dim3); }
+  .btn-toggle.dim-4.active { background: rgba(167,139,250,0.12); border-color: var(--dim4); color: var(--dim4); }
+  .btn-toggle.range.at0.active { border-color: var(--e0); color: var(--e0); background: rgba(148,163,184,0.08); }
+  .btn-toggle.range.at1.active { border-color: var(--e1); color: var(--e1); background: rgba(74,222,128,0.07); }
+  .btn-toggle.range.at2.active { border-color: var(--e2); color: var(--e2); background: rgba(56,189,248,0.08); }
+  .btn-toggle.range.at6.active { border-color: var(--e6); color: var(--e6); background: rgba(251,191,36,0.09); }
+
+  /* Search */
+  .search-wrap { position: relative; min-width: 220px; max-width: 360px; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
+  #searchInput { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
+  #searchInput:focus { border-color: var(--accent); }
+  #searchInput::placeholder { color: var(--text3); }
+
+  .results-info { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0 8px; letter-spacing: 0.06em; }
+  .results-info span { color: var(--accent); }
+
+  /* TABLE */
+  .table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); box-shadow: 0 4px 40px rgba(0,0,0,0.4); }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--panel2); border-bottom: 2px solid var(--border2); }
+  th { padding: 11px 12px; text-align: left; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
+  th:hover { color: var(--accent); }
+  th.sorted { color: var(--accent); }
+  th.sorted::after { content: ' ↓'; }
+  th.sorted.asc::after { content: ' ↑'; }
+  th.num { text-align: right; }
+  tbody tr { border-bottom: 1px solid rgba(30,45,71,0.6); transition: background 0.1s; }
+  tbody tr:hover { background: rgba(56,189,248,0.04); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; }
+  td.num { text-align: right; }
+
+  .rank-cell { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); text-align: center; min-width: 36px; }
+  .rank-cell.top3 { color: var(--gold); font-weight: bold; }
+
+  /* Dim badge */
+  .dim-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; }
+  .dim-badge.d0 { background: rgba(99,102,241,0.2);  color: var(--dim0); border: 1px solid rgba(99,102,241,0.4); }
+  .dim-badge.d1 { background: rgba(56,189,248,0.15);  color: var(--dim1); border: 1px solid rgba(56,189,248,0.35); }
+  .dim-badge.d2 { background: rgba(244,114,182,0.15); color: var(--dim2); border: 1px solid rgba(244,114,182,0.35); }
+  .dim-badge.d3 { background: rgba(251,146,60,0.15);  color: var(--dim3); border: 1px solid rgba(251,146,60,0.35); }
+  .dim-badge.d4 { background: rgba(167,139,250,0.15); color: var(--dim4); border: 1px solid rgba(167,139,250,0.35); }
+
+  /* Eid range badge */
+  .eid-range-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 6px; font-family: 'Share Tech Mono', monospace; font-size: 10px; border: 1px solid; }
+  .eid-range-badge.exact { font-weight: 700; font-size: 11px; }
+  .eid-range-badge.at0 { color: var(--e0); border-color: rgba(148,163,184,0.3); background: rgba(148,163,184,0.06); }
+  .eid-range-badge.at1 { color: var(--e1); border-color: rgba(74,222,128,0.3);  background: rgba(74,222,128,0.06); }
+  .eid-range-badge.at2 { color: var(--e2); border-color: rgba(56,189,248,0.3);  background: rgba(56,189,248,0.07); }
+  .eid-range-badge.at6 { color: var(--e6); border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }
+
+  /* Character cell */
+  .char-cell { display: flex; align-items: center; gap: 8px; min-width: 200px; }
+  .char-icon { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border2); object-fit: cover; background: var(--bg2); flex-shrink: 0; }
+  .char-icon-placeholder { width: 32px; height: 32px; border-radius: 50%; background: var(--panel2); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text3); flex-shrink: 0; }
+  .char-info { display: flex; flex-direction: column; gap: 2px; }
+  .char-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
+  .char-tags { display: flex; gap: 4px; align-items: center; }
+
+  /* Element / Path / Role / Rarity pills */
+  .tag { display: inline-flex; align-items: center; border-radius: 3px; padding: 1px 5px; font-family: 'Share Tech Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.04em; border: 1px solid; }
+  .tag-rarity5 { color: #fbbf24; border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }
+  .tag-rarity4 { color: #a78bfa; border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.08); }
+  .tag-el-fire        { color: var(--el-fire);        border-color: rgba(248,113,113,0.3);  background: rgba(248,113,113,0.07); }
+  .tag-el-ice         { color: var(--el-ice);         border-color: rgba(147,197,253,0.3);  background: rgba(147,197,253,0.07); }
+  .tag-el-lightning   { color: var(--el-lightning);   border-color: rgba(192,132,252,0.3);  background: rgba(192,132,252,0.07); }
+  .tag-el-wind        { color: var(--el-wind);        border-color: rgba(110,231,183,0.3);  background: rgba(110,231,183,0.07); }
+  .tag-el-quantum     { color: var(--el-quantum);     border-color: rgba(129,140,248,0.3);  background: rgba(129,140,248,0.07); }
+  .tag-el-imaginary   { color: var(--el-imaginary);   border-color: rgba(253,230,138,0.3);  background: rgba(253,230,138,0.07); }
+  .tag-el-physical    { color: var(--el-physical);    border-color: rgba(203,213,225,0.25); background: rgba(203,213,225,0.06); }
+  .tag-path { color: var(--text2); border-color: var(--border2); background: rgba(255,255,255,0.03); }
+  .tag-role-dps       { color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.07); }
+  .tag-role-amplifier { color: #a78bfa; border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.07); }
+  .tag-role-sustain   { color: #4ade80; border-color: rgba(74,222,128,0.3);  background: rgba(74,222,128,0.07); }
+  .tag-role-debuffer  { color: #fb923c; border-color: rgba(251,146,60,0.3);  background: rgba(251,146,60,0.07); }
+  .tag-role-other     { color: var(--text3); border-color: var(--border); background: transparent; }
+
+  /* Appearance rate bar */
+  .rate-bar-wrap { display: flex; align-items: center; gap: 7px; min-width: 120px; }
+  .rate-bar-bg { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; min-width: 55px; }
+  .rate-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--teal)); }
+  .rate-val { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent2); min-width: 48px; text-align: right; }
+
+  /* Sustain */
+  .sustain-pct { font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .sustain-high { color: var(--green); }
+  .sustain-mid  { color: var(--gold); }
+  .sustain-low  { color: var(--red); }
+
+  /* Score cells */
+  .score-num { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); }
+  .score-num.median { color: var(--accent); font-weight: 600; font-size: 13px; }
+  .score-num.avg    { color: var(--gold); font-size: 13px; }
+  .score-num.maxv   { color: var(--purple); }
+  .score-num.std    { color: var(--text3); font-size: 11px; }
+
+  /* Eidolon distribution mini-bar — 7 segments E0-E6 */
+  .eid-dist { display: flex; gap: 2px; align-items: flex-end; height: 22px; min-width: 90px; }
+  .eid-seg-wrap { display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 1; }
+  .eid-seg { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; transition: height 0.2s; }
+  .eid-seg.e0 { background: var(--e0); }
+  .eid-seg.e1 { background: var(--e1); }
+  .eid-seg.e2 { background: var(--e2); }
+  .eid-seg.e3 { background: #f472b6; }
+  .eid-seg.e4 { background: var(--gold); }
+  .eid-seg.e5 { background: var(--purple); }
+  .eid-seg.e6 { background: var(--e6); }
+  .eid-seg-lbl { font-family: 'Share Tech Mono', monospace; font-size: 8px; color: var(--text3); }
+  .eid-dist-na { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); }
+
+  /* Group separator */
+  .group-sep td { background: var(--bg2); padding: 5px 12px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; border-bottom: 1px solid var(--border2); }
+  .group-label-0 { color: var(--dim0); }
+  .group-label-1 { color: var(--dim1); }
+  .group-label-2 { color: var(--dim2); }
+  .group-label-3 { color: var(--dim3); }
+  .group-label-4 { color: var(--dim4); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-state p { font-family: 'Share Tech Mono', monospace; font-size: 13px; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-badge">{{ mode_label }}</div>
+      <h1>{{ mode_label }} <span>{{ version }}</span> Characters</h1>
+      <div class="header-sub">{{ subtitle }} · ENDGAME ANALYTICS · CHARACTER USAGE &amp; PERFORMANCE</div>
+    </div>
+    <div class="header-meta">
+      <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Characters</div></div>
+      <div class="meta-chip"><span class="val" id="visibleSamples">—</span><div class="lbl">Samples</div></div>
+      <div class="meta-chip"><span class="val">{{ version }}</span><div class="lbl">Version</div></div>
+    </div>
+  </div>
+
+  <div class="controls">
+
+    <!-- Dimension filter -->
+    <div class="ctrl-group">
+      <div class="ctrl-label">{{ dim_label }}</div>
+      <div class="btn-group" id="dimFilters">
+        {% for d in dim_values %}
+        <button class="btn-toggle dim-{{ d }} active" data-dim="{{ d }}">{{ dim_btn_label(d) }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Eidolon range filter — hidden for legacy modes -->
+    {% if not is_legacy %}
+    <div class="ctrl-group">
+      <div class="ctrl-label">Eidolon Range (at → up_to)</div>
+      <div class="btn-group" id="eidFilters">
+        <button class="btn-toggle range at0 active" data-at="0" data-upto="0">E0</button>
+        <button class="btn-toggle range at0 active" data-at="0" data-upto="1">E0→1</button>
+        <button class="btn-toggle range at0 active" data-at="0" data-upto="2">E0→2</button>
+        <button class="btn-toggle range at0 active" data-at="0" data-upto="6">E0→6</button>
+        <button class="btn-toggle range at1 active" data-at="1" data-upto="1">E1</button>
+        <button class="btn-toggle range at1 active" data-at="1" data-upto="2">E1→2</button>
+        <button class="btn-toggle range at1 active" data-at="1" data-upto="6">E1→6</button>
+        <button class="btn-toggle range at2 active" data-at="2" data-upto="2">E2</button>
+        <button class="btn-toggle range at2 active" data-at="2" data-upto="6">E2→6</button>
+        <button class="btn-toggle range at6 active" data-at="6" data-upto="6">E6</button>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Search -->
+    <div class="ctrl-group" style="flex:1; min-width:220px; max-width:380px;">
+      <div class="ctrl-label">Character Search</div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="searchInput" type="text" placeholder="Search character, path, element, role…"/>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="results-info" id="resultsInfo">Loading…</div>
+
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th data-col="Rank" class="num">#</th>
+            <th data-col="dim_key">{{ dim_label }}</th>
+            {% if not is_legacy %}<th data-col="eid_range_key">Eid. Range</th>{% endif %}
+            <th data-col="Character">Character</th>
+            <th data-col="Appearance_Rate_pct" class="num sorted">App. Rate %</th>
+            <th data-col="Samples" class="num">Samples</th>
+            <th data-col="Sustain_Percentage" class="num">Sustain %</th>
+            <th data-col="Min_Score" class="num">Min</th>
+            <th data-col="Percentile_25" class="num">P25</th>
+            <th data-col="Median_Score" class="num">Median</th>
+            <th data-col="Percentile_75" class="num">P75</th>
+            <th data-col="Average_Score" class="num">Avg</th>
+            <th data-col="Max_Score" class="num">Max</th>
+            <th data-col="Std_Dev" class="num">σ</th>
+            {% if not is_legacy %}<th data-col="Eidolon_0_pct" class="num">E0 %</th>
+            <th>Eid. Dist</th>
+            <th data-col="Eidolon_6_pct" class="num">E6 %</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<script>
+const RAW_DATA         = {{ data_json }};
+const ICONS            = {{ icons_json }};
+const DIM_FIELD        = '{{ dim_field }}';
+const DIM_LABEL        = '{{ dim_label }}';
+const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
+const IS_LEGACY        = {{ 'true' if is_legacy else 'false' }};
+const COL_COUNT        = IS_LEGACY ? 13 : 16;
+
+const ROW_H    = 48;
+const OVERSCAN = 6;
+const VIEWPORT_H = 600;
+
+// ---- Pre-process at load ----
+RAW_DATA.forEach(r => {
+  r.dim_key       = r[DIM_FIELD];
+  r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
+  // Normalise _pct_pct column names → clean keys
+  for (let e = 0; e <= 6; e++) {
+    const raw = r[`Eidolon_${e}_pct_pct`];
+    r[`Eidolon_${e}_pct`] = (raw == null || isNaN(raw)) ? null : raw;
+  }
+  r._charLower = (r.Character + ' ' + (r.path||'') + ' ' + (r.element||'') + ' ' + (r.role||'')).toLowerCase();
+  r._iconHtml  = buildIconHtml(r.Character);
+});
+
+const MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
+
+// ---- Pre-index ----
+const TOKEN_INDEX = new Map();
+RAW_DATA.forEach((r, i) => {
+  const tokens = r._charLower.split(/[\s\(\),\/\+\•]+/).filter(t => t.length >= 2);
+  new Set(tokens).forEach(tok => {
+    if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
+    TOKEN_INDEX.get(tok).push(i);
+  });
+});
+
+function searchIndex(q) {
+  const hits = new Set();
+  TOKEN_INDEX.forEach((indices, tok) => {
+    if (tok.includes(q)) indices.forEach(i => hits.add(i));
+  });
+  return hits;
+}
+
+// ---- State ----
+const activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
+const activeRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
+let searchTerm = '';
+let sortCol    = 'Appearance_Rate_pct';
+let sortAsc    = false;
+let filteredData = [];
+
+function recompute() {
+  let candidate;
+  if (searchTerm.length >= 2) {
+    const hits = searchIndex(searchTerm);
+    candidate = [...hits].map(i => RAW_DATA[i]);
+  } else if (searchTerm.length === 1) {
+    candidate = RAW_DATA.filter(r => r._charLower.includes(searchTerm));
+  } else {
+    candidate = RAW_DATA;
+  }
+
+  filteredData = candidate.filter(r => {
+    if (!activeDims.has(r.dim_key)) return false;
+    if (!IS_LEGACY && !activeRanges.has(r.eid_range_key)) return false;
+    return true;
+  });
+
+  filteredData.sort((a, b) => {
+    let av = a[sortCol], bv = b[sortCol];
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    if (av == null) return 1; if (bv == null) return -1;
+    return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+  });
+
+  updateMeta();
+  document.querySelector('.table-scroll').scrollTop = 0;
+  renderViewport();
+}
+
+function updateMeta() {
+  document.getElementById('visibleCount').textContent = filteredData.length.toLocaleString();
+  const ssum = filteredData.reduce((s,r) => s + (r.Samples||0), 0);
+  document.getElementById('visibleSamples').textContent = ssum > 9999 ? (ssum/1000).toFixed(0)+'K' : ssum.toLocaleString();
+  document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> characters`;
+}
+
+// ---- Icon helper ----
+function buildIconHtml(name) {
+  let url = ICONS[name];
+  if (!url) url = ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
+  if (url) return `<img class="char-icon" src="${url}" alt="${name}" title="${name}" onerror="this.style.display='none'"/>`;
+  return `<div class="char-icon-placeholder" title="${name}">${name.slice(0,2).toUpperCase()}</div>`;
+}
+
+// ---- Tag helpers ----
+function elTag(el) {
+  if (!el) return '';
+  const cls = 'tag-el-' + el.toLowerCase().replace(/\s+/g,'-');
+  return `<span class="tag ${cls}">${el}</span>`;
+}
+function pathTag(path) {
+  if (!path) return '';
+  return `<span class="tag tag-path">${path}</span>`;
+}
+function roleTag(role) {
+  if (!role) return '';
+  const cls = 'tag-role-' + (role.toLowerCase().replace(/\s+/g,'-') || 'other');
+  return `<span class="tag ${cls}">${role}</span>`;
+}
+function rarityTag(r) {
+  if (!r) return '';
+  return `<span class="tag tag-rarity${r}">★${r}</span>`;
+}
+
+// ---- Eidolon distribution mini bar ----
+function eidDistHtml(r) {
+  if (IS_LEGACY) return '';
+  const vals = [0,1,2,3,4,5,6].map(e => r[`Eidolon_${e}_pct`]);
+  if (vals.every(v => v == null)) return '<span class="eid-dist-na">—</span>';
+  const maxVal = Math.max(...vals.filter(v => v != null), 1);
+  const segs = vals.map((v, e) => {
+    const h = v == null ? 2 : Math.max(2, Math.round((v / maxVal) * 18));
+    const title = v == null ? `E${e}: —` : `E${e}: ${v.toFixed(1)}%`;
+    return `<div class="eid-seg-wrap"><div class="eid-seg e${e}" style="height:${h}px" title="${title}"></div><span class="eid-seg-lbl">${e}</span></div>`;
+  });
+  return `<div class="eid-dist">${segs.join('')}</div>`;
+}
+
+// ---- Format helpers ----
+function fmtPct(v, d=1)  { return v == null ? '—' : v.toFixed(d) + '%'; }
+function fmtNum(v, d=2)  { return v == null ? '—' : v.toFixed(d); }
+function fmtInt(v)       { return v == null ? '—' : v.toLocaleString(); }
+function sustainCls(v)   { return v >= 95 ? 'sustain-high' : v >= 70 ? 'sustain-mid' : 'sustain-low'; }
+function eidLabel(at, upto) { return at === upto ? `E${at}` : `E${at}→${upto}`; }
+function eidCls(at, upto)   { return `eid-range-badge at${at}${at === upto ? ' exact' : ''}`; }
+
+function rowHTML(r) {
+  const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
+  const at = r.at_eidolon_level, upto = r.up_to_eidolon_level;
+  const eidRangeCell = IS_LEGACY ? '' : `<td><span class="${eidCls(at,upto)}">${eidLabel(at,upto)}</span></td>`;
+  const eidCols = IS_LEGACY ? '' : `
+    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_0_pct'])}</span></td>
+    <td>${eidDistHtml(r)}</td>
+    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_6_pct'])}</span></td>`;
+
+  return `<tr>
+    <td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>
+    <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
+    ${eidRangeCell}
+    <td><div class="char-cell">${r._iconHtml}<div class="char-info"><span class="char-name">${r.Character}</span><div class="char-tags">${rarityTag(r.rarity)}${elTag(r.element)}${pathTag(r.path)}${roleTag(r.role)}</div></div></div></td>
+    <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct,2)}</span></div></td>
+    <td class="num"><span class="score-num">${fmtInt(r.Samples)}</span></td>
+    <td class="num"><span class="sustain-pct ${sustainCls(r.Sustain_Percentage)}">${fmtPct(r.Sustain_Percentage)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
+    <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span></td>
+    <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
+    <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
+    <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+    ${eidCols}
+  </tr>`;
+}
+
+// ---- Virtual scroll ----
+(function setupVirtualScroll() {
+  const ts = document.querySelector('.table-scroll');
+  ts.style.maxHeight = VIEWPORT_H + 'px';
+  ts.style.overflowY = 'auto';
+  ts.addEventListener('scroll', renderViewport, { passive: true });
+})();
+
+function renderViewport() {
+  const tbody = document.getElementById('tableBody');
+  const ts    = document.querySelector('.table-scroll');
+
+  if (filteredData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${COL_COUNT}"><div class="empty-state"><div class="icon">⚡</div><p>No characters match current filters</p></div></td></tr>`;
+    return;
+  }
+
+  const scrollTop  = ts.scrollTop;
+  const startIdx   = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+  const endIdx     = Math.min(filteredData.length, Math.ceil((scrollTop + VIEWPORT_H) / ROW_H) + OVERSCAN);
+  const padTop     = startIdx * ROW_H;
+  const padBottom  = (filteredData.length - endIdx) * ROW_H;
+
+  let html = '';
+  if (padTop > 0) html += `<tr style="height:${padTop}px"><td colspan="${COL_COUNT}" style="padding:0;border:none"></td></tr>`;
+
+  let lastDim = startIdx > 0 ? filteredData[startIdx - 1].dim_key : null;
+  for (let i = startIdx; i < endIdx; i++) {
+    const r = filteredData[i];
+    if (r.dim_key !== lastDim) {
+      const lbl = DIM_GROUP_LABELS[r.dim_key] || `${DIM_LABEL} ${r.dim_key}`;
+      html += `<tr class="group-sep"><td colspan="${COL_COUNT}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
+      lastDim = r.dim_key;
+    }
+    html += rowHTML(r);
+  }
+
+  if (padBottom > 0) html += `<tr style="height:${padBottom}px"><td colspan="${COL_COUNT}" style="padding:0;border:none"></td></tr>`;
+  tbody.innerHTML = html;
+}
+
+// ---- Debounce ----
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ---- Event wiring ----
+document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const d = parseInt(btn.dataset.dim);
+    if (activeDims.has(d)) {
+      if (activeDims.size > 1) { activeDims.delete(d); btn.classList.remove('active'); }
+    } else { activeDims.add(d); btn.classList.add('active'); }
+    recompute();
+  });
+});
+
+if (!IS_LEGACY) {
+  document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = `${btn.dataset.at}_${btn.dataset.upto}`;
+      if (activeRanges.has(key)) {
+        if (activeRanges.size > 1) { activeRanges.delete(key); btn.classList.remove('active'); }
+      } else { activeRanges.add(key); btn.classList.add('active'); }
+      recompute();
+    });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', debounce(e => {
+  searchTerm = e.target.value.trim().toLowerCase();
+  recompute();
+}, 200));
+
+document.querySelectorAll('th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortAsc = !sortAsc;
+    else { sortCol = col; sortAsc = false; }
+    document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
+    th.classList.add('sorted');
+    if (sortAsc) th.classList.add('asc');
+    recompute();
+  });
+});
+
+recompute();
+</script>
+</body>
+</html>

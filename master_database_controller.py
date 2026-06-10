@@ -5,22 +5,21 @@ from database_teams_summary import HonkaiTeamMetaAnalyzer
 from database_duos_summary import HonkaiDuosSummaryAnalyzer
 from Appearance_rate_builds import HonkaiStatistics_builds
 from database_character_summary import CharacterMetaAnalyzer
-
+from database_gear_eidolon_summary import HonkaiGearEidolonSummaryAnalyzer
 platform = HonkaiDataPlatform()
-platform.orchestrate_update()
+platform.orchestrate_update(modern_strategy="per_version", legacy_strategy="all_at_once")
 
 analyzer = HonkaiTeamMetaAnalyzer()
 analyzer.run_analysis()
 
+analyzer3 = CharacterMetaAnalyzer()
+analyzer3.run_analysis()
 
 analyzer1 = HonkaiMetaAnalyzer()
 analyzer1.run_analysis()
 
 analyzer2 = HonkaiDuosSummaryAnalyzer()
 analyzer2.run_analysis()
-
-analyzer3 = CharacterMetaAnalyzer()
-analyzer3.run_analysis()
 
 processor = StarRailStatsProcessor()
 
@@ -81,3 +80,7 @@ for (table_name,) in tables_to_fix:
         print(f"Could not update {table_name}: {e}")
 
 con.close()
+
+
+analyzer3 = HonkaiGearEidolonSummaryAnalyzer()
+analyzer3.run_analysis()

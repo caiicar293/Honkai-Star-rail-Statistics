@@ -77,6 +77,7 @@ class HonkaiDuosSummaryAnalyzer:
         return f"""
             SELECT
                 '{task['mode']}' AS Game_Mode,
+                at_eidolon_level,
                 up_to_eidolon_level,
                 Antecedent,
                 Consequent,
@@ -84,10 +85,13 @@ class HonkaiDuosSummaryAnalyzer:
                 -- Appearance Rate
                 ROUND(AVG(Appearance_Rate_pct), 4)                                     AS Simple_Avg_Appearance_Rate,
                 ROUND(SUM(Appearance_Rate_pct * Samples) / NULLIF(SUM(Samples), 0), 4) AS Weighted_Avg_Appearance_Rate,
+                ( SUM(Samples) / SUM(Samples / Appearance_Rate_pct ))                  AS Real_Appearance_Rate,
 
                 -- Confidence
                 ROUND(AVG(Confidence), 4)                                               AS Simple_Avg_Confidence,
                 ROUND(SUM(Confidence * Samples) / NULLIF(SUM(Samples), 0), 4)           AS Weighted_Avg_Confidence,
+                ROUND( SUM(Samples) / SUM(Samples / Confidence) , 4)                    AS Real_Confidence,
+                
 
                 -- Association metrics
                 ROUND(AVG(Lift), 4)                                                     AS Simple_Avg_Lift,
@@ -111,7 +115,7 @@ class HonkaiDuosSummaryAnalyzer:
               {floor_filter}
               {node_filter}
               {recent_filter}
-            GROUP BY 1, 2, 3, 4
+            GROUP BY 1, 2, 3, 4,5
         """
 
     def run_analysis(self):

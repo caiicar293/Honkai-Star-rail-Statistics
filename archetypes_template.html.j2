@@ -234,116 +234,189 @@
 
 </div>
 <script>
-const RAW_DATA    = {{ data_json }};
-const ICONS       = {{ icons_json }};
-const DIM_FIELD   = '{{ dim_field }}';   // 'node' or 'floor'
-const DIM_LABEL   = '{{ dim_label }}';   // 'Node' or 'Floor'
-const MODE_LABEL  = '{{ mode_label }}';
+const RAW_DATA         = {{ data_json }};
+const ICONS            = {{ icons_json }};
+const DIM_FIELD        = '{{ dim_field }}';
+const DIM_LABEL        = '{{ dim_label }}';
+const MODE_LABEL       = '{{ mode_label }}';
 const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
-const MAX_USAGE   = Math.max(...RAW_DATA.map(r => r.Usage_pct));
 
-// Pre-compute lookup keys
+// ---- Virtual scroll config ----
+const ROW_H      = 44;   // px — matches td padding (9px×2 + ~26px content)
+const OVERSCAN   = 6;
+const VIEWPORT_H = 600;
+const COL_COUNT  = 15;
+
+// ---- Pre-process all rows once at load ----
+// Cache icon HTML and lowercased search string so virtual scroll never recomputes them
 RAW_DATA.forEach(r => {
   r.dim_key       = r[DIM_FIELD];
   r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
+  const chars     = parseChars(r.Archetype_Core);
+  r._iconsHtml    = chars.map(iconEl).join('');
+  r._coreLower    = r.Archetype_Core.toLowerCase();
 });
 
+const MAX_USAGE = Math.max(...RAW_DATA.map(r => r.Usage_pct));
+
+// ---- Pre-index: token map for fast character/archetype search ----
+// Each token (2+ chars) maps to an array of row indices
+const TOKEN_INDEX = new Map();
+RAW_DATA.forEach((r, i) => {
+  const tokens = r._coreLower.split(/[\s\+\/\(\),•]+/).filter(t => t.length >= 2);
+  new Set(tokens).forEach(tok => {
+    if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
+    TOKEN_INDEX.get(tok).push(i);
+  });
+});
+
+function searchIndex(q) {
+  const hits = new Set();
+  TOKEN_INDEX.forEach((indices, tok) => {
+    if (tok.includes(q)) indices.forEach(i => hits.add(i));
+  });
+  return hits;
+}
+
 // ---- State ----
-const activeDims = new Set(RAW_DATA.map(r => r.dim_key));
+const activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
 const activeRanges = new Set([
   '0_0','0_1','0_2','0_6',
   '1_1','1_2','1_6',
   '2_2','2_6','6_6'
 ]);
-let searchTerm = '';
-let sortCol = 'Usage_pct';
-let sortAsc  = false;
+let searchTerm   = '';
+let sortCol      = 'Usage_pct';
+let sortAsc      = false;
+let filteredData = [];
 
-function getFiltered() {
-  let data = RAW_DATA.filter(r =>
+function recompute() {
+  // Step 1 — search: index lookup for 2+ chars, full scan for 1 char, skip if empty
+  let candidate;
+  if (searchTerm.length >= 2) {
+    const hits = searchIndex(searchTerm);
+    candidate = [...hits].map(i => RAW_DATA[i]);
+  } else if (searchTerm.length === 1) {
+    candidate = RAW_DATA.filter(r => r._coreLower.includes(searchTerm));
+  } else {
+    candidate = RAW_DATA;
+  }
+
+  // Step 2 — apply dim + eidolon range filters
+  filteredData = candidate.filter(r =>
     activeDims.has(r.dim_key) && activeRanges.has(r.eid_range_key)
   );
-  if (searchTerm) {
-    const q = searchTerm.toLowerCase();
-    data = data.filter(r => r.Archetype_Core.toLowerCase().includes(q));
-  }
-  data.sort((a, b) => {
+
+  // Step 3 — sort
+  filteredData.sort((a, b) => {
     let av = a[sortCol], bv = b[sortCol];
     if (typeof av === 'string') av = av.toLowerCase();
     if (typeof bv === 'string') bv = bv.toLowerCase();
     if (av == null) return 1; if (bv == null) return -1;
     return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
   });
-  return data;
+
+  updateMeta();
+  document.querySelector('.table-scroll').scrollTop = 0;
+  renderViewport();
 }
 
+function updateMeta() {
+  document.getElementById('visibleCount').textContent = filteredData.length.toLocaleString();
+  const ssum = filteredData.reduce((s, r) => s + r.Samples, 0);
+  document.getElementById('visibleSamples').textContent = ssum > 9999 ? (ssum/1000).toFixed(0)+'K' : ssum.toLocaleString();
+  document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> archetypes`;
+}
+
+// ---- Helpers (pure functions, safe to call at parse time) ----
 function parseChars(core) {
   return core.split(/\s*\+\s*/).map(s => s.trim()).filter(Boolean);
 }
 
 function iconEl(name) {
   let url = ICONS[name];
-  if (!url) {
-    const stripped = name.replace(/\s+LV\.\d+$/, '').trim();
-    url = ICONS[stripped];
-  }
+  if (!url) url = ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
   if (url) return `<img class="char-icon" src="${url}" alt="${name}" title="${name}" onerror="this.style.display='none'"/>`;
   return `<div class="char-icon-placeholder" title="${name}">${name.slice(0,2).toUpperCase()}</div>`;
 }
 
-function fmtPct(v)    { return v == null ? '—' : v.toFixed(1) + '%'; }
-function fmtNum(v, d=2){ return v == null ? '—' : v.toFixed(d); }
-function fmtInt(v)    { return v == null ? '—' : v.toLocaleString(); }
-function sustainCls(v){ return v >= 95 ? 'sustain-high' : v >= 70 ? 'sustain-mid' : 'sustain-low'; }
+function fmtPct(v)      { return v == null ? '—' : v.toFixed(1) + '%'; }
+function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
+function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
+function sustainCls(v)  { return v >= 95 ? 'sustain-high' : v >= 70 ? 'sustain-mid' : 'sustain-low'; }
 function eidLabel(at, upto) { return at === upto ? `E${at}` : `E${at}→${upto}`; }
 function eidCls(at, upto)   { return `eid-range-badge at${at}${at === upto ? ' exact' : ''}`; }
 
-function renderTable() {
-  const data = getFiltered();
-  document.getElementById('visibleCount').textContent   = data.length.toLocaleString();
-  const ssum = data.reduce((s,r) => s + r.Samples, 0);
-  document.getElementById('visibleSamples').textContent = ssum > 9999 ? (ssum/1000).toFixed(0)+'K' : ssum.toLocaleString();
-  document.getElementById('resultsInfo').innerHTML = `Showing <span>${data.length}</span> archetypes`;
+function rowHTML(r) {
+  const usagePct = Math.min(100, (r.Usage_pct / MAX_USAGE) * 100);
+  const at = r.at_eidolon_level, upto = r.up_to_eidolon_level;
+  return `<tr>
+    <td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>
+    <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
+    <td><span class="${eidCls(at,upto)}">${eidLabel(at,upto)}</span></td>
+    <td><div class="arch-cell"><div class="arch-icons">${r._iconsHtml}</div><span class="arch-name" title="${r.Archetype_Core}">${r.Archetype_Core}</span></div></td>
+    <td class="num"><div class="usage-bar-wrap"><div class="usage-bar-bg"><div class="usage-bar-fill" style="width:${usagePct.toFixed(1)}%"></div></div><span class="usage-val">${fmtPct(r.Usage_pct)}</span></div></td>
+    <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
+    <td class="num"><span class="${sustainCls(r.Sustain_Percentage)}">${fmtPct(r.Sustain_Percentage)}</span></td>
+    <td class="num"><span class="score-num samp">${fmtInt(r.Sustain_Samples)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
+    <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span></td>
+    <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
+    <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
+    <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+  </tr>`;
+}
 
+// ---- Virtual scroll setup ----
+(function setupVirtualScroll() {
+  const ts = document.querySelector('.table-scroll');
+  ts.style.maxHeight = VIEWPORT_H + 'px';
+  ts.style.overflowY = 'auto';
+  ts.addEventListener('scroll', renderViewport, { passive: true });
+})();
+
+function renderViewport() {
   const tbody = document.getElementById('tableBody');
-  if (data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="15"><div class="empty-state"><div class="icon">⚡</div><p>No archetypes match current filters</p></div></td></tr>`;
+  const ts    = document.querySelector('.table-scroll');
+
+  if (filteredData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${COL_COUNT}"><div class="empty-state"><div class="icon">⚡</div><p>No archetypes match current filters</p></div></td></tr>`;
     return;
   }
 
-  let lastDim = null;
+  const scrollTop = ts.scrollTop;
+  const startIdx  = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+  const endIdx    = Math.min(filteredData.length, Math.ceil((scrollTop + VIEWPORT_H) / ROW_H) + OVERSCAN);
+  const padTop    = startIdx * ROW_H;
+  const padBottom = (filteredData.length - endIdx) * ROW_H;
+
   let html = '';
-  data.forEach(r => {
+  if (padTop > 0)
+    html += `<tr style="height:${padTop}px"><td colspan="${COL_COUNT}" style="padding:0;border:none"></td></tr>`;
+
+  let lastDim = startIdx > 0 ? filteredData[startIdx - 1].dim_key : null;
+  for (let i = startIdx; i < endIdx; i++) {
+    const r = filteredData[i];
     if (r.dim_key !== lastDim) {
       const lbl = DIM_GROUP_LABELS[r.dim_key] || `${DIM_LABEL} ${r.dim_key}`;
-      html += `<tr class="group-sep"><td colspan="15"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
+      html += `<tr class="group-sep"><td colspan="${COL_COUNT}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
       lastDim = r.dim_key;
     }
-    const chars   = parseChars(r.Archetype_Core);
-    const icons   = chars.map(iconEl).join('');
-    const usagePct = Math.min(100, (r.Usage_pct / MAX_USAGE) * 100);
-    const at = r.at_eidolon_level, upto = r.up_to_eidolon_level;
+    html += rowHTML(r);
+  }
 
-    html += `<tr>
-      <td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>
-      <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
-      <td><span class="${eidCls(at,upto)}">${eidLabel(at,upto)}</span></td>
-      <td><div class="arch-cell"><div class="arch-icons">${icons}</div><span class="arch-name" title="${r.Archetype_Core}">${r.Archetype_Core}</span></div></td>
-      <td class="num"><div class="usage-bar-wrap"><div class="usage-bar-bg"><div class="usage-bar-fill" style="width:${usagePct.toFixed(1)}%"></div></div><span class="usage-val">${fmtPct(r.Usage_pct)}</span></div></td>
-      <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
-      <td class="num"><span class="${sustainCls(r.Sustain_Percentage)}">${fmtPct(r.Sustain_Percentage)}</span></td>
-      <td class="num"><span class="score-num samp">${fmtInt(r.Sustain_Samples)}</span></td>
-      <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
-      <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
-      <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>
-      <td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span></td>
-      <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
-      <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
-      <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
-    </tr>`;
-  });
+  if (padBottom > 0)
+    html += `<tr style="height:${padBottom}px"><td colspan="${COL_COUNT}" style="padding:0;border:none"></td></tr>`;
+
   tbody.innerHTML = html;
 }
+
+// ---- Debounce helper ----
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ---- Event wiring ----
 
 // Dimension buttons
 document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
@@ -351,10 +424,9 @@ document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
     const d = parseInt(btn.dataset.dim);
     if (activeDims.has(d)) {
       if (activeDims.size > 1) { activeDims.delete(d); btn.classList.remove('active'); }
-    } else {
-      activeDims.add(d); btn.classList.add('active');
-    }
-    renderTable();
+    } else { activeDims.add(d); btn.classList.add('active'); }
+    document.querySelector('.table-scroll').scrollTop = 0;
+    recompute();
   });
 });
 
@@ -364,17 +436,17 @@ document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => {
     const key = `${btn.dataset.at}_${btn.dataset.upto}`;
     if (activeRanges.has(key)) {
       if (activeRanges.size > 1) { activeRanges.delete(key); btn.classList.remove('active'); }
-    } else {
-      activeRanges.add(key); btn.classList.add('active');
-    }
-    renderTable();
+    } else { activeRanges.add(key); btn.classList.add('active'); }
+    document.querySelector('.table-scroll').scrollTop = 0;
+    recompute();
   });
 });
 
-// Search
-document.getElementById('searchInput').addEventListener('input', e => {
-  searchTerm = e.target.value.trim(); renderTable();
-});
+// Search — debounced 200ms
+document.getElementById('searchInput').addEventListener('input', debounce(e => {
+  searchTerm = e.target.value.trim().toLowerCase();
+  recompute();
+}, 200));
 
 // Sort
 document.querySelectorAll('th[data-col]').forEach(th => {
@@ -385,11 +457,12 @@ document.querySelectorAll('th[data-col]').forEach(th => {
     document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
     th.classList.add('sorted');
     if (sortAsc) th.classList.add('asc');
-    renderTable();
+    document.querySelector('.table-scroll').scrollTop = 0;
+    recompute();
   });
 });
 
-renderTable();
+recompute();
 </script>
 </body>
 </html>

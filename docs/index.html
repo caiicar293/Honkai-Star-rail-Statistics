@@ -1,496 +1,477 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Telemetry Analytics Hub · v4.2.3</title>
-    <!-- Google Fonts + smooth modern typography -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="description" content="Honkai: Star Rail endgame analytics — character usage, team compositions, and archetype performance across Memory of Chaos, Apocalyptic Shadow, Pure Fiction, and Anomaly Arbitration."/>
+  <meta property="og:title" content="HSR Telemetry Analytics Hub"/>
+  <meta property="og:description" content="Endgame statistics for Memory of Chaos, Apocalyptic Shadow, Pure Fiction, and Anomaly Arbitration."/>
+  <meta property="og:type" content="website"/>
+  <title>Telemetry Analytics Hub · HSR Endgame Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet"/>
+  <style>
+    /* ── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
 
-        body {
-            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: radial-gradient(ellipse at 20% 30%, #0a0e1a, #03050b);
-            color: #edf2fb;
-            line-height: 1.5;
-            padding: 2rem 1.5rem;
-            min-height: 100vh;
-            position: relative;
-        }
+    /* ── Base ──────────────────────────────────────────────── */
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(ellipse at 20% 30%, #0a0e1a, #03050b);
+      color: #edf2fb;
+      line-height: 1.5;
+      padding: 2rem 1.5rem 4rem;
+      min-height: 100vh;
+    }
 
-        /* animated grain & subtle grid overlay — aesthetic depth */
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" opacity="0.03"><path fill="none" d="M0 0h200v200H0z"/><path d="M20 20 L180 20 M20 40 L180 40 M20 60 L180 60 M20 80 L180 80 M20 100 L180 100 M20 120 L180 120 M20 140 L180 140 M20 160 L180 160 M20 180 L180 180 M40 20 L40 180 M60 20 L60 180 M80 20 L80 180 M100 20 L100 180 M120 20 L120 180 M140 20 L140 180 M160 20 L160 180" stroke="white" stroke-width="0.4"/></svg>');
-            background-repeat: repeat;
-            pointer-events: none;
-            z-index: 0;
-        }
+    /* ── Background grid overlay ───────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-        /* floating orbs for soft glow */
-        body::after {
-            content: "";
-            position: fixed;
-            top: 15%;
-            right: -10%;
-            width: 60vmax;
-            height: 60vmax;
-            background: radial-gradient(circle, rgba(56,189,248,0.12) 0%, rgba(56,189,248,0) 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
-        }
+    /* ── Ambient glow orbs ─────────────────────────────────── */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 10%;
+      right: -15%;
+      width: 65vmax;
+      height: 65vmax;
+      background: radial-gradient(circle, rgba(56,189,248,0.10) 0%, transparent 68%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 2;
-        }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 2;
+    }
 
-        /* ----- header hero area ----- */
-        .hero {
-            text-align: center;
-            margin-bottom: 3.5rem;
-            position: relative;
-        }
+    /* ── Hero ──────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
 
-        .hero h1 {
-            font-size: 3.3rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #ffffff, #93c5fd, #38bdf8);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-            letter-spacing: -0.02em;
-            margin-bottom: 0.75rem;
-            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #ffffff 0%, #93c5fd 50%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.025em;
+      margin-bottom: 1rem;
+      /* animation set by JS with stagger */
+      opacity: 0;
+    }
 
-        .version-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(20, 28, 46, 0.65);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            border-radius: 100px;
-            padding: 0.45rem 1.2rem;
-            font-size: 0.85rem;
-            font-weight: 500;
-            letter-spacing: 0.3px;
-            margin-top: 0.5rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(20, 28, 46, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 100px;
+      padding: 0.45rem 1.2rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      opacity: 0;
+    }
 
-        .version-badge span {
-            background: #38bdf8;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            box-shadow: 0 0 8px #38bdf8;
-            animation: pulse 1.8s infinite;
-        }
+    .version-badge .pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+      animation: pulseGlow 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
 
-        @keyframes pulse {
-            0% { opacity: 0.5; transform: scale(0.8);}
-            100% { opacity: 1; transform: scale(1.2);}
-        }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.5; transform: scale(0.85); }
+      50%       { opacity: 1;   transform: scale(1.2);  }
+    }
 
-        .subhead {
-            color: #9bb3d0;
-            font-size: 1rem;
-            max-width: 550px;
-            margin: 1rem auto 0;
-            font-weight: 400;
-            background: rgba(9, 12, 20, 0.5);
-            backdrop-filter: blur(4px);
-            display: inline-block;
-            padding: 0.3rem 1.2rem;
-            border-radius: 60px;
-        }
+    .subhead {
+      color: #9bb3d0;
+      font-size: 0.95rem;
+      max-width: 520px;
+      margin: 1rem auto 0;
+      font-weight: 400;
+      background: rgba(9, 12, 20, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: inline-block;
+      padding: 0.35rem 1.2rem;
+      border-radius: 60px;
+      opacity: 0;
+    }
 
-        /* section styling */
-        .section {
-            margin-top: 3rem;
-        }
+    /* ── Section ───────────────────────────────────────────── */
+    .section {
+      margin-top: 3rem;
+    }
 
-        .section-header {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            border-bottom: 1px solid rgba(56, 189, 248, 0.25);
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.6rem;
-        }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.65rem;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
 
-        .section-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            background: linear-gradient(120deg, #cbdff2, #38bdf8);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      background: linear-gradient(120deg, #cbdff2, #38bdf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-        .section-title i {
-            font-style: normal;
-            font-size: 1.3rem;
-        }
+    .section-title .mode-icon { font-style: normal; font-size: 1.2rem; }
 
-        .glow-accent {
-            font-size: 0.7rem;
-            background: rgba(56,189,248,0.12);
-            padding: 0.2rem 0.7rem;
-            border-radius: 30px;
-            border: 0.5px solid rgba(56,189,248,0.4);
-            color: #86c8ff;
-        }
+    .live-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 40px;
+      padding: 0.2rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: #7e9ab8;
+      border-left: 2px solid #38bdf8;
+      white-space: nowrap;
+    }
 
-        /* modern card grid */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
+    /* ── Card grid ─────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+    }
 
-        .card {
-            background: rgba(18, 25, 45, 0.65);
-            backdrop-filter: blur(8px);
-            border-radius: 28px;
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-            box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.4);
-            overflow: hidden;
-        }
+    .card {
+      position: relative;
+      background: rgba(18, 25, 45, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 20px;
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      overflow: hidden;
+      box-shadow: 0 8px 24px -8px rgba(0,0,0,0.45);
+      transition: border-color 0.28s ease, transform 0.28s cubic-bezier(0.22,1,0.36,1), box-shadow 0.28s ease, background 0.28s ease;
+      /* JS stagger sets opacity/transform initial state */
+      opacity: 0;
+      transform: translateY(14px);
+    }
 
-        .card a {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            padding: 1.4rem 0.8rem;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1.1rem;
-            letter-spacing: -0.2px;
-            color: #eef4ff;
-            transition: all 0.25s ease;
-            background: transparent;
-            width: 100%;
-            height: 100%;
-        }
+    .card a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 1.3rem 0.8rem;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.05rem;
+      letter-spacing: -0.1px;
+      color: #e8f2ff;
+      transition: color 0.2s ease;
+      width: 100%;
+      height: 100%;
+    }
 
-        .card:hover {
-            border-color: #38bdf8;
-            transform: translateY(-6px);
-            background: rgba(28, 40, 66, 0.75);
-            box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(56,189,248,0.3);
-        }
+    .card:hover {
+      border-color: rgba(56, 189, 248, 0.6);
+      transform: translateY(-5px);
+      background: rgba(28, 40, 68, 0.75);
+      box-shadow: 0 20px 36px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(56,189,248,0.25);
+    }
 
-        .card a:hover {
-            color: white;
-            text-shadow: 0 0 5px rgba(56,189,248,0.6);
-        }
+    .card:hover a { color: #ffffff; }
 
-        /* emoji icons inside links (inline style) */
-        .card .link-icon {
-            font-size: 1.5rem;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-            transition: transform 0.2s;
-        }
+    /* gradient underline — fixed: starts at 0 width, expands on hover */
+    .card::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #38bdf8, #a855f7);
+      border-radius: 2px;
+      transform: translateX(-50%);
+      transition: width 0.3s ease;
+    }
 
-        .card:hover .link-icon {
-            transform: scale(1.1);
-        }
+    .card:hover::after { width: 72%; }
 
-        /* extra card art: gradient underline on hover */
-        .card::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            width: 0%;
-            height: 2px;
-            background: linear-gradient(90deg, #38bdf8, #a855f7);
-            transition: 0.3s ease;
-            transform: translateX(-50%);
-            border-radius: 2px;
-        }
+    .link-icon {
+      font-size: 1.4rem;
+      transition: transform 0.2s ease;
+      display: inline-block;
+    }
 
-        .card {
-            position: relative;
-        }
+    .card:hover .link-icon { transform: scale(1.12); }
 
-        .card:hover::after {
-            width: 70%;
-        }
+    /* type-specific border accent */
+    .card[data-type="characters"] { border-top: 2px solid rgba(56,189,248,0.35); }
+    .card[data-type="archetypes"] { border-top: 2px solid rgba(168,85,247,0.35); }
+    .card[data-type="teams"]      { border-top: 2px solid rgba(74,222,128,0.35); }
 
-        /* footer design */
-        .footer {
-            margin-top: 5rem;
-            padding: 2rem 1rem 1.5rem;
-            border-top: 1px solid rgba(56, 189, 248, 0.2);
-            text-align: center;
-            color: #7e8aa8;
-            font-size: 0.85rem;
-            font-weight: 400;
-            backdrop-filter: blur(4px);
-            background: rgba(3, 7, 14, 0.3);
-            border-radius: 50px 50px 20px 20px;
-        }
+    /* ── Ripple ────────────────────────────────────────────── */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.25);
+      width: 60px;
+      height: 60px;
+      transform: scale(0);
+      pointer-events: none;
+      animation: rippleAnim 0.55s ease-out forwards;
+    }
 
-        .footer strong {
-            color: #8bb9fe;
-            font-weight: 600;
-        }
+    @keyframes rippleAnim {
+      to { transform: scale(7); opacity: 0; }
+    }
 
-        .footer span {
-            margin: 0 6px;
-        }
+    /* ── Footer ────────────────────────────────────────────── */
+    .footer {
+      margin-top: 5rem;
+      padding: 1.75rem 1rem 1.5rem;
+      border-top: 1px solid rgba(56, 189, 248, 0.15);
+      text-align: center;
+      color: #7e8aa8;
+      font-size: 0.82rem;
+      font-weight: 400;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      background: rgba(3, 7, 14, 0.25);
+      border-radius: 40px 40px 16px 16px;
+    }
 
-        /* responsive touches */
-        @media (max-width: 680px) {
-            body {
-                padding: 1.5rem;
-            }
-            .hero h1 {
-                font-size: 2.3rem;
-            }
-            .grid {
-                gap: 1rem;
-            }
-            .card a {
-                padding: 1rem 0.5rem;
-                font-size: 1rem;
-            }
-            .section-title {
-                font-size: 1rem;
-            }
-        }
+    .footer strong { color: #8bb9fe; font-weight: 600; }
 
-        /* decorative stat tag - tiny detail */
-        .live-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            background: rgba(0,0,0,0.35);
-            border-radius: 40px;
-            padding: 0.2rem 0.8rem;
-            font-size: 0.7rem;
-            font-weight: 500;
-            border-left: 2px solid #38bdf8;
-        }
+    .footer-meta {
+      margin-top: 10px;
+      font-size: 0.68rem;
+      letter-spacing: 0.3px;
+      color: #4e5f78;
+    }
 
-        /* subtle animation on load */
-        .card, .hero h1, .version-badge {
-            animation: fadeSlideUp 0.6s ease-out forwards;
-            opacity: 0;
-        }
-        .hero h1 { animation-delay: 0.05s; }
-        .version-badge { animation-delay: 0.15s; }
-        .subhead { animation: fadeSlideUp 0.5s ease forwards; animation-delay: 0.2s; opacity: 0; }
-        .card:nth-child(1) { animation-delay: 0.1s; }
-        .card:nth-child(2) { animation-delay: 0.18s; }
-        .card:nth-child(3) { animation-delay: 0.26s; }
-        .section .grid .card:nth-child(4) { animation-delay: 0.34s; }
+    /* ── Keyframe: fade+slide up ───────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
 
-        @keyframes fadeSlideUp {
-            from {
-                opacity: 0;
-                transform: translateY(15px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
+    /* ── Responsive ────────────────────────────────────────── */
+    @media (max-width: 680px) {
+      body { padding: 1.25rem 1.25rem 3rem; }
+      .grid { gap: 0.9rem; }
+      .card a { padding: 1.1rem 0.6rem; font-size: 0.98rem; }
+      .section-title { font-size: 0.95rem; }
+      .section-header { flex-direction: column; align-items: flex-start; gap: 6px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .card, .hero h1, .version-badge, .subhead { opacity: 1 !important; transform: none !important; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="hero">
-            <h1>Telemetry Analytics Hub</h1>
-            <div class="version-badge">
-                <span></span>
-                DATA VERSION 4.2.3
-                <span style="background:transparent; width:auto; margin-left:4px;">⚡</span>
-            </div>
-            <div class="subhead">
-                ⚙️ real-time combat telemetry · meta intelligence
-            </div>
-        </div>
+<div class="container">
 
-        <!-- Memory of Chaos section -->
-        <div class="section">
-            <div class="section-header">
-                <div class="section-title">
-                    <i>🌀</i> Memory of Chaos
-                </div>
-                <div class="live-tag">✦ updated with v4.2.3</div>
-            </div>
-            <div class="grid">
-                <div class="card">
-                    <a href="moc/moc_4_2_3_characters.html">
-                        <span class="link-icon">👤</span> Characters
-                    </a>
-                </div>
-                <div class="card">
-                    <a href="moc/moc_4_2_3_archetypes.html">
-                        <span class="link-icon">⚙️</span> Archetypes
-                    </a>
-                </div>
-                <div class="card">
-                    <a href="moc/moc_4_2_3_teams.html">
-                        <span class="link-icon">🤝</span> Teams
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Apoc section -->
-        <div class="section">
-            <div class="section-header">
-                <div class="section-title">
-                    <i>🌑</i> Apoc
-                </div>
-                <div class="live-tag">endgame analytics</div>
-            </div>
-            <div class="grid">
-                <div class="card">
-                    <a href="apoc/apoc_4_2_3_characters.html">
-                        <span class="link-icon">👤</span> Characters
-                    </a>
-                </div>
-                <div class="card">
-                    <a href="apoc/apoc_4_2_3_archetypes.html">
-                        <span class="link-icon">⚙️</span> Archetypes
-                    </a>
-                </div>
-                <div class="card">
-                    <a href="apoc/apoc_4_2_3_teams.html">
-                        <span class="link-icon">🤝</span> Teams
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pure Fiction section -->
-        <div class="section">
-            <div class="section-header">
-                <div class="section-title">
-                    <i>📖</i> Pure Fiction
-                </div>
-                <div class="live-tag">wave performance</div>
-            </div>
-            <div class="grid">
-                <div class="card">
-                    <a href="pure_fiction/pure_fiction_4_2_3_characters.html">
-                        <span class="link-icon">👤</span> Characters
-                    </a>
-                </div>
-                <div class="card">
-                    <a href="pure_fiction/pure_fiction_4_2_3_archetypes.html">
-                        <span class="link-icon">⚙️</span> Archetypes
-                    </a>
-                </div>
-                <div class="card">
-                    <a href="pure_fiction/pure_fiction_4_2_3_teams.html">
-                        <span class="link-icon">🤝</span> Teams
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Anomaly Arbitration section -->
-        <div class="section">
-            <div class="section-header">
-                <div class="section-title">
-                    <i>⚠️</i> Anomaly Arbitration
-                </div>
-                <div class="live-tag">statistical outliers</div>
-            </div>
-            <div class="grid">
-                <div class="card">
-                    <a href="anomaly_arbitration/anomaly_4_2_3_characters.html">
-                        <span class="link-icon">👤</span> Characters
-                    </a>
-                </div>
-                <div class="card">
-                    <a href="anomaly_arbitration/anomaly_4_2_3_archetypes.html">
-                        <span class="link-icon">⚙️</span> Archetypes
-                    </a>
-                </div>
-                <div class="card">
-                    <a href="anomaly_arbitration/anomaly_4_2_3_teams.html">
-                        <span class="link-icon">🤝</span> Teams
-                    </a>
-                </div>
-            </div>
-        </div>
+  <header class="hero" role="banner">
+    <h1 id="heroTitle">Telemetry Analytics Hub</h1>
+    <div class="version-badge" id="versionBadge">
+      <span class="pulse-dot" aria-hidden="true"></span>
+      DATA VERSION <span id="versionLabel">4.3.1</span>
     </div>
+    <p class="subhead" id="heroSub">⚙️ endgame combat telemetry · meta intelligence</p>
+  </header>
 
-    <footer class="footer">
-        <div>
-            🔍 Data provided by <strong>LvlUrArti</strong> · dashboard maintained by <strong>caiicar293</strong>
+  <main>
+    <section class="section" aria-label="Memory of Chaos">
+      <div class="section-header">
+        <h2 class="section-title"><span class="mode-icon" aria-hidden="true">🌀</span> Memory of Chaos</h2>
+        <div class="live-tag">✦ updated with v<span class="cur-version">4.3.1</span></div>
+      </div>
+      <div class="grid">
+        <div class="card" data-type="characters">
+          <a href="moc/moc_4_3_1_characters.html" aria-label="MOC Characters">
+            <span class="link-icon" aria-hidden="true">👤</span> Characters
+          </a>
         </div>
-        <div style="margin-top: 12px; font-size: 0.7rem; letter-spacing: 0.3px;">
-            telemetry insight engine · v4.2.3 · last calibration <span id="liveDate"></span>
+        <div class="card" data-type="archetypes">
+          <a href="moc/moc_4_3_1_archetypes.html" aria-label="MOC Archetypes">
+            <span class="link-icon" aria-hidden="true">⚙️</span> Archetypes
+          </a>
         </div>
-    </footer>
+        <div class="card" data-type="teams">
+          <a href="moc/moc_4_3_1_teams.html" aria-label="MOC Teams">
+            <span class="link-icon" aria-hidden="true">🤝</span> Teams
+          </a>
+        </div>
+      </div>
+    </section>
 
-    <script>
-        // adds a subtle live date for freshness aesthetic (optional dynamic touch)
-        const dateSpan = document.getElementById('liveDate');
-        if(dateSpan) {
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            const today = new Date().toLocaleDateString('en-US', options);
-            dateSpan.textContent = today;
-        }
-        // tiny ripple effect on cards (just aesthetic micro-interaction)
-        const cards = document.querySelectorAll('.card');
-        cards.forEach(card => {
-            card.addEventListener('click', (e) => {
-                // if the click target is anchor or inside, do nothing else we just create visual hint
-                if(!e.target.closest('a')) return;
-                const ripple = document.createElement('span');
-                ripple.style.position = 'absolute';
-                ripple.style.borderRadius = '50%';
-                ripple.style.backgroundColor = 'rgba(56, 189, 248, 0.3)';
-                ripple.style.width = '50px';
-                ripple.style.height = '50px';
-                ripple.style.transform = 'scale(0)';
-                ripple.style.transition = 'transform 0.5s ease, opacity 0.4s';
-                ripple.style.opacity = '1';
-                ripple.style.pointerEvents = 'none';
-                ripple.style.left = e.clientX - card.getBoundingClientRect().left - 25 + 'px';
-                ripple.style.top = e.clientY - card.getBoundingClientRect().top - 25 + 'px';
-                card.style.overflow = 'hidden';
-                card.appendChild(ripple);
-                setTimeout(() => {
-                    ripple.style.transform = 'scale(6)';
-                    ripple.style.opacity = '0';
-                }, 20);
-                setTimeout(() => ripple.remove(), 500);
-            });
-        });
-    </script>
+    <section class="section" aria-label="Apocalyptic Shadow">
+      <div class="section-header">
+        <h2 class="section-title"><span class="mode-icon" aria-hidden="true">🌑</span> Apocalyptic Shadow</h2>
+        <div class="live-tag">✦ updated with v<span class="cur-version">4.3.1</span></div>
+      </div>
+      <div class="grid">
+        <div class="card" data-type="characters">
+          <a href="apoc/apoc_4_3_1_characters.html" aria-label="Apocalyptic Shadow Characters">
+            <span class="link-icon" aria-hidden="true">👤</span> Characters
+          </a>
+        </div>
+        <div class="card" data-type="archetypes">
+          <a href="apoc/apoc_4_3_1_archetypes.html" aria-label="Apocalyptic Shadow Archetypes">
+            <span class="link-icon" aria-hidden="true">⚙️</span> Archetypes
+          </a>
+        </div>
+        <div class="card" data-type="teams">
+          <a href="apoc/apoc_4_3_1_teams.html" aria-label="Apocalyptic Shadow Teams">
+            <span class="link-icon" aria-hidden="true">🤝</span> Teams
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-label="Pure Fiction">
+      <div class="section-header">
+        <h2 class="section-title"><span class="mode-icon" aria-hidden="true">📖</span> Pure Fiction</h2>
+        <div class="live-tag">✦ updated with v<span class="cur-version">4.3.1</span></div>
+      </div>
+      <div class="grid">
+        <div class="card" data-type="characters">
+          <a href="pure_fiction/pure_fiction_4_3_1_characters.html" aria-label="Pure Fiction Characters">
+            <span class="link-icon" aria-hidden="true">👤</span> Characters
+          </a>
+        </div>
+        <div class="card" data-type="archetypes">
+          <a href="pure_fiction/pure_fiction_4_3_1_archetypes.html" aria-label="Pure Fiction Archetypes">
+            <span class="link-icon" aria-hidden="true">⚙️</span> Archetypes
+          </a>
+        </div>
+        <div class="card" data-type="teams">
+          <a href="pure_fiction/pure_fiction_4_3_1_teams.html" aria-label="Pure Fiction Teams">
+            <span class="link-icon" aria-hidden="true">🤝</span> Teams
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-label="Anomaly Arbitration">
+      <div class="section-header">
+        <h2 class="section-title"><span class="mode-icon" aria-hidden="true">⚠️</span> Anomaly Arbitration</h2>
+        <div class="live-tag">✦ updated with v<span class="cur-version">4.3.1</span></div>
+      </div>
+      <div class="grid">
+        <div class="card" data-type="characters">
+          <a href="anomaly_arbitration/anomaly_4_3_1_characters.html" aria-label="Anomaly Arbitration Characters">
+            <span class="link-icon" aria-hidden="true">👤</span> Characters
+          </a>
+        </div>
+        <div class="card" data-type="archetypes">
+          <a href="anomaly_arbitration/anomaly_4_3_1_archetypes.html" aria-label="Anomaly Arbitration Archetypes">
+            <span class="link-icon" aria-hidden="true">⚙️</span> Archetypes
+          </a>
+        </div>
+        <div class="card" data-type="teams">
+          <a href="anomaly_arbitration/anomaly_4_3_1_teams.html" aria-label="Anomaly Arbitration Teams">
+            <span class="link-icon" aria-hidden="true">🤝</span> Teams
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div>🔍 Data by <strong>LvlUrArti</strong> · dashboard by <strong>caiicar293</strong></div>
+    <div class="footer-meta">
+      telemetry insight engine · v<span class="cur-version">4.3.1</span> · <span id="liveDate"></span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  // Dynamic version injected by Jinja
+  const VERSION = '4.3.1';
+  document.title = `Telemetry Analytics Hub · v${VERSION}`;
+
+  const dateEl = document.getElementById('liveDate');
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function animateIn(el, delay) {
+    if (!el) return;
+    if (prefersReduced) {
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+      return;
+    }
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s cubic-bezier(0.22,1,0.36,1)';
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    }, delay);
+  }
+
+  animateIn(document.getElementById('heroTitle'),   60);
+  animateIn(document.getElementById('versionBadge'), 140);
+  animateIn(document.getElementById('heroSub'),      210);
+
+  document.querySelectorAll('.card').forEach((card, i) => {
+    animateIn(card, 280 + i * 55);
+  });
+
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', function(e) {
+      const rect   = this.getBoundingClientRect();
+      const ripple = document.createElement('span');
+      ripple.className = 'ripple';
+      ripple.style.left = (e.clientX - rect.left - 30) + 'px';
+      ripple.style.top  = (e.clientY - rect.top  - 30) + 'px';
+      this.appendChild(ripple);
+      ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+    });
+  });
+</script>
 </body>
 </html>

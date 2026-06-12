@@ -276,7 +276,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
                 right_on=["uid", 'name', "version"], 
                 how="left"
             )
-            .drop(['phase', 'cons_right', 'level'])
+            .drop([c for c in ['phase', 'cons_right', 'level'] if c in base_data.collect_schema().names()])
             .with_columns([
                 pl.col("weapon").fill_null("Info_not_found"),
                 pl.col("artifacts").fill_null("Info_not_found"),

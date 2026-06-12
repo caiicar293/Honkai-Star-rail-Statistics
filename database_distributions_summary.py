@@ -123,9 +123,9 @@ if __name__ == "__main__":
         processor.process_mode("anomaly_stats_distributions", "Scores", "floor", "DESC", "anomaly_stats_distributions_summaries")
 
         # 2. Multi-Modes
-        processor.process_multi_mode("moc_stats_dual_distributions", "Scores", "DESC", "moc_stats_dual_distributions_summaries")
-        processor.process_multi_mode("pure_fiction_stats_dual_distributions", "Scores", "ASC", "pure_fiction_stats_dual_distributions_summaries")
-        processor.process_multi_mode("apoc_stats_dual_distributions", "Scores", "ASC", "apoc_dual_stats_distributions_summaries")
+        processor.process_multi_mode("moc_stats_dual_or_triple_distributions", "Scores", "DESC", "moc_stats_dual_or_triple_distributions_summaries")
+        processor.process_multi_mode("pure_fiction_stats_dual_or_triple_distributions", "Scores", "ASC", "pure_fiction_stats_dual_or_triple_distributions_summaries")
+        processor.process_multi_mode("apoc_stats_dual_or_triple_distributions", "Scores", "ASC", "apoc_dual_or_triple_stats_distributions_summaries")
         processor.process_multi_mode("anomaly_stats_triple_distributions", "Scores", "DESC", "anomaly_triple_stats_distributions_summaries")
 
     finally:

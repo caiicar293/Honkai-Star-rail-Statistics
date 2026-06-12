@@ -79,7 +79,7 @@ class HonkaiDataPlatform:
             "APOC": {
                 "class":    HonkaiStatistics_V2_APOC_Batch,
                 "prefix":   "apoc",
-                "versions": get_env_list("APOC_VERSIONS"),
+                "versions": get_env_list("APOC_VERSIONS")[::-1],  # reverse to go from newest to oldest
                 "floor":    4,
                 "has_node": True,
                 "era":      "MODERN",
@@ -259,7 +259,7 @@ class HonkaiDataPlatform:
             conn.execute(f"""
                 CREATE OR REPLACE TABLE {table} AS
                 SELECT * FROM {table}
-                ORDER BY version DESC,up_eidolon DESC,node DESC
+                ORDER BY version DESC,at_eidolon_level,up_to_eidolon_level DESC,node DESC
             """)
         except Exception:
             pass
@@ -324,7 +324,7 @@ class HonkaiDataPlatform:
 
         if combined_trigger:
             label  = "Both" if mode != "ANOMALY" else None
-            suffix = "dual" if mode != "ANOMALY" else "triple"
+            suffix = "dual_or_triple" if mode != "ANOMALY" else "triple"
             print(f"  [MODERN] Combined {suffix.upper()} for {mode} v={v} e={e}")
             self._db_save(conn,
                 self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, label, era),
@@ -377,7 +377,7 @@ class HonkaiDataPlatform:
 
         if n == 0 or v =="all" or n=="all":
             label  = "Both"
-            suffix = "dual"
+            suffix = "dual_or_triple"
             print(f"  [LEGACY] Combined {suffix.upper()} for {mode} v{v}")
             self._db_save(conn,
                 self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, label, era),

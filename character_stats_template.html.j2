@@ -308,23 +308,6 @@ RAW_DATA.forEach(r => {
 
 const MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
 
-// ---- Pre-index ----
-const TOKEN_INDEX = new Map();
-RAW_DATA.forEach((r, i) => {
-  const tokens = r._charLower.split(/[\s\(\),\/\+\•]+/).filter(t => t.length >= 2);
-  new Set(tokens).forEach(tok => {
-    if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
-    TOKEN_INDEX.get(tok).push(i);
-  });
-});
-
-function searchIndex(q) {
-  const hits = new Set();
-  TOKEN_INDEX.forEach((indices, tok) => {
-    if (tok.includes(q)) indices.forEach(i => hits.add(i));
-  });
-  return hits;
-}
 
 // ---- State ----
 const activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
@@ -335,14 +318,15 @@ let sortAsc    = false;
 let filteredData = [];
 
 function recompute() {
-  let candidate;
-  if (searchTerm.length >= 2) {
-    const hits = searchIndex(searchTerm);
-    candidate = [...hits].map(i => RAW_DATA[i]);
-  } else if (searchTerm.length === 1) {
-    candidate = RAW_DATA.filter(r => r._charLower.includes(searchTerm));
-  } else {
-    candidate = RAW_DATA;
+  let candidate = RAW_DATA;
+
+  if (searchTerm) {
+    // Normalize special characters to spaces and split into individual query tokens
+    const queryTokens = searchTerm.replace(/[•&]/g, ' ').split(/\s+/).filter(t => t);
+    
+    candidate = RAW_DATA.filter(r => 
+      queryTokens.every(qTok => r._charLower.includes(qTok))
+    );
   }
 
   filteredData = candidate.filter(r => {

@@ -43,36 +43,69 @@
   .meta-chip .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; }
 
   /* CONTROLS */
-  .controls { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end; }
+  .controls { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
   .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
   .ctrl-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; }
   .btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
   .btn-toggle { background: var(--panel); border: 1px solid var(--border); color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 5px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; white-space: nowrap; }
   .btn-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* Dimension active */
   .btn-toggle.dim-0.active { background: rgba(99,102,241,0.12);  border-color: var(--dim0); color: var(--dim0); }
   .btn-toggle.dim-1.active { background: rgba(56,189,248,0.12);  border-color: var(--dim1); color: var(--dim1); }
   .btn-toggle.dim-2.active { background: rgba(244,114,182,0.12); border-color: var(--dim2); color: var(--dim2); }
   .btn-toggle.dim-3.active { background: rgba(251,146,60,0.12);  border-color: var(--dim3); color: var(--dim3); }
   .btn-toggle.dim-4.active { background: rgba(167,139,250,0.12); border-color: var(--dim4); color: var(--dim4); }
 
-  /* Eidolon range active */
   .btn-toggle.range.at0.active { border-color: var(--e0); color: var(--e0); background: rgba(148,163,184,0.08); }
   .btn-toggle.range.at1.active { border-color: var(--e1); color: var(--e1); background: rgba(74,222,128,0.07); }
   .btn-toggle.range.at2.active { border-color: var(--e2); color: var(--e2); background: rgba(56,189,248,0.08); }
   .btn-toggle.range.at6.active { border-color: var(--e6); color: var(--e6); background: rgba(251,191,36,0.09); }
 
-  /* Sustain toggle */
   .btn-toggle.sustain-on.active  { background: rgba(74,222,128,0.10); border-color: var(--green); color: var(--green); }
   .btn-toggle.sustain-off.active { background: rgba(248,113,113,0.10); border-color: var(--red);   color: var(--red); }
 
-  /* Search */
   .search-wrap { position: relative; min-width: 220px; max-width: 360px; }
   .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
   #searchInput { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
   #searchInput:focus { border-color: var(--accent); }
   #searchInput::placeholder { color: var(--text3); }
+
+  /* Character slot filter panel */
+  .slot-panel {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 16px;
+  }
+  .slot-panel-title {
+    font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em;
+    font-family: 'Share Tech Mono', monospace; width: 100%; margin-bottom: 2px;
+  }
+  .slot { display: flex; flex-direction: column; gap: 4px; min-width: 160px; flex: 1; }
+  .slot-input-row { display: flex; gap: 4px; }
+  .slot input[type="text"] {
+    flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 5px;
+    color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px;
+    padding: 6px 10px; outline: none; transition: border-color 0.15s, background 0.15s;
+  }
+  .slot input[type="text"]:focus { border-color: var(--accent); }
+  .slot input[type="text"].slot-filled { border-color: var(--accent2); background: rgba(56,189,248,0.06); }
+  .slot input[type="text"].slot-exclude.slot-filled { border-color: var(--red); background: rgba(248,113,113,0.06); }
+  .slot-mode-btn {
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700;
+    border-radius: 5px; padding: 6px 10px; cursor: pointer; transition: all 0.15s;
+    min-width: 36px;
+  }
+  .slot-mode-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .slot-mode-btn.mode-include { color: var(--green); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.06); }
+  .slot-mode-btn.mode-exclude { color: var(--red); border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.06); }
+  .slot-clear-all {
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text3);
+    font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600;
+    border-radius: 5px; padding: 6px 12px; cursor: pointer; transition: all 0.15s;
+    height: 34px; align-self: flex-end;
+  }
+  .slot-clear-all:hover { border-color: var(--red); color: var(--red); }
 
   .results-info { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0 8px; letter-spacing: 0.06em; }
   .results-info span { color: var(--accent); }
@@ -97,7 +130,6 @@
   .rank-cell { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); text-align: center; min-width: 36px; }
   .rank-cell.top3 { color: var(--gold); font-weight: bold; }
 
-  /* Dimension badge */
   .dim-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; }
   .dim-badge.d0 { background: rgba(99,102,241,0.2);  color: var(--dim0); border: 1px solid rgba(99,102,241,0.4); }
   .dim-badge.d1 { background: rgba(56,189,248,0.15);  color: var(--dim1); border: 1px solid rgba(56,189,248,0.35); }
@@ -105,7 +137,6 @@
   .dim-badge.d3 { background: rgba(251,146,60,0.15);  color: var(--dim3); border: 1px solid rgba(251,146,60,0.35); }
   .dim-badge.d4 { background: rgba(167,139,250,0.15); color: var(--dim4); border: 1px solid rgba(167,139,250,0.35); }
 
-  /* Eidolon range badge */
   .eid-range-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 6px; font-family: 'Share Tech Mono', monospace; font-size: 10px; border: 1px solid; }
   .eid-range-badge.exact { font-weight: 700; font-size: 11px; }
   .eid-range-badge.at0 { color: var(--e0); border-color: rgba(148,163,184,0.3); background: rgba(148,163,184,0.06); }
@@ -113,14 +144,12 @@
   .eid-range-badge.at2 { color: var(--e2); border-color: rgba(56,189,248,0.3);  background: rgba(56,189,248,0.07); }
   .eid-range-badge.at6 { color: var(--e6); border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }
 
-  /* Sustain pill */
   .sustain-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 2px 8px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 600; border: 1px solid; }
   .sustain-pill.yes { color: var(--green); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.08); }
   .sustain-pill.no  { color: var(--red);   border-color: rgba(248,113,113,0.3);  background: rgba(248,113,113,0.07); }
   .sustain-pill.yes::before { content: '✦'; font-size: 8px; }
   .sustain-pill.no::before  { content: '✕'; font-size: 9px; }
 
-  /* Team cell */
   .team-cell { display: flex; align-items: center; gap: 6px; min-width: 280px; max-width: 500px; }
   .team-icons { display: flex; align-items: center; flex-shrink: 0; }
   .char-icon { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border2); object-fit: cover; margin-left: -7px; background: var(--bg2); transition: transform 0.15s; }
@@ -130,13 +159,11 @@
   .char-icon-placeholder:first-child { margin-left: 0; }
   .team-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* Appearance rate bar */
   .rate-bar-wrap { display: flex; align-items: center; gap: 7px; min-width: 120px; }
   .rate-bar-bg { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; min-width: 55px; }
   .rate-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--teal)); }
   .rate-val { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent2); min-width: 44px; text-align: right; }
 
-  /* Score cells */
   .score-num { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); }
   .score-num.median { color: var(--accent); font-weight: 600; font-size: 13px; }
   .score-num.avg    { color: var(--gold); font-size: 13px; }
@@ -144,7 +171,6 @@
   .score-num.std    { color: var(--text3); font-size: 11px; }
   .score-num.samp   { color: var(--text2); }
 
-  /* Group separator */
   .group-sep td { background: var(--bg2); padding: 5px 12px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; border-bottom: 1px solid var(--border2); }
   .group-label-0 { color: var(--dim0); }
   .group-label-1 { color: var(--dim1); }
@@ -180,7 +206,6 @@
 
   <div class="controls">
 
-    <!-- Dimension filter (node / floor) -->
     <div class="ctrl-group">
       <div class="ctrl-label">{{ dim_label }}</div>
       <div class="btn-group" id="dimFilters">
@@ -190,7 +215,6 @@
       </div>
     </div>
 
-    <!-- Eidolon range filter -->
     <div class="ctrl-group">
       <div class="ctrl-label">Eidolon Range (at → up_to)</div>
       <div class="btn-group" id="eidFilters">
@@ -207,7 +231,6 @@
       </div>
     </div>
 
-    <!-- Sustain filter -->
     <div class="ctrl-group">
       <div class="ctrl-label">Sustain</div>
       <div class="btn-group">
@@ -216,16 +239,30 @@
       </div>
     </div>
 
-    <!-- Search -->
     <div class="ctrl-group" style="flex:1; min-width:220px; max-width:380px;">
-      <div class="ctrl-label">Character Search</div>
+      <div class="ctrl-label">Team Search</div>
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input id="searchInput" type="text" placeholder="Search character or team…"/>
+        <input id="searchInput" type="text" placeholder="Search e.g. Dan Heng Imbibitor Lunae…"/>
       </div>
     </div>
 
   </div>
+
+  <!-- Character slot include/exclude panel -->
+  <div class="slot-panel">
+    <div class="slot-panel-title">Character Filters — toggle ✓ include / ✕ exclude per slot</div>
+    {% for i in range(1, 5) %}
+    <div class="slot">
+      <div class="slot-input-row">
+        <input type="text" id="slotInput{{ i }}" class="slot-input" list="charList" placeholder="Character {{ i }}" data-slot="{{ i }}"/>
+        <button class="slot-mode-btn mode-include" id="slotMode{{ i }}" data-slot="{{ i }}" title="Click to toggle include/exclude">✓</button>
+      </div>
+    </div>
+    {% endfor %}
+    <button class="slot-clear-all" id="slotClearAll">Clear all</button>
+  </div>
+  <datalist id="charList"></datalist>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
 
@@ -263,47 +300,64 @@ const DIM_FIELD       = '{{ dim_field }}';
 const DIM_LABEL       = '{{ dim_label }}';
 const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
 
-// ---- Virtual scroll config ----
-const ROW_H    = 46;   // px — must match td padding (9px top+bottom + ~28px content)
-const OVERSCAN = 6;    // extra rows rendered above and below viewport
+const ROW_H    = 46;
+const OVERSCAN = 6;
+const VIEWPORT_H = 600;
 
-// ---- Pre-process all rows once at load ----
 RAW_DATA.forEach(r => {
   r.dim_key       = r[DIM_FIELD];
   r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
   r.Sustain       = r['Sustain?'] ?? r['Sustain'] ?? false;
-  // Pre-parse members and cache icon HTML so virtual scroll never re-parses
   const members   = parseMembers(r.Team);
+  r._members      = members;
+  r._membersLower = members.map(m => m.toLowerCase());
   r._iconsHtml    = members.map(iconEl).join('');
   r._teamLower    = r.Team.toLowerCase();
 });
 
 const MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
 
-// ---- Pre-index: token map for fast character search ----
-// Maps every word token in every Team string → array of row indices
+const ALL_CHAR_NAMES = [...new Set(RAW_DATA.flatMap(r => r._members))].sort();
+
+(function populateCharList() {
+  const dl = document.getElementById('charList');
+  const frag = document.createDocumentFragment();
+  ALL_CHAR_NAMES.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    frag.appendChild(opt);
+  });
+  dl.appendChild(frag);
+})();
+
 const TOKEN_INDEX = new Map();
 RAW_DATA.forEach((r, i) => {
-  // Tokenise: split on non-alpha, dedupe, skip very short tokens
-  const tokens = r._teamLower.split(/[\s\(\),\/\+]+/).filter(t => t.length >= 2);
+  const tokens = r._teamLower.split(/[\s\(\),\/\+•&]+/).filter(t => t.length >= 2);
   new Set(tokens).forEach(tok => {
     if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
     TOKEN_INDEX.get(tok).push(i);
   });
 });
 
-function searchIndex(q) {
-  // Find all row indices whose Team contains q as a substring of any token
-  // For short queries use prefix scan; for longer ones use direct includes
-  const hits = new Set();
-  if (q.length === 0) return null; // null = no search active
-  TOKEN_INDEX.forEach((indices, tok) => {
-    if (tok.includes(q)) indices.forEach(i => hits.add(i));
-  });
-  return hits;
+// Multi-word search: split query into words, AND across words.
+// "dan heng" -> needs a token containing "dan" AND a token containing "heng",
+// so "Dan Heng • Imbibitor Lunae" matches even though it's two separate tokens.
+function searchIndex(query) {
+  const words = query.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return null;
+
+  let resultSet = null;
+  for (const word of words) {
+    const wordHits = new Set();
+    TOKEN_INDEX.forEach((indices, tok) => {
+      if (tok.includes(word)) indices.forEach(i => wordHits.add(i));
+    });
+    resultSet = resultSet === null ? wordHits : new Set([...resultSet].filter(i => wordHits.has(i)));
+    if (resultSet.size === 0) break;
+  }
+  return resultSet;
 }
 
-// ---- State ----
 const activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
 const activeRanges = new Set([
   '0_0','0_1','0_2','0_6',
@@ -316,30 +370,42 @@ let searchTerm    = '';
 let sortCol       = 'Appearance_Rate_pct';
 let sortAsc       = false;
 
-// Holds the current filtered+sorted array — recomputed on any filter/sort change
+// Character slot filters: index 0-3 for slots 1-4. Each: { name, mode: 'include'|'exclude' } | null
+const slotFilters = [null, null, null, null];
+
 let filteredData = [];
 
 function recompute() {
-  // Step 1 — search index lookup (fast path) or full scan
   let candidate;
   if (searchTerm.length >= 2) {
     const hits = searchIndex(searchTerm);
     candidate = hits ? [...hits].map(i => RAW_DATA[i]) : [];
   } else if (searchTerm.length === 1) {
-    // Single char: fall back to full scan (index only covers 2+ char tokens)
     candidate = RAW_DATA.filter(r => r._teamLower.includes(searchTerm));
   } else {
     candidate = RAW_DATA;
   }
 
-  // Step 2 — apply dim / eidolon / sustain filters
-  filteredData = candidate.filter(r =>
+  candidate = candidate.filter(r =>
     activeDims.has(r.dim_key) &&
     activeRanges.has(r.eid_range_key) &&
     (r.Sustain ? showSustain : showNoSustain)
   );
 
-  // Step 3 — sort
+  const activeSlots = slotFilters.filter(Boolean);
+  if (activeSlots.length > 0) {
+    candidate = candidate.filter(r => {
+      for (const slot of activeSlots) {
+        const present = r._membersLower.includes(slot.name.toLowerCase());
+        if (slot.mode === 'include' && !present) return false;
+        if (slot.mode === 'exclude' && present)  return false;
+      }
+      return true;
+    });
+  }
+
+  filteredData = candidate;
+
   filteredData.sort((a, b) => {
     let av = a[sortCol], bv = b[sortCol];
     if (typeof av === 'string') av = av.toLowerCase();
@@ -359,7 +425,6 @@ function updateMeta() {
   document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> teams`;
 }
 
-// ---- Helpers ----
 function parseMembers(team) {
   return team
     .replace(/^\(|\)$/g, '')
@@ -405,24 +470,15 @@ function rowHTML(r) {
   </tr>`;
 }
 
-// ---- Virtual scroll ----
-// The table-scroll div is the scroll container. We need a fixed viewport height.
-// We add a sentinel spacer row at the bottom to fake total scroll height,
-// and only render the visible slice into tbody.
-
-const VIEWPORT_H = 600; // px — visible table body height
-
-// Inject viewport height and spacer styles once
 (function setupVirtualScroll() {
   const tableScroll = document.querySelector('.table-scroll');
   tableScroll.style.maxHeight = VIEWPORT_H + 'px';
   tableScroll.style.overflowY = 'auto';
-  // Listen for scroll
   tableScroll.addEventListener('scroll', () => renderViewport(), { passive: true });
 })();
 
 function renderViewport() {
-  const tbody      = document.getElementById('tableBody');
+  const tbody       = document.getElementById('tableBody');
   const tableScroll = document.querySelector('.table-scroll');
 
   if (filteredData.length === 0) {
@@ -433,19 +489,14 @@ function renderViewport() {
   const scrollTop  = tableScroll.scrollTop;
   const startIdx   = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
   const endIdx     = Math.min(filteredData.length, Math.ceil((scrollTop + VIEWPORT_H) / ROW_H) + OVERSCAN);
-
-  // Spacer rows above and below visible slice maintain correct scroll height
   const paddingTop    = startIdx * ROW_H;
   const paddingBottom = (filteredData.length - endIdx) * ROW_H;
 
   let html = '';
-
-  // Top padding row
   if (paddingTop > 0) {
     html += `<tr style="height:${paddingTop}px"><td colspan="14" style="padding:0;border:none"></td></tr>`;
   }
 
-  // Visible rows — track group separators within the visible window
   let lastDim = startIdx > 0 ? filteredData[startIdx - 1].dim_key : null;
   for (let i = startIdx; i < endIdx; i++) {
     const r = filteredData[i];
@@ -457,7 +508,6 @@ function renderViewport() {
     html += rowHTML(r);
   }
 
-  // Bottom padding row
   if (paddingBottom > 0) {
     html += `<tr style="height:${paddingBottom}px"><td colspan="14" style="padding:0;border:none"></td></tr>`;
   }
@@ -465,15 +515,11 @@ function renderViewport() {
   tbody.innerHTML = html;
 }
 
-// ---- Debounce helper ----
 function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-// ---- Event wiring ----
-
-// Dimension buttons
 document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
     const d = parseInt(btn.dataset.dim);
@@ -485,7 +531,6 @@ document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
   });
 });
 
-// Eidolon range buttons
 document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
     const key = `${btn.dataset.at}_${btn.dataset.upto}`;
@@ -497,7 +542,6 @@ document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => {
   });
 });
 
-// Sustain buttons
 document.getElementById('btnSustainOn').addEventListener('click', () => {
   if (showSustain && !showNoSustain) return;
   showSustain = !showSustain;
@@ -513,14 +557,76 @@ document.getElementById('btnSustainOff').addEventListener('click', () => {
   recompute();
 });
 
-// Search — debounced 200ms, resets scroll to top
+// Free-text search — debounced, multi-word AND across tokens.
+// Fixes "Dan Heng" type queries previously broken by spacing.
 document.getElementById('searchInput').addEventListener('input', debounce(e => {
   searchTerm = e.target.value.trim().toLowerCase();
   document.querySelector('.table-scroll').scrollTop = 0;
   recompute();
 }, 200));
 
-// Sort
+// ---- Character slot filters ----
+
+function updateSlotFromInput(slotIdx) {
+  const input   = document.getElementById(`slotInput${slotIdx + 1}`);
+  const modeBtn = document.getElementById(`slotMode${slotIdx + 1}`);
+  const val = input.value.trim();
+
+  if (val === '') {
+    slotFilters[slotIdx] = null;
+    input.classList.remove('slot-filled', 'slot-exclude');
+    return;
+  }
+
+  const exact = ALL_CHAR_NAMES.find(n => n.toLowerCase() === val.toLowerCase());
+  const name = exact || val;
+
+  const mode = modeBtn.classList.contains('mode-exclude') ? 'exclude' : 'include';
+  slotFilters[slotIdx] = { name, mode };
+
+  input.classList.add('slot-filled');
+  input.classList.toggle('slot-exclude', mode === 'exclude');
+}
+
+for (let i = 0; i < 4; i++) {
+  const input   = document.getElementById(`slotInput${i + 1}`);
+  const modeBtn = document.getElementById(`slotMode${i + 1}`);
+
+  input.addEventListener('input', debounce(() => {
+    updateSlotFromInput(i);
+    document.querySelector('.table-scroll').scrollTop = 0;
+    recompute();
+  }, 200));
+
+  modeBtn.addEventListener('click', () => {
+    const isExclude = modeBtn.classList.toggle('mode-exclude');
+    modeBtn.classList.toggle('mode-include', !isExclude);
+    modeBtn.textContent = isExclude ? '✕' : '✓';
+    modeBtn.title = isExclude
+      ? 'Excluding this character — click to switch to include'
+      : 'Including this character — click to switch to exclude';
+    updateSlotFromInput(i);
+    document.querySelector('.table-scroll').scrollTop = 0;
+    recompute();
+  });
+}
+
+document.getElementById('slotClearAll').addEventListener('click', () => {
+  for (let i = 0; i < 4; i++) {
+    const input   = document.getElementById(`slotInput${i + 1}`);
+    const modeBtn = document.getElementById(`slotMode${i + 1}`);
+    input.value = '';
+    input.classList.remove('slot-filled', 'slot-exclude');
+    modeBtn.classList.remove('mode-exclude');
+    modeBtn.classList.add('mode-include');
+    modeBtn.textContent = '✓';
+    modeBtn.title = 'Click to toggle include/exclude';
+    slotFilters[i] = null;
+  }
+  document.querySelector('.table-scroll').scrollTop = 0;
+  recompute();
+});
+
 document.querySelectorAll('th[data-col]').forEach(th => {
   th.addEventListener('click', () => {
     const col = th.dataset.col;
@@ -534,7 +640,6 @@ document.querySelectorAll('th[data-col]').forEach(th => {
   });
 });
 
-// Initial render
 recompute();
 </script>
 </body>

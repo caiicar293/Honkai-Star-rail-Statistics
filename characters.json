@@ -1063,7 +1063,9 @@
     "role": [
       "dps"
     ]
-  ,"Mortenax Blade": {
+  }
+  ,
+  "Mortenax Blade": {
     "id": "1507",
     "rarity": 5,
     "path": "Nihility",
@@ -1075,6 +1077,6 @@
       "amplifier"
     ]
 }
-}
+
 
 }

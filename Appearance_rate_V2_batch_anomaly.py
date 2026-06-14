@@ -163,45 +163,46 @@ class HonkaiStatistics_V2_Anomaly_Batch:
             pl.any_horizontal([pl.col(c).is_in(sustain_names) for c in char_cols]).alias("has_sustain")
         ])
 
+        lf_single = lf
         if self.by_ed_inclusive:
-            lf = lf.filter(pl.col("max_eidolon") == self.by_ed).with_columns(
+            lf_single  = lf_single.filter(pl.col("max_eidolon") == self.by_ed).with_columns(
                 pl.lit(self.by_ed).alias("at_eidolon_level"),
                 pl.lit(self.by_ed).alias("up_to_eidolon_level")
             )
-        elif self.by_ed =="all":
+        elif self.by_ed == "all":
             self.frames = []
-            eidolons=[0,1,2,6]  # Define your specific Eidolon levels of interest, including 6 for the special case
-  
-            # This automatically generates exactly the 10 pairs you listed
+            eidolons = [0, 1, 2, 6]
+
             for eidolon_start, eidolon_end in combinations_with_replacement(eidolons, 2):
-                df = lf.filter(
-                    (pl.col('max_eidolon') >= eidolon_start) & 
+                df = lf_single.filter(
+                    (pl.col('max_eidolon') >= eidolon_start) &
                     (pl.col('max_eidolon') <= eidolon_end)
                 ).with_columns(
                     pl.lit(eidolon_start).alias("at_eidolon_level"),
                     pl.lit(eidolon_end).alias("up_to_eidolon_level")
                 )
                 self.frames.append(df)
-            
-            # 3. Stack them all together (this will now include 6, 0, 1, and 2)
-            lf = pl.concat(self.frames, how="vertical")
+            lf_single = pl.concat(self.frames, how="vertical")
         else:
-            lf = lf.filter((pl.col('max_eidolon') >= self.by_ed_start) & (pl.col('max_eidolon') <= self.by_ed_end)).with_columns(
+            lf_single = lf_single.filter(
+                (pl.col('max_eidolon') >= self.by_ed_start) &
+                (pl.col('max_eidolon') <= self.by_ed_end)
+            ).with_columns(
                 pl.lit(self.by_ed_start).alias("at_eidolon_level"),
                 pl.lit(self.by_ed_end).alias("up_to_eidolon_level")
             )
 
-        self.lf = lf
+        self.lf = lf_single
       
         
         # If floor is 0, process combined data as well
         if self.floor == 0 or self.floor=="all":
             # We must include version so we can join properly
-            base_cols_for_n = ["uid", "version","at_eidolon_level", "up_to_eidolon_level" ,"floor", "round_num", "max_eidolon"] + char_cols
+            base_cols_for_n = ["uid", "version","floor", "round_num", "max_eidolon"] + char_cols
             lf_base_for_combined = lf.select(base_cols_for_n)
 
             f1 = lf_base_for_combined.filter(pl.col("floor") == 1).select([
-                pl.col("uid"), pl.col("version"),"at_eidolon_level","up_to_eidolon_level",
+                pl.col("uid"), pl.col("version"),
                 pl.concat_list(char_cols).alias("f1_chars").list.eval(
                         pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))),
                 pl.col("round_num").alias("f1_cycles"),
@@ -209,7 +210,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
             ])
 
             f2 = lf_base_for_combined.filter(pl.col("floor") == 2).select([
-                pl.col("uid"), pl.col("version"),"at_eidolon_level","up_to_eidolon_level",
+                pl.col("uid"), pl.col("version"),
                 pl.concat_list(char_cols).alias("f2_chars").list.eval(
                         pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))),
                 pl.col("round_num").alias("f2_cycles"),
@@ -217,7 +218,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
             ])
             
             f3 = lf_base_for_combined.filter(pl.col("floor") == 3).select([
-                pl.col("uid"), pl.col("version"),"at_eidolon_level","up_to_eidolon_level",
+                pl.col("uid"), pl.col("version"),
                 pl.concat_list(char_cols).alias("f3_chars").list.eval(
                         pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))),
                 pl.col("round_num").alias("f3_cycles"),
@@ -225,8 +226,8 @@ class HonkaiStatistics_V2_Anomaly_Batch:
             ])
 
             # JOIN on uid AND version
-            combined = f1.join(f2, on=["uid", "version","at_eidolon_level", "up_to_eidolon_level"], how="inner")
-            combined = combined.join(f3, on=["uid", "version","at_eidolon_level", "up_to_eidolon_level"], how="inner")
+            combined = f1.join(f2, on=["uid", "version"], how="inner")
+            combined = combined.join(f3, on=["uid", "version"], how="inner")
             combined = combined.with_columns([
                 (pl.col("f1_cycles") +pl.col("f2_cycles")+pl.col("f3_cycles")).alias("total_cycles"),
                 pl.max_horizontal(["f1_max_ed", "f2_max_ed","f3_max_ed"]).alias("combined_max_ed")
@@ -234,7 +235,30 @@ class HonkaiStatistics_V2_Anomaly_Batch:
 
             if self.by_ed_inclusive_combined:
                 combined = combined.filter(pl.col("combined_max_ed") == self.by_ed)
+                
+            elif self.by_ed == "all":
+                self.frames = []
+                eidolons = [0, 1, 2, 6]
 
+                for eidolon_start, eidolon_end in combinations_with_replacement(eidolons, 2):
+                    df = combined.filter(
+                        (pl.col('combined_max_ed') >= eidolon_start) &
+                        (pl.col('combined_max_ed') <= eidolon_end)
+                    ).with_columns(
+                        pl.lit(eidolon_start).alias("at_eidolon_level"),
+                        pl.lit(eidolon_end).alias("up_to_eidolon_level")
+                    )
+                    self.frames.append(df)
+                combined = pl.concat(self.frames, how="vertical")
+            else:
+                combined = combined.filter(
+                    (pl.col('combined_max_ed') >= self.by_ed_start) &
+                    (pl.col('combined_max_ed') <= self.by_ed_end)
+                ).with_columns(
+                    pl.lit(self.by_ed_start).alias("at_eidolon_level"),
+                    pl.lit(self.by_ed_end).alias("up_to_eidolon_level")
+                )
+                
             self.combined = combined.filter(pl.col("total_cycles") <= self.by_cycles_combined)
             self._process_combined_data(self.combined, char_cols, cons_cols, dps_names, char_to_index)
         

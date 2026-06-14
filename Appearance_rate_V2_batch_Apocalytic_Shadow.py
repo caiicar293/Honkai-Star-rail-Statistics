@@ -164,9 +164,10 @@ class HonkaiStatistics_V2_APOC_Batch:
             ]).alias("max_eidolon"),
             pl.any_horizontal([pl.col(c).is_in(sustain_names) for c in char_cols]).alias("has_sustain")
         ])
-
+        
+        lf_single = lf
         if self.by_ed_inclusive:
-            lf = lf.filter(pl.col("max_eidolon") == self.by_ed).with_columns(
+            lf_single  = lf_single.filter(pl.col("max_eidolon") == self.by_ed).with_columns(
                 pl.lit(self.by_ed).alias("at_eidolon_level"),
                 pl.lit(self.by_ed).alias("up_to_eidolon_level")
             )
@@ -175,7 +176,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             eidolons = [0, 1, 2, 6]
 
             for eidolon_start, eidolon_end in combinations_with_replacement(eidolons, 2):
-                df = lf.filter(
+                df = lf_single.filter(
                     (pl.col('max_eidolon') >= eidolon_start) &
                     (pl.col('max_eidolon') <= eidolon_end)
                 ).with_columns(
@@ -183,9 +184,9 @@ class HonkaiStatistics_V2_APOC_Batch:
                     pl.lit(eidolon_end).alias("up_to_eidolon_level")
                 )
                 self.frames.append(df)
-            lf = pl.concat(self.frames, how="vertical")
+            lf_single = pl.concat(self.frames, how="vertical")
         else:
-            lf = lf.filter(
+            lf_single = lf_single.filter(
                 (pl.col('max_eidolon') >= self.by_ed_start) &
                 (pl.col('max_eidolon') <= self.by_ed_end)
             ).with_columns(
@@ -193,18 +194,18 @@ class HonkaiStatistics_V2_APOC_Batch:
                 pl.lit(self.by_ed_end).alias("up_to_eidolon_level")
             )
 
-        self.lf = lf
+        self.lf = lf_single
 
         # ------------------------------------------------------------------
         # Combined (cross-node) logic
         # ------------------------------------------------------------------
         if self.node == 0 or self.node == "all":
-            base_cols_for_n = ["uid", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "round_num", "max_eidolon"] + char_cols
+            base_cols_for_n = ["uid", "version", "node", "round_num", "max_eidolon"] + char_cols
             lf_base_for_combined = lf.select(base_cols_for_n)
 
             def _node_lf(node_num, scores_alias, ed_alias):
                 return lf_base_for_combined.filter(pl.col("node") == node_num).select([
-                    pl.col("uid"), pl.col("version"), "at_eidolon_level", "up_to_eidolon_level",
+                    pl.col("uid"), pl.col("version"),
                     pl.concat_list(char_cols).alias(f"n{node_num}_chars").list.eval(
                         pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))),
                     pl.col("round_num").alias(scores_alias),
@@ -214,7 +215,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             n1 = _node_lf(1, "n1_Scores", "n1_max_ed")
             n2 = _node_lf(2, "n2_Scores", "n2_max_ed")
 
-            join_keys = ["uid", "version", "at_eidolon_level", "up_to_eidolon_level"]
+            join_keys = ["uid", "version" ]
             combined = n1.join(n2, on=join_keys, how="inner")
 
             # Only join n3 if the column exists AND this is actually a Starward Mode query.
@@ -236,6 +237,28 @@ class HonkaiStatistics_V2_APOC_Batch:
 
             if self.by_ed_inclusive_combined:
                 combined = combined.filter(pl.col("combined_max_ed") == self.by_ed)
+            elif self.by_ed == "all":
+                self.frames = []
+                eidolons = [0, 1, 2, 6]
+
+                for eidolon_start, eidolon_end in combinations_with_replacement(eidolons, 2):
+                    df = combined.filter(
+                        (pl.col('combined_max_ed') >= eidolon_start) &
+                        (pl.col('combined_max_ed') <= eidolon_end)
+                    ).with_columns(
+                        pl.lit(eidolon_start).alias("at_eidolon_level"),
+                        pl.lit(eidolon_end).alias("up_to_eidolon_level")
+                    )
+                    self.frames.append(df)
+                combined = pl.concat(self.frames, how="vertical")
+            else:
+                combined = combined.filter(
+                    (pl.col('combined_max_ed') >= self.by_ed_start) &
+                    (pl.col('combined_max_ed') <= self.by_ed_end)
+                ).with_columns(
+                    pl.lit(self.by_ed_start).alias("at_eidolon_level"),
+                    pl.lit(self.by_ed_end).alias("up_to_eidolon_level")
+                )
 
             self.combined = combined.filter(pl.col("total_Scores") >= self.by_Scores_combined)
             self._process_combined_data(self.combined, char_cols, cons_cols, dps_names, char_to_index)

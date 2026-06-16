@@ -125,6 +125,15 @@
       opacity: 0;
     }
 
+    .tech-stack {
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  color: #4e6080;
+  letter-spacing: 0.4px;
+  font-weight: 500;
+  opacity: 0;
+}
+
     /* ── Section ───────────────────────────────────────────── */
     .section {
       margin-top: 3rem;
@@ -318,6 +327,7 @@
       DATA VERSION <span id="versionLabel">{{ version }}</span>
     </div>
     <p class="subhead" id="heroSub">⚙️ endgame combat telemetry · meta intelligence</p>
+    <p class="tech-stack" id="techStack">⚡ Engineered with DuckDB · Polars · MCP · Jinja2 · Zero-cost static deployment</p>
   </header>
 
   <main>
@@ -456,6 +466,7 @@
   animateIn(document.getElementById('heroTitle'),   60);
   animateIn(document.getElementById('versionBadge'), 140);
   animateIn(document.getElementById('heroSub'),      210);
+  animateIn(document.getElementById('techStack'), 270);
 
   document.querySelectorAll('.card').forEach((card, i) => {
     animateIn(card, 280 + i * 55);

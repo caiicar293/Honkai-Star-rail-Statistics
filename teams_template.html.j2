@@ -437,7 +437,12 @@ function parseMembers(team) {
 function iconEl(name) {
   let url = ICONS[name];
   if (!url) url = ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
-  if (url) return `<img class="char-icon" src="${url}" alt="${name}" title="${name}" onerror="this.style.display='none'"/>`;
+  if (url) {
+    if (!url.startsWith('http')) {
+      url = "{{ path_prefix }}" + url;
+    }
+    return `<img class="char-icon" src="${url}" alt="${name}" title="${name}" onerror="this.style.display='none'"/>`;
+  }
   return `<div class="char-icon-placeholder" title="${name}">${name.slice(0,2).toUpperCase()}</div>`;
 }
 

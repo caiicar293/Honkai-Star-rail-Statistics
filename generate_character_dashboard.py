@@ -63,8 +63,8 @@ MODE_CONFIG = {
         "subtitle":     "FLOOR 4",
         "dim_field":    "node",
         "dim_label":    "Node",
-        "dim_values":   [0, 1, 2],
-        "dim_group_labels": {0: "NODE 0 — Both Halves", 1: "NODE 1 — First Half", 2: "NODE 2 — Second Half"},
+        "dim_values":   [0, 1, 2 ,3],
+        "dim_group_labels": {0: "NODE 0 — Both Halves", 1: "NODE 1 — First Half", 2: "NODE 2 — Second Half", 3: "NODE 3 — Third Half"},
         "dim_btn_label": lambda d: f"N{d}",
         "is_legacy":    False,
     },
@@ -260,6 +260,7 @@ def render_dashboard(
     template = env.get_template(TEMPLATE_NAME)
     html = template.render(
         version=version,
+        path_prefix="../",
         mode_label=cfg["mode_label"],
         subtitle=cfg["subtitle"],
         dim_field=cfg["dim_field"],

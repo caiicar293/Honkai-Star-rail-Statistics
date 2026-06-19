@@ -276,40 +276,262 @@ class CharacterDashboard:
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(rendered_html)
         print(f"Jinja automated dashboard written to {output_path}")
+    def _generate_substats_html(self, db_data):
+        # Filter for substat columns (assuming your DB names them like 'sub_crit_dmg' or 'crit_dmg_sub')
+        substats = {k: v for k, v in db_data.items() if 'sub' in k.lower() and isinstance(v, (int, float))}
+        
+        # Sort descending
+        sorted_subs = sorted(substats.items(), key=lambda x: x[1], reverse=True)
+        if not sorted_subs:
+            return ""
+            
+        max_val = sorted_subs[0][1]
+        html_lines = []
+        
+        for name, val in sorted_subs[:8]: # Grab top 8
+            # Strip out 'sub' and 'avg' variations, then format
+            clean_name = (name.replace('_', ' ')
+                      .title()
+                      .replace('Avg ', '')
+                      .replace(' Avg', '')
+                      .strip())
+                        
+            
+            width = (val / max_val) * 100 if max_val > 0 else 0
+            
+            html_lines.append(f"""<div class="substat-row">
+    <span class="substat-name">{clean_name}</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:{width:.1f}%"></div></div>
+    <span class="substat-val">{val:.1f}</span>
+    </div>""")
+            
+        return "\n".join(html_lines)
+    
+    def _format_stat(self, stat_name, value):
+        """Automatically formats flat stats with commas and percentage stats with %"""
+        if value is None: 
+            return "0"
+            
+        stat_upper = stat_name.upper()
+        if stat_upper in ["HP", "ATK", "DEF"]:
+            return f"{int(value):,}"
+        elif stat_upper == "SPD":
+            return f"{value:.1f}"
+        else:
+            # Assumes CRIT, Break Effect, EHR, ERR, DMG Boost etc.
+            return f"{value:.1f}%"
 
+    def _get_avg_key(self, stat_name):
+        """Maps 'CRIT Rate' to 'avg_crit rate' based on your DuckDB lowercase logic"""
+        return f"avg_{stat_name.lower()}"
+
+    def _generate_hero_stats_html(self, db_data, defining_stats):
+        total_samples = db_data.get('total_sample_size', 0)
+        
+        lines = [f"""<div class="hero-stat">
+  <span class="hero-stat-val">{int(total_samples):,}</span>
+  <span class="hero-stat-lbl">Sampled Builds</span>
+</div>"""]
+        
+        for stat in defining_stats:
+            val = db_data.get(self._get_avg_key(stat), 0)
+            lines.append(f"""<div class="hero-stat">
+  <span class="hero-stat-val">{self._format_stat(stat, val)}</span>
+  <span class="hero-stat-lbl">Avg {stat}</span>
+</div>""")
+            
+        return "\n".join(lines)
+
+    def _generate_stat_cells_html(self, db_data, defining_stats, supporting_stats, element=""):
+        lines = []
+        
+        # 1. Featured Stats (Defining)
+        for stat in defining_stats:
+            val = db_data.get(self._get_avg_key(stat), 0)
+            lines.append(f"""<div class="stat-cell featured">
+  <span class="stat-val">{self._format_stat(stat, val)}</span>
+  <span class="stat-lbl">Avg {stat} — Defining Stat</span>
+</div>""")
+            
+        # 2. Standard Stats
+        for stat in supporting_stats:
+            val = db_data.get(self._get_avg_key(stat), 0)
+            
+            # Clean up long names for the UI
+            display_name = stat
+            if stat == "Effect Hit Rate": display_name = "EHR"
+            elif stat == "Energy Regeneration Rate": display_name = "ERR"
+            elif stat == "DMG Boost": display_name = f"{element} DMG"
+            
+            lines.append(f"""<div class="stat-cell">
+  <span class="stat-val">{self._format_stat(stat, val)}</span>
+  <span class="stat-lbl">Avg {display_name}</span>
+</div>""")
+            
+        return "\n".join(lines)
+
+    def _generate_percentiles_html(self, db_data, defining_stats):
+        # DuckDB STRUCTs are parsed as nested dictionaries in Python
+        extra_stats = db_data.get('extra_stats', {})
+        lines = []
+        
+        for stat in defining_stats:
+            # Handle potential case-sensitivity issues from DuckDB struct mapping
+            stat_data = extra_stats.get(stat)
+            if not stat_data:
+                for k, v in extra_stats.items():
+                    if k.lower() == stat.lower():
+                        stat_data = v
+                        break
+            
+            if not stat_data:
+                continue
+                
+            p5 = self._format_stat(stat, stat_data.get('p05', 0))
+            p25 = self._format_stat(stat, stat_data.get('p25', 0))
+            p50 = self._format_stat(stat, stat_data.get('p50', 0))
+            p75 = self._format_stat(stat, stat_data.get('p75', 0))
+            p95 = self._format_stat(stat, stat_data.get('p95', 0))
+            
+            lines.append(f"""<div class="percentile-card">
+  <div class="percentile-title">{stat} Spread</div>
+  <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">{p5}</span></div>
+  <div class="percentile-row"><span class="p-label">p25</span><span class="p-val">{p25}</span></div>
+  <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">{p50}</span></div>
+  <div class="percentile-row"><span class="p-label">p75</span><span class="p-val">{p75}</span></div>
+  <div class="percentile-row"><span class="p-label">p95</span><span class="p-val">{p95}</span></div>
+</div>""")
+            
+        return "\n".join(lines)
+    
+    def _generate_main_stats_html(self, db_data):
+        slots = ["Body", "Feet", "Sphere", "Rope"]
+        lines = []
+        
+        for slot in slots:
+            # DuckDB pulls column names back as lowercase
+            col_name = f"{slot}_data".lower()
+            data = db_data.get(col_name, [])
+            
+            if not data:
+                continue
+                
+            lines.append(f"""<div class="main-stat-card">
+  <div class="main-stat-slot">{slot}</div>""")
+            
+            # Loop through the top stats in this slot
+            for i, stat_row in enumerate(data[:3]): # Grab up to top 3
+                stat_name = stat_row.get('main_stat', 'Unknown')
+                pct = stat_row.get('usage_pct', 0.0)
+                
+                # Skip stats with negligible usage (< 2%)
+                if pct < 2.0:
+                    continue
+                    
+                cls = "dominant" if i == 0 else "alt"
+                lines.append(f'  <span class="main-stat-pill {cls}">{stat_name} {pct:.1f}%</span>')
+                
+            lines.append("</div>")
+            
+        return "\n".join(lines)
+
+    def _generate_avg_sidebar_html(self, db_data, spread_stats, metadata_fields, latest_version):
+        # ERROR HANDLING: Ensure exactly 6 items total
+        total_items = len(spread_stats) + len(metadata_fields)
+        if total_items != 6:
+            raise ValueError(f"❌ avg_sidebar must contain exactly 6 items! You provided {len(spread_stats)} spread stats and {len(metadata_fields)} metadata fields (Total: {total_items}).")
+
+        lines = []
+        extra_stats = db_data.get('extra_stats', {})
+
+        # 1. Generate Spread Items (p25-p75)
+        for stat in spread_stats:
+            # Case-insensitive struct key matching
+            stat_data = extra_stats.get(stat)
+            if not stat_data:
+                for k, v in extra_stats.items():
+                    if k.lower() == stat.lower():
+                        stat_data = v
+                        break
+            
+            p25 = self._format_stat(stat, stat_data.get('p25', 0)) if stat_data else "0"
+            p75 = self._format_stat(stat, stat_data.get('p75', 0)) if stat_data else "0"
+
+            # Clean UI names
+            display_name = stat
+            if stat == "Effect Hit Rate": display_name = "EHR"
+            elif stat == "Energy Regeneration Rate": display_name = "ERR"
+
+            lines.append(f"""<div class="avg-item">
+  <div class="avg-item-lbl">{display_name} Spread p25–p75</div>
+  <div class="avg-item-val">{p25} – {p75}</div>
+</div>""")
+
+        # 2. Generate Metadata Items
+        for meta in metadata_fields:
+            if meta == "Total Samples":
+                val = f"{int(db_data.get('total_sample_size', 0)):,}"
+            elif meta == "Dataset Versions":
+                val = str(db_data.get('num_versions', 0))
+            elif meta == "Latest Version":
+                val = str(latest_version)
+            else:
+                val = "N/A"
+
+            lines.append(f"""<div class="avg-item">
+  <div class="avg-item-lbl">{meta}</div>
+  <div class="avg-item-val">{val}</div>
+</div>""")
+
+        return "\n".join(lines)
+    
     def generate(self, output_file="output.html"):
         """Executes the extraction pipeline and compiles the final HTML."""
         con = duckdb.connect(self.db_path, read_only=True)
         
         latest_version, correct_node = self._get_character_version_and_node(con)
         
-        # Extract Database Info
         db_builds_data = self._extract_builds_data(con)
         gear_data = self._extract_gear_usage(con)
         teams_data = self._extract_teams(con)
         duos_data = self._extract_duos(con)
         archetypes_data = self._extract_archetypes(con)
         icons_map = self._build_icons_dictionary(teams_data, duos_data)
-        
         con.close()
 
         # Helper to prioritize data: 1. User Input, 2. Database, 3. Default fallback
         def get_stat(key, default_val):
             return self.custom_build_stats.get(key, db_builds_data.get(key, default_val))
 
+        element = self.custom_build_stats.get("element", "Unknown")
+
+        # Extract the user's configuration lists
+        defining_stats = self.custom_build_stats.get("defining_stats", [])
+        supporting_stats = self.custom_build_stats.get("supporting_stats", [])
+        sidebar_spreads = self.custom_build_stats.get("sidebar_spread_stats", [])
+        sidebar_meta = self.custom_build_stats.get("sidebar_metadata", [])
+
+        # Auto-build ALL HTML Blocks
+        hero_stats_html = self._generate_hero_stats_html(db_builds_data, defining_stats)
+        stat_cells_html = self._generate_stat_cells_html(db_builds_data, defining_stats, supporting_stats, element)
+        main_stats_html = self._generate_main_stats_html(db_builds_data)
+        substats_html = self._generate_substats_html(db_builds_data)
+        percentiles_html = self._generate_percentiles_html(db_builds_data, defining_stats)
+        avg_sidebar_html = self._generate_avg_sidebar_html(db_builds_data, sidebar_spreads, sidebar_meta, latest_version)
+
         # Bind parameters
         master_template_vars = {
             # Identity Tokens
             "CHAR_NAME": self.character_name,
-            "CHAR_ELEMENT": get_stat("element", "Unknown"),
+            "CHAR_ELEMENT": element,
             "CHAR_PATH": get_stat("path", "Unknown"),
             "CHAR_SUBTITLE": get_stat("subtitle", "Unknown"),
             "CHAR_ICON_URL": icons_map.get(self.character_name, ""),
             "DATA_VERSION": latest_version,
             
-            # Numeric Overviews
-            "TOTAL_SAMPLES": get_stat("total_sample_size", "0"),
-            "NUM_VERSIONS": get_stat("num_versions", "1"),
+            # Numeric Overviews (Auto-pulled from DB)
+            "TOTAL_SAMPLES": f"{int(db_builds_data.get('total_sample_size', 0)):,}",
+            "NUM_VERSIONS": str(db_builds_data.get("num_versions", "1")),
             
             # Theme Tokens
             "THEME_C1": get_stat("theme_c1", "#555555"), 
@@ -319,13 +541,13 @@ class CharacterDashboard:
             "THEME_P2": get_stat("theme_p2", "#777777"), 
             "THEME_GLOW": get_stat("theme_glow", "rgba(85,85,85,0.4)"),
 
-            # HTML Layout Segments
-            "HERO_STATS": get_stat("hero_stats", ""),
-            "STAT_CELLS": get_stat("stat_cells", ""),
-            "MAIN_STATS": get_stat("main_stats", ""),
-            "SUBSTATS": get_stat("substats", ""),
-            "PERCENTILES": get_stat("percentiles", ""),
-            "AVG_SIDEBAR": get_stat("avg_sidebar", ""),
+            # HTML Layout Segments (Fully Automated)
+            "HERO_STATS": hero_stats_html,
+            "STAT_CELLS": stat_cells_html,
+            "MAIN_STATS": main_stats_html,
+            "SUBSTATS": substats_html,
+            "PERCENTILES": percentiles_html,
+            "AVG_SIDEBAR": avg_sidebar_html,
 
             # JavaScript Globals
             "ICONS": icons_map,

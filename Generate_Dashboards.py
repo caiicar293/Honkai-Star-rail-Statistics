@@ -221,6 +221,7 @@ class DashboardGenerator:
         
         base_context = {
             "version": version,
+            "path_prefix": "../",
             "mode_label": cfg["mode_label"],
             "subtitle": cfg["subtitle"],
             "dim_field": cfg["dim_field"],
@@ -273,6 +274,7 @@ class DashboardGenerator:
         out_file = self.output_base / "index.html"
         self.render_file("index_template.html.j2", out_file, {
             "version": version,
+            "path_prefix": "./",
             "version_safe": safe_version
         })
 

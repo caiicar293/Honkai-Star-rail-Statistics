@@ -19,7 +19,7 @@ class CharacterDashboard:
             Total_Samples AS samples,
             Simple_Avg_Appearance_Rate AS appearance, 
             Simple_Avg_Confidence AS confidence, 
-            Simple_Avg_Score AS score, 
+            Weighted_Avg_Score AS score, 
             Weighted_Avg_Score AS weighted, 
             Best_Version_Avg AS best,
             ROW_NUMBER() OVER(PARTITION BY Game_Mode ORDER BY Total_Samples DESC) as rn
@@ -438,7 +438,7 @@ class CharacterDashboard:
                 pct = stat_row.get('usage_pct', 0.0)
                 
                 # Skip stats with negligible usage (< 2%)
-                if pct < 2.0:
+                if pct < 2.0 or stat_name == None:
                     continue
                     
                 cls = "dominant" if i == 0 else "alt"

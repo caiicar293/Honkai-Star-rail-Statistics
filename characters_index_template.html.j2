@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="description" content="Browse individual Honkai: Star Rail character sheets — endgame usage, scoring, and build telemetry for every playable character."/>
+  <meta property="og:title" content="Character Database · HSR Telemetry"/>
+  <meta property="og:description" content="Searchable database of every character's endgame performance sheet."/>
+  <meta property="og:type" content="website"/>
+  <title>Character Database · HSR Endgame Stats</title>
+  <link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet"/>
+  <style>
+    /* ── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    /* ── Base ──────────────────────────────────────────────── */
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(ellipse at 20% 30%, #0a0e1a, #03050b);
+      color: #edf2fb;
+      line-height: 1.5;
+      padding: 2rem 1.5rem 4rem;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: 10%;
+      right: -15%;
+      width: 65vmax;
+      height: 65vmax;
+      background: radial-gradient(circle, rgba(56,189,248,0.10) 0%, transparent 68%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ── Hero ──────────────────────────────────────────────── */
+    .hero { text-align: center; margin-bottom: 2.25rem; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #7e9ab8;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+      transition: color 0.2s ease;
+    }
+    .back-link:hover { color: #38bdf8; }
+
+    .hero h1 {
+      font-size: clamp(1.9rem, 4.6vw, 3rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #ffffff 0%, #93c5fd 50%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.025em;
+      margin-bottom: 1rem;
+    }
+
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(20, 28, 46, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 100px;
+      padding: 0.45rem 1.2rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    .version-badge .pulse-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #38bdf8; box-shadow: 0 0 8px #38bdf8;
+      animation: pulseGlow 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.5; transform: scale(0.85); }
+      50%       { opacity: 1;   transform: scale(1.2);  }
+    }
+
+    .subhead {
+      color: #9bb3d0;
+      font-size: 0.95rem;
+      max-width: 560px;
+      margin: 1rem auto 0;
+      font-weight: 400;
+      background: rgba(9, 12, 20, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: inline-block;
+      padding: 0.35rem 1.2rem;
+      border-radius: 60px;
+    }
+
+    /* ── Toolbar ───────────────────────────────────────────── */
+    .toolbar {
+      position: sticky;
+      top: 12px;
+      z-index: 5;
+      margin: 2.25rem 0 1.75rem;
+      background: rgba(13, 18, 32, 0.78);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      border-radius: 20px;
+      padding: 1rem 1.1rem;
+      box-shadow: 0 12px 30px -10px rgba(0,0,0,0.5);
+    }
+
+    .search-row { display: flex; gap: 10px; margin-bottom: 0.85rem; }
+
+    .search-input {
+      flex: 1;
+      background: rgba(7, 10, 18, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      border-radius: 12px;
+      padding: 0.65rem 0.95rem;
+      color: #edf2fb;
+      font-family: inherit;
+      font-size: 0.92rem;
+      outline: none;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .search-input::placeholder { color: #5d7290; }
+    .search-input:focus { border-color: rgba(56, 189, 248, 0.65); background: rgba(7, 10, 18, 0.95); }
+
+    .result-count {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      font-size: 0.78rem;
+      color: #7e9ab8;
+      padding: 0 0.3rem;
+    }
+
+    .filter-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .filter-group + .filter-group { margin-top: 0.6rem; }
+
+    .filter-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #5d7290;
+      margin-right: 4px;
+    }
+
+    .chip {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #aab9d0;
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 500;
+      padding: 0.34rem 0.8rem;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+    .chip:hover { border-color: rgba(56,189,248,0.4); color: #e8f2ff; }
+    .chip.active {
+      background: linear-gradient(120deg, rgba(56,189,248,0.28), rgba(168,85,247,0.22));
+      border-color: rgba(56,189,248,0.6);
+      color: #ffffff;
+    }
+
+    /* ── Grid ──────────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+      gap: 0.9rem;
+    }
+
+    .char-card {
+      position: relative;
+      background: rgba(18, 25, 45, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+      box-shadow: 0 8px 20px -10px rgba(0,0,0,0.45);
+      transition: border-color 0.25s ease, transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease, background 0.25s ease;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 1rem 0.6rem 0.85rem;
+    }
+
+    .char-card[data-rarity="5"] { border-top: 2px solid rgba(250, 204, 21, 0.45); }
+    .char-card[data-rarity="4"] { border-top: 2px solid rgba(168, 85, 247, 0.4); }
+
+    .char-card:hover {
+      border-color: rgba(56, 189, 248, 0.55);
+      transform: translateY(-4px);
+      background: rgba(28, 40, 68, 0.78);
+      box-shadow: 0 18px 32px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(56,189,248,0.2);
+    }
+
+    .char-icon-wrap {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      overflow: hidden;
+      margin-bottom: 0.6rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      flex-shrink: 0;
+    }
+    .char-icon-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .char-name {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #e8f2ff;
+      line-height: 1.25;
+      margin-bottom: 0.45rem;
+    }
+
+    .char-badges { display: flex; gap: 5px; align-items: center; justify-content: center; flex-wrap: wrap; }
+
+    .badge {
+      font-size: 0.66rem;
+      font-weight: 500;
+      color: #9bb3d0;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      padding: 0.12rem 0.4rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #5d7290;
+      font-size: 0.9rem;
+    }
+
+    /* ── Footer ────────────────────────────────────────────── */
+    .footer {
+      margin-top: 4rem;
+      padding: 1.75rem 1rem 1.5rem;
+      border-top: 1px solid rgba(56, 189, 248, 0.15);
+      text-align: center;
+      color: #7e8aa8;
+      font-size: 0.82rem;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      background: rgba(3, 7, 14, 0.25);
+      border-radius: 40px 40px 16px 16px;
+    }
+    .footer strong { color: #8bb9fe; font-weight: 600; }
+    .footer-meta { margin-top: 10px; font-size: 0.68rem; letter-spacing: 0.3px; color: #4e5f78; }
+
+    @media (max-width: 680px) {
+      body { padding: 1.25rem 1.25rem 3rem; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.65rem; }
+      .toolbar { position: static; }
+      .char-icon-wrap { width: 52px; height: 52px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header class="hero" role="banner">
+    <a class="back-link" href="../index.html">← Back to Hub</a>
+    <h1>Character Database</h1>
+    <div class="version-badge">
+      <span class="pulse-dot" aria-hidden="true"></span>
+      <span id="charCountBadge">{{ characters|length }}</span> CHARACTERS TRACKED · v<span class="cur-version">{{ version }}</span>
+    </div>
+    <p class="subhead">🔍 search or filter to jump straight to a character's endgame performance sheet</p>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <div class="search-row">
+        <input id="searchInput" class="search-input" type="text" placeholder="Search characters…" autocomplete="off" aria-label="Search characters"/>
+        <div class="result-count" id="resultCount"></div>
+      </div>
+      <div class="filter-group" id="pathFilters">
+        <span class="filter-label">Path</span>
+      </div>
+      <div class="filter-group" id="elementFilters">
+        <span class="filter-label">Element</span>
+      </div>
+    </div>
+
+    <div class="grid" id="charGrid" aria-live="polite"></div>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div>🔍 Data by <strong>LvlUrArti</strong> · dashboard by <strong>caiicar293</strong></div>
+    <div class="footer-meta">
+      character database · v<span class="cur-version">{{ version }}</span> · <span id="liveDate"></span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  const CHARACTERS = {{ characters_json|safe }};
+
+  const PATH_ICONS = {
+    "Destruction": "💥", "Hunt": "🏹", "Erudition": "📘", "Harmony": "🎵",
+    "Nihility": "☠️", "Preservation": "🛡️", "Abundance": "✚",
+    "Remembrance": "⏳", "Elation": "🎭"
+  };
+  const ELEMENT_ICONS = {
+    "Physical": "⚪", "Fire": "🔥", "Ice": "❄️", "Thunder": "⚡", "Lightning": "⚡",
+    "Wind": "🍃", "Quantum": "🌀", "Imaginary": "✨"
+  };
+
+  const dateEl = document.getElementById('liveDate');
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  const state = { query: '', path: 'all', element: 'all' };
+
+  function uniqueSorted(key) {
+    return [...new Set(CHARACTERS.map(c => c[key]).filter(Boolean))].sort();
+  }
+
+  function buildChips(containerId, values, stateKey, iconMap) {
+    const container = document.getElementById(containerId);
+    const allChip = document.createElement('button');
+    allChip.className = 'chip active';
+    allChip.textContent = 'All';
+    allChip.dataset.value = 'all';
+    container.appendChild(allChip);
+
+    values.forEach(v => {
+      const chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.dataset.value = v;
+      const icon = iconMap && iconMap[v] ? iconMap[v] + ' ' : '';
+      chip.textContent = icon + v;
+      container.appendChild(chip);
+    });
+
+    container.addEventListener('click', e => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      state[stateKey] = btn.dataset.value;
+      container.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === btn));
+      render();
+    });
+  }
+
+  function matches(c) {
+    if (state.path !== 'all' && c.path !== state.path) return false;
+    if (state.element !== 'all' && c.element !== state.element) return false;
+    if (state.query && !c.name.toLowerCase().includes(state.query)) return false;
+    return true;
+  }
+
+  function cardHTML(c) {
+    const href = encodeURIComponent(c.file);
+    const iconSrc = c.icon ? '../' + c.icon : '';
+    const pathBadge = c.path ? `<span class="badge">${PATH_ICONS[c.path] || ''} ${c.path}</span>` : '';
+    const elBadge = c.element ? `<span class="badge">${ELEMENT_ICONS[c.element] || ''} ${c.element}</span>` : '';
+    return `
+      <a class="char-card" data-rarity="${c.rarity || ''}" href="${href}" aria-label="${c.name} dashboard">
+        <div class="char-icon-wrap">${iconSrc ? `<img src="${iconSrc}" alt="${c.name}" loading="lazy"/>` : ''}</div>
+        <div class="char-name">${c.name}</div>
+        <div class="char-badges">${pathBadge}${elBadge}</div>
+      </a>`;
+  }
+
+  function render() {
+    const filtered = CHARACTERS.filter(matches);
+    const grid = document.getElementById('charGrid');
+    document.getElementById('resultCount').textContent = `${filtered.length} / ${CHARACTERS.length}`;
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div class="empty-state">No characters match your filters.</div>`;
+      return;
+    }
+    grid.innerHTML = filtered.map(cardHTML).join('');
+  }
+
+  buildChips('pathFilters', uniqueSorted('path'), 'path', PATH_ICONS);
+  buildChips('elementFilters', uniqueSorted('element'), 'element', ELEMENT_ICONS);
+
+  document.getElementById('searchInput').addEventListener('input', e => {
+    state.query = e.target.value.trim().toLowerCase();
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>

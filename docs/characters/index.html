@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="description" content="Browse individual Honkai: Star Rail character sheets — endgame usage, scoring, and build telemetry for every playable character."/>
+  <meta property="og:title" content="Character Database · HSR Telemetry"/>
+  <meta property="og:description" content="Searchable database of every character's endgame performance sheet."/>
+  <meta property="og:type" content="website"/>
+  <title>Character Database · HSR Endgame Stats</title>
+  <link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet"/>
+  <style>
+    /* ── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    /* ── Base ──────────────────────────────────────────────── */
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(ellipse at 20% 30%, #0a0e1a, #03050b);
+      color: #edf2fb;
+      line-height: 1.5;
+      padding: 2rem 1.5rem 4rem;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: 10%;
+      right: -15%;
+      width: 65vmax;
+      height: 65vmax;
+      background: radial-gradient(circle, rgba(56,189,248,0.10) 0%, transparent 68%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ── Hero ──────────────────────────────────────────────── */
+    .hero { text-align: center; margin-bottom: 2.25rem; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #7e9ab8;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+      transition: color 0.2s ease;
+    }
+    .back-link:hover { color: #38bdf8; }
+
+    .hero h1 {
+      font-size: clamp(1.9rem, 4.6vw, 3rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #ffffff 0%, #93c5fd 50%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.025em;
+      margin-bottom: 1rem;
+    }
+
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(20, 28, 46, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 100px;
+      padding: 0.45rem 1.2rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    .version-badge .pulse-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #38bdf8; box-shadow: 0 0 8px #38bdf8;
+      animation: pulseGlow 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.5; transform: scale(0.85); }
+      50%       { opacity: 1;   transform: scale(1.2);  }
+    }
+
+    .subhead {
+      color: #9bb3d0;
+      font-size: 0.95rem;
+      max-width: 560px;
+      margin: 1rem auto 0;
+      font-weight: 400;
+      background: rgba(9, 12, 20, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: inline-block;
+      padding: 0.35rem 1.2rem;
+      border-radius: 60px;
+    }
+
+    /* ── Toolbar ───────────────────────────────────────────── */
+    .toolbar {
+      position: sticky;
+      top: 12px;
+      z-index: 5;
+      margin: 2.25rem 0 1.75rem;
+      background: rgba(13, 18, 32, 0.78);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      border-radius: 20px;
+      padding: 1rem 1.1rem;
+      box-shadow: 0 12px 30px -10px rgba(0,0,0,0.5);
+    }
+
+    .search-row { display: flex; gap: 10px; margin-bottom: 0.85rem; }
+
+    .search-input {
+      flex: 1;
+      background: rgba(7, 10, 18, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      border-radius: 12px;
+      padding: 0.65rem 0.95rem;
+      color: #edf2fb;
+      font-family: inherit;
+      font-size: 0.92rem;
+      outline: none;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .search-input::placeholder { color: #5d7290; }
+    .search-input:focus { border-color: rgba(56, 189, 248, 0.65); background: rgba(7, 10, 18, 0.95); }
+
+    .result-count {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      font-size: 0.78rem;
+      color: #7e9ab8;
+      padding: 0 0.3rem;
+    }
+
+    .filter-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .filter-group + .filter-group { margin-top: 0.6rem; }
+
+    .filter-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #5d7290;
+      margin-right: 4px;
+    }
+
+    .chip {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #aab9d0;
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 500;
+      padding: 0.34rem 0.8rem;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+    .chip:hover { border-color: rgba(56,189,248,0.4); color: #e8f2ff; }
+    .chip.active {
+      background: linear-gradient(120deg, rgba(56,189,248,0.28), rgba(168,85,247,0.22));
+      border-color: rgba(56,189,248,0.6);
+      color: #ffffff;
+    }
+
+    /* ── Grid ──────────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+      gap: 0.9rem;
+    }
+
+    .char-card {
+      position: relative;
+      background: rgba(18, 25, 45, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+      box-shadow: 0 8px 20px -10px rgba(0,0,0,0.45);
+      transition: border-color 0.25s ease, transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease, background 0.25s ease;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 1rem 0.6rem 0.85rem;
+    }
+
+    .char-card[data-rarity="5"] { border-top: 2px solid rgba(250, 204, 21, 0.45); }
+    .char-card[data-rarity="4"] { border-top: 2px solid rgba(168, 85, 247, 0.4); }
+
+    .char-card:hover {
+      border-color: rgba(56, 189, 248, 0.55);
+      transform: translateY(-4px);
+      background: rgba(28, 40, 68, 0.78);
+      box-shadow: 0 18px 32px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(56,189,248,0.2);
+    }
+
+    .char-icon-wrap {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      overflow: hidden;
+      margin-bottom: 0.6rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      flex-shrink: 0;
+    }
+    .char-icon-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .char-name {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #e8f2ff;
+      line-height: 1.25;
+      margin-bottom: 0.45rem;
+    }
+
+    .char-badges { display: flex; gap: 5px; align-items: center; justify-content: center; flex-wrap: wrap; }
+
+    .badge {
+      font-size: 0.66rem;
+      font-weight: 500;
+      color: #9bb3d0;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      padding: 0.12rem 0.4rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #5d7290;
+      font-size: 0.9rem;
+    }
+
+    /* ── Footer ────────────────────────────────────────────── */
+    .footer {
+      margin-top: 4rem;
+      padding: 1.75rem 1rem 1.5rem;
+      border-top: 1px solid rgba(56, 189, 248, 0.15);
+      text-align: center;
+      color: #7e8aa8;
+      font-size: 0.82rem;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      background: rgba(3, 7, 14, 0.25);
+      border-radius: 40px 40px 16px 16px;
+    }
+    .footer strong { color: #8bb9fe; font-weight: 600; }
+    .footer-meta { margin-top: 10px; font-size: 0.68rem; letter-spacing: 0.3px; color: #4e5f78; }
+
+    @media (max-width: 680px) {
+      body { padding: 1.25rem 1.25rem 3rem; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.65rem; }
+      .toolbar { position: static; }
+      .char-icon-wrap { width: 52px; height: 52px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header class="hero" role="banner">
+    <a class="back-link" href="../index.html">← Back to Hub</a>
+    <h1>Character Database</h1>
+    <div class="version-badge">
+      <span class="pulse-dot" aria-hidden="true"></span>
+      <span id="charCountBadge">87</span> CHARACTERS TRACKED · v<span class="cur-version">4.3.1</span>
+    </div>
+    <p class="subhead">🔍 search or filter to jump straight to a character's endgame performance sheet</p>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <div class="search-row">
+        <input id="searchInput" class="search-input" type="text" placeholder="Search characters…" autocomplete="off" aria-label="Search characters"/>
+        <div class="result-count" id="resultCount"></div>
+      </div>
+      <div class="filter-group" id="pathFilters">
+        <span class="filter-label">Path</span>
+      </div>
+      <div class="filter-group" id="elementFilters">
+        <span class="filter-label">Element</span>
+      </div>
+    </div>
+
+    <div class="grid" id="charGrid" aria-live="polite"></div>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div>🔍 Data by <strong>LvlUrArti</strong> · dashboard by <strong>caiicar293</strong></div>
+    <div class="footer-meta">
+      character database · v<span class="cur-version">4.3.1</span> · <span id="liveDate"></span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  const CHARACTERS = [{"name": "Acheron", "file": "Acheron_Dashboard.html", "icon": "assets/icons/acheron.webp", "path": "Nihility", "element": "Thunder", "rarity": 5, "role": ["dps"], "release_phase": "2.1.1", "id": "1308"}, {"name": "Aglaea", "file": "Aglaea_Dashboard.html", "icon": "assets/icons/aglaea.webp", "path": "Remembrance", "element": "Thunder", "rarity": 5, "role": ["dps"], "release_phase": "3.0.1", "id": "1402"}, {"name": "Anaxa", "file": "Anaxa_Dashboard.html", "icon": "assets/icons/anaxa.webp", "path": "Erudition", "element": "Wind", "rarity": 5, "role": ["dps", "specialist"], "release_phase": "3.2.1", "id": "1405"}, {"name": "Archer", "file": "Archer_Dashboard.html", "icon": "assets/icons/archer.webp", "path": "Hunt", "element": "Quantum", "rarity": 5, "role": ["dps"], "release_phase": "3.4.1", "id": "1015"}, {"name": "Argenti", "file": "Argenti_Dashboard.html", "icon": "assets/icons/argenti.webp", "path": "Erudition", "element": "Physical", "rarity": 5, "role": ["dps", "specialist"], "release_phase": "1.5.1", "id": "1302"}, {"name": "Arlan", "file": "Arlan_Dashboard.html", "icon": "assets/icons/arlan.webp", "path": "Destruction", "element": "Thunder", "rarity": 4, "role": ["dps"], "release_phase": "1.0.1", "id": "1008"}, {"name": "Ashveil", "file": "Ashveil_Dashboard.html", "icon": "assets/icons/ashveil.webp", "path": "Hunt", "element": "Thunder", "rarity": 5, "role": ["dps", "specialist"], "release_phase": "4.0.2", "id": "1504"}, {"name": "Asta", "file": "Asta_Dashboard.html", "icon": "assets/icons/asta.webp", "path": "Harmony", "element": "Fire", "rarity": 4, "role": ["amplifier"], "release_phase": "1.0.1", "id": "1009"}, {"name": "Aventurine", "file": "Aventurine_Dashboard.html", "icon": "assets/icons/aventurine.webp", "path": "Preservation", "element": "Imaginary", "rarity": 5, "role": ["sustain"], "release_phase": "2.1.1", "id": "1304"}, {"name": "Bailu", "file": "Bailu_Dashboard.html", "icon": "assets/icons/bailu.webp", "path": "Abundance", "element": "Thunder", "rarity": 5, "role": ["sustain"], "release_phase": "1.0.1", "id": "1211"}, {"name": "Black Swan", "file": "Black Swan_Dashboard.html", "icon": "assets/icons/black_swan.webp", "path": "Nihility", "element": "Wind", "rarity": 5, "role": ["specialist"], "release_phase": "2.0.1", "id": "1307"}, {"name": "Blade", "file": "Blade_Dashboard.html", "icon": "assets/icons/blade.webp", "path": "Destruction", "element": "Wind", "rarity": 5, "role": ["dps", "specialist"], "release_phase": "1.2.1", "id": "1205"}, {"name": "Boothill", "file": "Boothill_Dashboard.html", "icon": "assets/icons/boothill.webp", "path": "Hunt", "element": "Physical", "rarity": 5, "role": ["dps"], "release_phase": "2.2.1", "id": "1315"}, {"name": "Bronya", "file": "Bronya_Dashboard.html", "icon": "assets/icons/bronya.webp", "path": "Harmony", "element": "Wind", "rarity": 5, "role": ["amplifier"], "release_phase": "1.0.1", "id": "1101"}, {"name": "Castorice", "file": "Castorice_Dashboard.html", "icon": "assets/icons/castorice.webp", "path": "Remembrance", "element": "Quantum", "rarity": 5, "role": ["dps"], "release_phase": "3.2.1", "id": "1407"}, {"name": "Cerydra", "file": "Cerydra_Dashboard.html", "icon": "assets/icons/cerydra.webp", "path": "Harmony", "element": "Wind", "rarity": 5, "role": ["amplifier"], "release_phase": "3.5.1", "id": "1412"}, {"name": "Cipher", "file": "Cipher_Dashboard.html", "icon": "assets/icons/cipher.webp", "path": "Nihility", "element": "Quantum", "rarity": 5, "role": ["amplifier"], "release_phase": "3.3.1", "id": "1406"}, {"name": "Clara", "file": "Clara_Dashboard.html", "icon": "assets/icons/clara.webp", "path": "Destruction", "element": "Physical", "rarity": 5, "role": ["dps"], "release_phase": "1.0.1", "id": "1107"}, {"name": "Cyrene", "file": "Cyrene_Dashboard.html", "icon": "assets/icons/cyrene.webp", "path": "Remembrance", "element": "Ice", "rarity": 5, "role": ["amplifier"], "release_phase": "3.7.1", "id": "1415"}, {"name": "Dan Heng", "file": "Dan Heng_Dashboard.html", "icon": "assets/icons/dan_heng.webp", "path": "Hunt", "element": "Wind", "rarity": 4, "role": ["dps"], "release_phase": "1.0.1", "id": "1002"}, {"name": "Dan Heng • Imbibitor Lunae", "file": "Dan Heng • Imbibitor Lunae_Dashboard.html", "icon": "assets/icons/dan_heng_imbibitor_lunae.webp", "path": "Destruction", "element": "Imaginary", "rarity": 5, "role": ["dps"], "release_phase": "1.3.1", "id": "1213"}, {"name": "Dan Heng • Permansor Terrae", "file": "Dan Heng • Permansor Terrae_Dashboard.html", "icon": "assets/icons/dan_heng_permansor_terrae.webp", "path": "Preservation", "element": "Physical", "rarity": 5, "role": ["sustain"], "release_phase": "3.6.1", "id": "1414"}, {"name": "Dr. Ratio", "file": "Dr. Ratio_Dashboard.html", "icon": "assets/icons/dr_ratio.webp", "path": "Hunt", "element": "Imaginary", "rarity": 5, "role": ["dps"], "release_phase": "1.6.1", "id": "1305"}, {"name": "Evanescia", "file": "Evanescia_Dashboard.html", "icon": "assets/icons/evanescia.webp", "path": "Elation", "element": "Physical", "rarity": 5, "role": ["dps"], "release_phase": "4.2.2", "id": "1505"}, {"name": "Evernight", "file": "Evernight_Dashboard.html", "icon": "assets/icons/evernight.webp", "path": "Remembrance", "element": "Ice", "rarity": 5, "role": ["dps", "specialist"], "release_phase": "3.6.1", "id": "1413"}, {"name": "Feixiao", "file": "Feixiao_Dashboard.html", "icon": "assets/icons/feixiao.webp", "path": "Hunt", "element": "Wind", "rarity": 5, "role": ["dps"], "release_phase": "2.5.1", "id": "1220"}, {"name": "Fire Trailblazer", "file": "Fire Trailblazer_Dashboard.html", "icon": "assets/icons/fire_trailblazer.webp", "path": "Preservation", "element": "Fire", "rarity": 4, "role": ["sustain"], "release_phase": "1.0.1", "id": "8003"}, {"name": "Firefly", "file": "Firefly_Dashboard.html", "icon": "assets/icons/firefly.webp", "path": "Destruction", "element": "Fire", "rarity": 5, "role": ["dps"], "release_phase": "2.3.1", "id": "1310"}, {"name": "Fu Xuan", "file": "Fu Xuan_Dashboard.html", "icon": "assets/icons/fu_xuan.webp", "path": "Preservation", "element": "Quantum", "rarity": 5, "role": ["sustain"], "release_phase": "1.3.1", "id": "1208"}, {"name": "Fugue", "file": "Fugue_Dashboard.html", "icon": "assets/icons/fugue.webp", "path": "Nihility", "element": "Fire", "rarity": 5, "role": ["amplifier"], "release_phase": "2.7.1", "id": "1225"}, {"name": "Gallagher", "file": "Gallagher_Dashboard.html", "icon": "assets/icons/gallagher.webp", "path": "Abundance", "element": "Fire", "rarity": 4, "role": ["sustain"], "release_phase": "2.1.1", "id": "1301"}, {"name": "Gepard", "file": "Gepard_Dashboard.html", "icon": "assets/icons/gepard.webp", "path": "Preservation", "element": "Ice", "rarity": 5, "role": ["sustain"], "release_phase": "1.0.1", "id": "1104"}, {"name": "Guinaifen", "file": "Guinaifen_Dashboard.html", "icon": "assets/icons/guinaifen.webp", "path": "Nihility", "element": "Fire", "rarity": 4, "role": ["amplifier"], "release_phase": "1.4.1", "id": "1210"}, {"name": "Hanya", "file": "Hanya_Dashboard.html", "icon": "assets/icons/hanya.webp", "path": "Harmony", "element": "Physical", "rarity": 4, "role": ["amplifier"], "release_phase": "1.5.1", "id": "1215"}, {"name": "Herta", "file": "Herta_Dashboard.html", "icon": "assets/icons/herta.webp", "path": "Erudition", "element": "Ice", "rarity": 4, "role": ["specialist"], "release_phase": "1.0.1", "id": "1013"}, {"name": "Himeko", "file": "Himeko_Dashboard.html", "icon": "assets/icons/himeko.webp", "path": "Erudition", "element": "Fire", "rarity": 5, "role": ["dps"], "release_phase": "1.0.1", "id": "1003"}, {"name": "Hook", "file": "Hook_Dashboard.html", "icon": "assets/icons/hook.webp", "path": "Destruction", "element": "Fire", "rarity": 4, "role": ["dps"], "release_phase": "1.0.1", "id": "1109"}, {"name": "Huohuo", "file": "Huohuo_Dashboard.html", "icon": "assets/icons/huohuo.webp", "path": "Abundance", "element": "Wind", "rarity": 5, "role": ["sustain"], "release_phase": "1.5.1", "id": "1217"}, {"name": "Hyacine", "file": "Hyacine_Dashboard.html", "icon": "assets/icons/hyacine.webp", "path": "Remembrance", "element": "Wind", "rarity": 5, "role": ["sustain"], "release_phase": "3.3.1", "id": "1409"}, {"name": "Hysilens", "file": "Hysilens_Dashboard.html", "icon": "assets/icons/hysilens.webp", "path": "Nihility", "element": "Physical", "rarity": 5, "role": ["dps"], "release_phase": "3.5.1", "id": "1410"}, {"name": "Ice March 7th", "file": "Ice March 7th_Dashboard.html", "icon": "assets/icons/ice_march_7th.webp", "path": "Preservation", "element": "Ice", "rarity": 4, "role": ["sustain"], "release_phase": "1.0.1", "id": "1001"}, {"name": "Ice Trailblazer", "file": "Ice Trailblazer_Dashboard.html", "icon": "assets/icons/ice_trailblazer.webp", "path": "Remembrance", "element": "Ice", "rarity": 4, "role": ["amplifier"], "release_phase": "3.0.1", "id": "8007"}, {"name": "Imaginary March 7th", "file": "Imaginary March 7th_Dashboard.html", "icon": "assets/icons/imaginary_march_7th.webp", "path": "Hunt", "element": "Imaginary", "rarity": 4, "role": ["specialist"], "release_phase": "2.4.1", "id": "1224"}, {"name": "Imaginary Trailblazer", "file": "Imaginary Trailblazer_Dashboard.html", "icon": "assets/icons/imaginary_trailblazer.webp", "path": "Harmony", "element": "Imaginary", "rarity": 4, "role": ["amplifier"], "release_phase": "2.2.1", "id": "8005"}, {"name": "Jade", "file": "Jade_Dashboard.html", "icon": "assets/icons/jade.webp", "path": "Erudition", "element": "Quantum", "rarity": 5, "role": ["specialist"], "release_phase": "2.3.1", "id": "1314"}, {"name": "Jiaoqiu", "file": "Jiaoqiu_Dashboard.html", "icon": "assets/icons/jiaoqiu.webp", "path": "Nihility", "element": "Fire", "rarity": 5, "role": ["amplifier"], "release_phase": "2.4.1", "id": "1218"}, {"name": "Jing Yuan", "file": "Jing Yuan_Dashboard.html", "icon": "assets/icons/jing_yuan.webp", "path": "Erudition", "element": "Thunder", "rarity": 5, "role": ["dps"], "release_phase": "1.0.1", "id": "1204"}, {"name": "Jingliu", "file": "Jingliu_Dashboard.html", "icon": "assets/icons/jingliu.webp", "path": "Destruction", "element": "Ice", "rarity": 5, "role": ["dps"], "release_phase": "1.4.1", "id": "1212"}, {"name": "Kafka", "file": "Kafka_Dashboard.html", "icon": "assets/icons/kafka.webp", "path": "Nihility", "element": "Thunder", "rarity": 5, "role": ["specialist"], "release_phase": "1.2.1", "id": "1005"}, {"name": "Lightning Trailblazer", "file": "Lightning Trailblazer_Dashboard.html", "icon": "assets/icons/lightning_trailblazer.webp", "path": "Elation", "element": "Lightning", "rarity": 4, "role": ["amplifier"], "release_phase": "4.2.1", "id": "8009"}, {"name": "Lingsha", "file": "Lingsha_Dashboard.html", "icon": "assets/icons/lingsha.webp", "path": "Abundance", "element": "Fire", "rarity": 5, "role": ["sustain"], "release_phase": "2.5.1", "id": "1222"}, {"name": "Luka", "file": "Luka_Dashboard.html", "icon": "assets/icons/luka.webp", "path": "Nihility", "element": "Physical", "rarity": 4, "role": ["dps"], "release_phase": "1.2.1", "id": "1111"}, {"name": "Luocha", "file": "Luocha_Dashboard.html", "icon": "assets/icons/luocha.webp", "path": "Abundance", "element": "Imaginary", "rarity": 5, "role": ["sustain"], "release_phase": "1.1.1", "id": "1203"}, {"name": "Lynx", "file": "Lynx_Dashboard.html", "icon": "assets/icons/lynx.webp", "path": "Abundance", "element": "Quantum", "rarity": 4, "role": ["sustain"], "release_phase": "1.3.1", "id": "1110"}, {"name": "Misha", "file": "Misha_Dashboard.html", "icon": "assets/icons/misha.webp", "path": "Destruction", "element": "Ice", "rarity": 4, "role": ["dps"], "release_phase": "2.0.1", "id": "1312"}, {"name": "Mortenax Blade", "file": "Mortenax Blade_Dashboard.html", "icon": "assets/icons/mortenax_blade.webp", "path": "Nihility", "element": "Fire", "rarity": 5, "role": ["amplifier"], "release_phase": "4.3.1", "id": "1507"}, {"name": "Moze", "file": "Moze_Dashboard.html", "icon": "assets/icons/moze.webp", "path": "Hunt", "element": "Thunder", "rarity": 4, "role": ["specialist"], "release_phase": "2.5.1", "id": "1223"}, {"name": "Mydei", "file": "Mydei_Dashboard.html", "icon": "assets/icons/mydei.webp", "path": "Destruction", "element": "Imaginary", "rarity": 5, "role": ["dps"], "release_phase": "3.1.1", "id": "1404"}, {"name": "Natasha", "file": "Natasha_Dashboard.html", "icon": "assets/icons/natasha.webp", "path": "Abundance", "element": "Physical", "rarity": 4, "role": ["sustain"], "release_phase": "1.0.1", "id": "1105"}, {"name": "Pela", "file": "Pela_Dashboard.html", "icon": "assets/icons/pela.webp", "path": "Nihility", "element": "Ice", "rarity": 4, "role": ["amplifier"], "release_phase": "1.0.1", "id": "1106"}, {"name": "Phainon", "file": "Phainon_Dashboard.html", "icon": "assets/icons/phainon.webp", "path": "Destruction", "element": "Physical", "rarity": 5, "role": ["dps"], "release_phase": "3.4.1", "id": "1408"}, {"name": "Physical Trailblazer", "file": "Physical Trailblazer_Dashboard.html", "icon": "assets/icons/physical_trailblazer.webp", "path": "Destruction", "element": "Physical", "rarity": 4, "role": ["dps"], "release_phase": "1.0.1", "id": "8001"}, {"name": "Qingque", "file": "Qingque_Dashboard.html", "icon": "assets/icons/qingque.webp", "path": "Erudition", "element": "Quantum", "rarity": 4, "role": ["dps"], "release_phase": "1.0.1", "id": "1201"}, {"name": "Rappa", "file": "Rappa_Dashboard.html", "icon": "assets/icons/rappa.webp", "path": "Erudition", "element": "Imaginary", "rarity": 5, "role": ["dps"], "release_phase": "2.6.1", "id": "1317"}, {"name": "Robin", "file": "Robin_Dashboard.html", "icon": "assets/icons/robin.webp", "path": "Harmony", "element": "Physical", "rarity": 5, "role": ["amplifier"], "release_phase": "2.2.1", "id": "1309"}, {"name": "Ruan Mei", "file": "Ruan Mei_Dashboard.html", "icon": "assets/icons/ruan_mei.webp", "path": "Harmony", "element": "Ice", "rarity": 5, "role": ["amplifier"], "release_phase": "1.6.1", "id": "1303"}, {"name": "Saber", "file": "Saber_Dashboard.html", "icon": "assets/icons/saber.webp", "path": "Destruction", "element": "Wind", "rarity": 5, "role": ["dps"], "release_phase": "3.4.1", "id": "1014"}, {"name": "Sampo", "file": "Sampo_Dashboard.html", "icon": "assets/icons/sampo.webp", "path": "Nihility", "element": "Wind", "rarity": 4, "role": ["specialist"], "release_phase": "1.0.1", "id": "1108"}, {"name": "Seele", "file": "Seele_Dashboard.html", "icon": "assets/icons/seele.webp", "path": "Hunt", "element": "Quantum", "rarity": 5, "role": ["dps"], "release_phase": "1.0.1", "id": "1102"}, {"name": "Serval", "file": "Serval_Dashboard.html", "icon": "assets/icons/serval.webp", "path": "Erudition", "element": "Thunder", "rarity": 4, "role": ["specialist"], "release_phase": "1.0.1", "id": "1103"}, {"name": "Silver Wolf", "file": "Silver Wolf_Dashboard.html", "icon": "assets/icons/silver_wolf.webp", "path": "Nihility", "element": "Quantum", "rarity": 5, "role": ["amplifier"], "release_phase": "1.1.1", "id": "1006"}, {"name": "Silver Wolf LV.999", "file": "Silver Wolf LV.999_Dashboard.html", "icon": "assets/icons/silver_wolf_lv999.webp", "path": "Elation", "element": "Imaginary", "rarity": 5, "role": ["dps"], "release_phase": "4.2.1", "id": "1506"}, {"name": "Sparkle", "file": "Sparkle_Dashboard.html", "icon": "assets/icons/sparkle.webp", "path": "Harmony", "element": "Quantum", "rarity": 5, "role": ["amplifier"], "release_phase": "2.0.1", "id": "1306"}, {"name": "Sparxie", "file": "Sparxie_Dashboard.html", "icon": "assets/icons/sparxie.webp", "path": "Elation", "element": "Fire", "rarity": 5, "role": ["dps"], "release_phase": "4.0.1", "id": "1501"}, {"name": "Sunday", "file": "Sunday_Dashboard.html", "icon": "assets/icons/sunday.webp", "path": "Harmony", "element": "Imaginary", "rarity": 5, "role": ["amplifier"], "release_phase": "2.7.1", "id": "1313"}, {"name": "Sushang", "file": "Sushang_Dashboard.html", "icon": "assets/icons/sushang.webp", "path": "Hunt", "element": "Physical", "rarity": 4, "role": ["dps"], "release_phase": "1.0.1", "id": "1206"}, {"name": "The Dahlia", "file": "The Dahlia_Dashboard.html", "icon": "assets/icons/the_dahlia.webp", "path": "Nihility", "element": "Fire", "rarity": 5, "role": ["amplifier"], "release_phase": "3.8.1", "id": "1321"}, {"name": "The Herta", "file": "The Herta_Dashboard.html", "icon": "assets/icons/the_herta.webp", "path": "Erudition", "element": "Ice", "rarity": 5, "role": ["dps"], "release_phase": "3.0.1", "id": "1401"}, {"name": "Tingyun", "file": "Tingyun_Dashboard.html", "icon": "assets/icons/tingyun.webp", "path": "Harmony", "element": "Thunder", "rarity": 4, "role": ["amplifier"], "release_phase": "1.0.1", "id": "1202"}, {"name": "Topaz & Numby", "file": "Topaz & Numby_Dashboard.html", "icon": "assets/icons/topaz_numby.webp", "path": "Hunt", "element": "Fire", "rarity": 5, "role": ["specialist"], "release_phase": "1.4.1", "id": "1112"}, {"name": "Tribbie", "file": "Tribbie_Dashboard.html", "icon": "assets/icons/tribbie.webp", "path": "Harmony", "element": "Quantum", "rarity": 5, "role": ["amplifier"], "release_phase": "3.1.1", "id": "1403"}, {"name": "Welt", "file": "Welt_Dashboard.html", "icon": "assets/icons/welt.webp", "path": "Nihility", "element": "Imaginary", "rarity": 5, "role": ["specialist"], "release_phase": "1.0.1", "id": "1004"}, {"name": "Xueyi", "file": "Xueyi_Dashboard.html", "icon": "assets/icons/xueyi.webp", "path": "Destruction", "element": "Quantum", "rarity": 4, "role": ["dps"], "release_phase": "1.6.1", "id": "1214"}, {"name": "Yanqing", "file": "Yanqing_Dashboard.html", "icon": "assets/icons/yanqing.webp", "path": "Hunt", "element": "Ice", "rarity": 5, "role": ["dps"], "release_phase": "1.0.1", "id": "1209"}, {"name": "Yao Guang", "file": "Yao Guang_Dashboard.html", "icon": "assets/icons/yao_guang.webp", "path": "Elation", "element": "Physical", "rarity": 5, "role": ["amplifier"], "release_phase": "4.0.1", "id": "1502"}, {"name": "Yukong", "file": "Yukong_Dashboard.html", "icon": "assets/icons/yukong.webp", "path": "Harmony", "element": "Imaginary", "rarity": 4, "role": ["amplifier"], "release_phase": "1.1.1", "id": "1207"}, {"name": "Yunli", "file": "Yunli_Dashboard.html", "icon": "assets/icons/yunli.webp", "path": "Destruction", "element": "Physical", "rarity": 5, "role": ["dps"], "release_phase": "2.4.1", "id": "1221"}];
+
+  const PATH_ICONS = {
+    "Destruction": "💥", "Hunt": "🏹", "Erudition": "📘", "Harmony": "🎵",
+    "Nihility": "☠️", "Preservation": "🛡️", "Abundance": "✚",
+    "Remembrance": "⏳", "Elation": "🎭"
+  };
+  const ELEMENT_ICONS = {
+    "Physical": "⚪", "Fire": "🔥", "Ice": "❄️", "Thunder": "⚡", "Lightning": "⚡",
+    "Wind": "🍃", "Quantum": "🌀", "Imaginary": "✨"
+  };
+
+  const dateEl = document.getElementById('liveDate');
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  const state = { query: '', path: 'all', element: 'all' };
+
+  function uniqueSorted(key) {
+    return [...new Set(CHARACTERS.map(c => c[key]).filter(Boolean))].sort();
+  }
+
+  function buildChips(containerId, values, stateKey, iconMap) {
+    const container = document.getElementById(containerId);
+    const allChip = document.createElement('button');
+    allChip.className = 'chip active';
+    allChip.textContent = 'All';
+    allChip.dataset.value = 'all';
+    container.appendChild(allChip);
+
+    values.forEach(v => {
+      const chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.dataset.value = v;
+      const icon = iconMap && iconMap[v] ? iconMap[v] + ' ' : '';
+      chip.textContent = icon + v;
+      container.appendChild(chip);
+    });
+
+    container.addEventListener('click', e => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      state[stateKey] = btn.dataset.value;
+      container.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === btn));
+      render();
+    });
+  }
+
+  function matches(c) {
+    if (state.path !== 'all' && c.path !== state.path) return false;
+    if (state.element !== 'all' && c.element !== state.element) return false;
+    if (state.query && !c.name.toLowerCase().includes(state.query)) return false;
+    return true;
+  }
+
+  function cardHTML(c) {
+    const href = encodeURIComponent(c.file);
+    const iconSrc = c.icon ? '../' + c.icon : '';
+    const pathBadge = c.path ? `<span class="badge">${PATH_ICONS[c.path] || ''} ${c.path}</span>` : '';
+    const elBadge = c.element ? `<span class="badge">${ELEMENT_ICONS[c.element] || ''} ${c.element}</span>` : '';
+    return `
+      <a class="char-card" data-rarity="${c.rarity || ''}" href="${href}" aria-label="${c.name} dashboard">
+        <div class="char-icon-wrap">${iconSrc ? `<img src="${iconSrc}" alt="${c.name}" loading="lazy"/>` : ''}</div>
+        <div class="char-name">${c.name}</div>
+        <div class="char-badges">${pathBadge}${elBadge}</div>
+      </a>`;
+  }
+
+  function render() {
+    const filtered = CHARACTERS.filter(matches);
+    const grid = document.getElementById('charGrid');
+    document.getElementById('resultCount').textContent = `${filtered.length} / ${CHARACTERS.length}`;
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div class="empty-state">No characters match your filters.</div>`;
+      return;
+    }
+    grid.innerHTML = filtered.map(cardHTML).join('');
+  }
+
+  buildChips('pathFilters', uniqueSorted('path'), 'path', PATH_ICONS);
+  buildChips('elementFilters', uniqueSorted('element'), 'element', ELEMENT_ICONS);
+
+  document.getElementById('searchInput').addEventListener('input', e => {
+    state.query = e.target.value.trim().toLowerCase();
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>

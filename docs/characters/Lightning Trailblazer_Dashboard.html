@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lightning Trailblazer — Character Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+/*
+ ╔══════════════════════════════════════════════════════════════╗
+ ║  HSR CHARACTER DASHBOARD TEMPLATE                           ║
+ ║  Injection points are marked with:           ║
+ ║  All visual logic lives here. Only inject DATA below.       ║
+ ╚══════════════════════════════════════════════════════════════╝
+ 
+ ELEMENT THEME GUIDE — replace CSS vars in :root for each character:
+   Quantum   → --c1:#8b6eff  --c2:#c8a8ff  --c3:#6040cc  --particle1:#8b6eff  --particle2:#c8a8ff
+   Ice       → --c1:#6eb4f7  --c2:#a8d4ff  --c3:#3a7acc  --particle1:#6eb4f7  --particle2:#a8d4ff
+   Fire      → --c1:#e05a30  --c2:#f5a060  --c3:#b03010  --particle1:#e05a30  --particle2:#f5a060
+   Wind      → --c1:#4ecfa0  --c2:#a0f0d0  --c3:#20a070  --particle1:#4ecfa0  --particle2:#a0f0d0
+   Lightning → --c1:#e8d44d  --c2:#c080ff  --c3:#f0e880  --particle1:#e8d44d  --particle2:#c080ff
+   Imaginary → --c1:#e8c97a  --c2:#f0dfa0  --c3:#a8883a  --particle1:#e8c97a  --particle2:#c8a060
+   Physical  → --c1:#c0cce0  --c2:#e8eef8  --c3:#8090a8  --particle1:#c0cce0  --particle2:#e8eef8
+*/
+:root {
+  /* ── INJECT ELEMENT THEME ── */
+  --c1: #e8d44d;
+  --c2: #c080ff;
+  --c3: #f0e880;
+  --particle1: #e8d44d;
+  --particle2: #c080ff;
+  --glow-color: rgba(232,212,77,0.4);
+  /* ── END THEME ── */
+
+  --bg0: #08060f;
+  --bg1: #0e0b18;
+  --bg2: #130f20;
+  --bg3: #181428;
+  --bg4: #1e1930;
+  --text-bright: #f5f0ff;
+  --text-main: #c8bce8;
+  --text-muted: #7860a8;
+  --text-dim: #4a3870;
+  --gold: #e8c97a;
+  --gold2: #f0dfa0;
+  --border: rgba(var(--c1-raw, 232,212,77), 0.12);
+  --border2: rgba(var(--c1-raw, 232,212,77), 0.28);
+  /* fallback borders using c1 with opacity */
+  --border-c: color-mix(in srgb, var(--c1) 12%, transparent);
+  --border2-c: color-mix(in srgb, var(--c1) 28%, transparent);
+  --border-hover: color-mix(in srgb, var(--c1) 50%, transparent);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text-main);min-height:100vh;overflow-x:hidden;}
+
+/* ── PARTICLES ── */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.spark{position:absolute;border-radius:50%;opacity:0;animation:sparkFloat linear infinite;}
+@keyframes sparkFloat{
+  0%{transform:translateY(0) translateX(0) scale(0.2);opacity:0;}
+  15%{opacity:0.9;}
+  85%{opacity:0.3;}
+  100%{transform:translateY(-100vh) translateX(var(--dx)) scale(0.1);opacity:0;}
+}
+
+/* ── NAV ── */
+#nav{position:sticky;top:0;z-index:100;background:rgba(8,6,15,0.92);backdrop-filter:blur(18px);border-bottom:1px solid var(--border-c);display:flex;align-items:center;padding:0 2rem;}
+.nav-logo{font-family:'Cinzel',serif;font-weight:700;font-size:0.85rem;color:var(--c1);letter-spacing:0.15em;text-transform:uppercase;padding:1rem 1.5rem 1rem 0;border-right:1px solid var(--border-c);margin-right:1.5rem;white-space:nowrap;}
+.nav-tab{font-family:'Cinzel',serif;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);padding:1.1rem 1.2rem;cursor:pointer;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s;white-space:nowrap;}
+.nav-tab:hover{color:var(--text-bright);}
+.nav-tab.active{color:var(--c1);border-bottom-color:var(--c1);}
+
+/* ── HERO ── */
+#hero{position:relative;min-height:420px;display:flex;align-items:center;padding:3rem 3rem 3rem 3.5rem;overflow:hidden;background:linear-gradient(135deg,var(--bg1) 0%,var(--bg0) 60%);}
+.hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse 55% 80% at 72% 50%, color-mix(in srgb, var(--c1) 10%, transparent) 0%, color-mix(in srgb, var(--c2) 6%, transparent) 40%, transparent 70%);pointer-events:none;}
+.hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(color-mix(in srgb,var(--c1) 4%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--c2) 4%,transparent) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse 80% 100% at 50% 50%,black 30%,transparent 80%);}
+.hero-content{position:relative;z-index:2;flex:1;max-width:55%;}
+.hero-tag-row{display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;}
+.hero-tag{font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:0.2rem 0.65rem;border-radius:3px;}
+.hero-tag.element{background:color-mix(in srgb,var(--c1) 15%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 35%,transparent);}
+.hero-tag.path{background:color-mix(in srgb,var(--c2) 12%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 30%,transparent);}
+.hero-tag.ver{background:color-mix(in srgb,var(--c1) 6%,transparent);color:var(--text-muted);border:1px solid var(--border-c);}
+.hero-name{font-family:'Cinzel',serif;font-size:clamp(3rem,6vw,5rem);font-weight:900;line-height:0.9;color:var(--text-bright);letter-spacing:-0.02em;text-shadow:0 0 60px color-mix(in srgb,var(--c1) 40%,transparent),0 0 100px color-mix(in srgb,var(--c2) 20%,transparent),0 2px 4px rgba(0,0,0,0.9);margin-bottom:0.5rem;}
+.hero-sub{font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--c1);opacity:0.65;margin-bottom:1.5rem;}
+.hero-stats-row{display:flex;gap:1.5rem;flex-wrap:wrap;}
+.hero-stat{text-align:center;}
+.hero-stat-val{font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;color:var(--c2);display:block;line-height:1;}
+.hero-stat-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);display:block;margin-top:0.15rem;}
+.hero-portrait{position:absolute;right:0;bottom:0;top:0;width:45%;pointer-events:none;z-index:1;display:flex;align-items:flex-end;justify-content:flex-end;}
+.hero-portrait img{height:110%;max-height:480px;object-fit:contain;filter:drop-shadow(0 0 40px color-mix(in srgb,var(--c1) 40%,transparent)) drop-shadow(0 0 80px color-mix(in srgb,var(--c2) 20%,transparent));animation:portraitFloat 6s ease-in-out infinite;}
+@keyframes portraitFloat{0%,100%{transform:translateY(0px);}50%{transform:translateY(-12px);}}
+.hero-portrait-fade{position:absolute;inset:0;background:linear-gradient(to right,var(--bg0) 0%,transparent 35%);}
+
+/* ── CONTENT SHELL ── */
+#content{padding:0 2.5rem 3rem;max-width:1400px;margin:0 auto;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* ── CARD ── */
+.card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1.5rem;}
+.card-title{font-family:'Cinzel',serif;font-size:0.8rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--c1);margin-bottom:1.2rem;display:flex;align-items:center;gap:0.6rem;}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border2-c);}
+.section-header{padding:2rem 0 1rem;font-family:'Cinzel',serif;font-size:0.75rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:1rem;}
+.section-header::before,.section-header::after{content:'';flex:1;height:1px;background:var(--border-c);}
+
+/* ── OVERVIEW ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.stat-cell{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:1rem;text-align:center;transition:border-color 0.2s;}
+.stat-cell:hover{border-color:var(--border2-c);}
+.stat-cell.featured{background:linear-gradient(135deg,color-mix(in srgb,var(--c1) 8%,transparent),color-mix(in srgb,var(--c2) 5%,transparent));border-color:color-mix(in srgb,var(--c1) 38%,transparent);grid-column:span 2;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.stat-val{font-family:'Cinzel',serif;font-size:1.6rem;font-weight:700;color:var(--text-bright);display:block;line-height:1;}
+.stat-cell.featured .stat-val{font-size:2.4rem;color:var(--c1);}
+.stat-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);display:block;margin-top:0.3rem;}
+.stat-cell.featured .stat-lbl{font-size:0.78rem;color:var(--c2);}
+
+.main-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.main-stat-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:0.9rem;}
+.main-stat-slot{font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem;}
+.main-stat-pill{display:inline-block;font-size:0.72rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:4px;margin:0.15rem 0.15rem 0 0;}
+.main-stat-pill.dominant{background:color-mix(in srgb,var(--c1) 18%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 45%,transparent);}
+.main-stat-pill.alt{background:color-mix(in srgb,var(--c2) 12%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 30%,transparent);}
+
+.substat-row{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.45rem;}
+.substat-name{font-size:0.72rem;color:var(--text-main);width:150px;flex-shrink:0;}
+.substat-bar-bg{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.substat-bar-fill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--c3),var(--c1));}
+.substat-val{font-size:0.72rem;color:var(--text-muted);width:52px;text-align:right;flex-shrink:0;}
+
+.percentile-section{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.percentile-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:1rem;}
+.percentile-title{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--c1);margin-bottom:0.8rem;}
+.percentile-row{display:flex;justify-content:space-between;align-items:center;padding:0.25rem 0;border-bottom:1px solid color-mix(in srgb,var(--c1) 7%,transparent);}
+.percentile-row:last-child{border-bottom:none;}
+.p-label{font-size:0.68rem;color:var(--text-dim);}
+.p-val{font-size:0.78rem;font-weight:700;color:var(--text-bright);}
+.p-val.p50{color:var(--c1);font-size:0.88rem;}
+.avg-sidebar{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-top:1rem;}
+.avg-item{background:var(--bg3);border:1px solid var(--border-c);border-radius:5px;padding:0.6rem 0.8rem;}
+.avg-item-lbl{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);}
+.avg-item-val{font-size:0.9rem;font-weight:700;color:var(--text-bright);}
+
+/* ── GEAR ── */
+.mode-tabs-row,.eidolon-tabs-row{display:flex;gap:0.4rem;margin-bottom:1rem;flex-wrap:wrap;}
+.mode-tab,.eidolon-tab{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:0.5rem 1rem;border:1px solid var(--border-c);border-radius:5px;background:var(--bg3);color:var(--text-muted);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.mode-tab:hover,.eidolon-tab:hover{color:var(--text-bright);border-color:var(--border2-c);}
+.mode-tab.active,.eidolon-tab.active{color:var(--c1);background:color-mix(in srgb,var(--c1) 8%,transparent);border-color:var(--c1);}
+.eidolon-tab.e6.active{color:var(--gold);background:rgba(232,201,122,0.10);border-color:var(--gold);}
+.gear-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+.gear-category{background:var(--bg2);border:1px solid var(--border-c);border-radius:7px;padding:1rem;}
+.gear-cat-title{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--c2);margin-bottom:0.8rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border-c);}
+.gear-row{margin-bottom:0.6rem;}
+.gear-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;}
+.gear-name{font-size:0.75rem;color:var(--text-bright);font-weight:600;flex:1;margin-right:0.5rem;}
+.gear-badge{font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.4rem;border-radius:3px;white-space:nowrap;}
+.badge-dom{background:color-mix(in srgb,var(--c1) 22%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 50%,transparent);}
+.badge-sig{background:rgba(232,201,122,0.2);color:var(--gold);border:1px solid rgba(232,201,122,0.4);}
+.badge-alt{background:color-mix(in srgb,var(--c2) 15%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 35%,transparent);}
+.gear-bar-row{display:flex;align-items:center;gap:0.5rem;}
+.gear-bar-bg{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.gear-bar-fill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--c3),var(--c1));}
+.gear-pct{font-size:0.68rem;color:var(--text-muted);width:38px;text-align:right;flex-shrink:0;}
+.gear-score{font-size:0.65rem;color:var(--text-dim);}
+
+/* ── META / DUOS ── */
+.meta-mode-tabs{display:flex;gap:0.4rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+.meta-mode-tab{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;padding:0.45rem 0.9rem;border:1px solid var(--border-c);border-radius:5px;background:var(--bg3);color:var(--text-muted);cursor:pointer;transition:all 0.2s;}
+.meta-mode-tab:hover{color:var(--text-bright);border-color:var(--border2-c);}
+.meta-mode-tab.active{color:var(--c1);background:color-mix(in srgb,var(--c1) 8%,transparent);border-color:var(--c1);}
+
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1rem;margin-bottom:2rem;}
+.team-card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1rem;transition:border-color 0.2s;}
+.team-card:hover{border-color:var(--border2-c);}
+.team-icons-row{display:flex;gap:0.4rem;margin-bottom:0.8rem;align-items:flex-start;flex-wrap:wrap;}
+.team-icon-wrap{position:relative;}
+.team-icon{width:52px;height:52px;border-radius:50%;border:2px solid color-mix(in srgb,var(--c1) 18%,transparent);object-fit:cover;background:var(--bg3);display:block;}
+.team-icon.main-slot{border-color:var(--c1);box-shadow:0 0 10px color-mix(in srgb,var(--c1) 50%,transparent),0 0 24px color-mix(in srgb,var(--c1) 18%,transparent);}
+.team-icon-name{font-size:0.56rem;text-align:center;color:var(--text-muted);margin-top:0.2rem;max-width:52px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.team-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0.4rem;font-size:0.68rem;}
+.team-stat{text-align:center;}
+.team-stat-val{font-weight:700;color:var(--text-bright);display:block;}
+.team-stat-lbl{color:var(--text-dim);}
+.mode-pill{display:inline-block;font-size:0.6rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.5rem;border-radius:3px;background:color-mix(in srgb,var(--c1) 9%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 25%,transparent);margin-bottom:0.6rem;}
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.7rem;}
+.arch-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:0.8rem 1rem;display:flex;align-items:center;gap:0.8rem;}
+.arch-core{font-size:0.75rem;font-weight:700;color:var(--text-bright);flex:1;}
+.arch-score{font-size:0.8rem;font-weight:700;color:var(--c1);}
+.arch-samples{font-size:0.68rem;color:var(--text-muted);}
+
+.duos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem;}
+.duo-card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1rem;transition:border-color 0.2s;}
+.duo-card:hover{border-color:var(--border2-c);}
+.duo-icons-row{display:flex;align-items:center;gap:0.7rem;margin-bottom:0.7rem;}
+.duo-plus{font-size:1.2rem;color:var(--text-dim);font-weight:300;}
+.duo-partner-name{font-size:0.85rem;font-weight:700;color:var(--text-bright);}
+.duo-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;font-size:0.68rem;}
+.duo-stat{background:var(--bg3);border-radius:4px;padding:0.35rem 0.5rem;text-align:center;}
+.duo-stat-val{font-weight:700;color:var(--text-bright);display:block;}
+.duo-stat-lbl{color:var(--text-dim);font-size:0.6rem;}
+.confidence-bar{margin-top:0.5rem;}
+.conf-label{font-size:0.62rem;color:var(--text-muted);margin-bottom:0.2rem;display:flex;justify-content:space-between;}
+.conf-bg{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.conf-fill{height:100%;border-radius:2px;background:linear-gradient(to right,var(--c3),var(--c1));}
+
+.no-data{padding:2rem;text-align:center;color:var(--text-dim);font-style:italic;font-size:0.85rem;}
+#footer{background:var(--bg1);border-top:1px solid var(--border-c);padding:1.2rem 2.5rem;text-align:center;font-size:0.68rem;color:var(--text-dim);letter-spacing:0.05em;line-height:1.8;}
+#footer span{color:var(--text-muted);}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg0);}
+::-webkit-scrollbar-thumb{background:var(--c3);border-radius:3px;}
+
+@media(max-width:768px){
+  #hero{padding:2rem 1.5rem;} .hero-portrait{display:none;} .hero-content{max-width:100%;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);} .gear-grid{grid-template-columns:1fr;}
+  #content{padding:0 1rem 2rem;} #nav{padding:0 0.8rem;overflow-x:auto;}
+  .main-stats-row{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div id="particles"></div>
+
+<nav id="nav">
+  <div class="nav-logo">Lightning Trailblazer</div>
+  <div class="nav-tab active" onclick="switchTab('overview',this)">Overview</div>
+  <div class="nav-tab" onclick="switchTab('gear',this)">Gear Usage</div>
+  <div class="nav-tab" onclick="switchTab('meta',this)">Endgame Meta</div>
+  <div class="nav-tab" onclick="switchTab('duos',this)">Duo Synergies</div>
+</nav>
+
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-tag-row">
+      <span class="hero-tag element">Lightning</span>
+      <span class="hero-tag path">Elation</span>
+      <span class="hero-tag ver">v4.3.1 Data</span>
+    </div>
+    <div class="hero-name">Lightning Trailblazer</div>
+    <div class="hero-sub">The Trailblazer</div>
+    <div class="hero-stats-row">
+      <!-- ══ INJECT:HERO_STATS ══
+           Format: 3–4 hero-stat blocks showing the character's key numbers.
+           Example:
+           <div class="hero-stat">
+             <span class="hero-stat-val">51,367</span>
+             <span class="hero-stat-lbl">Sampled Builds</span>
+           </div>
+      -->
+      <div class="hero-stat">
+  <span class="hero-stat-val">6,551</span>
+  <span class="hero-stat-lbl">Sampled Builds</span>
+</div>
+<div class="hero-stat">
+  <span class="hero-stat-val">51.0%</span>
+  <span class="hero-stat-lbl">Avg CRIT Rate</span>
+</div>
+<div class="hero-stat">
+  <span class="hero-stat-val">109.6%</span>
+  <span class="hero-stat-lbl">Avg CRIT DMG</span>
+</div>
+      <!-- ══ END INJECT:HERO_STATS ══ -->
+    </div>
+  </div>
+  <div class="hero-portrait">
+    <div class="hero-portrait-fade"></div>
+    <img src="https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/411b9c981aad01d19570f66b9ba4ce96.png" alt="Lightning Trailblazer" onerror="this.style.display='none'">
+  </div>
+</section>
+
+<div id="content">
+
+<!-- ══════════════════════════════════════
+     OVERVIEW TAB
+══════════════════════════════════════ -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="section-header">Build Statistics — 6,551 Samples · 4 Versions</div>
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-title">Core Stats (Averages)</div>
+    <div class="stat-grid">
+      <!-- ══ INJECT:STAT_CELLS ══
+           Include 2 featured cells (grid-column:span 2) for the defining stats,
+           then 6 regular stat-cell blocks for the remaining stats.
+           Featured example:
+           <div class="stat-cell featured">
+             <span class="stat-val">73.7%</span>
+             <span class="stat-lbl">CRIT Rate — Defining Stat</span>
+           </div>
+           Regular example:
+           <div class="stat-cell">
+             <span class="stat-val">2,411</span>
+             <span class="stat-lbl">Avg ATK</span>
+           </div>
+      -->
+      <div class="stat-cell featured">
+  <span class="stat-val">51.0%</span>
+  <span class="stat-lbl">Avg CRIT Rate — Defining Stat</span>
+</div>
+<div class="stat-cell featured">
+  <span class="stat-val">109.6%</span>
+  <span class="stat-lbl">Avg CRIT DMG — Defining Stat</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">154.1</span>
+  <span class="stat-lbl">Avg SPD</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">2,328</span>
+  <span class="stat-lbl">Avg ATK</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">1,337</span>
+  <span class="stat-lbl">Avg DEF</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">3,220</span>
+  <span class="stat-lbl">Avg HP</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">20.5%</span>
+  <span class="stat-lbl">Avg ERR</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">1.4%</span>
+  <span class="stat-lbl">Avg Lightning DMG</span>
+</div>
+      <!-- ══ END INJECT:STAT_CELLS ══ -->
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem;">Main Stat Choices</div>
+    <div class="main-stats-row">
+      <!-- ══ INJECT:MAIN_STATS ══
+           4 main-stat-card blocks (Body, Feet, Sphere, Rope).
+           Each has main-stat-pill.dominant for the top choice, .alt for secondary.
+           Example:
+           <div class="main-stat-card">
+             <div class="main-stat-slot">Body</div>
+             <span class="main-stat-pill dominant">CRIT Rate 79.2%</span>
+             <span class="main-stat-pill alt">CRIT DMG 20.2%</span>
+           </div>
+      -->
+      <div class="main-stat-card">
+  <div class="main-stat-slot">Body</div>
+  <span class="main-stat-pill dominant">CRIT Rate 60.7%</span>
+  <span class="main-stat-pill alt">CRIT DMG 19.9%</span>
+  <span class="main-stat-pill alt">ATK 6.7%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Feet</div>
+  <span class="main-stat-pill dominant">SPD 92.5%</span>
+  <span class="main-stat-pill alt">None 4.7%</span>
+  <span class="main-stat-pill alt">ATK 2.3%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Sphere</div>
+  <span class="main-stat-pill dominant">ATK 54.5%</span>
+  <span class="main-stat-pill alt">HP 21.3%</span>
+  <span class="main-stat-pill alt">DEF 10.9%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Rope</div>
+  <span class="main-stat-pill dominant">Energy Regeneration Rate 84.2%</span>
+  <span class="main-stat-pill alt">ATK 9.0%</span>
+  <span class="main-stat-pill alt">None 5.5%</span>
+</div>
+      <!-- ══ END INJECT:MAIN_STATS ══ -->
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem;">Substat Distribution (Avg)</div>
+    <div>
+      <!-- ══ INJECT:SUBSTATS ══
+           substat-row blocks ordered by avg value descending.
+           Bar width = (this_val / max_val * 100)%.
+           Example:
+           <div class="substat-row">
+             <span class="substat-name">CRIT DMG sub</span>
+             <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:100%"></div></div>
+             <span class="substat-val">64.3%</span>
+           </div>
+      -->
+      <div class="substat-row">
+    <span class="substat-name">Crit Dmg Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:100.0%"></div></div>
+    <span class="substat-val">32.9</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Spd Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:60.4%"></div></div>
+    <span class="substat-val">19.8</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Atk Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:53.7%"></div></div>
+    <span class="substat-val">17.7</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Crit Rate Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:47.6%"></div></div>
+    <span class="substat-val">15.6</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Break Effect Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:47.5%"></div></div>
+    <span class="substat-val">15.6</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Def Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:44.0%"></div></div>
+    <span class="substat-val">14.5</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Hp Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:37.9%"></div></div>
+    <span class="substat-val">12.5</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Effect Res Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:32.1%"></div></div>
+    <span class="substat-val">10.6</span>
+    </div>
+      <!-- ══ END INJECT:SUBSTATS ══ -->
+    </div>
+  </div>
+
+  <div class="percentile-section">
+    <!-- ══ INJECT:PERCENTILES ══
+         Two percentile-card blocks for the 2 most relevant stats.
+         Each has 5 percentile-row blocks: p5, p25, p50 (use p-val p50 class), p75, p95.
+         Example:
+         <div class="percentile-card">
+           <div class="percentile-title">CRIT Rate Spread</div>
+           <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">54.6%</span></div>
+           <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">75.4%</span></div>
+           ...
+         </div>
+    -->
+    <div class="percentile-card">
+  <div class="percentile-title">CRIT Rate Spread</div>
+  <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">14.1%</span></div>
+  <div class="percentile-row"><span class="p-label">p25</span><span class="p-val">33.8%</span></div>
+  <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">57.2%</span></div>
+  <div class="percentile-row"><span class="p-label">p75</span><span class="p-val">66.9%</span></div>
+  <div class="percentile-row"><span class="p-label">p95</span><span class="p-val">78.9%</span></div>
+</div>
+<div class="percentile-card">
+  <div class="percentile-title">CRIT DMG Spread</div>
+  <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">63.3%</span></div>
+  <div class="percentile-row"><span class="p-label">p25</span><span class="p-val">85.3%</span></div>
+  <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">103.5%</span></div>
+  <div class="percentile-row"><span class="p-label">p75</span><span class="p-val">132.0%</span></div>
+  <div class="percentile-row"><span class="p-label">p95</span><span class="p-val">176.7%</span></div>
+</div>
+    <!-- ══ END INJECT:PERCENTILES ══ -->
+  </div>
+
+  <div class="avg-sidebar">
+    <!-- ══ INJECT:AVG_SIDEBAR ══
+         6 avg-item blocks for supplementary stats and dataset info.
+         Last 2–3 items should be: Dataset Versions, Total Samples, Latest Version.
+         Example:
+         <div class="avg-item">
+           <div class="avg-item-lbl">SPD Spread p25–p75</div>
+           <div class="avg-item-val">136.5 – 160.6</div>
+         </div>
+    -->
+    <div class="avg-item">
+  <div class="avg-item-lbl">CRIT Rate Spread p25–p75</div>
+  <div class="avg-item-val">33.8% – 66.9%</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">CRIT DMG Spread p25–p75</div>
+  <div class="avg-item-val">85.3% – 132.0%</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">SPD Spread p25–p75</div>
+  <div class="avg-item-val">148.6 – 163.2</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Total Samples</div>
+  <div class="avg-item-val">6,551</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Dataset Versions</div>
+  <div class="avg-item-val">4</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Latest Version</div>
+  <div class="avg-item-val">4.3.1</div>
+</div>
+    <!-- ══ END INJECT:AVG_SIDEBAR ══ -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     GEAR TAB
+══════════════════════════════════════ -->
+<div id="tab-gear" class="tab-panel">
+  <div class="section-header">Gear Usage — v4.3.1</div>
+  <div class="mode-tabs-row">
+    <div class="mode-tab active" onclick="switchGearMode('MOC',this)">Memory of Chaos</div>
+    <div class="mode-tab" onclick="switchGearMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="mode-tab" onclick="switchGearMode('APOC',this)">Apoc. Shadow</div>
+    <div class="mode-tab" onclick="switchGearMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="mode-tab" onclick="switchGearMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div class="eidolon-tabs-row">
+    <div class="eidolon-tab active" onclick="switchEidolon('E0',this)">E0 — No Eidolons</div>
+    <div class="eidolon-tab" onclick="switchEidolon('E1',this)">E1</div>
+    <div class="eidolon-tab" onclick="switchEidolon('E2',this)">E2</div>
+    <div class="eidolon-tab e6" onclick="switchEidolon('E6',this)">E6 — Full Constellation</div>
+  </div>
+  <div id="gear-display" class="gear-grid"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     META TAB
+══════════════════════════════════════ -->
+<div id="tab-meta" class="tab-panel">
+  <div class="section-header">Endgame Meta — Teams &amp; Archetypes</div>
+  <div class="meta-mode-tabs">
+    <div class="meta-mode-tab active" onclick="switchMetaMode('MOC',this)">MOC</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('APOC',this)">Apoc. Shadow</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div id="meta-display"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     DUOS TAB
+══════════════════════════════════════ -->
+<div id="tab-duos" class="tab-panel">
+  <div class="section-header">Duo Synergies</div>
+  <div class="meta-mode-tabs">
+    <div class="meta-mode-tab active" onclick="switchDuoMode('MOC',this)">MOC</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('APOC',this)">Apoc. Shadow</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div id="duos-display"></div>
+</div>
+
+</div><!-- /#content -->
+
+<footer id="footer">
+  <div>Data sourced from <span>hsr-statistics-duckdb MCP server</span> &amp; <span>hsr-scanner-duckdb MCP server</span></div>
+  <div>Latest version: <span>4.3.1</span> · up_to_eidolon_level: <span>6</span></div>
+  <div style="margin-top:0.3rem;color:#2a1e50;">No parametric memory used for meta or gear content — all data extracted directly from MCP databases</div>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  DATA INJECTION ZONE
+//  Replace everything between the ══ INJECT and ══ END markers.
+//  Do NOT touch anything outside this zone.
+// ══════════════════════════════════════════════════════════════
+
+// ══ INJECT:CHAR_NAME ══
+const CHAR_NAME = "Lightning Trailblazer";
+// ══ END INJECT:CHAR_NAME ══
+
+// ══ INJECT:ICONS ══
+// Map of character name → icon URL (u0250d CDN variant preferred).
+// Must include the main character + all teammates appearing in TEAMS/DUOS.
+const ICONS = {"Dan Heng \u2022 Permansor Terrae": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d4643f6b758c03ac5bbb1c9ee28b4f4e.png", "Evanescia": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/cf4ddb725c2120a249aa883728a562f5.png", "Huohuo": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/a2f18e9dd74da7d5e5f3765882c43449.png", "Hyacine": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4459630552fa374281787a9e8b8153ce.png", "Lightning Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/411b9c981aad01d19570f66b9ba4ce96.png", "Silver Wolf LV.999": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/9edeaad1b283a01d5e3b85b362eeac2d.png", "Sparkle": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/5225826f7e04a4ffb9680e094e4af1e5.png", "Sparxie": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/5ee74ada4c2cc11d91b6ee7b92f5104f.png", "Tribbie": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/6d4c07fa8602822f99052f797de4d017.png", "Yao Guang": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4f824e1ae55486d99dc94371a602ee6e.png"};
+// ══ END INJECT:ICONS ══
+
+// ══ INJECT:GEAR ══
+// Structure: { moc, pf, apoc, anomaly } → { E0, E1, E2, E6 }
+//            → { Relics, Planar_Set, Lightcones }
+//            → [ { name, rate (0–1 decimal), score } ]
+// rate is a decimal (0.847 = 84.7%). score unit depends on mode.
+const GEAR = {"ANOMALY_F0": {"E0": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.7858, "score": 3.13}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1083, "score": 3.5599999999999996}, {"name": "Tomorrow, Together", "rate": 0.0815, "score": 3.61}, {"name": "Today\u0027s Good Luck", "rate": 0.0116, "score": 2.6}, {"name": "When She Decided to See", "rate": 0.0058, "score": 2.8}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5561, "score": 3.37}, {"name": "Sprightly Vonwacq", "rate": 0.364, "score": 3.0}, {"name": "Broken Keel", "rate": 0.031, "score": 2.6599999999999997}, {"name": "City of Converging Stars", "rate": 0.0227, "score": 2.84}, {"name": "Forge of the Kalpagni Lantern", "rate": 0.0107, "score": 2.78}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.7163, "score": 3.4199999999999995}, {"name": "Eagle of Twilight Line", "rate": 0.0988, "score": 2.63}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0547, "score": 2.47}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.036, "score": 2.23}, {"name": "Diviner of Distant Reach, Messenger Traversing Hackerspace", "rate": 0.014, "score": 2.84}]}, "E1": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.7701, "score": 2.73}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1658, "score": 3.29}, {"name": "Tomorrow, Together", "rate": 0.0535, "score": 3.0}, {"name": "Until the Flowers Bloom Again", "rate": 0.0053, "score": 3.0}, {"name": "Lingering Tear", "rate": 0.0053, "score": 5.0}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.543, "score": 3.01}, {"name": "Sprightly Vonwacq", "rate": 0.3602, "score": 2.56}, {"name": "City of Converging Stars", "rate": 0.0484, "score": 3.22}, {"name": "Broken Keel", "rate": 0.0323, "score": 2.83}, {"name": "Punklorde Stage Zero", "rate": 0.0161, "score": 3.33}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.7112, "score": 3.04}, {"name": "Eagle of Twilight Line", "rate": 0.1337, "score": 2.2}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0481, "score": 2.22}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0428, "score": 2.25}, {"name": "Ever-Glorious Magical Girl", "rate": 0.016, "score": 2.67}]}, "E2": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.8252, "score": 2.55}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1181, "score": 2.77}, {"name": "Tomorrow, Together", "rate": 0.0469, "score": 3.07}, {"name": "When She Decided to See", "rate": 0.0049, "score": 1.33}, {"name": "Today\u0027s Good Luck", "rate": 0.0032, "score": 2.5}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5486, "score": 2.85}, {"name": "Sprightly Vonwacq", "rate": 0.3657, "score": 2.23}, {"name": "Broken Keel", "rate": 0.0395, "score": 2.59}, {"name": "City of Converging Stars", "rate": 0.0329, "score": 2.5}, {"name": "Punklorde Stage Zero", "rate": 0.0066, "score": 1.75}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.6537, "score": 2.78}, {"name": "Eagle of Twilight Line", "rate": 0.1748, "score": 2.06}, {"name": "Messenger Traversing Hackerspace", "rate": 0.055, "score": 2.36}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0405, "score": 1.52}, {"name": "Messenger Traversing Hackerspace, Diviner of Distant Reach", "rate": 0.0097, "score": 3.0}]}, "E6": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.8566, "score": 1.9}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.0756, "score": 2.04}, {"name": "Tomorrow, Together", "rate": 0.0513, "score": 2.82}, {"name": "When She Decided to See", "rate": 0.0095, "score": 0.78}, {"name": "Today\u0027s Good Luck", "rate": 0.0039, "score": 1.8099999999999998}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5097, "score": 2.22}, {"name": "Sprightly Vonwacq", "rate": 0.3943, "score": 1.66}, {"name": "Broken Keel", "rate": 0.0403, "score": 1.5500000000000003}, {"name": "City of Converging Stars", "rate": 0.0275, "score": 1.53}, {"name": "Punklorde Stage Zero", "rate": 0.017, "score": 2.17}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.5673, "score": 2.36}, {"name": "Eagle of Twilight Line", "rate": 0.1926, "score": 1.41}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0932, "score": 1.06}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0663, "score": 1.5399999999999998}, {"name": "Diviner of Distant Reach, Messenger Traversing Hackerspace", "rate": 0.0121, "score": 1.88}]}}, "ANOMALY_F4": {"E0": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.8238, "score": 3.36}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.0894, "score": 4.0}, {"name": "Tomorrow, Together", "rate": 0.065, "score": 3.6199999999999997}, {"name": "Today\u0027s Good Luck", "rate": 0.0136, "score": 3.0}, {"name": "When She Decided to See", "rate": 0.0054, "score": 3.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.4493, "score": 3.2999999999999994}, {"name": "Lushaka, the Sunken Seas", "rate": 0.4466, "score": 3.6700000000000004}, {"name": "Broken Keel", "rate": 0.0466, "score": 3.29}, {"name": "City of Converging Stars", "rate": 0.0219, "score": 2.37}, {"name": "Punklorde Stage Zero", "rate": 0.0137, "score": 2.8}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.6585, "score": 3.6}, {"name": "Eagle of Twilight Line", "rate": 0.1518, "score": 3.14}, {"name": "Messenger Traversing Hackerspace", "rate": 0.065, "score": 2.63}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0488, "score": 3.11}, {"name": "Sacerdos\u0027 Relived Ordeal, Diviner of Distant Reach", "rate": 0.0136, "score": 2.2}]}, "E1": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.8276, "score": 2.94}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1034, "score": 3.44}, {"name": "Tomorrow, Together", "rate": 0.0575, "score": 4.0}, {"name": "Until the Flowers Bloom Again", "rate": 0.0115, "score": 0.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.4767, "score": 2.73}, {"name": "Lushaka, the Sunken Seas", "rate": 0.4419, "score": 3.24}, {"name": "City of Converging Stars", "rate": 0.0349, "score": 3.67}, {"name": "Broken Keel", "rate": 0.0349, "score": 3.0}, {"name": "Punklorde Stage Zero", "rate": 0.0116, "score": 5.0}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.6437, "score": 3.09}, {"name": "Eagle of Twilight Line", "rate": 0.1609, "score": 3.07}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0575, "score": 2.0}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0575, "score": 2.6}, {"name": "Diviner of Distant Reach, Sacerdos\u0027 Relived Ordeal", "rate": 0.023, "score": 3.5}]}, "E2": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.854, "score": 2.84}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.0964, "score": 2.72}, {"name": "Tomorrow, Together", "rate": 0.0358, "score": 3.54}, {"name": "When She Decided to See", "rate": 0.011, "score": 0.5}, {"name": "Until the Flowers Bloom Again", "rate": 0.0028, "score": 5.0}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5182, "score": 3.0099999999999993}, {"name": "Sprightly Vonwacq", "rate": 0.395, "score": 2.73}, {"name": "Broken Keel", "rate": 0.0392, "score": 2.71}, {"name": "City of Converging Stars", "rate": 0.0336, "score": 1.5}, {"name": "Punklorde Stage Zero", "rate": 0.0112, "score": 2.5}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.6143, "score": 2.9}, {"name": "Eagle of Twilight Line", "rate": 0.1983, "score": 2.65}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0551, "score": 2.35}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0523, "score": 2.31}, {"name": "Sacerdos\u0027 Relived Ordeal, Diviner of Distant Reach", "rate": 0.0138, "score": 3.2}]}, "E6": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.8764, "score": 2.1}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.0662, "score": 2.16}, {"name": "Tomorrow, Together", "rate": 0.0392, "score": 3.1300000000000003}, {"name": "When She Decided to See", "rate": 0.0112, "score": 1.21}, {"name": "Today\u0027s Good Luck", "rate": 0.0037, "score": 1.44}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.485, "score": 2.47}, {"name": "Sprightly Vonwacq", "rate": 0.4276, "score": 1.84}, {"name": "Broken Keel", "rate": 0.0382, "score": 1.71}, {"name": "City of Converging Stars", "rate": 0.0278, "score": 1.82}, {"name": "Punklorde Stage Zero", "rate": 0.0152, "score": 2.25}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.5185, "score": 2.6}, {"name": "Eagle of Twilight Line", "rate": 0.2171, "score": 1.67}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.1121, "score": 1.36}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0744, "score": 1.56}, {"name": "Diviner of Distant Reach, Messenger Traversing Hackerspace", "rate": 0.0107, "score": 2.11}]}}, "APOC": {"E0": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.7101, "score": 3302.77}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.145, "score": 2943.32}, {"name": "Tomorrow, Together", "rate": 0.1191, "score": 2859.13}, {"name": "Today\u0027s Good Luck", "rate": 0.0078, "score": 3431.56}, {"name": "When She Decided to See", "rate": 0.0052, "score": 3452.84}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.6203, "score": 3119.95}, {"name": "Sprightly Vonwacq", "rate": 0.3084, "score": 3377.11}, {"name": "Broken Keel", "rate": 0.0256, "score": 3301.41}, {"name": "City of Converging Stars", "rate": 0.0159, "score": 3534.33}, {"name": "Punklorde Stage Zero", "rate": 0.0141, "score": 2606.13}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.7625, "score": 3132.51}, {"name": "Eagle of Twilight Line", "rate": 0.0878, "score": 3397.08}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0482, "score": 3502.39}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0293, "score": 3629.89}, {"name": "Messenger Traversing Hackerspace, Diviner of Distant Reach", "rate": 0.0086, "score": 3481.1}]}, "E1": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.7207, "score": 3412.7600000000007}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1712, "score": 3287.71}, {"name": "Tomorrow, Together", "rate": 0.0946, "score": 2574.62}, {"name": "Until the Flowers Bloom Again", "rate": 0.0045, "score": 3795.0}, {"name": "Lingering Tear", "rate": 0.0045, "score": 3428.0}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.6018, "score": 3204.61}, {"name": "Sprightly Vonwacq", "rate": 0.3167, "score": 3457.51}, {"name": "Broken Keel", "rate": 0.0407, "score": 3524.78}, {"name": "City of Converging Stars", "rate": 0.0271, "score": 3166.5}, {"name": "Punklorde Stage Zero", "rate": 0.009, "score": 3497.5}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.7265, "score": 3237.4700000000003}, {"name": "Eagle of Twilight Line", "rate": 0.1211, "score": 3547.45}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0448, "score": 3666.3}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0314, "score": 3546.71}, {"name": "Ever-Glorious Magical Girl", "rate": 0.0224, "score": 2932.0}]}, "E2": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.7808, "score": 3474.95}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1294, "score": 3375.32}, {"name": "Tomorrow, Together", "rate": 0.0715, "score": 3209.8300000000004}, {"name": "When She Decided to See", "rate": 0.0076, "score": 3658.6}, {"name": "Today\u0027s Good Luck", "rate": 0.0046, "score": 3630.67}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5877, "score": 3379.01}, {"name": "Sprightly Vonwacq", "rate": 0.3262, "score": 3541.31}, {"name": "Broken Keel", "rate": 0.0462, "score": 3358.1}, {"name": "City of Converging Stars", "rate": 0.0231, "score": 3597.86}, {"name": "Punklorde Stage Zero", "rate": 0.0123, "score": 3705.0}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.688, "score": 3374.36}, {"name": "Eagle of Twilight Line", "rate": 0.1446, "score": 3591.8}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0578, "score": 3572.34}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0381, "score": 3714.4}, {"name": "Messenger Traversing Hackerspace, Diviner of Distant Reach", "rate": 0.0107, "score": 3518.57}]}, "E6": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.8423, "score": 3633.8100000000004}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.0809, "score": 3571.13}, {"name": "Tomorrow, Together", "rate": 0.0622, "score": 3395.81}, {"name": "When She Decided to See", "rate": 0.0089, "score": 3791.61}, {"name": "Today\u0027s Good Luck", "rate": 0.0029, "score": 3451.76}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5363, "score": 3566.72}, {"name": "Sprightly Vonwacq", "rate": 0.379, "score": 3667.78}, {"name": "Broken Keel", "rate": 0.0329, "score": 3725.95}, {"name": "City of Converging Stars", "rate": 0.0253, "score": 3707.1299999999997}, {"name": "Punklorde Stage Zero", "rate": 0.0177, "score": 3614.3900000000003}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.5901, "score": 3550.47}, {"name": "Eagle of Twilight Line", "rate": 0.1875, "score": 3710.83}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0805, "score": 3750.11}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0682, "score": 3678.7800000000007}, {"name": "Diviner of Distant Reach, Messenger Traversing Hackerspace", "rate": 0.0105, "score": 3673.62}]}}, "MOC": {"E0": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.7384, "score": 6.459999999999999}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.14, "score": 7.080000000000001}, {"name": "Tomorrow, Together", "rate": 0.1007, "score": 7.870000000000001}, {"name": "Today\u0027s Good Luck", "rate": 0.0058, "score": 2.4}, {"name": "When She Decided to See", "rate": 0.0046, "score": 6.0}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5738, "score": 7.09}, {"name": "Sprightly Vonwacq", "rate": 0.3471, "score": 6.32}, {"name": "Broken Keel", "rate": 0.0354, "score": 5.87}, {"name": "City of Converging Stars", "rate": 0.0177, "score": 5.2}, {"name": "Forge of the Kalpagni Lantern", "rate": 0.0083, "score": 6.71}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.7301, "score": 6.98}, {"name": "Eagle of Twilight Line", "rate": 0.1027, "score": 5.61}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0473, "score": 7.150000000000001}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0369, "score": 5.28}, {"name": "Diviner of Distant Reach, Messenger Traversing Hackerspace", "rate": 0.0127, "score": 6.0}]}, "E1": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.7484, "score": 5.49}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1635, "score": 6.92}, {"name": "Tomorrow, Together", "rate": 0.0692, "score": 5.820000000000001}, {"name": "Lingering Tear", "rate": 0.0126, "score": 9.0}, {"name": "Until the Flowers Bloom Again", "rate": 0.0063, "score": 0.0}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5912, "score": 6.04}, {"name": "Sprightly Vonwacq", "rate": 0.3648, "score": 5.33}, {"name": "City of Converging Stars", "rate": 0.0252, "score": 6.0}, {"name": "Broken Keel", "rate": 0.0126, "score": 5.5}, {"name": "Punklorde Stage Zero", "rate": 0.0063, "score": 4.0}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.675, "score": 5.97}, {"name": "Eagle of Twilight Line", "rate": 0.1563, "score": 4.12}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0438, "score": 5.57}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.025, "score": 5.25}, {"name": "Ever-Glorious Magical Girl", "rate": 0.025, "score": 8.5}]}, "E2": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.793, "score": 5.43}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1337, "score": 6.08}, {"name": "Tomorrow, Together", "rate": 0.0623, "score": 6.35}, {"name": "When She Decided to See", "rate": 0.0055, "score": 6.330000000000001}, {"name": "Today\u0027s Good Luck", "rate": 0.0037, "score": 4.5}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5488, "score": 6.11}, {"name": "Sprightly Vonwacq", "rate": 0.361, "score": 4.92}, {"name": "Broken Keel", "rate": 0.0387, "score": 5.62}, {"name": "City of Converging Stars", "rate": 0.0276, "score": 4.53}, {"name": "Punklorde Stage Zero", "rate": 0.0166, "score": 5.67}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.6284, "score": 6.110000000000001}, {"name": "Eagle of Twilight Line", "rate": 0.1639, "score": 4.09}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0765, "score": 5.0}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0528, "score": 4.65}, {"name": "Messenger Traversing Hackerspace, Diviner of Distant Reach", "rate": 0.0182, "score": 5.9}]}, "E6": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.856, "score": 4.11}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.0784, "score": 4.19}, {"name": "Tomorrow, Together", "rate": 0.0516, "score": 6.390000000000001}, {"name": "When She Decided to See", "rate": 0.0091, "score": 2.14}, {"name": "Today\u0027s Good Luck", "rate": 0.003, "score": 4.07}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.5055, "score": 4.91}, {"name": "Sprightly Vonwacq", "rate": 0.4008, "score": 3.59}, {"name": "Broken Keel", "rate": 0.0397, "score": 2.8}, {"name": "City of Converging Stars", "rate": 0.0256, "score": 3.47}, {"name": "Punklorde Stage Zero", "rate": 0.0176, "score": 3.88}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.5471, "score": 5.11}, {"name": "Eagle of Twilight Line", "rate": 0.2075, "score": 3.08}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0917, "score": 2.42}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0686, "score": 3.47}, {"name": "Diviner of Distant Reach, Messenger Traversing Hackerspace", "rate": 0.0132, "score": 4.02}]}}, "PURE_FICTION": {"E0": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.7076, "score": 33112.22}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1472, "score": 30670.790000000005}, {"name": "Tomorrow, Together", "rate": 0.125, "score": 29765.43}, {"name": "Sneering", "rate": 0.0053, "score": 26712.0}, {"name": "Today\u0027s Good Luck", "rate": 0.0042, "score": 35650.0}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.6325, "score": 31507.67}, {"name": "Sprightly Vonwacq", "rate": 0.2996, "score": 33881.72}, {"name": "Broken Keel", "rate": 0.0269, "score": 33568.0}, {"name": "City of Converging Stars", "rate": 0.0162, "score": 35485.34}, {"name": "Punklorde Stage Zero", "rate": 0.0129, "score": 28206.67}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.746, "score": 31690.22}, {"name": "Eagle of Twilight Line", "rate": 0.0811, "score": 34329.87}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0537, "score": 34102.75}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0316, "score": 36040.0}, {"name": "Diviner of Distant Reach, Messenger Traversing Hackerspace", "rate": 0.0126, "score": 34273.33}]}, "E1": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.6988, "score": 34607.24}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1867, "score": 34624.52}, {"name": "Tomorrow, Together", "rate": 0.0964, "score": 31645.0}, {"name": "When She Decided to See", "rate": 0.012, "score": 30400.0}, {"name": "Lingering Tear", "rate": 0.006, "score": 22720.0}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.6182, "score": 33072.94}, {"name": "Sprightly Vonwacq", "rate": 0.3152, "score": 35968.46}, {"name": "Broken Keel", "rate": 0.0242, "score": 35610.0}, {"name": "Punklorde Stage Zero", "rate": 0.0182, "score": 38240.0}, {"name": "City of Converging Stars", "rate": 0.0182, "score": 38373.33}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.7101, "score": 33571.0}, {"name": "Eagle of Twilight Line", "rate": 0.0947, "score": 37130.0}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0414, "score": 35525.71}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0355, "score": 36073.33}, {"name": "Ever-Glorious Magical Girl", "rate": 0.0296, "score": 32128.0}]}, "E2": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.793, "score": 34714.39}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.1191, "score": 33289.84}, {"name": "Tomorrow, Together", "rate": 0.0703, "score": 32127.780000000002}, {"name": "When She Decided to See", "rate": 0.0078, "score": 39590.0}, {"name": "Today\u0027s Good Luck", "rate": 0.0039, "score": 36100.0}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.604, "score": 33521.84}, {"name": "Sprightly Vonwacq", "rate": 0.3168, "score": 35676.5}, {"name": "Broken Keel", "rate": 0.0356, "score": 35217.78}, {"name": "City of Converging Stars", "rate": 0.0178, "score": 35937.78}, {"name": "Punklorde Stage Zero", "rate": 0.0139, "score": 36988.57}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.6887, "score": 33780.34}, {"name": "Eagle of Twilight Line", "rate": 0.1401, "score": 35736.11}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0623, "score": 35796.25}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0311, "score": 37057.5}, {"name": "Ever-Glorious Magical Girl", "rate": 0.0136, "score": 34720.0}]}, "E6": {"Lightcones": [{"name": "Elation Brimming With Blessings", "rate": 0.8341, "score": 37193.55}, {"name": "Mushy Shroomy\u0027s Adventures", "rate": 0.0826, "score": 36579.7}, {"name": "Tomorrow, Together", "rate": 0.0671, "score": 34783.15}, {"name": "When She Decided to See", "rate": 0.0106, "score": 39804.71}, {"name": "Today\u0027s Good Luck", "rate": 0.004, "score": 35981.54}], "Planar_Set": [{"name": "Lushaka, the Sunken Seas", "rate": 0.545, "score": 36314.31}, {"name": "Sprightly Vonwacq", "rate": 0.3755, "score": 37826.28}, {"name": "Broken Keel", "rate": 0.0331, "score": 37915.77}, {"name": "City of Converging Stars", "rate": 0.0197, "score": 38156.78}, {"name": "Punklorde Stage Zero", "rate": 0.0162, "score": 37355.29}], "Relics": [{"name": "Diviner of Distant Reach", "rate": 0.5867, "score": 35993.43}, {"name": "Eagle of Twilight Line", "rate": 0.1759, "score": 38440.77}, {"name": "Sacerdos\u0027 Relived Ordeal", "rate": 0.0757, "score": 39115.41}, {"name": "Messenger Traversing Hackerspace", "rate": 0.0717, "score": 38208.83}, {"name": "Diviner of Distant Reach, Messenger Traversing Hackerspace", "rate": 0.0124, "score": 37860.0}]}}};
+// ══ END INJECT:GEAR ══
+
+// ══ INJECT:TEAMS ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { team: "(A, B, C, D)", appearance, score, weighted, best, samples } ]
+const TEAMS = {"ANOMALY_F0": [{"appearance": 9.26, "best": 2.02, "samples": 3306.0, "score": 2.12, "team": "(Huohuo, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 2.11}, {"appearance": 7.46, "best": 1.13, "samples": 2619.0, "score": 1.38, "team": "(Huohuo, Yao Guang, Lightning Trailblazer, Evanescia)", "weighted": 1.43}, {"appearance": 2.01, "best": 2.5, "samples": 750.0, "score": 2.51, "team": "(Huohuo, Sparxie, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 2.51}, {"appearance": 1.67, "best": 2.84, "samples": 593.0, "score": 2.91, "team": "(Dan Heng \u2022 Permansor Terrae, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 2.92}, {"appearance": 0.75, "best": 2.47, "samples": 277.0, "score": 2.92, "team": "(Huohuo, Sparkle, Lightning Trailblazer, Evanescia)", "weighted": 2.77}], "ANOMALY_F4": [{"appearance": 8.46, "best": 2.04, "samples": 2433.0, "score": 2.25, "team": "(Huohuo, Yao Guang, Lightning Trailblazer, Evanescia)", "weighted": 2.27}, {"appearance": 7.23, "best": 2.52, "samples": 2094.0, "score": 2.6, "team": "(Huohuo, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 2.59}, {"appearance": 1.37, "best": 3.3, "samples": 400.0, "score": 3.55, "team": "(Dan Heng \u2022 Permansor Terrae, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 3.53}, {"appearance": 1.06, "best": 2.91, "samples": 334.0, "score": 3.29, "team": "(Huohuo, Sparxie, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 2.96}, {"appearance": 1.0, "best": 2.92, "samples": 288.0, "score": 3.47, "team": "(Hyacine, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 3.52}], "APOC": [{"appearance": 7.85, "best": 3590.82, "samples": 3271.0, "score": 3556.24, "team": "(Huohuo, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 3557.13}, {"appearance": 6.68, "best": 3726.5, "samples": 2649.0, "score": 3715.17, "team": "(Huohuo, Yao Guang, Lightning Trailblazer, Evanescia)", "weighted": 3709.84}, {"appearance": 2.46, "best": 3533.22, "samples": 1020.0, "score": 3440.44, "team": "(Dan Heng \u2022 Permansor Terrae, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 3446.98}, {"appearance": 1.68, "best": 3509.06, "samples": 735.0, "score": 3485.61, "team": "(Huohuo, Sparxie, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 3476.13}, {"appearance": 1.17, "best": 3645.91, "samples": 454.0, "score": 3633.41, "team": "(Dan Heng \u2022 Permansor Terrae, Yao Guang, Lightning Trailblazer, Evanescia)", "weighted": 3641.39}], "MOC": [{"appearance": 6.36, "best": 3.71, "samples": 2741.0, "score": 4.62, "team": "(Huohuo, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 5.02}, {"appearance": 6.1, "best": 1.89, "samples": 2624.0, "score": 3.11, "team": "(Huohuo, Yao Guang, Lightning Trailblazer, Evanescia)", "weighted": 3.7}, {"appearance": 1.75, "best": 4.19, "samples": 760.0, "score": 4.93, "team": "(Huohuo, Sparxie, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 5.14}, {"appearance": 1.35, "best": 5.36, "samples": 584.0, "score": 6.2, "team": "(Dan Heng \u2022 Permansor Terrae, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 6.48}, {"appearance": 0.61, "best": 3.46, "samples": 262.0, "score": 4.83, "team": "(Huohuo, Sparkle, Lightning Trailblazer, Evanescia)", "weighted": 5.64}], "PURE_FICTION": [{"appearance": 4.86, "best": 36516.33, "samples": 2315.0, "score": 36370.83, "team": "(Huohuo, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 36271.97}, {"appearance": 5.99, "best": 38853.55, "samples": 1426.0, "score": 38853.55, "team": "(Huohuo, Yao Guang, Lightning Trailblazer, Evanescia)", "weighted": 38853.55}, {"appearance": 1.46, "best": 34204.55, "samples": 695.0, "score": 34168.67, "team": "(Dan Heng \u2022 Permansor Terrae, Yao Guang, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 34194.53}, {"appearance": 1.36, "best": 34743.61, "samples": 649.0, "score": 34617.45, "team": "(Huohuo, Sparxie, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 34698.12}, {"appearance": 0.69, "best": 38969.14, "samples": 324.0, "score": 38187.41, "team": "(Yao Guang, Sparxie, Silver Wolf LV.999, Lightning Trailblazer)", "weighted": 37743.46}]};
+// ══ END INJECT:TEAMS ══
+
+// ══ INJECT:ARCHETYPES ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { core, appearance, score, weighted, best, samples } ]
+const ARCHETYPES = {"ANOMALY_F0": [], "ANOMALY_F4": [], "APOC": [], "MOC": [], "PURE_FICTION": []};
+// ══ END INJECT:ARCHETYPES ══
+
+// ══ INJECT:DUOS ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { partner, samples, appearance, confidence (0–1), score, weighted, best } ]
+const DUOS = {"ANOMALY_F0": [{"appearance": 22.955, "best": 2.03, "confidence": 0.691, "partner": "Huohuo", "samples": 8253.0, "score": 2.1, "weighted": 2.1}, {"appearance": 22.8, "best": 1.93, "confidence": 0.683, "partner": "Yao Guang", "samples": 8094.0, "score": 1.94, "weighted": 1.93}, {"appearance": 20.775, "best": 2.3, "confidence": 0.6275, "partner": "Silver Wolf LV.999", "samples": 7530.0, "score": 2.45, "weighted": 2.47}, {"appearance": 11.73, "best": 1.7, "confidence": 0.3515, "partner": "Evanescia", "samples": 4170.0, "score": 1.81, "weighted": 1.82}, {"appearance": 4.64, "best": 2.61, "confidence": 0.141, "partner": "Sparxie", "samples": 1715.0, "score": 2.65, "weighted": 2.66}, {"appearance": 4.325, "best": 3.04, "confidence": 0.1305, "partner": "Dan Heng \u2022 Permansor Terrae", "samples": 1564.0, "score": 3.05, "weighted": 3.05}, {"appearance": 2.51, "best": 2.92, "confidence": 0.0765, "partner": "Sparkle", "samples": 930.0, "score": 3.05, "weighted": 3.0}, {"appearance": 1.965, "best": 2.2, "confidence": 0.06, "partner": "Tribbie", "samples": 730.0, "score": 2.37, "weighted": 2.43}], "ANOMALY_F4": [{"appearance": 22.88, "best": 1.84, "confidence": 0.836, "partner": "Yao Guang", "samples": 6700.0, "score": 2.25, "weighted": 2.21}, {"appearance": 18.415, "best": 2.53, "confidence": 0.6735, "partner": "Huohuo", "samples": 5386.0, "score": 2.54, "weighted": 2.54}, {"appearance": 16.105, "best": 2.13, "confidence": 0.565, "partner": "Silver Wolf LV.999", "samples": 4840.0, "score": 2.5, "weighted": 2.37}, {"appearance": 11.875, "best": 1.93, "confidence": 0.436, "partner": "Evanescia", "samples": 3468.0, "score": 2.26, "weighted": 2.23}, {"appearance": 3.065, "best": 1.88, "confidence": 0.0985, "partner": "Sparxie", "samples": 969.0, "score": 2.91, "weighted": 2.02}, {"appearance": 2.815, "best": 3.52, "confidence": 0.101, "partner": "Dan Heng \u2022 Permansor Terrae", "samples": 835.0, "score": 3.7, "weighted": 3.66}, {"appearance": 2.46, "best": 1.17, "confidence": 0.078, "partner": "Sparkle", "samples": 783.0, "score": 2.53, "weighted": 1.26}, {"appearance": 2.145, "best": 1.38, "confidence": 0.069, "partner": "Tribbie", "samples": 677.0, "score": 1.85, "weighted": 1.46}], "APOC": [{"appearance": 22.355, "best": 3633.29, "confidence": 0.7385, "partner": "Yao Guang", "samples": 9159.0, "score": 3600.5, "weighted": 3606.31}, {"appearance": 18.29, "best": 3548.43, "confidence": 0.6365, "partner": "Silver Wolf LV.999", "samples": 7749.0, "score": 3485.25, "weighted": 3477.87}, {"appearance": 18.735, "best": 3610.94, "confidence": 0.627, "partner": "Huohuo", "samples": 7743.0, "score": 3539.02, "weighted": 3546.27}, {"appearance": 10.745, "best": 3642.5, "confidence": 0.342, "partner": "Evanescia", "samples": 4298.0, "score": 3613.55, "weighted": 3625.03}, {"appearance": 5.58, "best": 3533.8, "confidence": 0.188, "partner": "Dan Heng \u2022 Permansor Terrae", "samples": 2313.0, "score": 3393.15, "weighted": 3402.7}, {"appearance": 4.505, "best": 3565.0, "confidence": 0.1635, "partner": "Sparxie", "samples": 1963.0, "score": 3525.6, "weighted": 3511.64}, {"appearance": 1.61, "best": 3313.0, "confidence": 0.057, "partner": "Sparkle", "samples": 690.0, "score": 3155.6, "weighted": 3121.84}, {"appearance": 1.48, "best": 3530.28, "confidence": 0.0545, "partner": "Tribbie", "samples": 653.0, "score": 3511.27, "weighted": 3519.92}], "MOC": [{"appearance": 17.145, "best": 2.99, "confidence": 0.709, "partner": "Yao Guang", "samples": 7396.0, "score": 4.04, "weighted": 4.48}, {"appearance": 16.87, "best": 3.31, "confidence": 0.69, "partner": "Huohuo", "samples": 7269.0, "score": 4.26, "weighted": 4.69}, {"appearance": 14.535, "best": 4.07, "confidence": 0.6245, "partner": "Silver Wolf LV.999", "samples": 6292.0, "score": 4.95, "weighted": 5.27}, {"appearance": 9.265, "best": 2.07, "confidence": 0.3665, "partner": "Evanescia", "samples": 3980.0, "score": 3.41, "weighted": 4.09}, {"appearance": 3.585, "best": 3.62, "confidence": 0.1615, "partner": "Sparxie", "samples": 1559.0, "score": 4.56, "weighted": 4.81}, {"appearance": 3.1, "best": 5.21, "confidence": 0.129, "partner": "Dan Heng \u2022 Permansor Terrae", "samples": 1337.0, "score": 6.07, "weighted": 6.42}, {"appearance": 1.74, "best": 3.52, "confidence": 0.074, "partner": "Sparkle", "samples": 753.0, "score": 4.66, "weighted": 5.08}, {"appearance": 1.43, "best": 2.47, "confidence": 0.0605, "partner": "Tribbie", "samples": 618.0, "score": 3.76, "weighted": 4.25}], "PURE_FICTION": [{"appearance": 12.94, "best": 35018.68, "confidence": 0.821, "partner": "Silver Wolf LV.999", "samples": 6158.0, "score": 34938.7, "weighted": 34886.3}, {"appearance": 12.27, "best": 36804.75, "confidence": 0.663, "partner": "Yao Guang", "samples": 5840.0, "score": 36396.1, "weighted": 36705.67}, {"appearance": 11.265, "best": 36218.07, "confidence": 0.5875, "partner": "Huohuo", "samples": 5364.0, "score": 35803.67, "weighted": 36125.98}, {"appearance": 9.81, "best": 37626.35, "confidence": 0.311, "partner": "Evanescia", "samples": 2336.0, "score": 37626.35, "weighted": 37626.35}, {"appearance": 3.455, "best": 34870.08, "confidence": 0.2315, "partner": "Sparxie", "samples": 1646.0, "score": 34819.21, "weighted": 34850.55}, {"appearance": 3.175, "best": 33735.39, "confidence": 0.1665, "partner": "Dan Heng \u2022 Permansor Terrae", "samples": 1511.0, "score": 33017.1, "weighted": 33573.76}, {"appearance": 1.695, "best": 33405.26, "confidence": 0.1015, "partner": "Sparkle", "samples": 807.0, "score": 33246.53, "weighted": 33356.87}, {"appearance": 1.12, "best": 36065.0, "confidence": 0.063, "partner": "Tribbie", "samples": 533.0, "score": 35626.04, "weighted": 35305.66}]};
+// ══ END INJECT:DUOS ══
+
+// ══════════════════════════════════════════════════════════════
+//  RENDERING ENGINE — DO NOT MODIFY
+// ══════════════════════════════════════════════════════════════
+
+let curGearMode = 'MOC', curEidolon = 'E0', curMetaMode = 'MOC', curDuoMode = 'MOC';
+
+function getIcon(n) {
+  return ICONS[n] || `https://ui-avatars.com/api/?name=${encodeURIComponent(n.slice(0,2))}&background=130f20&color=e8d44d&size=52`;
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── GEAR ──
+function switchGearMode(mode, el) {
+  curGearMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderGear();
+}
+function switchEidolon(e, el) {
+  curEidolon = e;
+  document.querySelectorAll('.eidolon-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderGear();
+}
+function gearBadge(i, rate) {
+  if (i === 0 && rate >= 0.5)  return '<span class="gear-badge badge-dom">Dominant</span>';
+  if (i === 0 && rate >= 0.25) return '<span class="gear-badge badge-sig">Signature</span>';
+  if (i === 1 && rate >= 0.15) return '<span class="gear-badge badge-alt">Alt Sig</span>';
+  return '';
+}
+function fmtScore(mode, s) {
+  return (mode === 'pf' || mode === 'apoc') ? Math.round(s).toLocaleString('en') : s.toFixed(2);
+}
+function renderGear() {
+  const ed = GEAR[curGearMode]?.[curEidolon];
+  const el = document.getElementById('gear-display');
+  if (!ed) { el.innerHTML = '<div class="no-data">No data found for this combination.</div>'; return; }
+  const cats = ['Relics', 'Planar_Set', 'Lightcones'];
+  const lbs  = { Relics: 'Cavern Relics', Planar_Set: 'Planar Ornaments', Lightcones: 'Light Cones' };
+  el.innerHTML = cats.map(cat => {
+    const top = (ed[cat] || []).slice(0, 5);
+    return `<div class="gear-category"><div class="gear-cat-title">${lbs[cat]}</div>${
+      !top.length ? '<div class="no-data" style="padding:0.5rem 0;font-size:0.75rem;">No data</div>' :
+      top.map((item, i) =>
+        `<div class="gear-row">
+          <div class="gear-name-row"><span class="gear-name">${item.name}</span>${gearBadge(i, item.rate)}</div>
+          <div class="gear-bar-row">
+            <div class="gear-bar-bg"><div class="gear-bar-fill" style="width:${Math.round(item.rate*100)}%"></div></div>
+            <span class="gear-pct">${(item.rate*100).toFixed(1)}%</span>
+          </div>
+          <div class="gear-score">Avg Score: ${fmtScore(curGearMode, item.score)}</div>
+        </div>`
+      ).join('')
+    }</div>`;
+  }).join('');
+}
+
+// ── META ──
+function switchMetaMode(mode, el) {
+  curMetaMode = mode;
+  document.querySelectorAll('#tab-meta .meta-mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderMeta();
+}
+function parseTeam(str) {
+  return str.replace(/^\(|\)$/g, '').split(', ').map(s => s.trim());
+}
+function fmtMeta(mode, s) {
+  return (mode === 'PURE_FICTION' || mode === 'APOC') ? Math.round(s).toLocaleString('en') : Number(s).toFixed(2);
+}
+function teamCard(t, mode) {
+  const members = parseTeam(t.team);
+  const icons = members.map(m =>
+    `<div class="team-icon-wrap">
+      <img class="team-icon ${m === CHAR_NAME ? 'main-slot' : ''}" src="${getIcon(m)}" alt="${m}"
+        onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2252%22 height=%2252%22><rect width=%2252%22 height=%2252%22 rx=%2226%22 fill=%22%23130f20%22/><text x=%2250%25%22 y=%2255%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 fill=%22%23e8d44d%22 font-size=%2218%22>${m[0]}</text></svg>'">
+      <div class="team-icon-name">${m}</div>
+    </div>`
+  ).join('');
+  return `<div class="team-card">
+    <span class="mode-pill">${mode.replace('_',' ')}</span>
+    <div class="team-icons-row">${icons}</div>
+    <div class="team-stats-row">
+      <div class="team-stat"><span class="team-stat-val">${t.samples.toLocaleString()}</span><span class="team-stat-lbl">Samples</span></div>
+      <div class="team-stat"><span class="team-stat-val">${t.appearance.toFixed(2)}×</span><span class="team-stat-lbl">Appearance</span></div>
+      <div class="team-stat"><span class="team-stat-val">${fmtMeta(mode,t.weighted)}</span><span class="team-stat-lbl">Avg Weighted Score</span></div>
+      <div class="team-stat"><span class="team-stat-val">${fmtMeta(mode,t.best)}</span><span class="team-stat-lbl">Best Ver.</span></div>
+    </div>
+  </div>`;
+}
+function renderMeta() {
+  const mode = curMetaMode, teams = TEAMS[mode] || [], archs = ARCHETYPES[mode] || [];
+  const el = document.getElementById('meta-display');
+  let html = `<div style="margin-bottom:0.5rem;font-size:0.72rem;color:var(--text-dim);letter-spacing:0.05em;text-transform:uppercase;">Top Teams — ${mode.replace(/_/g,' ')}</div>`;
+  html += !teams.length ? '<div class="no-data">No data found for this mode.</div>'
+    : '<div class="teams-grid">' + teams.slice(0,5).map(t => teamCard(t, mode)).join('') + '</div>';
+  html += '<div class="section-header" style="padding:1.5rem 0 0.8rem;">Archetypes</div>';
+  html += !archs.length ? '<div class="no-data">No archetype data for this mode.</div>'
+    : '<div class="arch-grid">' + archs.slice(0,8).map(a =>
+        `<div class="arch-card">
+          <div class="arch-core">${a.core}</div>
+          <div class="arch-stats">
+            <div class="arch-score">${fmtMeta(mode, a.weighted)}</div>
+            <div class="arch-samples">${a.samples.toLocaleString()} samples</div>
+          </div>
+        </div>`
+      ).join('') + '</div>';
+  el.innerHTML = html;
+}
+
+// ── DUOS ──
+function switchDuoMode(mode, el) {
+  curDuoMode = mode;
+  document.querySelectorAll('#tab-duos .meta-mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderDuos();
+}
+function renderDuos() {
+  const mode = curDuoMode, duos = DUOS[mode] || [];
+  const el = document.getElementById('duos-display');
+  if (!duos.length) { el.innerHTML = `<div class="no-data">No duo data found for ${mode.replace(/_/g,' ')}.</div>`; return; }
+  el.innerHTML = '<div class="duos-grid">' + duos.slice(0,8).map(d => {
+    const conf = Math.round(d.confidence * 100);
+    return `<div class="duo-card">
+      <span class="mode-pill">${mode.replace(/_/g,' ')}</span>
+      <div class="duo-icons-row">
+        <div class="team-icon-wrap">
+          <img class="team-icon main-slot" src="${getIcon(CHAR_NAME)}" alt="${CHAR_NAME}">
+          <div class="team-icon-name">${CHAR_NAME}</div>
+        </div>
+        <span class="duo-plus">+</span>
+        <div class="team-icon-wrap">
+          <img class="team-icon" src="${getIcon(d.partner)}" alt="${d.partner}">
+          <div class="team-icon-name">${d.partner}</div>
+        </div>
+        <div style="margin-left:0.5rem;">
+          <div class="duo-partner-name">${d.partner}</div>
+          <div style="font-size:0.65rem;color:var(--text-dim);">${d.samples.toLocaleString()} samples</div>
+        </div>
+      </div>
+      <div class="duo-stats-row">
+        <div class="duo-stat"><span class="duo-stat-val">${d.appearance.toFixed(2)}%</span><span class="duo-stat-lbl">Appearance</span></div>
+        <div class="duo-stat"><span class="duo-stat-val">${fmtMeta(mode, d.weighted)}</span><span class="duo-stat-lbl">Avg Weighted Score</span></div>
+        <div class="duo-stat"><span class="duo-stat-val">${fmtMeta(mode, d.best)}</span><span class="duo-stat-lbl">Best Ver.</span></div>
+      </div>
+      <div class="confidence-bar">
+        <div class="conf-label"><span>Co-occurrence Confidence</span><span>${conf}%</span></div>
+        <div class="conf-bg"><div class="conf-fill" style="width:${Math.min(conf,100)}%"></div></div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ── PARTICLES ──
+function initParticles() {
+  const c = document.getElementById('particles');
+  const colors = [getComputedStyle(document.documentElement).getPropertyValue('--particle1').trim(),
+                  getComputedStyle(document.documentElement).getPropertyValue('--particle2').trim()];
+  for (let i = 0; i < 28; i++) {
+    const p = document.createElement('div');
+    p.className = 'spark';
+    const sz = Math.random() * 3 + 0.8;
+    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;bottom:${Math.random()*10-5}%;background:${colors[Math.random()>0.5?0:1]};--dx:${(Math.random()-0.5)*90}px;animation-duration:${Math.random()*12+7}s;animation-delay:${Math.random()*14}s;`;
+    c.appendChild(p);
+  }
+}
+
+// ── INIT ──
+initParticles();
+renderGear();
+renderMeta();
+renderDuos();
+</script>
+</body>
+</html>

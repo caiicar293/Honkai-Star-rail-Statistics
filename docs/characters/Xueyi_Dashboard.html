@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xueyi — Character Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+/*
+ ╔══════════════════════════════════════════════════════════════╗
+ ║  HSR CHARACTER DASHBOARD TEMPLATE                           ║
+ ║  Injection points are marked with:           ║
+ ║  All visual logic lives here. Only inject DATA below.       ║
+ ╚══════════════════════════════════════════════════════════════╝
+ 
+ ELEMENT THEME GUIDE — replace CSS vars in :root for each character:
+   Quantum   → --c1:#8b6eff  --c2:#c8a8ff  --c3:#6040cc  --particle1:#8b6eff  --particle2:#c8a8ff
+   Ice       → --c1:#6eb4f7  --c2:#a8d4ff  --c3:#3a7acc  --particle1:#6eb4f7  --particle2:#a8d4ff
+   Fire      → --c1:#e05a30  --c2:#f5a060  --c3:#b03010  --particle1:#e05a30  --particle2:#f5a060
+   Wind      → --c1:#4ecfa0  --c2:#a0f0d0  --c3:#20a070  --particle1:#4ecfa0  --particle2:#a0f0d0
+   Lightning → --c1:#e8d44d  --c2:#c080ff  --c3:#f0e880  --particle1:#e8d44d  --particle2:#c080ff
+   Imaginary → --c1:#e8c97a  --c2:#f0dfa0  --c3:#a8883a  --particle1:#e8c97a  --particle2:#c8a060
+   Physical  → --c1:#c0cce0  --c2:#e8eef8  --c3:#8090a8  --particle1:#c0cce0  --particle2:#e8eef8
+*/
+:root {
+  /* ── INJECT ELEMENT THEME ── */
+  --c1: #8b6eff;
+  --c2: #c8a8ff;
+  --c3: #6040cc;
+  --particle1: #8b6eff;
+  --particle2: #c8a8ff;
+  --glow-color: rgba(139,110,255,0.4);
+  /* ── END THEME ── */
+
+  --bg0: #08060f;
+  --bg1: #0e0b18;
+  --bg2: #130f20;
+  --bg3: #181428;
+  --bg4: #1e1930;
+  --text-bright: #f5f0ff;
+  --text-main: #c8bce8;
+  --text-muted: #7860a8;
+  --text-dim: #4a3870;
+  --gold: #e8c97a;
+  --gold2: #f0dfa0;
+  --border: rgba(var(--c1-raw, 232,212,77), 0.12);
+  --border2: rgba(var(--c1-raw, 232,212,77), 0.28);
+  /* fallback borders using c1 with opacity */
+  --border-c: color-mix(in srgb, var(--c1) 12%, transparent);
+  --border2-c: color-mix(in srgb, var(--c1) 28%, transparent);
+  --border-hover: color-mix(in srgb, var(--c1) 50%, transparent);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text-main);min-height:100vh;overflow-x:hidden;}
+
+/* ── PARTICLES ── */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.spark{position:absolute;border-radius:50%;opacity:0;animation:sparkFloat linear infinite;}
+@keyframes sparkFloat{
+  0%{transform:translateY(0) translateX(0) scale(0.2);opacity:0;}
+  15%{opacity:0.9;}
+  85%{opacity:0.3;}
+  100%{transform:translateY(-100vh) translateX(var(--dx)) scale(0.1);opacity:0;}
+}
+
+/* ── NAV ── */
+#nav{position:sticky;top:0;z-index:100;background:rgba(8,6,15,0.92);backdrop-filter:blur(18px);border-bottom:1px solid var(--border-c);display:flex;align-items:center;padding:0 2rem;}
+.nav-logo{font-family:'Cinzel',serif;font-weight:700;font-size:0.85rem;color:var(--c1);letter-spacing:0.15em;text-transform:uppercase;padding:1rem 1.5rem 1rem 0;border-right:1px solid var(--border-c);margin-right:1.5rem;white-space:nowrap;}
+.nav-tab{font-family:'Cinzel',serif;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);padding:1.1rem 1.2rem;cursor:pointer;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s;white-space:nowrap;}
+.nav-tab:hover{color:var(--text-bright);}
+.nav-tab.active{color:var(--c1);border-bottom-color:var(--c1);}
+
+/* ── HERO ── */
+#hero{position:relative;min-height:420px;display:flex;align-items:center;padding:3rem 3rem 3rem 3.5rem;overflow:hidden;background:linear-gradient(135deg,var(--bg1) 0%,var(--bg0) 60%);}
+.hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse 55% 80% at 72% 50%, color-mix(in srgb, var(--c1) 10%, transparent) 0%, color-mix(in srgb, var(--c2) 6%, transparent) 40%, transparent 70%);pointer-events:none;}
+.hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(color-mix(in srgb,var(--c1) 4%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--c2) 4%,transparent) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse 80% 100% at 50% 50%,black 30%,transparent 80%);}
+.hero-content{position:relative;z-index:2;flex:1;max-width:55%;}
+.hero-tag-row{display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;}
+.hero-tag{font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:0.2rem 0.65rem;border-radius:3px;}
+.hero-tag.element{background:color-mix(in srgb,var(--c1) 15%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 35%,transparent);}
+.hero-tag.path{background:color-mix(in srgb,var(--c2) 12%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 30%,transparent);}
+.hero-tag.ver{background:color-mix(in srgb,var(--c1) 6%,transparent);color:var(--text-muted);border:1px solid var(--border-c);}
+.hero-name{font-family:'Cinzel',serif;font-size:clamp(3rem,6vw,5rem);font-weight:900;line-height:0.9;color:var(--text-bright);letter-spacing:-0.02em;text-shadow:0 0 60px color-mix(in srgb,var(--c1) 40%,transparent),0 0 100px color-mix(in srgb,var(--c2) 20%,transparent),0 2px 4px rgba(0,0,0,0.9);margin-bottom:0.5rem;}
+.hero-sub{font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--c1);opacity:0.65;margin-bottom:1.5rem;}
+.hero-stats-row{display:flex;gap:1.5rem;flex-wrap:wrap;}
+.hero-stat{text-align:center;}
+.hero-stat-val{font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;color:var(--c2);display:block;line-height:1;}
+.hero-stat-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);display:block;margin-top:0.15rem;}
+.hero-portrait{position:absolute;right:0;bottom:0;top:0;width:45%;pointer-events:none;z-index:1;display:flex;align-items:flex-end;justify-content:flex-end;}
+.hero-portrait img{height:110%;max-height:480px;object-fit:contain;filter:drop-shadow(0 0 40px color-mix(in srgb,var(--c1) 40%,transparent)) drop-shadow(0 0 80px color-mix(in srgb,var(--c2) 20%,transparent));animation:portraitFloat 6s ease-in-out infinite;}
+@keyframes portraitFloat{0%,100%{transform:translateY(0px);}50%{transform:translateY(-12px);}}
+.hero-portrait-fade{position:absolute;inset:0;background:linear-gradient(to right,var(--bg0) 0%,transparent 35%);}
+
+/* ── CONTENT SHELL ── */
+#content{padding:0 2.5rem 3rem;max-width:1400px;margin:0 auto;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* ── CARD ── */
+.card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1.5rem;}
+.card-title{font-family:'Cinzel',serif;font-size:0.8rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--c1);margin-bottom:1.2rem;display:flex;align-items:center;gap:0.6rem;}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border2-c);}
+.section-header{padding:2rem 0 1rem;font-family:'Cinzel',serif;font-size:0.75rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:1rem;}
+.section-header::before,.section-header::after{content:'';flex:1;height:1px;background:var(--border-c);}
+
+/* ── OVERVIEW ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.stat-cell{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:1rem;text-align:center;transition:border-color 0.2s;}
+.stat-cell:hover{border-color:var(--border2-c);}
+.stat-cell.featured{background:linear-gradient(135deg,color-mix(in srgb,var(--c1) 8%,transparent),color-mix(in srgb,var(--c2) 5%,transparent));border-color:color-mix(in srgb,var(--c1) 38%,transparent);grid-column:span 2;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.stat-val{font-family:'Cinzel',serif;font-size:1.6rem;font-weight:700;color:var(--text-bright);display:block;line-height:1;}
+.stat-cell.featured .stat-val{font-size:2.4rem;color:var(--c1);}
+.stat-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);display:block;margin-top:0.3rem;}
+.stat-cell.featured .stat-lbl{font-size:0.78rem;color:var(--c2);}
+
+.main-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.main-stat-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:0.9rem;}
+.main-stat-slot{font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem;}
+.main-stat-pill{display:inline-block;font-size:0.72rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:4px;margin:0.15rem 0.15rem 0 0;}
+.main-stat-pill.dominant{background:color-mix(in srgb,var(--c1) 18%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 45%,transparent);}
+.main-stat-pill.alt{background:color-mix(in srgb,var(--c2) 12%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 30%,transparent);}
+
+.substat-row{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.45rem;}
+.substat-name{font-size:0.72rem;color:var(--text-main);width:150px;flex-shrink:0;}
+.substat-bar-bg{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.substat-bar-fill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--c3),var(--c1));}
+.substat-val{font-size:0.72rem;color:var(--text-muted);width:52px;text-align:right;flex-shrink:0;}
+
+.percentile-section{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.percentile-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:1rem;}
+.percentile-title{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--c1);margin-bottom:0.8rem;}
+.percentile-row{display:flex;justify-content:space-between;align-items:center;padding:0.25rem 0;border-bottom:1px solid color-mix(in srgb,var(--c1) 7%,transparent);}
+.percentile-row:last-child{border-bottom:none;}
+.p-label{font-size:0.68rem;color:var(--text-dim);}
+.p-val{font-size:0.78rem;font-weight:700;color:var(--text-bright);}
+.p-val.p50{color:var(--c1);font-size:0.88rem;}
+.avg-sidebar{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-top:1rem;}
+.avg-item{background:var(--bg3);border:1px solid var(--border-c);border-radius:5px;padding:0.6rem 0.8rem;}
+.avg-item-lbl{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);}
+.avg-item-val{font-size:0.9rem;font-weight:700;color:var(--text-bright);}
+
+/* ── GEAR ── */
+.mode-tabs-row,.eidolon-tabs-row{display:flex;gap:0.4rem;margin-bottom:1rem;flex-wrap:wrap;}
+.mode-tab,.eidolon-tab{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:0.5rem 1rem;border:1px solid var(--border-c);border-radius:5px;background:var(--bg3);color:var(--text-muted);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.mode-tab:hover,.eidolon-tab:hover{color:var(--text-bright);border-color:var(--border2-c);}
+.mode-tab.active,.eidolon-tab.active{color:var(--c1);background:color-mix(in srgb,var(--c1) 8%,transparent);border-color:var(--c1);}
+.eidolon-tab.e6.active{color:var(--gold);background:rgba(232,201,122,0.10);border-color:var(--gold);}
+.gear-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+.gear-category{background:var(--bg2);border:1px solid var(--border-c);border-radius:7px;padding:1rem;}
+.gear-cat-title{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--c2);margin-bottom:0.8rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border-c);}
+.gear-row{margin-bottom:0.6rem;}
+.gear-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;}
+.gear-name{font-size:0.75rem;color:var(--text-bright);font-weight:600;flex:1;margin-right:0.5rem;}
+.gear-badge{font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.4rem;border-radius:3px;white-space:nowrap;}
+.badge-dom{background:color-mix(in srgb,var(--c1) 22%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 50%,transparent);}
+.badge-sig{background:rgba(232,201,122,0.2);color:var(--gold);border:1px solid rgba(232,201,122,0.4);}
+.badge-alt{background:color-mix(in srgb,var(--c2) 15%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 35%,transparent);}
+.gear-bar-row{display:flex;align-items:center;gap:0.5rem;}
+.gear-bar-bg{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.gear-bar-fill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--c3),var(--c1));}
+.gear-pct{font-size:0.68rem;color:var(--text-muted);width:38px;text-align:right;flex-shrink:0;}
+.gear-score{font-size:0.65rem;color:var(--text-dim);}
+
+/* ── META / DUOS ── */
+.meta-mode-tabs{display:flex;gap:0.4rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+.meta-mode-tab{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;padding:0.45rem 0.9rem;border:1px solid var(--border-c);border-radius:5px;background:var(--bg3);color:var(--text-muted);cursor:pointer;transition:all 0.2s;}
+.meta-mode-tab:hover{color:var(--text-bright);border-color:var(--border2-c);}
+.meta-mode-tab.active{color:var(--c1);background:color-mix(in srgb,var(--c1) 8%,transparent);border-color:var(--c1);}
+
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1rem;margin-bottom:2rem;}
+.team-card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1rem;transition:border-color 0.2s;}
+.team-card:hover{border-color:var(--border2-c);}
+.team-icons-row{display:flex;gap:0.4rem;margin-bottom:0.8rem;align-items:flex-start;flex-wrap:wrap;}
+.team-icon-wrap{position:relative;}
+.team-icon{width:52px;height:52px;border-radius:50%;border:2px solid color-mix(in srgb,var(--c1) 18%,transparent);object-fit:cover;background:var(--bg3);display:block;}
+.team-icon.main-slot{border-color:var(--c1);box-shadow:0 0 10px color-mix(in srgb,var(--c1) 50%,transparent),0 0 24px color-mix(in srgb,var(--c1) 18%,transparent);}
+.team-icon-name{font-size:0.56rem;text-align:center;color:var(--text-muted);margin-top:0.2rem;max-width:52px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.team-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0.4rem;font-size:0.68rem;}
+.team-stat{text-align:center;}
+.team-stat-val{font-weight:700;color:var(--text-bright);display:block;}
+.team-stat-lbl{color:var(--text-dim);}
+.mode-pill{display:inline-block;font-size:0.6rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.5rem;border-radius:3px;background:color-mix(in srgb,var(--c1) 9%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 25%,transparent);margin-bottom:0.6rem;}
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.7rem;}
+.arch-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:0.8rem 1rem;display:flex;align-items:center;gap:0.8rem;}
+.arch-core{font-size:0.75rem;font-weight:700;color:var(--text-bright);flex:1;}
+.arch-score{font-size:0.8rem;font-weight:700;color:var(--c1);}
+.arch-samples{font-size:0.68rem;color:var(--text-muted);}
+
+.duos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem;}
+.duo-card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1rem;transition:border-color 0.2s;}
+.duo-card:hover{border-color:var(--border2-c);}
+.duo-icons-row{display:flex;align-items:center;gap:0.7rem;margin-bottom:0.7rem;}
+.duo-plus{font-size:1.2rem;color:var(--text-dim);font-weight:300;}
+.duo-partner-name{font-size:0.85rem;font-weight:700;color:var(--text-bright);}
+.duo-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;font-size:0.68rem;}
+.duo-stat{background:var(--bg3);border-radius:4px;padding:0.35rem 0.5rem;text-align:center;}
+.duo-stat-val{font-weight:700;color:var(--text-bright);display:block;}
+.duo-stat-lbl{color:var(--text-dim);font-size:0.6rem;}
+.confidence-bar{margin-top:0.5rem;}
+.conf-label{font-size:0.62rem;color:var(--text-muted);margin-bottom:0.2rem;display:flex;justify-content:space-between;}
+.conf-bg{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.conf-fill{height:100%;border-radius:2px;background:linear-gradient(to right,var(--c3),var(--c1));}
+
+.no-data{padding:2rem;text-align:center;color:var(--text-dim);font-style:italic;font-size:0.85rem;}
+#footer{background:var(--bg1);border-top:1px solid var(--border-c);padding:1.2rem 2.5rem;text-align:center;font-size:0.68rem;color:var(--text-dim);letter-spacing:0.05em;line-height:1.8;}
+#footer span{color:var(--text-muted);}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg0);}
+::-webkit-scrollbar-thumb{background:var(--c3);border-radius:3px;}
+
+@media(max-width:768px){
+  #hero{padding:2rem 1.5rem;} .hero-portrait{display:none;} .hero-content{max-width:100%;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);} .gear-grid{grid-template-columns:1fr;}
+  #content{padding:0 1rem 2rem;} #nav{padding:0 0.8rem;overflow-x:auto;}
+  .main-stats-row{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div id="particles"></div>
+
+<nav id="nav">
+  <div class="nav-logo">Xueyi</div>
+  <div class="nav-tab active" onclick="switchTab('overview',this)">Overview</div>
+  <div class="nav-tab" onclick="switchTab('gear',this)">Gear Usage</div>
+  <div class="nav-tab" onclick="switchTab('meta',this)">Endgame Meta</div>
+  <div class="nav-tab" onclick="switchTab('duos',this)">Duo Synergies</div>
+</nav>
+
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-tag-row">
+      <span class="hero-tag element">Quantum</span>
+      <span class="hero-tag path">Destruction</span>
+      <span class="hero-tag ver">v4.3.1 Data</span>
+    </div>
+    <div class="hero-name">Xueyi</div>
+    <div class="hero-sub">Ten-Lords Commission Judge</div>
+    <div class="hero-stats-row">
+      <!-- ══ INJECT:HERO_STATS ══
+           Format: 3–4 hero-stat blocks showing the character's key numbers.
+           Example:
+           <div class="hero-stat">
+             <span class="hero-stat-val">51,367</span>
+             <span class="hero-stat-lbl">Sampled Builds</span>
+           </div>
+      -->
+      <div class="hero-stat">
+  <span class="hero-stat-val">8,367</span>
+  <span class="hero-stat-lbl">Sampled Builds</span>
+</div>
+<div class="hero-stat">
+  <span class="hero-stat-val">133.0%</span>
+  <span class="hero-stat-lbl">Avg Break Effect</span>
+</div>
+<div class="hero-stat">
+  <span class="hero-stat-val">117.0%</span>
+  <span class="hero-stat-lbl">Avg CRIT DMG</span>
+</div>
+      <!-- ══ END INJECT:HERO_STATS ══ -->
+    </div>
+  </div>
+  <div class="hero-portrait">
+    <div class="hero-portrait-fade"></div>
+    <img src="https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/3b3ee0eaa51723bffb7e745c2b88991c.png" alt="Xueyi" onerror="this.style.display='none'">
+  </div>
+</section>
+
+<div id="content">
+
+<!-- ══════════════════════════════════════
+     OVERVIEW TAB
+══════════════════════════════════════ -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="section-header">Build Statistics — 8,367 Samples · 61 Versions</div>
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-title">Core Stats (Averages)</div>
+    <div class="stat-grid">
+      <!-- ══ INJECT:STAT_CELLS ══
+           Include 2 featured cells (grid-column:span 2) for the defining stats,
+           then 6 regular stat-cell blocks for the remaining stats.
+           Featured example:
+           <div class="stat-cell featured">
+             <span class="stat-val">73.7%</span>
+             <span class="stat-lbl">CRIT Rate — Defining Stat</span>
+           </div>
+           Regular example:
+           <div class="stat-cell">
+             <span class="stat-val">2,411</span>
+             <span class="stat-lbl">Avg ATK</span>
+           </div>
+      -->
+      <div class="stat-cell featured">
+  <span class="stat-val">133.0%</span>
+  <span class="stat-lbl">Avg Break Effect — Defining Stat</span>
+</div>
+<div class="stat-cell featured">
+  <span class="stat-val">117.0%</span>
+  <span class="stat-lbl">Avg CRIT DMG — Defining Stat</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">51.1%</span>
+  <span class="stat-lbl">Avg CRIT Rate</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">1,966</span>
+  <span class="stat-lbl">Avg ATK</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">22.6%</span>
+  <span class="stat-lbl">Avg Quantum DMG</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">124.1</span>
+  <span class="stat-lbl">Avg SPD</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">0.6%</span>
+  <span class="stat-lbl">Avg ERR</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">7.9%</span>
+  <span class="stat-lbl">Avg Effect RES</span>
+</div>
+      <!-- ══ END INJECT:STAT_CELLS ══ -->
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem;">Main Stat Choices</div>
+    <div class="main-stats-row">
+      <!-- ══ INJECT:MAIN_STATS ══
+           4 main-stat-card blocks (Body, Feet, Sphere, Rope).
+           Each has main-stat-pill.dominant for the top choice, .alt for secondary.
+           Example:
+           <div class="main-stat-card">
+             <div class="main-stat-slot">Body</div>
+             <span class="main-stat-pill dominant">CRIT Rate 79.2%</span>
+             <span class="main-stat-pill alt">CRIT DMG 20.2%</span>
+           </div>
+      -->
+      <div class="main-stat-card">
+  <div class="main-stat-slot">Body</div>
+  <span class="main-stat-pill dominant">CRIT Rate 58.6%</span>
+  <span class="main-stat-pill alt">CRIT DMG 24.3%</span>
+  <span class="main-stat-pill alt">None 11.2%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Feet</div>
+  <span class="main-stat-pill dominant">SPD 58.4%</span>
+  <span class="main-stat-pill alt">ATK 28.4%</span>
+  <span class="main-stat-pill alt">None 10.8%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Sphere</div>
+  <span class="main-stat-pill dominant">ATK 58.1%</span>
+  <span class="main-stat-pill alt">Quantum DMG Boost 25.9%</span>
+  <span class="main-stat-pill alt">None 9.4%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Rope</div>
+  <span class="main-stat-pill dominant">Break Effect 74.7%</span>
+  <span class="main-stat-pill alt">ATK 11.3%</span>
+  <span class="main-stat-pill alt">None 9.2%</span>
+</div>
+      <!-- ══ END INJECT:MAIN_STATS ══ -->
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem;">Substat Distribution (Avg)</div>
+    <div>
+      <!-- ══ INJECT:SUBSTATS ══
+           substat-row blocks ordered by avg value descending.
+           Bar width = (this_val / max_val * 100)%.
+           Example:
+           <div class="substat-row">
+             <span class="substat-name">CRIT DMG sub</span>
+             <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:100%"></div></div>
+             <span class="substat-val">64.3%</span>
+           </div>
+      -->
+      <div class="substat-row">
+    <span class="substat-name">Crit Dmg Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:100.0%"></div></div>
+    <span class="substat-val">51.2</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Break Effect Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:60.2%"></div></div>
+    <span class="substat-val">30.8</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Crit Rate Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:45.6%"></div></div>
+    <span class="substat-val">23.3</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Atk Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:28.7%"></div></div>
+    <span class="substat-val">14.7</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Def Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:22.2%"></div></div>
+    <span class="substat-val">11.3</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Hp Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:18.7%"></div></div>
+    <span class="substat-val">9.6</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Effect Res Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:15.4%"></div></div>
+    <span class="substat-val">7.9</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Effect Hit Rate Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:14.9%"></div></div>
+    <span class="substat-val">7.6</span>
+    </div>
+      <!-- ══ END INJECT:SUBSTATS ══ -->
+    </div>
+  </div>
+
+  <div class="percentile-section">
+    <!-- ══ INJECT:PERCENTILES ══
+         Two percentile-card blocks for the 2 most relevant stats.
+         Each has 5 percentile-row blocks: p5, p25, p50 (use p-val p50 class), p75, p95.
+         Example:
+         <div class="percentile-card">
+           <div class="percentile-title">CRIT Rate Spread</div>
+           <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">54.6%</span></div>
+           <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">75.4%</span></div>
+           ...
+         </div>
+    -->
+    <div class="percentile-card">
+  <div class="percentile-title">Break Effect Spread</div>
+  <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">0.0%</span></div>
+  <div class="percentile-row"><span class="p-label">p25</span><span class="p-val">107.9%</span></div>
+  <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">142.7%</span></div>
+  <div class="percentile-row"><span class="p-label">p75</span><span class="p-val">170.1%</span></div>
+  <div class="percentile-row"><span class="p-label">p95</span><span class="p-val">215.6%</span></div>
+</div>
+<div class="percentile-card">
+  <div class="percentile-title">CRIT DMG Spread</div>
+  <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">50.0%</span></div>
+  <div class="percentile-row"><span class="p-label">p25</span><span class="p-val">92.1%</span></div>
+  <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">119.3%</span></div>
+  <div class="percentile-row"><span class="p-label">p75</span><span class="p-val">141.4%</span></div>
+  <div class="percentile-row"><span class="p-label">p95</span><span class="p-val">178.3%</span></div>
+</div>
+    <!-- ══ END INJECT:PERCENTILES ══ -->
+  </div>
+
+  <div class="avg-sidebar">
+    <!-- ══ INJECT:AVG_SIDEBAR ══
+         6 avg-item blocks for supplementary stats and dataset info.
+         Last 2–3 items should be: Dataset Versions, Total Samples, Latest Version.
+         Example:
+         <div class="avg-item">
+           <div class="avg-item-lbl">SPD Spread p25–p75</div>
+           <div class="avg-item-val">136.5 – 160.6</div>
+         </div>
+    -->
+    <div class="avg-item">
+  <div class="avg-item-lbl">Break Effect Spread p25–p75</div>
+  <div class="avg-item-val">107.9% – 170.1%</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">CRIT DMG Spread p25–p75</div>
+  <div class="avg-item-val">92.1% – 141.4%</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">CRIT Rate Spread p25–p75</div>
+  <div class="avg-item-val">39.6% – 67.4%</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Total Samples</div>
+  <div class="avg-item-val">8,367</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Dataset Versions</div>
+  <div class="avg-item-val">61</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Latest Version</div>
+  <div class="avg-item-val">4.3.1</div>
+</div>
+    <!-- ══ END INJECT:AVG_SIDEBAR ══ -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     GEAR TAB
+══════════════════════════════════════ -->
+<div id="tab-gear" class="tab-panel">
+  <div class="section-header">Gear Usage — v4.3.1</div>
+  <div class="mode-tabs-row">
+    <div class="mode-tab active" onclick="switchGearMode('MOC',this)">Memory of Chaos</div>
+    <div class="mode-tab" onclick="switchGearMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="mode-tab" onclick="switchGearMode('APOC',this)">Apoc. Shadow</div>
+    <div class="mode-tab" onclick="switchGearMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="mode-tab" onclick="switchGearMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div class="eidolon-tabs-row">
+    <div class="eidolon-tab active" onclick="switchEidolon('E0',this)">E0 — No Eidolons</div>
+    <div class="eidolon-tab" onclick="switchEidolon('E1',this)">E1</div>
+    <div class="eidolon-tab" onclick="switchEidolon('E2',this)">E2</div>
+    <div class="eidolon-tab e6" onclick="switchEidolon('E6',this)">E6 — Full Constellation</div>
+  </div>
+  <div id="gear-display" class="gear-grid"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     META TAB
+══════════════════════════════════════ -->
+<div id="tab-meta" class="tab-panel">
+  <div class="section-header">Endgame Meta — Teams &amp; Archetypes</div>
+  <div class="meta-mode-tabs">
+    <div class="meta-mode-tab active" onclick="switchMetaMode('MOC',this)">MOC</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('APOC',this)">Apoc. Shadow</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div id="meta-display"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     DUOS TAB
+══════════════════════════════════════ -->
+<div id="tab-duos" class="tab-panel">
+  <div class="section-header">Duo Synergies</div>
+  <div class="meta-mode-tabs">
+    <div class="meta-mode-tab active" onclick="switchDuoMode('MOC',this)">MOC</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('APOC',this)">Apoc. Shadow</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div id="duos-display"></div>
+</div>
+
+</div><!-- /#content -->
+
+<footer id="footer">
+  <div>Data sourced from <span>hsr-statistics-duckdb MCP server</span> &amp; <span>hsr-scanner-duckdb MCP server</span></div>
+  <div>Latest version: <span>4.3.1</span> · up_to_eidolon_level: <span>6</span></div>
+  <div style="margin-top:0.3rem;color:#2a1e50;">No parametric memory used for meta or gear content — all data extracted directly from MCP databases</div>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  DATA INJECTION ZONE
+//  Replace everything between the ══ INJECT and ══ END markers.
+//  Do NOT touch anything outside this zone.
+// ══════════════════════════════════════════════════════════════
+
+// ══ INJECT:CHAR_NAME ══
+const CHAR_NAME = "Xueyi";
+// ══ END INJECT:CHAR_NAME ══
+
+// ══ INJECT:ICONS ══
+// Map of character name → icon URL (u0250d CDN variant preferred).
+// Must include the main character + all teammates appearing in TEAMS/DUOS.
+const ICONS = {"Aventurine": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d55ee208926f730670cd241af2c1a785.png", "Dan Heng \u2022 Permansor Terrae": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d4643f6b758c03ac5bbb1c9ee28b4f4e.png", "Fu Xuan": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/e45264f362415646972bb7d87856bc4f.png", "Fugue": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/a9a67d50de1c8c607dd8adfa8020f431.png", "Gallagher": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/64119d5506f60fa0c93357aa07dca5dc.png", "Herta": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/9481189050eaaeac47afb4e59efb50f6.png", "Himeko": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/602f8eac54da774f163e858791eebeef.png", "Ice Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0250d/271e4bd6730bbc1e22ae8ab74fc4ca4c.png", "Imaginary Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0250d/2686b718435e7ca1da748ac6756b0a5f.png", "Lingsha": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/124b31d922cbd3312b0248892c8fc688.png", "Robin": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/55afa6f201c9ff0b6cd2d4fca2c3cec0.png", "Ruan Mei": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/8d9ba2fed6e41b3b9a0ec5708e09a873.png", "Seele": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/ca580e2074cf4f09bab5ecc1b7c5454e.png", "Silver Wolf": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/36eb72296ed1b078e64614c4c702cb06.png", "Sparkle": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/5225826f7e04a4ffb9680e094e4af1e5.png", "The Dahlia": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/7b43de0facc42d4c967b7d8773bc641f.png", "Tingyun": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/eb35105004de8fd60523d395bfdcd6a0.png", "Tribbie": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/6d4c07fa8602822f99052f797de4d017.png", "Xueyi": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/3b3ee0eaa51723bffb7e745c2b88991c.png"};
+// ══ END INJECT:ICONS ══
+
+// ══ INJECT:GEAR ══
+// Structure: { moc, pf, apoc, anomaly } → { E0, E1, E2, E6 }
+//            → { Relics, Planar_Set, Lightcones }
+//            → [ { name, rate (0–1 decimal), score } ]
+// rate is a decimal (0.847 = 84.7%). score unit depends on mode.
+const GEAR = {"ANOMALY_F0": {"E6": {"Lightcones": [{"name": "Whereabouts Should Dreams Rest", "rate": 0.4286, "score": 2.67}, {"name": "Indelible Promise", "rate": 0.4286, "score": 4.33}, {"name": "Thus Burns the Dawn", "rate": 0.0714, "score": 5.0}, {"name": "On the Fall of an Aeon", "rate": 0.0714, "score": 6.0}], "Planar_Set": [{"name": "Forge of the Kalpagni Lantern", "rate": 0.3571, "score": 3.2}, {"name": "Talia: Kingdom of Banditry", "rate": 0.2857, "score": 3.0}, {"name": "Inert Salsotto", "rate": 0.1429, "score": 5.5}, {"name": "Duran, Dynasty of Running Wolves", "rate": 0.1429, "score": 5.0}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0714, "score": 4.0}], "Relics": [{"name": "Iron Cavalry Against the Scourge", "rate": 0.5, "score": 2.67}, {"name": "Genius of Brilliant Stars", "rate": 0.4167, "score": 4.2}, {"name": "Poet of Mourning Collapse", "rate": 0.0833, "score": 6.0}]}}, "ANOMALY_F4": {"E6": {"Lightcones": [{"name": "Whereabouts Should Dreams Rest", "rate": 1.0, "score": 3.5}], "Planar_Set": [{"name": "Talia: Kingdom of Banditry", "rate": 1.0, "score": 3.5}], "Relics": [{"name": "Iron Cavalry Against the Scourge", "rate": 1.0, "score": 3.5}]}}, "APOC": {"E6": {"Lightcones": [{"name": "On the Fall of an Aeon", "rate": 0.383, "score": 3195.69}, {"name": "Indelible Promise", "rate": 0.2766, "score": 3080.08}, {"name": "Whereabouts Should Dreams Rest", "rate": 0.1596, "score": 3532.27}, {"name": "Thus Burns the Dawn", "rate": 0.0957, "score": 3507.55}, {"name": "Under the Blue Sky", "rate": 0.0638, "score": 3084.0}], "Planar_Set": [{"name": "Inert Salsotto", "rate": 0.3882, "score": 3259.88}, {"name": "Talia: Kingdom of Banditry", "rate": 0.2353, "score": 3171.65}, {"name": "Forge of the Kalpagni Lantern", "rate": 0.1294, "score": 3275.5400000000004}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0824, "score": 3396.14}, {"name": "Rutilant Arena", "rate": 0.0588, "score": 2876.8}], "Relics": [{"name": "Genius of Brilliant Stars", "rate": 0.6196, "score": 3247.74}, {"name": "Iron Cavalry Against the Scourge", "rate": 0.1413, "score": 3291.92}, {"name": "Thief of Shooting Meteor", "rate": 0.0435, "score": 3342.0}, {"name": "Thief of Shooting Meteor, Watchmaker, Master of Dream Machinations", "rate": 0.0217, "score": 3296.0}, {"name": "Thief of Shooting Meteor, Flex", "rate": 0.0109, "score": 2944.0}]}}, "MOC": {"E0": {"Lightcones": [{"name": "On the Fall of an Aeon", "rate": 1.0, "score": 11.0}], "Planar_Set": [{"name": "Rutilant Arena", "rate": 0.5, "score": 10.0}, {"name": "Inert Salsotto", "rate": 0.5, "score": 12.0}], "Relics": [{"name": "Thief of Shooting Meteor", "rate": 0.5, "score": 12.0}, {"name": "Genius of Brilliant Stars", "rate": 0.5, "score": 10.0}]}, "E1": {"Lightcones": [{"name": "On the Fall of an Aeon", "rate": 0.6, "score": 11.67}, {"name": "Under the Blue Sky", "rate": 0.2, "score": 10.0}, {"name": "The Moles Welcome You", "rate": 0.2, "score": 16.0}], "Planar_Set": [{"name": "Inert Salsotto", "rate": 0.4, "score": 13.0}, {"name": "Space Sealing Station", "rate": 0.4, "score": 13.5}, {"name": "Rutilant Arena", "rate": 0.2, "score": 8.0}], "Relics": [{"name": "Genius of Brilliant Stars", "rate": 0.8, "score": 11.25}, {"name": "Thief of Shooting Meteor", "rate": 0.2, "score": 16.0}]}, "E2": {"Lightcones": [{"name": "On the Fall of an Aeon", "rate": 0.6667, "score": 12.0}, {"name": "Under the Blue Sky", "rate": 0.3333, "score": 10.0}], "Planar_Set": [{"name": "Talia: Kingdom of Banditry", "rate": 0.6667, "score": 12.0}, {"name": "Space Sealing Station", "rate": 0.3333, "score": 10.0}], "Relics": [{"name": "Genius of Brilliant Stars", "rate": 0.6667, "score": 12.0}, {"name": "Thief of Shooting Meteor", "rate": 0.3333, "score": 10.0}]}, "E6": {"Lightcones": [{"name": "On the Fall of an Aeon", "rate": 0.5366, "score": 8.09}, {"name": "Indelible Promise", "rate": 0.1463, "score": 8.17}, {"name": "Whereabouts Should Dreams Rest", "rate": 0.1098, "score": 6.67}, {"name": "Thus Burns the Dawn", "rate": 0.0976, "score": 8.88}, {"name": "Under the Blue Sky", "rate": 0.0488, "score": 10.0}], "Planar_Set": [{"name": "Inert Salsotto", "rate": 0.3766, "score": 7.76}, {"name": "Talia: Kingdom of Banditry", "rate": 0.2208, "score": 8.47}, {"name": "Firmament Frontline: Glamoth", "rate": 0.1169, "score": 8.22}, {"name": "Forge of the Kalpagni Lantern", "rate": 0.1039, "score": 7.25}, {"name": "Rutilant Arena", "rate": 0.0909, "score": 8.29}], "Relics": [{"name": "Genius of Brilliant Stars", "rate": 0.6543, "score": 8.21}, {"name": "Iron Cavalry Against the Scourge", "rate": 0.1481, "score": 6.080000000000001}, {"name": "Thief of Shooting Meteor", "rate": 0.0247, "score": 9.5}, {"name": "Watchmaker, Master of Dream Machinations", "rate": 0.0123, "score": 9.0}, {"name": "Genius of Brilliant Stars, Watchmaker, Master of Dream Machinations", "rate": 0.0123, "score": 9.0}]}}, "PURE_FICTION": {"E0": {"Lightcones": [{"name": "Under the Blue Sky", "rate": 0.6, "score": 14725.67}, {"name": "On the Fall of an Aeon", "rate": 0.4, "score": 19710.0}], "Planar_Set": [{"name": "Inert Salsotto", "rate": 0.4, "score": 16746.5}, {"name": "Talia: Kingdom of Banditry", "rate": 0.4, "score": 14710.0}, {"name": "Sprightly Vonwacq", "rate": 0.2, "score": 20684.0}], "Relics": [{"name": "Thief of Shooting Meteor", "rate": 0.6, "score": 14304.33}, {"name": "Genius of Brilliant Stars", "rate": 0.4, "score": 20342.0}]}, "E1": {"Lightcones": [{"name": "On the Fall of an Aeon", "rate": 0.5, "score": 21691.5}, {"name": "Under the Blue Sky", "rate": 0.375, "score": 27612.0}, {"name": "Collapsing Sky", "rate": 0.125, "score": 17803.0}], "Planar_Set": [{"name": "Talia: Kingdom of Banditry", "rate": 0.6667, "score": 20897.0}, {"name": "Inert Salsotto", "rate": 0.3333, "score": 27122.0}], "Relics": [{"name": "Genius of Brilliant Stars", "rate": 0.625, "score": 26366.4}, {"name": "Thief of Shooting Meteor", "rate": 0.125, "score": 20134.0}, {"name": "Iron Cavalry Against the Scourge, Watchmaker, Master of Dream Machinations", "rate": 0.125, "score": 6000.0}, {"name": "Thief of Shooting Meteor, Watchmaker, Master of Dream Machinations", "rate": 0.125, "score": 29439.0}]}, "E2": {"Lightcones": [{"name": "Under the Blue Sky", "rate": 0.5, "score": 23505.5}, {"name": "On the Fall of an Aeon", "rate": 0.25, "score": 22265.0}, {"name": "Collapsing Sky", "rate": 0.125, "score": 20233.0}, {"name": "The Moles Welcome You", "rate": 0.125, "score": 29610.0}], "Planar_Set": [{"name": "Inert Salsotto", "rate": 0.7143, "score": 22941.0}, {"name": "Talia: Kingdom of Banditry", "rate": 0.2857, "score": 24888.0}], "Relics": [{"name": "Genius of Brilliant Stars", "rate": 0.5, "score": 21273.75}, {"name": "Thief of Shooting Meteor", "rate": 0.375, "score": 26462.0}, {"name": "Flex", "rate": 0.125, "score": 23914.0}]}, "E6": {"Lightcones": [{"name": "On the Fall of an Aeon", "rate": 0.504, "score": 30174.76}, {"name": "Indelible Promise", "rate": 0.2, "score": 30960.56}, {"name": "Whereabouts Should Dreams Rest", "rate": 0.072, "score": 32911.11}, {"name": "Under the Blue Sky", "rate": 0.072, "score": 27540.0}, {"name": "The Moles Welcome You", "rate": 0.064, "score": 26192.13}], "Planar_Set": [{"name": "Inert Salsotto", "rate": 0.4309, "score": 28830.57}, {"name": "Talia: Kingdom of Banditry", "rate": 0.2602, "score": 30884.06}, {"name": "Rutilant Arena", "rate": 0.1057, "score": 29795.23}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0732, "score": 32324.33}, {"name": "Space Sealing Station", "rate": 0.0732, "score": 32382.89}], "Relics": [{"name": "Genius of Brilliant Stars", "rate": 0.7258, "score": 30220.62}, {"name": "Iron Cavalry Against the Scourge", "rate": 0.0726, "score": 33572.44}, {"name": "Thief of Shooting Meteor", "rate": 0.0484, "score": 26128.0}, {"name": "Genius of Brilliant Stars, Watchmaker, Master of Dream Machinations", "rate": 0.0323, "score": 32017.75}, {"name": "Thief of Shooting Meteor, Watchmaker, Master of Dream Machinations", "rate": 0.0242, "score": 32559.0}]}}};
+// ══ END INJECT:GEAR ══
+
+// ══ INJECT:TEAMS ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { team: "(A, B, C, D)", appearance, score, weighted, best, samples } ]
+const TEAMS = {"ANOMALY_F0": [{"appearance": 0.03, "best": 0.8, "samples": 9.0, "score": 1.27, "team": "(Xueyi, Ruan Mei, Fugue, The Dahlia)", "weighted": 1.22}, {"appearance": 0.01, "best": 2.0, "samples": 5.0, "score": 3.63, "team": "(Xueyi, Lingsha, Fugue, The Dahlia)", "weighted": 3.8}, {"appearance": 0.01, "best": 2.0, "samples": 4.0, "score": 3.5, "team": "(Xueyi, Ruan Mei, Imaginary Trailblazer, Fugue)", "weighted": 3.5}, {"appearance": 0.02, "best": 3.33, "samples": 4.0, "score": 3.67, "team": "(Xueyi, Gallagher, Imaginary Trailblazer, The Dahlia)", "weighted": 3.5}, {"appearance": 0.01, "best": 2.0, "samples": 4.0, "score": 2.5, "team": "(Xueyi, Imaginary Trailblazer, Fugue, The Dahlia)", "weighted": 2.5}], "ANOMALY_F4": [{"appearance": 0.01, "best": 3.0, "samples": 2.0, "score": 3.5, "team": "(Xueyi, Ruan Mei, Fugue, The Dahlia)", "weighted": 3.5}, {"appearance": 0.01, "best": 6.0, "samples": 1.0, "score": 6.0, "team": "(Xueyi, Ice Trailblazer, Tribbie, Dan Heng \u2022 Permansor Terrae)", "weighted": 6.0}, {"appearance": 0.01, "best": 5.0, "samples": 1.0, "score": 5.0, "team": "(Xueyi, Lingsha, Fugue, The Dahlia)", "weighted": 5.0}], "APOC": [{"appearance": 0.27, "best": 3169.7, "samples": 150.0, "score": 2879.45, "team": "(Xueyi, Ruan Mei, Gallagher, Imaginary Trailblazer)", "weighted": 2955.63}, {"appearance": 0.08, "best": 2999.91, "samples": 25.0, "score": 1615.47, "team": "(Fu Xuan, Xueyi, Ruan Mei, Imaginary Trailblazer)", "weighted": 2781.28}, {"appearance": 0.04, "best": 3388.0, "samples": 20.0, "score": 3138.79, "team": "(Silver Wolf, Fu Xuan, Xueyi, Sparkle)", "weighted": 2980.85}, {"appearance": 0.04, "best": 3062.67, "samples": 19.0, "score": 2835.74, "team": "(Xueyi, Ruan Mei, Imaginary Trailblazer, Lingsha)", "weighted": 2879.95}, {"appearance": 0.01, "best": 3419.88, "samples": 18.0, "score": 3143.34, "team": "(Xueyi, Ruan Mei, Lingsha, Fugue)", "weighted": 3229.0}], "MOC": [{"appearance": 0.09, "best": 8.4, "samples": 38.0, "score": 9.14, "team": "(Silver Wolf, Fu Xuan, Xueyi, Ruan Mei)", "weighted": 9.0}, {"appearance": 0.14, "best": 9.5, "samples": 34.0, "score": 10.58, "team": "(Silver Wolf, Seele, Fu Xuan, Xueyi)", "weighted": 10.53}, {"appearance": 0.04, "best": 5.5, "samples": 29.0, "score": 7.87, "team": "(Silver Wolf, Fu Xuan, Xueyi, Sparkle)", "weighted": 8.04}, {"appearance": 0.06, "best": 8.43, "samples": 28.0, "score": 10.25, "team": "(Xueyi, Ruan Mei, Gallagher, Imaginary Trailblazer)", "weighted": 9.89}, {"appearance": 0.16, "best": 5.5, "samples": 16.0, "score": 5.5, "team": "(Tingyun, Xueyi, Ruan Mei, Sparkle)", "weighted": 5.5}], "PURE_FICTION": [{"appearance": 0.12, "best": 40000.0, "samples": 87.0, "score": 35959.16, "team": "(Himeko, Herta, Xueyi, Ruan Mei)", "weighted": 35826.26}, {"appearance": 0.13, "best": 31036.0, "samples": 42.0, "score": 27786.46, "team": "(Himeko, Fu Xuan, Xueyi, Ruan Mei)", "weighted": 30352.31}, {"appearance": 0.06, "best": 40000.0, "samples": 34.0, "score": 32022.54, "team": "(Herta, Fu Xuan, Xueyi, Ruan Mei)", "weighted": 31768.5}, {"appearance": 0.08, "best": 27450.82, "samples": 32.0, "score": 21582.71, "team": "(Himeko, Herta, Xueyi, Gallagher)", "weighted": 26716.97}, {"appearance": 0.15, "best": 30142.57, "samples": 31.0, "score": 26108.29, "team": "(Himeko, Xueyi, Ruan Mei, Gallagher)", "weighted": 29882.29}]};
+// ══ END INJECT:TEAMS ══
+
+// ══ INJECT:ARCHETYPES ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { core, appearance, score, weighted, best, samples } ]
+const ARCHETYPES = {"ANOMALY_F0": [{"appearance": 0.04, "best": 2.0, "core": "Xueyi", "samples": 46.0, "score": 3.4, "weighted": 3.35}, {"appearance": 0.01, "best": 6.0, "core": "Xueyi + Rappa", "samples": 1.0, "score": 6.0, "weighted": 6.0}, {"appearance": 0.0, "best": 5.0, "core": "Xueyi + Acheron", "samples": 1.0, "score": 5.0, "weighted": 5.0}, {"appearance": 0.0, "best": 6.0, "core": "Xueyi + Imaginary March 7th", "samples": 1.0, "score": 6.0, "weighted": 6.0}], "ANOMALY_F4": [{"appearance": 0.01, "best": 3.0, "core": "Xueyi", "samples": 4.0, "score": 4.5, "weighted": 4.5}], "APOC": [{"appearance": 0.2, "best": 3479.14, "core": "Xueyi", "samples": 468.0, "score": 2826.97, "weighted": 2847.2}, {"appearance": 0.13, "best": 2761.67, "core": "Xueyi + Acheron", "samples": 15.0, "score": 2761.67, "weighted": 2761.67}, {"appearance": 0.02, "best": 3494.0, "core": "Xueyi + Firefly", "samples": 13.0, "score": 3002.31, "weighted": 3090.46}, {"appearance": 0.05, "best": 2550.14, "core": "Qingque + Xueyi", "samples": 10.0, "score": 2329.57, "weighted": 2417.8}, {"appearance": 0.03, "best": 2934.86, "core": "Xueyi + Jade", "samples": 9.0, "score": 1423.62, "weighted": 2431.11}, {"appearance": 0.03, "best": 2634.29, "core": "Seele + Xueyi", "samples": 8.0, "score": 2607.15, "weighted": 2627.5}, {"appearance": 0.02, "best": 2544.0, "core": "Xueyi + Imaginary March 7th", "samples": 8.0, "score": 1325.4, "weighted": 1338.25}, {"appearance": 0.01, "best": 3755.0, "core": "Xueyi + Feixiao", "samples": 7.0, "score": 2664.38, "weighted": 3006.0}], "MOC": [{"appearance": 0.16, "best": 5.0, "core": "Xueyi", "samples": 369.0, "score": 8.3, "weighted": 8.86}, {"appearance": 0.16, "best": 10.31, "core": "Seele + Xueyi", "samples": 54.0, "score": 10.97, "weighted": 10.89}, {"appearance": 0.11, "best": 9.0, "core": "Jingliu + Xueyi", "samples": 31.0, "score": 9.87, "weighted": 9.78}, {"appearance": 0.08, "best": 8.0, "core": "Qingque + Xueyi", "samples": 22.0, "score": 10.27, "weighted": 11.36}, {"appearance": 0.02, "best": 7.0, "core": "Clara + Xueyi", "samples": 17.0, "score": 9.61, "weighted": 9.94}, {"appearance": 0.04, "best": 9.0, "core": "Topaz \u0026 Numby + Xueyi", "samples": 16.0, "score": 9.56, "weighted": 9.38}, {"appearance": 0.06, "best": 8.5, "core": "Kafka + Xueyi", "samples": 16.0, "score": 10.68, "weighted": 12.07}, {"appearance": 0.01, "best": 7.0, "core": "Xueyi + Jade", "samples": 12.0, "score": 10.6, "weighted": 10.17}], "PURE_FICTION": [{"appearance": 0.12, "best": 40000.0, "core": "Herta + Xueyi", "samples": 202.0, "score": 27701.12, "weighted": 30980.11}, {"appearance": 0.18, "best": 36568.5, "core": "Himeko + Herta + Xueyi", "samples": 192.0, "score": 28940.44, "weighted": 31518.76}, {"appearance": 0.15, "best": 31189.0, "core": "Himeko + Xueyi", "samples": 179.0, "score": 23211.85, "weighted": 29220.08}, {"appearance": 0.04, "best": 34520.0, "core": "Xueyi", "samples": 120.0, "score": 24800.83, "weighted": 26447.03}, {"appearance": 0.06, "best": 33703.0, "core": "Xueyi + Jade", "samples": 52.0, "score": 30366.28, "weighted": 31259.98}, {"appearance": 0.05, "best": 30762.0, "core": "Clara + Xueyi", "samples": 50.0, "score": 22847.09, "weighted": 26410.42}, {"appearance": 0.04, "best": 38075.0, "core": "Seele + Xueyi", "samples": 28.0, "score": 25319.25, "weighted": 22392.07}, {"appearance": 0.03, "best": 33163.0, "core": "Jing Yuan + Xueyi", "samples": 24.0, "score": 25139.57, "weighted": 24284.5}]};
+// ══ END INJECT:ARCHETYPES ══
+
+// ══ INJECT:DUOS ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { partner, samples, appearance, confidence (0–1), score, weighted, best } ]
+const DUOS = {"ANOMALY_F0": [{"appearance": 0.0286, "best": 2.0, "confidence": 0.8313, "partner": "Fugue", "samples": 36.0, "score": 3.38, "weighted": 3.14}, {"appearance": 0.038, "best": 2.0, "confidence": 0.9256, "partner": "The Dahlia", "samples": 32.0, "score": 3.39, "weighted": 3.12}, {"appearance": 0.0225, "best": 2.12, "confidence": 0.5423, "partner": "Ruan Mei", "samples": 18.0, "score": 2.42, "weighted": 2.33}, {"appearance": 0.025, "best": 3.7, "confidence": 0.3488, "partner": "Imaginary Trailblazer", "samples": 17.0, "score": 3.93, "weighted": 3.82}, {"appearance": 0.0133, "best": 2.0, "confidence": 0.6468, "partner": "Lingsha", "samples": 15.0, "score": 3.8, "weighted": 4.13}, {"appearance": 0.0133, "best": 4.0, "confidence": 0.2273, "partner": "Gallagher", "samples": 7.0, "score": 4.47, "weighted": 4.43}, {"appearance": 0.01, "best": 4.0, "confidence": 0.212, "partner": "Tribbie", "samples": 4.0, "score": 4.0, "weighted": 4.0}, {"appearance": 0.01, "best": 4.0, "confidence": 0.173, "partner": "Fu Xuan", "samples": 4.0, "score": 4.17, "weighted": 4.25}], "ANOMALY_F4": [{"appearance": 0.01, "best": 3.0, "confidence": 1.0, "partner": "The Dahlia", "samples": 3.0, "score": 4.0, "weighted": 4.0}, {"appearance": 0.01, "best": 3.0, "confidence": 1.0, "partner": "Fugue", "samples": 3.0, "score": 4.0, "weighted": 4.0}, {"appearance": 0.01, "best": 3.0, "confidence": 1.0, "partner": "Ruan Mei", "samples": 2.0, "score": 3.5, "weighted": 3.5}, {"appearance": 0.01, "best": 5.0, "confidence": 1.0, "partner": "Lingsha", "samples": 1.0, "score": 5.0, "weighted": 5.0}, {"appearance": 0.01, "best": 6.0, "confidence": 1.0, "partner": "Dan Heng \u2022 Permansor Terrae", "samples": 1.0, "score": 6.0, "weighted": 6.0}, {"appearance": 0.01, "best": 6.0, "confidence": 1.0, "partner": "Ice Trailblazer", "samples": 1.0, "score": 6.0, "weighted": 6.0}, {"appearance": 0.01, "best": 6.0, "confidence": 1.0, "partner": "Tribbie", "samples": 1.0, "score": 6.0, "weighted": 6.0}], "APOC": [{"appearance": 0.1612, "best": 3727.0, "confidence": 0.4971, "partner": "Ruan Mei", "samples": 343.0, "score": 2934.3, "weighted": 2889.17}, {"appearance": 0.1625, "best": 3809.0, "confidence": 0.3727, "partner": "Imaginary Trailblazer", "samples": 305.0, "score": 3025.04, "weighted": 2840.94}, {"appearance": 0.1147, "best": 3445.4, "confidence": 0.2605, "partner": "Gallagher", "samples": 199.0, "score": 2568.62, "weighted": 2797.97}, {"appearance": 0.1118, "best": 3669.0, "confidence": 0.2141, "partner": "Fu Xuan", "samples": 144.0, "score": 2406.98, "weighted": 2693.69}, {"appearance": 0.0377, "best": 3596.86, "confidence": 0.6154, "partner": "Fugue", "samples": 104.0, "score": 3042.84, "weighted": 3194.35}, {"appearance": 0.07, "best": 3415.67, "confidence": 0.1584, "partner": "Sparkle", "samples": 103.0, "score": 2564.9, "weighted": 2642.69}, {"appearance": 0.0285, "best": 3544.0, "confidence": 0.2384, "partner": "Lingsha", "samples": 59.0, "score": 3047.46, "weighted": 3059.93}, {"appearance": 0.0533, "best": 3546.0, "confidence": 0.1309, "partner": "Silver Wolf", "samples": 55.0, "score": 2970.17, "weighted": 2634.02}], "MOC": [{"appearance": 0.1735, "best": 2.5, "confidence": 0.4434, "partner": "Ruan Mei", "samples": 333.0, "score": 8.19, "weighted": 9.3}, {"appearance": 0.2379, "best": 6.67, "confidence": 0.3497, "partner": "Fu Xuan", "samples": 244.0, "score": 9.19, "weighted": 10.07}, {"appearance": 0.1537, "best": 0.0, "confidence": 0.3349, "partner": "Silver Wolf", "samples": 176.0, "score": 8.69, "weighted": 9.69}, {"appearance": 0.0794, "best": 0.0, "confidence": 0.2134, "partner": "Sparkle", "samples": 131.0, "score": 7.83, "weighted": 8.72}, {"appearance": 0.1443, "best": 8.0, "confidence": 0.1173, "partner": "Tingyun", "samples": 89.0, "score": 8.71, "weighted": 8.37}, {"appearance": 0.03, "best": 2.71, "confidence": 0.6793, "partner": "Fugue", "samples": 76.0, "score": 6.81, "weighted": 6.99}, {"appearance": 0.0436, "best": 2.25, "confidence": 0.3416, "partner": "Imaginary Trailblazer", "samples": 70.0, "score": 8.22, "weighted": 9.14}, {"appearance": 0.0545, "best": 8.43, "confidence": 0.279, "partner": "Gallagher", "samples": 62.0, "score": 9.6, "weighted": 9.95}], "PURE_FICTION": [{"appearance": 0.2416, "best": 34351.38, "confidence": 0.3835, "partner": "Ruan Mei", "samples": 511.0, "score": 26928.18, "weighted": 30308.02}, {"appearance": 0.292, "best": 40000.0, "confidence": 0.3273, "partner": "Herta", "samples": 479.0, "score": 27565.11, "weighted": 30593.25}, {"appearance": 0.3408, "best": 32164.04, "confidence": 0.2585, "partner": "Himeko", "samples": 433.0, "score": 26496.07, "weighted": 30075.1}, {"appearance": 0.1813, "best": 34440.0, "confidence": 0.2328, "partner": "Fu Xuan", "samples": 332.0, "score": 26479.07, "weighted": 27501.93}, {"appearance": 0.1208, "best": 30600.0, "confidence": 0.2558, "partner": "Gallagher", "samples": 180.0, "score": 23437.11, "weighted": 27356.23}, {"appearance": 0.1422, "best": 33099.51, "confidence": 0.2071, "partner": "Robin", "samples": 154.0, "score": 28515.48, "weighted": 30161.21}, {"appearance": 0.1055, "best": 33574.38, "confidence": 0.1786, "partner": "Aventurine", "samples": 138.0, "score": 26222.15, "weighted": 29882.1}, {"appearance": 0.0877, "best": 34880.0, "confidence": 0.1878, "partner": "Sparkle", "samples": 134.0, "score": 27585.95, "weighted": 28046.49}]};
+// ══ END INJECT:DUOS ══
+
+// ══════════════════════════════════════════════════════════════
+//  RENDERING ENGINE — DO NOT MODIFY
+// ══════════════════════════════════════════════════════════════
+
+let curGearMode = 'MOC', curEidolon = 'E0', curMetaMode = 'MOC', curDuoMode = 'MOC';
+
+function getIcon(n) {
+  return ICONS[n] || `https://ui-avatars.com/api/?name=${encodeURIComponent(n.slice(0,2))}&background=130f20&color=e8d44d&size=52`;
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── GEAR ──
+function switchGearMode(mode, el) {
+  curGearMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderGear();
+}
+function switchEidolon(e, el) {
+  curEidolon = e;
+  document.querySelectorAll('.eidolon-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderGear();
+}
+function gearBadge(i, rate) {
+  if (i === 0 && rate >= 0.5)  return '<span class="gear-badge badge-dom">Dominant</span>';
+  if (i === 0 && rate >= 0.25) return '<span class="gear-badge badge-sig">Signature</span>';
+  if (i === 1 && rate >= 0.15) return '<span class="gear-badge badge-alt">Alt Sig</span>';
+  return '';
+}
+function fmtScore(mode, s) {
+  return (mode === 'pf' || mode === 'apoc') ? Math.round(s).toLocaleString('en') : s.toFixed(2);
+}
+function renderGear() {
+  const ed = GEAR[curGearMode]?.[curEidolon];
+  const el = document.getElementById('gear-display');
+  if (!ed) { el.innerHTML = '<div class="no-data">No data found for this combination.</div>'; return; }
+  const cats = ['Relics', 'Planar_Set', 'Lightcones'];
+  const lbs  = { Relics: 'Cavern Relics', Planar_Set: 'Planar Ornaments', Lightcones: 'Light Cones' };
+  el.innerHTML = cats.map(cat => {
+    const top = (ed[cat] || []).slice(0, 5);
+    return `<div class="gear-category"><div class="gear-cat-title">${lbs[cat]}</div>${
+      !top.length ? '<div class="no-data" style="padding:0.5rem 0;font-size:0.75rem;">No data</div>' :
+      top.map((item, i) =>
+        `<div class="gear-row">
+          <div class="gear-name-row"><span class="gear-name">${item.name}</span>${gearBadge(i, item.rate)}</div>
+          <div class="gear-bar-row">
+            <div class="gear-bar-bg"><div class="gear-bar-fill" style="width:${Math.round(item.rate*100)}%"></div></div>
+            <span class="gear-pct">${(item.rate*100).toFixed(1)}%</span>
+          </div>
+          <div class="gear-score">Avg Score: ${fmtScore(curGearMode, item.score)}</div>
+        </div>`
+      ).join('')
+    }</div>`;
+  }).join('');
+}
+
+// ── META ──
+function switchMetaMode(mode, el) {
+  curMetaMode = mode;
+  document.querySelectorAll('#tab-meta .meta-mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderMeta();
+}
+function parseTeam(str) {
+  return str.replace(/^\(|\)$/g, '').split(', ').map(s => s.trim());
+}
+function fmtMeta(mode, s) {
+  return (mode === 'PURE_FICTION' || mode === 'APOC') ? Math.round(s).toLocaleString('en') : Number(s).toFixed(2);
+}
+function teamCard(t, mode) {
+  const members = parseTeam(t.team);
+  const icons = members.map(m =>
+    `<div class="team-icon-wrap">
+      <img class="team-icon ${m === CHAR_NAME ? 'main-slot' : ''}" src="${getIcon(m)}" alt="${m}"
+        onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2252%22 height=%2252%22><rect width=%2252%22 height=%2252%22 rx=%2226%22 fill=%22%23130f20%22/><text x=%2250%25%22 y=%2255%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 fill=%22%23e8d44d%22 font-size=%2218%22>${m[0]}</text></svg>'">
+      <div class="team-icon-name">${m}</div>
+    </div>`
+  ).join('');
+  return `<div class="team-card">
+    <span class="mode-pill">${mode.replace('_',' ')}</span>
+    <div class="team-icons-row">${icons}</div>
+    <div class="team-stats-row">
+      <div class="team-stat"><span class="team-stat-val">${t.samples.toLocaleString()}</span><span class="team-stat-lbl">Samples</span></div>
+      <div class="team-stat"><span class="team-stat-val">${t.appearance.toFixed(2)}×</span><span class="team-stat-lbl">Appearance</span></div>
+      <div class="team-stat"><span class="team-stat-val">${fmtMeta(mode,t.weighted)}</span><span class="team-stat-lbl">Avg Weighted Score</span></div>
+      <div class="team-stat"><span class="team-stat-val">${fmtMeta(mode,t.best)}</span><span class="team-stat-lbl">Best Ver.</span></div>
+    </div>
+  </div>`;
+}
+function renderMeta() {
+  const mode = curMetaMode, teams = TEAMS[mode] || [], archs = ARCHETYPES[mode] || [];
+  const el = document.getElementById('meta-display');
+  let html = `<div style="margin-bottom:0.5rem;font-size:0.72rem;color:var(--text-dim);letter-spacing:0.05em;text-transform:uppercase;">Top Teams — ${mode.replace(/_/g,' ')}</div>`;
+  html += !teams.length ? '<div class="no-data">No data found for this mode.</div>'
+    : '<div class="teams-grid">' + teams.slice(0,5).map(t => teamCard(t, mode)).join('') + '</div>';
+  html += '<div class="section-header" style="padding:1.5rem 0 0.8rem;">Archetypes</div>';
+  html += !archs.length ? '<div class="no-data">No archetype data for this mode.</div>'
+    : '<div class="arch-grid">' + archs.slice(0,8).map(a =>
+        `<div class="arch-card">
+          <div class="arch-core">${a.core}</div>
+          <div class="arch-stats">
+            <div class="arch-score">${fmtMeta(mode, a.weighted)}</div>
+            <div class="arch-samples">${a.samples.toLocaleString()} samples</div>
+          </div>
+        </div>`
+      ).join('') + '</div>';
+  el.innerHTML = html;
+}
+
+// ── DUOS ──
+function switchDuoMode(mode, el) {
+  curDuoMode = mode;
+  document.querySelectorAll('#tab-duos .meta-mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderDuos();
+}
+function renderDuos() {
+  const mode = curDuoMode, duos = DUOS[mode] || [];
+  const el = document.getElementById('duos-display');
+  if (!duos.length) { el.innerHTML = `<div class="no-data">No duo data found for ${mode.replace(/_/g,' ')}.</div>`; return; }
+  el.innerHTML = '<div class="duos-grid">' + duos.slice(0,8).map(d => {
+    const conf = Math.round(d.confidence * 100);
+    return `<div class="duo-card">
+      <span class="mode-pill">${mode.replace(/_/g,' ')}</span>
+      <div class="duo-icons-row">
+        <div class="team-icon-wrap">
+          <img class="team-icon main-slot" src="${getIcon(CHAR_NAME)}" alt="${CHAR_NAME}">
+          <div class="team-icon-name">${CHAR_NAME}</div>
+        </div>
+        <span class="duo-plus">+</span>
+        <div class="team-icon-wrap">
+          <img class="team-icon" src="${getIcon(d.partner)}" alt="${d.partner}">
+          <div class="team-icon-name">${d.partner}</div>
+        </div>
+        <div style="margin-left:0.5rem;">
+          <div class="duo-partner-name">${d.partner}</div>
+          <div style="font-size:0.65rem;color:var(--text-dim);">${d.samples.toLocaleString()} samples</div>
+        </div>
+      </div>
+      <div class="duo-stats-row">
+        <div class="duo-stat"><span class="duo-stat-val">${d.appearance.toFixed(2)}%</span><span class="duo-stat-lbl">Appearance</span></div>
+        <div class="duo-stat"><span class="duo-stat-val">${fmtMeta(mode, d.weighted)}</span><span class="duo-stat-lbl">Avg Weighted Score</span></div>
+        <div class="duo-stat"><span class="duo-stat-val">${fmtMeta(mode, d.best)}</span><span class="duo-stat-lbl">Best Ver.</span></div>
+      </div>
+      <div class="confidence-bar">
+        <div class="conf-label"><span>Co-occurrence Confidence</span><span>${conf}%</span></div>
+        <div class="conf-bg"><div class="conf-fill" style="width:${Math.min(conf,100)}%"></div></div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ── PARTICLES ──
+function initParticles() {
+  const c = document.getElementById('particles');
+  const colors = [getComputedStyle(document.documentElement).getPropertyValue('--particle1').trim(),
+                  getComputedStyle(document.documentElement).getPropertyValue('--particle2').trim()];
+  for (let i = 0; i < 28; i++) {
+    const p = document.createElement('div');
+    p.className = 'spark';
+    const sz = Math.random() * 3 + 0.8;
+    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;bottom:${Math.random()*10-5}%;background:${colors[Math.random()>0.5?0:1]};--dx:${(Math.random()-0.5)*90}px;animation-duration:${Math.random()*12+7}s;animation-delay:${Math.random()*14}s;`;
+    c.appendChild(p);
+  }
+}
+
+// ── INIT ──
+initParticles();
+renderGear();
+renderMeta();
+renderDuos();
+</script>
+</body>
+</html>

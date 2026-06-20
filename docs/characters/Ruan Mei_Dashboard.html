@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ruan Mei — Character Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+/*
+ ╔══════════════════════════════════════════════════════════════╗
+ ║  HSR CHARACTER DASHBOARD TEMPLATE                           ║
+ ║  Injection points are marked with:           ║
+ ║  All visual logic lives here. Only inject DATA below.       ║
+ ╚══════════════════════════════════════════════════════════════╝
+ 
+ ELEMENT THEME GUIDE — replace CSS vars in :root for each character:
+   Quantum   → --c1:#8b6eff  --c2:#c8a8ff  --c3:#6040cc  --particle1:#8b6eff  --particle2:#c8a8ff
+   Ice       → --c1:#6eb4f7  --c2:#a8d4ff  --c3:#3a7acc  --particle1:#6eb4f7  --particle2:#a8d4ff
+   Fire      → --c1:#e05a30  --c2:#f5a060  --c3:#b03010  --particle1:#e05a30  --particle2:#f5a060
+   Wind      → --c1:#4ecfa0  --c2:#a0f0d0  --c3:#20a070  --particle1:#4ecfa0  --particle2:#a0f0d0
+   Lightning → --c1:#e8d44d  --c2:#c080ff  --c3:#f0e880  --particle1:#e8d44d  --particle2:#c080ff
+   Imaginary → --c1:#e8c97a  --c2:#f0dfa0  --c3:#a8883a  --particle1:#e8c97a  --particle2:#c8a060
+   Physical  → --c1:#c0cce0  --c2:#e8eef8  --c3:#8090a8  --particle1:#c0cce0  --particle2:#e8eef8
+*/
+:root {
+  /* ── INJECT ELEMENT THEME ── */
+  --c1: #6eb4f7;
+  --c2: #a8d4ff;
+  --c3: #3a7acc;
+  --particle1: #6eb4f7;
+  --particle2: #a8d4ff;
+  --glow-color: rgba(110,180,247,0.4);
+  /* ── END THEME ── */
+
+  --bg0: #08060f;
+  --bg1: #0e0b18;
+  --bg2: #130f20;
+  --bg3: #181428;
+  --bg4: #1e1930;
+  --text-bright: #f5f0ff;
+  --text-main: #c8bce8;
+  --text-muted: #7860a8;
+  --text-dim: #4a3870;
+  --gold: #e8c97a;
+  --gold2: #f0dfa0;
+  --border: rgba(var(--c1-raw, 232,212,77), 0.12);
+  --border2: rgba(var(--c1-raw, 232,212,77), 0.28);
+  /* fallback borders using c1 with opacity */
+  --border-c: color-mix(in srgb, var(--c1) 12%, transparent);
+  --border2-c: color-mix(in srgb, var(--c1) 28%, transparent);
+  --border-hover: color-mix(in srgb, var(--c1) 50%, transparent);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text-main);min-height:100vh;overflow-x:hidden;}
+
+/* ── PARTICLES ── */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.spark{position:absolute;border-radius:50%;opacity:0;animation:sparkFloat linear infinite;}
+@keyframes sparkFloat{
+  0%{transform:translateY(0) translateX(0) scale(0.2);opacity:0;}
+  15%{opacity:0.9;}
+  85%{opacity:0.3;}
+  100%{transform:translateY(-100vh) translateX(var(--dx)) scale(0.1);opacity:0;}
+}
+
+/* ── NAV ── */
+#nav{position:sticky;top:0;z-index:100;background:rgba(8,6,15,0.92);backdrop-filter:blur(18px);border-bottom:1px solid var(--border-c);display:flex;align-items:center;padding:0 2rem;}
+.nav-logo{font-family:'Cinzel',serif;font-weight:700;font-size:0.85rem;color:var(--c1);letter-spacing:0.15em;text-transform:uppercase;padding:1rem 1.5rem 1rem 0;border-right:1px solid var(--border-c);margin-right:1.5rem;white-space:nowrap;}
+.nav-tab{font-family:'Cinzel',serif;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);padding:1.1rem 1.2rem;cursor:pointer;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s;white-space:nowrap;}
+.nav-tab:hover{color:var(--text-bright);}
+.nav-tab.active{color:var(--c1);border-bottom-color:var(--c1);}
+
+/* ── HERO ── */
+#hero{position:relative;min-height:420px;display:flex;align-items:center;padding:3rem 3rem 3rem 3.5rem;overflow:hidden;background:linear-gradient(135deg,var(--bg1) 0%,var(--bg0) 60%);}
+.hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse 55% 80% at 72% 50%, color-mix(in srgb, var(--c1) 10%, transparent) 0%, color-mix(in srgb, var(--c2) 6%, transparent) 40%, transparent 70%);pointer-events:none;}
+.hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(color-mix(in srgb,var(--c1) 4%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--c2) 4%,transparent) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse 80% 100% at 50% 50%,black 30%,transparent 80%);}
+.hero-content{position:relative;z-index:2;flex:1;max-width:55%;}
+.hero-tag-row{display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;}
+.hero-tag{font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:0.2rem 0.65rem;border-radius:3px;}
+.hero-tag.element{background:color-mix(in srgb,var(--c1) 15%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 35%,transparent);}
+.hero-tag.path{background:color-mix(in srgb,var(--c2) 12%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 30%,transparent);}
+.hero-tag.ver{background:color-mix(in srgb,var(--c1) 6%,transparent);color:var(--text-muted);border:1px solid var(--border-c);}
+.hero-name{font-family:'Cinzel',serif;font-size:clamp(3rem,6vw,5rem);font-weight:900;line-height:0.9;color:var(--text-bright);letter-spacing:-0.02em;text-shadow:0 0 60px color-mix(in srgb,var(--c1) 40%,transparent),0 0 100px color-mix(in srgb,var(--c2) 20%,transparent),0 2px 4px rgba(0,0,0,0.9);margin-bottom:0.5rem;}
+.hero-sub{font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--c1);opacity:0.65;margin-bottom:1.5rem;}
+.hero-stats-row{display:flex;gap:1.5rem;flex-wrap:wrap;}
+.hero-stat{text-align:center;}
+.hero-stat-val{font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;color:var(--c2);display:block;line-height:1;}
+.hero-stat-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);display:block;margin-top:0.15rem;}
+.hero-portrait{position:absolute;right:0;bottom:0;top:0;width:45%;pointer-events:none;z-index:1;display:flex;align-items:flex-end;justify-content:flex-end;}
+.hero-portrait img{height:110%;max-height:480px;object-fit:contain;filter:drop-shadow(0 0 40px color-mix(in srgb,var(--c1) 40%,transparent)) drop-shadow(0 0 80px color-mix(in srgb,var(--c2) 20%,transparent));animation:portraitFloat 6s ease-in-out infinite;}
+@keyframes portraitFloat{0%,100%{transform:translateY(0px);}50%{transform:translateY(-12px);}}
+.hero-portrait-fade{position:absolute;inset:0;background:linear-gradient(to right,var(--bg0) 0%,transparent 35%);}
+
+/* ── CONTENT SHELL ── */
+#content{padding:0 2.5rem 3rem;max-width:1400px;margin:0 auto;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* ── CARD ── */
+.card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1.5rem;}
+.card-title{font-family:'Cinzel',serif;font-size:0.8rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--c1);margin-bottom:1.2rem;display:flex;align-items:center;gap:0.6rem;}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border2-c);}
+.section-header{padding:2rem 0 1rem;font-family:'Cinzel',serif;font-size:0.75rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:1rem;}
+.section-header::before,.section-header::after{content:'';flex:1;height:1px;background:var(--border-c);}
+
+/* ── OVERVIEW ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.stat-cell{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:1rem;text-align:center;transition:border-color 0.2s;}
+.stat-cell:hover{border-color:var(--border2-c);}
+.stat-cell.featured{background:linear-gradient(135deg,color-mix(in srgb,var(--c1) 8%,transparent),color-mix(in srgb,var(--c2) 5%,transparent));border-color:color-mix(in srgb,var(--c1) 38%,transparent);grid-column:span 2;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.stat-val{font-family:'Cinzel',serif;font-size:1.6rem;font-weight:700;color:var(--text-bright);display:block;line-height:1;}
+.stat-cell.featured .stat-val{font-size:2.4rem;color:var(--c1);}
+.stat-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);display:block;margin-top:0.3rem;}
+.stat-cell.featured .stat-lbl{font-size:0.78rem;color:var(--c2);}
+
+.main-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.main-stat-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:0.9rem;}
+.main-stat-slot{font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem;}
+.main-stat-pill{display:inline-block;font-size:0.72rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:4px;margin:0.15rem 0.15rem 0 0;}
+.main-stat-pill.dominant{background:color-mix(in srgb,var(--c1) 18%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 45%,transparent);}
+.main-stat-pill.alt{background:color-mix(in srgb,var(--c2) 12%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 30%,transparent);}
+
+.substat-row{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.45rem;}
+.substat-name{font-size:0.72rem;color:var(--text-main);width:150px;flex-shrink:0;}
+.substat-bar-bg{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.substat-bar-fill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--c3),var(--c1));}
+.substat-val{font-size:0.72rem;color:var(--text-muted);width:52px;text-align:right;flex-shrink:0;}
+
+.percentile-section{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.percentile-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:1rem;}
+.percentile-title{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--c1);margin-bottom:0.8rem;}
+.percentile-row{display:flex;justify-content:space-between;align-items:center;padding:0.25rem 0;border-bottom:1px solid color-mix(in srgb,var(--c1) 7%,transparent);}
+.percentile-row:last-child{border-bottom:none;}
+.p-label{font-size:0.68rem;color:var(--text-dim);}
+.p-val{font-size:0.78rem;font-weight:700;color:var(--text-bright);}
+.p-val.p50{color:var(--c1);font-size:0.88rem;}
+.avg-sidebar{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-top:1rem;}
+.avg-item{background:var(--bg3);border:1px solid var(--border-c);border-radius:5px;padding:0.6rem 0.8rem;}
+.avg-item-lbl{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);}
+.avg-item-val{font-size:0.9rem;font-weight:700;color:var(--text-bright);}
+
+/* ── GEAR ── */
+.mode-tabs-row,.eidolon-tabs-row{display:flex;gap:0.4rem;margin-bottom:1rem;flex-wrap:wrap;}
+.mode-tab,.eidolon-tab{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:0.5rem 1rem;border:1px solid var(--border-c);border-radius:5px;background:var(--bg3);color:var(--text-muted);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.mode-tab:hover,.eidolon-tab:hover{color:var(--text-bright);border-color:var(--border2-c);}
+.mode-tab.active,.eidolon-tab.active{color:var(--c1);background:color-mix(in srgb,var(--c1) 8%,transparent);border-color:var(--c1);}
+.eidolon-tab.e6.active{color:var(--gold);background:rgba(232,201,122,0.10);border-color:var(--gold);}
+.gear-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+.gear-category{background:var(--bg2);border:1px solid var(--border-c);border-radius:7px;padding:1rem;}
+.gear-cat-title{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--c2);margin-bottom:0.8rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border-c);}
+.gear-row{margin-bottom:0.6rem;}
+.gear-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;}
+.gear-name{font-size:0.75rem;color:var(--text-bright);font-weight:600;flex:1;margin-right:0.5rem;}
+.gear-badge{font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.4rem;border-radius:3px;white-space:nowrap;}
+.badge-dom{background:color-mix(in srgb,var(--c1) 22%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 50%,transparent);}
+.badge-sig{background:rgba(232,201,122,0.2);color:var(--gold);border:1px solid rgba(232,201,122,0.4);}
+.badge-alt{background:color-mix(in srgb,var(--c2) 15%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 35%,transparent);}
+.gear-bar-row{display:flex;align-items:center;gap:0.5rem;}
+.gear-bar-bg{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.gear-bar-fill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--c3),var(--c1));}
+.gear-pct{font-size:0.68rem;color:var(--text-muted);width:38px;text-align:right;flex-shrink:0;}
+.gear-score{font-size:0.65rem;color:var(--text-dim);}
+
+/* ── META / DUOS ── */
+.meta-mode-tabs{display:flex;gap:0.4rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+.meta-mode-tab{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;padding:0.45rem 0.9rem;border:1px solid var(--border-c);border-radius:5px;background:var(--bg3);color:var(--text-muted);cursor:pointer;transition:all 0.2s;}
+.meta-mode-tab:hover{color:var(--text-bright);border-color:var(--border2-c);}
+.meta-mode-tab.active{color:var(--c1);background:color-mix(in srgb,var(--c1) 8%,transparent);border-color:var(--c1);}
+
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1rem;margin-bottom:2rem;}
+.team-card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1rem;transition:border-color 0.2s;}
+.team-card:hover{border-color:var(--border2-c);}
+.team-icons-row{display:flex;gap:0.4rem;margin-bottom:0.8rem;align-items:flex-start;flex-wrap:wrap;}
+.team-icon-wrap{position:relative;}
+.team-icon{width:52px;height:52px;border-radius:50%;border:2px solid color-mix(in srgb,var(--c1) 18%,transparent);object-fit:cover;background:var(--bg3);display:block;}
+.team-icon.main-slot{border-color:var(--c1);box-shadow:0 0 10px color-mix(in srgb,var(--c1) 50%,transparent),0 0 24px color-mix(in srgb,var(--c1) 18%,transparent);}
+.team-icon-name{font-size:0.56rem;text-align:center;color:var(--text-muted);margin-top:0.2rem;max-width:52px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.team-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0.4rem;font-size:0.68rem;}
+.team-stat{text-align:center;}
+.team-stat-val{font-weight:700;color:var(--text-bright);display:block;}
+.team-stat-lbl{color:var(--text-dim);}
+.mode-pill{display:inline-block;font-size:0.6rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.5rem;border-radius:3px;background:color-mix(in srgb,var(--c1) 9%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 25%,transparent);margin-bottom:0.6rem;}
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.7rem;}
+.arch-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:0.8rem 1rem;display:flex;align-items:center;gap:0.8rem;}
+.arch-core{font-size:0.75rem;font-weight:700;color:var(--text-bright);flex:1;}
+.arch-score{font-size:0.8rem;font-weight:700;color:var(--c1);}
+.arch-samples{font-size:0.68rem;color:var(--text-muted);}
+
+.duos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem;}
+.duo-card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1rem;transition:border-color 0.2s;}
+.duo-card:hover{border-color:var(--border2-c);}
+.duo-icons-row{display:flex;align-items:center;gap:0.7rem;margin-bottom:0.7rem;}
+.duo-plus{font-size:1.2rem;color:var(--text-dim);font-weight:300;}
+.duo-partner-name{font-size:0.85rem;font-weight:700;color:var(--text-bright);}
+.duo-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;font-size:0.68rem;}
+.duo-stat{background:var(--bg3);border-radius:4px;padding:0.35rem 0.5rem;text-align:center;}
+.duo-stat-val{font-weight:700;color:var(--text-bright);display:block;}
+.duo-stat-lbl{color:var(--text-dim);font-size:0.6rem;}
+.confidence-bar{margin-top:0.5rem;}
+.conf-label{font-size:0.62rem;color:var(--text-muted);margin-bottom:0.2rem;display:flex;justify-content:space-between;}
+.conf-bg{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.conf-fill{height:100%;border-radius:2px;background:linear-gradient(to right,var(--c3),var(--c1));}
+
+.no-data{padding:2rem;text-align:center;color:var(--text-dim);font-style:italic;font-size:0.85rem;}
+#footer{background:var(--bg1);border-top:1px solid var(--border-c);padding:1.2rem 2.5rem;text-align:center;font-size:0.68rem;color:var(--text-dim);letter-spacing:0.05em;line-height:1.8;}
+#footer span{color:var(--text-muted);}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg0);}
+::-webkit-scrollbar-thumb{background:var(--c3);border-radius:3px;}
+
+@media(max-width:768px){
+  #hero{padding:2rem 1.5rem;} .hero-portrait{display:none;} .hero-content{max-width:100%;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);} .gear-grid{grid-template-columns:1fr;}
+  #content{padding:0 1rem 2rem;} #nav{padding:0 0.8rem;overflow-x:auto;}
+  .main-stats-row{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div id="particles"></div>
+
+<nav id="nav">
+  <div class="nav-logo">Ruan Mei</div>
+  <div class="nav-tab active" onclick="switchTab('overview',this)">Overview</div>
+  <div class="nav-tab" onclick="switchTab('gear',this)">Gear Usage</div>
+  <div class="nav-tab" onclick="switchTab('meta',this)">Endgame Meta</div>
+  <div class="nav-tab" onclick="switchTab('duos',this)">Duo Synergies</div>
+</nav>
+
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-tag-row">
+      <span class="hero-tag element">Ice</span>
+      <span class="hero-tag path">Harmony</span>
+      <span class="hero-tag ver">v4.3.1 Data</span>
+    </div>
+    <div class="hero-name">Ruan Mei</div>
+    <div class="hero-sub">Genius Society #81</div>
+    <div class="hero-stats-row">
+      <!-- ══ INJECT:HERO_STATS ══
+           Format: 3–4 hero-stat blocks showing the character's key numbers.
+           Example:
+           <div class="hero-stat">
+             <span class="hero-stat-val">51,367</span>
+             <span class="hero-stat-lbl">Sampled Builds</span>
+           </div>
+      -->
+      <div class="hero-stat">
+  <span class="hero-stat-val">233,274</span>
+  <span class="hero-stat-lbl">Sampled Builds</span>
+</div>
+<div class="hero-stat">
+  <span class="hero-stat-val">185.3%</span>
+  <span class="hero-stat-lbl">Avg Break Effect</span>
+</div>
+<div class="hero-stat">
+  <span class="hero-stat-val">148.6</span>
+  <span class="hero-stat-lbl">Avg SPD</span>
+</div>
+      <!-- ══ END INJECT:HERO_STATS ══ -->
+    </div>
+  </div>
+  <div class="hero-portrait">
+    <div class="hero-portrait-fade"></div>
+    <img src="https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/8d9ba2fed6e41b3b9a0ec5708e09a873.png" alt="Ruan Mei" onerror="this.style.display='none'">
+  </div>
+</section>
+
+<div id="content">
+
+<!-- ══════════════════════════════════════
+     OVERVIEW TAB
+══════════════════════════════════════ -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="section-header">Build Statistics — 233,274 Samples · 61 Versions</div>
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-title">Core Stats (Averages)</div>
+    <div class="stat-grid">
+      <!-- ══ INJECT:STAT_CELLS ══
+           Include 2 featured cells (grid-column:span 2) for the defining stats,
+           then 6 regular stat-cell blocks for the remaining stats.
+           Featured example:
+           <div class="stat-cell featured">
+             <span class="stat-val">73.7%</span>
+             <span class="stat-lbl">CRIT Rate — Defining Stat</span>
+           </div>
+           Regular example:
+           <div class="stat-cell">
+             <span class="stat-val">2,411</span>
+             <span class="stat-lbl">Avg ATK</span>
+           </div>
+      -->
+      <div class="stat-cell featured">
+  <span class="stat-val">185.3%</span>
+  <span class="stat-lbl">Avg Break Effect — Defining Stat</span>
+</div>
+<div class="stat-cell featured">
+  <span class="stat-val">148.6</span>
+  <span class="stat-lbl">Avg SPD — Defining Stat</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">4,260</span>
+  <span class="stat-lbl">Avg HP</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">1,743</span>
+  <span class="stat-lbl">Avg ATK</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">1,627</span>
+  <span class="stat-lbl">Avg DEF</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">148.6</span>
+  <span class="stat-lbl">Avg SPD</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">11.7%</span>
+  <span class="stat-lbl">Avg EHR</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">16.8%</span>
+  <span class="stat-lbl">Avg Effect RES</span>
+</div>
+      <!-- ══ END INJECT:STAT_CELLS ══ -->
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem;">Main Stat Choices</div>
+    <div class="main-stats-row">
+      <!-- ══ INJECT:MAIN_STATS ══
+           4 main-stat-card blocks (Body, Feet, Sphere, Rope).
+           Each has main-stat-pill.dominant for the top choice, .alt for secondary.
+           Example:
+           <div class="main-stat-card">
+             <div class="main-stat-slot">Body</div>
+             <span class="main-stat-pill dominant">CRIT Rate 79.2%</span>
+             <span class="main-stat-pill alt">CRIT DMG 20.2%</span>
+           </div>
+      -->
+      <div class="main-stat-card">
+  <div class="main-stat-slot">Body</div>
+  <span class="main-stat-pill dominant">HP 59.7%</span>
+  <span class="main-stat-pill alt">DEF 29.0%</span>
+  <span class="main-stat-pill alt">ATK 6.0%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Feet</div>
+  <span class="main-stat-pill dominant">SPD 92.9%</span>
+  <span class="main-stat-pill alt">HP 4.0%</span>
+  <span class="main-stat-pill alt">DEF 2.0%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Sphere</div>
+  <span class="main-stat-pill dominant">HP 56.5%</span>
+  <span class="main-stat-pill alt">DEF 28.0%</span>
+  <span class="main-stat-pill alt">Ice DMG Boost 6.5%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Rope</div>
+  <span class="main-stat-pill dominant">Energy Regeneration Rate 84.2%</span>
+  <span class="main-stat-pill alt">Break Effect 14.4%</span>
+</div>
+      <!-- ══ END INJECT:MAIN_STATS ══ -->
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem;">Substat Distribution (Avg)</div>
+    <div>
+      <!-- ══ INJECT:SUBSTATS ══
+           substat-row blocks ordered by avg value descending.
+           Bar width = (this_val / max_val * 100)%.
+           Example:
+           <div class="substat-row">
+             <span class="substat-name">CRIT DMG sub</span>
+             <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:100%"></div></div>
+             <span class="substat-val">64.3%</span>
+           </div>
+      -->
+      <div class="substat-row">
+    <span class="substat-name">Break Effect Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:100.0%"></div></div>
+    <span class="substat-val">70.0</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Def Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:24.7%"></div></div>
+    <span class="substat-val">17.3</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Effect Res Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:22.3%"></div></div>
+    <span class="substat-val">15.6</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Atk Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:19.9%"></div></div>
+    <span class="substat-val">14.0</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Crit Dmg Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:19.7%"></div></div>
+    <span class="substat-val">13.8</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Spd Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:19.4%"></div></div>
+    <span class="substat-val">13.6</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Hp Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:18.3%"></div></div>
+    <span class="substat-val">12.8</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Effect Hit Rate Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:16.1%"></div></div>
+    <span class="substat-val">11.2</span>
+    </div>
+      <!-- ══ END INJECT:SUBSTATS ══ -->
+    </div>
+  </div>
+
+  <div class="percentile-section">
+    <!-- ══ INJECT:PERCENTILES ══
+         Two percentile-card blocks for the 2 most relevant stats.
+         Each has 5 percentile-row blocks: p5, p25, p50 (use p-val p50 class), p75, p95.
+         Example:
+         <div class="percentile-card">
+           <div class="percentile-title">CRIT Rate Spread</div>
+           <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">54.6%</span></div>
+           <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">75.4%</span></div>
+           ...
+         </div>
+    -->
+    <div class="percentile-card">
+  <div class="percentile-title">Break Effect Spread</div>
+  <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">135.6%</span></div>
+  <div class="percentile-row"><span class="p-label">p25</span><span class="p-val">166.8%</span></div>
+  <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">183.2%</span></div>
+  <div class="percentile-row"><span class="p-label">p75</span><span class="p-val">201.3%</span></div>
+  <div class="percentile-row"><span class="p-label">p95</span><span class="p-val">243.5%</span></div>
+</div>
+<div class="percentile-card">
+  <div class="percentile-title">SPD Spread</div>
+  <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">124.5</span></div>
+  <div class="percentile-row"><span class="p-label">p25</span><span class="p-val">142.3</span></div>
+  <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">148.7</span></div>
+  <div class="percentile-row"><span class="p-label">p75</span><span class="p-val">156.4</span></div>
+  <div class="percentile-row"><span class="p-label">p95</span><span class="p-val">165.6</span></div>
+</div>
+    <!-- ══ END INJECT:PERCENTILES ══ -->
+  </div>
+
+  <div class="avg-sidebar">
+    <!-- ══ INJECT:AVG_SIDEBAR ══
+         6 avg-item blocks for supplementary stats and dataset info.
+         Last 2–3 items should be: Dataset Versions, Total Samples, Latest Version.
+         Example:
+         <div class="avg-item">
+           <div class="avg-item-lbl">SPD Spread p25–p75</div>
+           <div class="avg-item-val">136.5 – 160.6</div>
+         </div>
+    -->
+    <div class="avg-item">
+  <div class="avg-item-lbl">Break Effect Spread p25–p75</div>
+  <div class="avg-item-val">166.8% – 201.3%</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">SPD Spread p25–p75</div>
+  <div class="avg-item-val">142.3 – 156.4</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">ATK Spread p25–p75</div>
+  <div class="avg-item-val">1,602 – 1,825</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Total Samples</div>
+  <div class="avg-item-val">233,274</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Dataset Versions</div>
+  <div class="avg-item-val">61</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Latest Version</div>
+  <div class="avg-item-val">4.3.1</div>
+</div>
+    <!-- ══ END INJECT:AVG_SIDEBAR ══ -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     GEAR TAB
+══════════════════════════════════════ -->
+<div id="tab-gear" class="tab-panel">
+  <div class="section-header">Gear Usage — v4.3.1</div>
+  <div class="mode-tabs-row">
+    <div class="mode-tab active" onclick="switchGearMode('MOC',this)">Memory of Chaos</div>
+    <div class="mode-tab" onclick="switchGearMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="mode-tab" onclick="switchGearMode('APOC',this)">Apoc. Shadow</div>
+    <div class="mode-tab" onclick="switchGearMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="mode-tab" onclick="switchGearMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div class="eidolon-tabs-row">
+    <div class="eidolon-tab active" onclick="switchEidolon('E0',this)">E0 — No Eidolons</div>
+    <div class="eidolon-tab" onclick="switchEidolon('E1',this)">E1</div>
+    <div class="eidolon-tab" onclick="switchEidolon('E2',this)">E2</div>
+    <div class="eidolon-tab e6" onclick="switchEidolon('E6',this)">E6 — Full Constellation</div>
+  </div>
+  <div id="gear-display" class="gear-grid"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     META TAB
+══════════════════════════════════════ -->
+<div id="tab-meta" class="tab-panel">
+  <div class="section-header">Endgame Meta — Teams &amp; Archetypes</div>
+  <div class="meta-mode-tabs">
+    <div class="meta-mode-tab active" onclick="switchMetaMode('MOC',this)">MOC</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('APOC',this)">Apoc. Shadow</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div id="meta-display"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     DUOS TAB
+══════════════════════════════════════ -->
+<div id="tab-duos" class="tab-panel">
+  <div class="section-header">Duo Synergies</div>
+  <div class="meta-mode-tabs">
+    <div class="meta-mode-tab active" onclick="switchDuoMode('MOC',this)">MOC</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('APOC',this)">Apoc. Shadow</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div id="duos-display"></div>
+</div>
+
+</div><!-- /#content -->
+
+<footer id="footer">
+  <div>Data sourced from <span>hsr-statistics-duckdb MCP server</span> &amp; <span>hsr-scanner-duckdb MCP server</span></div>
+  <div>Latest version: <span>4.3.1</span> · up_to_eidolon_level: <span>6</span></div>
+  <div style="margin-top:0.3rem;color:#2a1e50;">No parametric memory used for meta or gear content — all data extracted directly from MCP databases</div>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  DATA INJECTION ZONE
+//  Replace everything between the ══ INJECT and ══ END markers.
+//  Do NOT touch anything outside this zone.
+// ══════════════════════════════════════════════════════════════
+
+// ══ INJECT:CHAR_NAME ══
+const CHAR_NAME = "Ruan Mei";
+// ══ END INJECT:CHAR_NAME ══
+
+// ══ INJECT:ICONS ══
+// Map of character name → icon URL (u0250d CDN variant preferred).
+// Must include the main character + all teammates appearing in TEAMS/DUOS.
+const ICONS = {"Black Swan": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d9c9a9af4fc7fd748f5a0172f89bfa6d.png", "Castorice": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/0b80e2c12cbad2bc96cd8d9b6f76b95a.png", "Cerydra": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/bf3901934e9210717a46c6a69155d9a5.png", "Evernight": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4afcdb24ffbb3dd954617ba4318b0639.png", "Firefly": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/c8fdeb59e68f509309f8f01503d8dc9c.png", "Fugue": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/a9a67d50de1c8c607dd8adfa8020f431.png", "Gallagher": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/64119d5506f60fa0c93357aa07dca5dc.png", "Herta": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/9481189050eaaeac47afb4e59efb50f6.png", "Himeko": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/602f8eac54da774f163e858791eebeef.png", "Huohuo": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/a2f18e9dd74da7d5e5f3765882c43449.png", "Hyacine": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4459630552fa374281787a9e8b8153ce.png", "Ice Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0250d/271e4bd6730bbc1e22ae8ab74fc4ca4c.png", "Imaginary Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0250d/2686b718435e7ca1da748ac6756b0a5f.png", "Kafka": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/8113f2756523d9d611912456014ed8c1.png", "Lingsha": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/124b31d922cbd3312b0248892c8fc688.png", "Phainon": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/7d318b257430358b04e719a6714d86c0.png", "Rappa": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/a25174b8a06f29ad7d4fa3e9fd92018d.png", "Ruan Mei": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/8d9ba2fed6e41b3b9a0ec5708e09a873.png", "Sunday": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/25dbbbc5878d215e01fff773534ace25.png", "The Dahlia": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/7b43de0facc42d4c967b7d8773bc641f.png"};
+// ══ END INJECT:ICONS ══
+
+// ══ INJECT:GEAR ══
+// Structure: { moc, pf, apoc, anomaly } → { E0, E1, E2, E6 }
+//            → { Relics, Planar_Set, Lightcones }
+//            → [ { name, rate (0–1 decimal), score } ]
+// rate is a decimal (0.847 = 84.7%). score unit depends on mode.
+const GEAR = {"ANOMALY_F0": {"E0": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.4273, "score": 3.06}, {"name": "Memories of the Past", "rate": 0.4025, "score": 3.36}, {"name": "Dance! Dance! Dance!", "rate": 0.1013, "score": 2.92}, {"name": "Meshing Cogs", "rate": 0.0257, "score": 3.15}, {"name": "In Pursuit of the Wind", "rate": 0.0171, "score": 1.84}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.4875, "score": 2.94}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1747, "score": 3.57}, {"name": "Broken Keel", "rate": 0.0906, "score": 3.32}, {"name": "Lushaka, the Sunken Seas", "rate": 0.0785, "score": 2.94}, {"name": "Fleet of the Ageless", "rate": 0.0757, "score": 3.5}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.4291, "score": 3.0}, {"name": "Thief of Shooting Meteor", "rate": 0.1468, "score": 3.39}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1427, "score": 3.35}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.0833, "score": 3.32}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0437, "score": 3.26}]}, "E1": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.5466, "score": 2.36}, {"name": "Memories of the Past", "rate": 0.2682, "score": 2.71}, {"name": "Dance! Dance! Dance!", "rate": 0.0989, "score": 2.13}, {"name": "In Pursuit of the Wind", "rate": 0.0529, "score": 1.04}, {"name": "Meshing Cogs", "rate": 0.0137, "score": 2.31}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.5553, "score": 2.13}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1336, "score": 2.93}, {"name": "Lushaka, the Sunken Seas", "rate": 0.0872, "score": 2.11}, {"name": "Fleet of the Ageless", "rate": 0.0692, "score": 2.83}, {"name": "Broken Keel", "rate": 0.069, "score": 2.82}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.4677, "score": 2.21}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1463, "score": 2.48}, {"name": "Thief of Shooting Meteor", "rate": 0.1156, "score": 2.78}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.0732, "score": 2.55}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0465, "score": 2.55}]}, "E2": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.7466, "score": 2.44}, {"name": "Memories of the Past", "rate": 0.1182, "score": 3.0600000000000005}, {"name": "Dance! Dance! Dance!", "rate": 0.0815, "score": 1.95}, {"name": "In Pursuit of the Wind", "rate": 0.0367, "score": 0.74}, {"name": "Meshing Cogs", "rate": 0.0075, "score": 3.27}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.5111, "score": 2.11}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1476, "score": 3.25}, {"name": "Lushaka, the Sunken Seas", "rate": 0.1038, "score": 2.25}, {"name": "Broken Keel", "rate": 0.0801, "score": 2.89}, {"name": "Fleet of the Ageless", "rate": 0.0745, "score": 2.35}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.4932, "score": 2.23}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1499, "score": 2.22}, {"name": "Thief of Shooting Meteor", "rate": 0.1465, "score": 2.65}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.055, "score": 3.0}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0441, "score": 2.97}]}, "E6": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.8273, "score": 0.7}, {"name": "In Pursuit of the Wind", "rate": 0.0876, "score": 0.78}, {"name": "Dance! Dance! Dance!", "rate": 0.0681, "score": 0.36}, {"name": "Memories of the Past", "rate": 0.0097, "score": 2.0}, {"name": "If Time Were a Flower", "rate": 0.0024, "score": 0.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.6049, "score": 0.65}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1049, "score": 0.8100000000000002}, {"name": "Penacony, Land of the Dreams", "rate": 0.0756, "score": 0.68}, {"name": "Lushaka, the Sunken Seas", "rate": 0.0683, "score": 0.46}, {"name": "Fleet of the Ageless", "rate": 0.0659, "score": 0.67}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.5659, "score": 0.54}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1561, "score": 1.05}, {"name": "Thief of Shooting Meteor", "rate": 0.0854, "score": 0.6}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.0341, "score": 1.43}, {"name": "Iron Cavalry Against the Scourge", "rate": 0.0341, "score": 0.21}]}}, "ANOMALY_F4": {"E0": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.5325, "score": 3.9500000000000006}, {"name": "Memories of the Past", "rate": 0.2727, "score": 3.76}, {"name": "Dance! Dance! Dance!", "rate": 0.1818, "score": 3.21}, {"name": "In Pursuit of the Wind", "rate": 0.013, "score": 4.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.5147, "score": 3.89}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1765, "score": 4.5}, {"name": "Broken Keel", "rate": 0.1029, "score": 4.86}, {"name": "Lushaka, the Sunken Seas", "rate": 0.1029, "score": 2.57}, {"name": "Penacony, Land of the Dreams", "rate": 0.0735, "score": 3.4}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.4026, "score": 3.74}, {"name": "Thief of Shooting Meteor", "rate": 0.1299, "score": 4.8}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1299, "score": 3.9}, {"name": "Flex", "rate": 0.0779, "score": 2.0}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0779, "score": 3.5}]}, "E1": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.5491, "score": 2.93}, {"name": "Memories of the Past", "rate": 0.1838, "score": 3.32}, {"name": "In Pursuit of the Wind", "rate": 0.1389, "score": 1.2}, {"name": "Dance! Dance! Dance!", "rate": 0.0983, "score": 3.2}, {"name": "Dreamville Adventure", "rate": 0.0064, "score": 0.33}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.6293, "score": 2.53}, {"name": "Lushaka, the Sunken Seas", "rate": 0.1056, "score": 2.8199999999999994}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1056, "score": 3.55}, {"name": "Penacony, Land of the Dreams", "rate": 0.0647, "score": 2.73}, {"name": "Broken Keel", "rate": 0.0453, "score": 3.29}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.548, "score": 2.57}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1407, "score": 2.81}, {"name": "Thief of Shooting Meteor", "rate": 0.0896, "score": 3.3600000000000003}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.0597, "score": 2.5}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0448, "score": 2.95}]}, "E2": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.7067, "score": 2.7800000000000002}, {"name": "Dance! Dance! Dance!", "rate": 0.1133, "score": 1.47}, {"name": "In Pursuit of the Wind", "rate": 0.0867, "score": 0.92}, {"name": "Memories of the Past", "rate": 0.08, "score": 3.84}, {"name": "Carve the Moon, Weave the Clouds", "rate": 0.0067, "score": 0.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.52, "score": 2.48}, {"name": "Lushaka, the Sunken Seas", "rate": 0.1933, "score": 2.0}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1133, "score": 3.06}, {"name": "Fleet of the Ageless", "rate": 0.0733, "score": 3.36}, {"name": "Penacony, Land of the Dreams", "rate": 0.0533, "score": 3.5}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.56, "score": 2.4}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1533, "score": 2.61}, {"name": "Thief of Shooting Meteor", "rate": 0.1067, "score": 3.63}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0533, "score": 2.38}, {"name": "Eagle of Twilight Line", "rate": 0.0267, "score": 1.5}]}, "E6": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.7763, "score": 1.15}, {"name": "In Pursuit of the Wind", "rate": 0.1184, "score": 0.78}, {"name": "Dance! Dance! Dance!", "rate": 0.1053, "score": 0.75}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.5658, "score": 1.07}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1447, "score": 1.82}, {"name": "Lushaka, the Sunken Seas", "rate": 0.1316, "score": 0.4}, {"name": "Broken Keel", "rate": 0.0789, "score": 0.83}, {"name": "Forge of the Kalpagni Lantern", "rate": 0.0658, "score": 0.4}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.5263, "score": 0.95}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1053, "score": 1.13}, {"name": "Iron Cavalry Against the Scourge", "rate": 0.0921, "score": 2.0}, {"name": "Thief of Shooting Meteor", "rate": 0.0658, "score": 0.2}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.0526, "score": 3.0}]}}, "APOC": {"E0": {"Lightcones": [{"name": "Memories of the Past", "rate": 0.5211, "score": 3344.42}, {"name": "Past Self in Mirror", "rate": 0.3218, "score": 3398.0099999999998}, {"name": "Meshing Cogs", "rate": 0.0856, "score": 3420.62}, {"name": "Dance! Dance! Dance!", "rate": 0.0563, "score": 3422.59}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.0058, "score": 3083.27}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.3547, "score": 3417.95}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1906, "score": 3295.6}, {"name": "Fleet of the Ageless", "rate": 0.1623, "score": 3348.6999999999994}, {"name": "Penacony, Land of the Dreams", "rate": 0.1355, "score": 3370.9300000000003}, {"name": "Broken Keel", "rate": 0.1189, "score": 3346.59}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.3319, "score": 3365.0}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.1747, "score": 3391.32}, {"name": "Thief of Shooting Meteor", "rate": 0.1596, "score": 3282.3299999999995}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1387, "score": 3405.37}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.079, "score": 3401.16}]}, "E1": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.5203, "score": 3519.28}, {"name": "Memories of the Past", "rate": 0.353, "score": 3451.49}, {"name": "Dance! Dance! Dance!", "rate": 0.0629, "score": 3561.14}, {"name": "Meshing Cogs", "rate": 0.038, "score": 3487.9}, {"name": "In Pursuit of the Wind", "rate": 0.0135, "score": 3739.3499999999995}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.4746, "score": 3544.4300000000003}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1369, "score": 3421.81}, {"name": "Penacony, Land of the Dreams", "rate": 0.1173, "score": 3468.23}, {"name": "Fleet of the Ageless", "rate": 0.1132, "score": 3449.42}, {"name": "Broken Keel", "rate": 0.0935, "score": 3455.56}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.3864, "score": 3524.77}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1476, "score": 3499.66}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.1413, "score": 3496.18}, {"name": "Thief of Shooting Meteor", "rate": 0.1218, "score": 3394.52}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0688, "score": 3496.6899999999996}]}, "E2": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.7416, "score": 3543.4599999999996}, {"name": "Memories of the Past", "rate": 0.1773, "score": 3474.18}, {"name": "Dance! Dance! Dance!", "rate": 0.0521, "score": 3608.6}, {"name": "Meshing Cogs", "rate": 0.0134, "score": 3376.67}, {"name": "In Pursuit of the Wind", "rate": 0.0113, "score": 3819.5}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.4196, "score": 3585.25}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1531, "score": 3424.8400000000006}, {"name": "Penacony, Land of the Dreams", "rate": 0.1323, "score": 3499.16}, {"name": "Fleet of the Ageless", "rate": 0.1126, "score": 3543.57}, {"name": "Broken Keel", "rate": 0.1009, "score": 3484.7900000000004}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.3901, "score": 3549.97}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1788, "score": 3559.18}, {"name": "Thief of Shooting Meteor", "rate": 0.1493, "score": 3460.59}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.1113, "score": 3481.99}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0561, "score": 3590.84}]}, "E6": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.8998, "score": 3746.66}, {"name": "Dance! Dance! Dance!", "rate": 0.037, "score": 3854.64}, {"name": "In Pursuit of the Wind", "rate": 0.032, "score": 3805.76}, {"name": "Memories of the Past", "rate": 0.0253, "score": 3593.43}, {"name": "Earthly Escapade", "rate": 0.0017, "score": 3741.5}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.5105, "score": 3777.3000000000006}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1533, "score": 3706.2800000000007}, {"name": "Penacony, Land of the Dreams", "rate": 0.091, "score": 3692.21}, {"name": "Fleet of the Ageless", "rate": 0.0876, "score": 3728.88}, {"name": "Broken Keel", "rate": 0.0725, "score": 3685.29}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.4688, "score": 3784.8999999999996}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1568, "score": 3712.17}, {"name": "Thief of Shooting Meteor", "rate": 0.1315, "score": 3710.07}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.0666, "score": 3678.44}, {"name": "Thief of Shooting Meteor, Watchmaker, Master of Dream Machinations", "rate": 0.0396, "score": 3693.1500000000005}]}}, "MOC": {"E0": {"Lightcones": [{"name": "Memories of the Past", "rate": 0.558, "score": 8.56}, {"name": "Past Self in Mirror", "rate": 0.3189, "score": 7.94}, {"name": "Meshing Cogs", "rate": 0.0715, "score": 8.06}, {"name": "Dance! Dance! Dance!", "rate": 0.0372, "score": 7.660000000000001}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.0053, "score": 9.46}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.278, "score": 7.509999999999999}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1892, "score": 9.03}, {"name": "Penacony, Land of the Dreams", "rate": 0.187, "score": 8.54}, {"name": "Fleet of the Ageless", "rate": 0.1712, "score": 8.46}, {"name": "Broken Keel", "rate": 0.149, "score": 8.53}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.2427, "score": 7.91}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.2334, "score": 8.56}, {"name": "Thief of Shooting Meteor", "rate": 0.2135, "score": 9.11}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1493, "score": 8.13}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0608, "score": 7.55}]}, "E1": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.5295, "score": 5.97}, {"name": "Memories of the Past", "rate": 0.3655, "score": 6.98}, {"name": "Dance! Dance! Dance!", "rate": 0.0483, "score": 5.38}, {"name": "Meshing Cogs", "rate": 0.0382, "score": 6.94}, {"name": "In Pursuit of the Wind", "rate": 0.0091, "score": 2.88}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.4067, "score": 5.48}, {"name": "Penacony, Land of the Dreams", "rate": 0.162, "score": 7.0}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1364, "score": 7.45}, {"name": "Fleet of the Ageless", "rate": 0.1281, "score": 6.87}, {"name": "Broken Keel", "rate": 0.1193, "score": 6.84}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.3151, "score": 5.79}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.1911, "score": 6.910000000000001}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1579, "score": 6.3}, {"name": "Thief of Shooting Meteor", "rate": 0.1506, "score": 7.44}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0631, "score": 6.1}]}, "E2": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.7618, "score": 5.2}, {"name": "Memories of the Past", "rate": 0.1824, "score": 6.79}, {"name": "Dance! Dance! Dance!", "rate": 0.031, "score": 4.14}, {"name": "Meshing Cogs", "rate": 0.0152, "score": 7.35}, {"name": "In Pursuit of the Wind", "rate": 0.008, "score": 1.6600000000000001}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.3635, "score": 4.77}, {"name": "Penacony, Land of the Dreams", "rate": 0.1742, "score": 6.09}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1556, "score": 6.369999999999999}, {"name": "Broken Keel", "rate": 0.1257, "score": 5.71}, {"name": "Fleet of the Ageless", "rate": 0.1243, "score": 5.65}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.3108, "score": 5.1}, {"name": "Messenger Traversing Hackerspace", "rate": 0.189, "score": 5.12}, {"name": "Thief of Shooting Meteor", "rate": 0.1788, "score": 6.2}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.1698, "score": 6.110000000000001}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0435, "score": 4.81}]}, "E6": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.9329, "score": 2.23}, {"name": "Memories of the Past", "rate": 0.0264, "score": 4.24}, {"name": "Dance! Dance! Dance!", "rate": 0.0193, "score": 0.83}, {"name": "In Pursuit of the Wind", "rate": 0.0168, "score": 0.81}, {"name": "Flowing Nightglow", "rate": 0.0026, "score": 0.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.4151, "score": 1.9000000000000001}, {"name": "Talia: Kingdom of Banditry", "rate": 0.2072, "score": 2.77}, {"name": "Penacony, Land of the Dreams", "rate": 0.1336, "score": 2.2}, {"name": "Fleet of the Ageless", "rate": 0.0981, "score": 2.47}, {"name": "Broken Keel", "rate": 0.0936, "score": 2.57}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.3333, "score": 1.55}, {"name": "Thief of Shooting Meteor", "rate": 0.2074, "score": 2.97}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1744, "score": 2.0}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.1195, "score": 2.73}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0375, "score": 1.67}]}}, "PURE_FICTION": {"E0": {"Lightcones": [{"name": "Memories of the Past", "rate": 0.5673, "score": 30960.22}, {"name": "Past Self in Mirror", "rate": 0.3141, "score": 32433.51}, {"name": "Meshing Cogs", "rate": 0.0704, "score": 31298.04}, {"name": "Dance! Dance! Dance!", "rate": 0.033, "score": 31748.39}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.005, "score": 28486.57}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.2636, "score": 32272.35}, {"name": "Penacony, Land of the Dreams", "rate": 0.1974, "score": 31606.21}, {"name": "Talia: Kingdom of Banditry", "rate": 0.1914, "score": 30200.149999999998}, {"name": "Fleet of the Ageless", "rate": 0.1741, "score": 31262.899999999998}, {"name": "Broken Keel", "rate": 0.1489, "score": 31538.589999999997}], "Relics": [{"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.248, "score": 31338.23}, {"name": "Thief of Shooting Meteor", "rate": 0.2298, "score": 30752.92}, {"name": "Watchmaker, Master of Dream Machinations", "rate": 0.2226, "score": 31527.569999999996}, {"name": "Messenger Traversing Hackerspace", "rate": 0.142, "score": 31953.28}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0556, "score": 31983.75}]}, "E1": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.5266, "score": 34604.25}, {"name": "Memories of the Past", "rate": 0.3712, "score": 32999.3}, {"name": "Dance! Dance! Dance!", "rate": 0.0461, "score": 34672.21}, {"name": "Meshing Cogs", "rate": 0.0384, "score": 33166.93}, {"name": "In Pursuit of the Wind", "rate": 0.0083, "score": 36748.34}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.3916, "score": 34705.26}, {"name": "Penacony, Land of the Dreams", "rate": 0.1678, "score": 33720.98}, {"name": "Talia: Kingdom of Banditry", "rate": 0.139, "score": 32514.22}, {"name": "Fleet of the Ageless", "rate": 0.1324, "score": 33589.65}, {"name": "Broken Keel", "rate": 0.1238, "score": 33889.43}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.3013, "score": 34290.38}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.1951, "score": 33693.94}, {"name": "Thief of Shooting Meteor", "rate": 0.1596, "score": 32843.1}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1561, "score": 34335.09}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.059, "score": 34088.45}]}, "E2": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.7612, "score": 35404.78}, {"name": "Memories of the Past", "rate": 0.1801, "score": 33318.42}, {"name": "Dance! Dance! Dance!", "rate": 0.0318, "score": 35409.96}, {"name": "Meshing Cogs", "rate": 0.0162, "score": 32874.52}, {"name": "In Pursuit of the Wind", "rate": 0.0078, "score": 38115.68}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.3501, "score": 35633.2}, {"name": "Penacony, Land of the Dreams", "rate": 0.1844, "score": 34844.23}, {"name": "Talia: Kingdom of Banditry", "rate": 0.157, "score": 33770.62}, {"name": "Fleet of the Ageless", "rate": 0.1284, "score": 35069.21}, {"name": "Broken Keel", "rate": 0.1209, "score": 34748.0}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.3079, "score": 35011.89}, {"name": "Thief of Shooting Meteor", "rate": 0.1865, "score": 34408.91}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1848, "score": 35795.76}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.165, "score": 34497.73}, {"name": "Messenger Traversing Hackerspace, Watchmaker, Master of Dream Machinations", "rate": 0.0427, "score": 34763.5}]}, "E6": {"Lightcones": [{"name": "Past Self in Mirror", "rate": 0.9317, "score": 38869.95}, {"name": "Memories of the Past", "rate": 0.0261, "score": 36526.0}, {"name": "Dance! Dance! Dance!", "rate": 0.0218, "score": 39818.07}, {"name": "In Pursuit of the Wind", "rate": 0.0176, "score": 40000.0}, {"name": "A Grounded Ascent", "rate": 0.0007, "score": 40000.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.3987, "score": 38886.53}, {"name": "Talia: Kingdom of Banditry", "rate": 0.2103, "score": 38566.14}, {"name": "Penacony, Land of the Dreams", "rate": 0.1447, "score": 39014.01}, {"name": "Broken Keel", "rate": 0.0995, "score": 38221.99}, {"name": "Fleet of the Ageless", "rate": 0.0939, "score": 39239.26}], "Relics": [{"name": "Watchmaker, Master of Dream Machinations", "rate": 0.3291, "score": 38889.49}, {"name": "Thief of Shooting Meteor", "rate": 0.2142, "score": 38748.39}, {"name": "Messenger Traversing Hackerspace", "rate": 0.1832, "score": 39120.53}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.1149, "score": 38450.56}, {"name": "Thief of Shooting Meteor, Watchmaker, Master of Dream Machinations", "rate": 0.0359, "score": 38670.08}]}}};
+// ══ END INJECT:GEAR ══
+
+// ══ INJECT:TEAMS ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { team: "(A, B, C, D)", appearance, score, weighted, best, samples } ]
+const TEAMS = {"ANOMALY_F0": [{"appearance": 4.75, "best": 1.96, "samples": 7234.0, "score": 3.91, "team": "(Ruan Mei, Firefly, Lingsha, Fugue)", "weighted": 2.47}, {"appearance": 6.63, "best": 0.84, "samples": 5913.0, "score": 1.05, "team": "(Ruan Mei, Firefly, Fugue, The Dahlia)", "weighted": 1.01}, {"appearance": 1.85, "best": 3.2, "samples": 2858.0, "score": 5.0, "team": "(Ruan Mei, Gallagher, Firefly, Fugue)", "weighted": 3.62}, {"appearance": 1.4, "best": 1.11, "samples": 2162.0, "score": 2.14, "team": "(Ruan Mei, Imaginary Trailblazer, Firefly, Fugue)", "weighted": 1.26}, {"appearance": 1.32, "best": 4.24, "samples": 2093.0, "score": 5.48, "team": "(Ruan Mei, Gallagher, Imaginary Trailblazer, Firefly)", "weighted": 4.42}], "ANOMALY_F4": [{"appearance": 1.85, "best": 0.38, "samples": 1265.0, "score": 1.35, "team": "(Ruan Mei, Firefly, Fugue, The Dahlia)", "weighted": 2.04}, {"appearance": 0.67, "best": 0.33, "samples": 463.0, "score": 2.05, "team": "(Ruan Mei, Imaginary Trailblazer, Firefly, The Dahlia)", "weighted": 3.21}, {"appearance": 0.15, "best": 2.0, "samples": 129.0, "score": 4.34, "team": "(Ruan Mei, Ice Trailblazer, Castorice, Hyacine)", "weighted": 4.94}, {"appearance": 0.13, "best": 2.91, "samples": 118.0, "score": 3.3, "team": "(Ruan Mei, Castorice, Hyacine, Evernight)", "weighted": 3.05}, {"appearance": 0.11, "best": 0.0, "samples": 107.0, "score": 0.89, "team": "(Ruan Mei, Sunday, Phainon, Cerydra)", "weighted": 1.04}], "APOC": [{"appearance": 12.38, "best": 3657.46, "samples": 26695.0, "score": 2846.91, "team": "(Ruan Mei, Gallagher, Imaginary Trailblazer, Firefly)", "weighted": 3446.15}, {"appearance": 6.51, "best": 3609.07, "samples": 18059.0, "score": 3247.61, "team": "(Ruan Mei, Firefly, Lingsha, Fugue)", "weighted": 3452.03}, {"appearance": 3.92, "best": 3603.96, "samples": 8188.0, "score": 2981.44, "team": "(Ruan Mei, Imaginary Trailblazer, Firefly, Lingsha)", "weighted": 3425.78}, {"appearance": 2.5, "best": 3450.02, "samples": 6855.0, "score": 2908.21, "team": "(Ruan Mei, Gallagher, Firefly, Fugue)", "weighted": 3227.11}, {"appearance": 4.85, "best": 3836.87, "samples": 5275.0, "score": 3769.47, "team": "(Ruan Mei, Firefly, Fugue, The Dahlia)", "weighted": 3767.67}], "MOC": [{"appearance": 11.62, "best": 6.25, "samples": 23367.0, "score": 9.92, "team": "(Ruan Mei, Gallagher, Imaginary Trailblazer, Firefly)", "weighted": 7.2}, {"appearance": 4.89, "best": 4.89, "samples": 11698.0, "score": 7.49, "team": "(Ruan Mei, Firefly, Lingsha, Fugue)", "weighted": 6.68}, {"appearance": 3.97, "best": 4.89, "samples": 7954.0, "score": 8.9, "team": "(Ruan Mei, Imaginary Trailblazer, Firefly, Lingsha)", "weighted": 6.58}, {"appearance": 3.06, "best": 6.2, "samples": 6725.0, "score": 7.64, "team": "(Kafka, Huohuo, Ruan Mei, Black Swan)", "weighted": 7.6}, {"appearance": 2.31, "best": 3.13, "samples": 4606.0, "score": 7.36, "team": "(Ruan Mei, Ice Trailblazer, Castorice, Hyacine)", "weighted": 6.23}], "PURE_FICTION": [{"appearance": 5.23, "best": 33302.49, "samples": 10577.0, "score": 23033.85, "team": "(Ruan Mei, Gallagher, Imaginary Trailblazer, Firefly)", "weighted": 29952.66}, {"appearance": 3.25, "best": 38462.68, "samples": 8787.0, "score": 29728.08, "team": "(Ruan Mei, Firefly, Lingsha, Fugue)", "weighted": 30949.32}, {"appearance": 3.02, "best": 38680.33, "samples": 6846.0, "score": 35253.47, "team": "(Ruan Mei, Ice Trailblazer, Castorice, Hyacine)", "weighted": 37425.02}, {"appearance": 1.86, "best": 38946.66, "samples": 5540.0, "score": 30788.15, "team": "(Kafka, Huohuo, Ruan Mei, Black Swan)", "weighted": 33608.56}, {"appearance": 2.42, "best": 38414.34, "samples": 4761.0, "score": 25623.98, "team": "(Ruan Mei, Imaginary Trailblazer, Firefly, Lingsha)", "weighted": 33265.42}]};
+// ══ END INJECT:TEAMS ══
+
+// ══ INJECT:ARCHETYPES ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { core, appearance, score, weighted, best, samples } ]
+const ARCHETYPES = {"ANOMALY_F0": [], "ANOMALY_F4": [], "APOC": [], "MOC": [], "PURE_FICTION": []};
+// ══ END INJECT:ARCHETYPES ══
+
+// ══ INJECT:DUOS ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { partner, samples, appearance, confidence (0–1), score, weighted, best } ]
+const DUOS = {"ANOMALY_F0": [{"appearance": 18.4086, "best": 1.67, "confidence": 0.4966, "partner": "Firefly", "samples": 26255.0, "score": 2.26, "weighted": 2.44}, {"appearance": 17.3543, "best": 1.22, "confidence": 0.4406, "partner": "Fugue", "samples": 24971.0, "score": 1.99, "weighted": 2.19}, {"appearance": 8.8586, "best": 2.29, "confidence": 0.1811, "partner": "Lingsha", "samples": 13256.0, "score": 3.55, "weighted": 2.77}, {"appearance": 11.712, "best": 1.65, "confidence": 0.4882, "partner": "The Dahlia", "samples": 10466.0, "score": 1.75, "weighted": 1.71}, {"appearance": 6.4486, "best": 1.81, "confidence": 0.1387, "partner": "Imaginary Trailblazer", "samples": 9589.0, "score": 2.46, "weighted": 2.8}, {"appearance": 5.8829, "best": 3.63, "confidence": 0.1173, "partner": "Gallagher", "samples": 8861.0, "score": 4.28, "weighted": 3.88}, {"appearance": 3.4314, "best": 1.63, "confidence": 0.1233, "partner": "Hyacine", "samples": 4528.0, "score": 2.45, "weighted": 2.33}, {"appearance": 2.9529, "best": 1.75, "confidence": 0.053, "partner": "Rappa", "samples": 4484.0, "score": 2.96, "weighted": 2.68}], "ANOMALY_F4": [{"appearance": 2.932, "best": 1.36, "confidence": 0.7352, "partner": "The Dahlia", "samples": 2010.0, "score": 1.91, "weighted": 2.55}, {"appearance": 1.9343, "best": 1.12, "confidence": 0.4804, "partner": "Firefly", "samples": 1857.0, "score": 2.59, "weighted": 2.53}, {"appearance": 1.5914, "best": 0.64, "confidence": 0.4183, "partner": "Fugue", "samples": 1525.0, "score": 2.38, "weighted": 2.32}, {"appearance": 0.6517, "best": 0.33, "confidence": 0.1115, "partner": "Imaginary Trailblazer", "samples": 535.0, "score": 2.77, "weighted": 3.37}, {"appearance": 0.3957, "best": 2.56, "confidence": 0.1757, "partner": "Hyacine", "samples": 408.0, "score": 3.66, "weighted": 3.9}, {"appearance": 0.3614, "best": 1.03, "confidence": 0.141, "partner": "Phainon", "samples": 362.0, "score": 1.57, "weighted": 1.72}, {"appearance": 0.3157, "best": 1.67, "confidence": 0.1214, "partner": "Ice Trailblazer", "samples": 321.0, "score": 3.33, "weighted": 3.55}, {"appearance": 0.3, "best": 3.0, "confidence": 0.1247, "partner": "Castorice", "samples": 311.0, "score": 3.93, "weighted": 3.95}], "APOC": [{"appearance": 27.7122, "best": 3637.91, "confidence": 0.4961, "partner": "Firefly", "samples": 77555.0, "score": 3439.98, "weighted": 3446.76}, {"appearance": 23.5883, "best": 3606.19, "confidence": 0.3312, "partner": "Imaginary Trailblazer", "samples": 54823.0, "score": 3349.03, "weighted": 3424.19}, {"appearance": 20.7222, "best": 3611.93, "confidence": 0.2989, "partner": "Gallagher", "samples": 52297.0, "score": 3179.58, "weighted": 3355.76}, {"appearance": 17.0892, "best": 3635.24, "confidence": 0.4145, "partner": "Fugue", "samples": 46792.0, "score": 3470.2, "weighted": 3448.11}, {"appearance": 13.7507, "best": 3596.39, "confidence": 0.2615, "partner": "Lingsha", "samples": 37823.0, "score": 3344.35, "weighted": 3429.38}, {"appearance": 6.8564, "best": 3574.07, "confidence": 0.1376, "partner": "Castorice", "samples": 16233.0, "score": 3368.34, "weighted": 3478.38}, {"appearance": 5.3885, "best": 3536.09, "confidence": 0.1075, "partner": "Ice Trailblazer", "samples": 15101.0, "score": 3365.56, "weighted": 3463.62}, {"appearance": 4.1493, "best": 3638.74, "confidence": 0.0989, "partner": "Sunday", "samples": 12677.0, "score": 3471.62, "weighted": 3531.48}], "MOC": [{"appearance": 25.31, "best": 3.1, "confidence": 0.4999, "partner": "Firefly", "samples": 61581.0, "score": 6.1, "weighted": 6.55}, {"appearance": 21.9405, "best": 3.46, "confidence": 0.3057, "partner": "Imaginary Trailblazer", "samples": 51796.0, "score": 6.24, "weighted": 6.93}, {"appearance": 16.8745, "best": 6.41, "confidence": 0.2393, "partner": "Gallagher", "samples": 43154.0, "score": 8.41, "weighted": 7.6}, {"appearance": 14.1023, "best": 2.73, "confidence": 0.4108, "partner": "Fugue", "samples": 33588.0, "score": 5.55, "weighted": 6.14}, {"appearance": 11.6967, "best": 5.06, "confidence": 0.2373, "partner": "Lingsha", "samples": 28369.0, "score": 6.98, "weighted": 6.78}, {"appearance": 8.6992, "best": 4.61, "confidence": 0.1462, "partner": "Kafka", "samples": 22047.0, "score": 7.38, "weighted": 7.53}, {"appearance": 7.8677, "best": 2.58, "confidence": 0.1179, "partner": "Black Swan", "samples": 17552.0, "score": 6.78, "weighted": 7.53}, {"appearance": 7.3038, "best": 6.14, "confidence": 0.1078, "partner": "Huohuo", "samples": 17271.0, "score": 7.92, "weighted": 8.06}], "PURE_FICTION": [{"appearance": 15.0518, "best": 34850.93, "confidence": 0.3056, "partner": "Firefly", "samples": 37700.0, "score": 30534.67, "weighted": 31235.11}, {"appearance": 13.1091, "best": 35731.34, "confidence": 0.1923, "partner": "Herta", "samples": 33904.0, "score": 31321.69, "weighted": 33356.23}, {"appearance": 13.045, "best": 36129.81, "confidence": 0.1844, "partner": "Himeko", "samples": 32919.0, "score": 31314.16, "weighted": 33108.84}, {"appearance": 14.0041, "best": 34887.23, "confidence": 0.207, "partner": "Imaginary Trailblazer", "samples": 30465.0, "score": 30212.92, "weighted": 31780.83}, {"appearance": 11.4416, "best": 32927.15, "confidence": 0.1873, "partner": "Gallagher", "samples": 30076.0, "score": 28424.83, "weighted": 29924.9}, {"appearance": 10.3831, "best": 38002.85, "confidence": 0.3112, "partner": "Fugue", "samples": 26894.0, "score": 31760.05, "weighted": 31779.78}, {"appearance": 10.1047, "best": 37839.02, "confidence": 0.2319, "partner": "Lingsha", "samples": 26517.0, "score": 31443.85, "weighted": 32337.8}, {"appearance": 7.5655, "best": 36318.64, "confidence": 0.1472, "partner": "Kafka", "samples": 23274.0, "score": 32007.53, "weighted": 33545.87}]};
+// ══ END INJECT:DUOS ══
+
+// ══════════════════════════════════════════════════════════════
+//  RENDERING ENGINE — DO NOT MODIFY
+// ══════════════════════════════════════════════════════════════
+
+let curGearMode = 'MOC', curEidolon = 'E0', curMetaMode = 'MOC', curDuoMode = 'MOC';
+
+function getIcon(n) {
+  return ICONS[n] || `https://ui-avatars.com/api/?name=${encodeURIComponent(n.slice(0,2))}&background=130f20&color=e8d44d&size=52`;
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── GEAR ──
+function switchGearMode(mode, el) {
+  curGearMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderGear();
+}
+function switchEidolon(e, el) {
+  curEidolon = e;
+  document.querySelectorAll('.eidolon-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderGear();
+}
+function gearBadge(i, rate) {
+  if (i === 0 && rate >= 0.5)  return '<span class="gear-badge badge-dom">Dominant</span>';
+  if (i === 0 && rate >= 0.25) return '<span class="gear-badge badge-sig">Signature</span>';
+  if (i === 1 && rate >= 0.15) return '<span class="gear-badge badge-alt">Alt Sig</span>';
+  return '';
+}
+function fmtScore(mode, s) {
+  return (mode === 'pf' || mode === 'apoc') ? Math.round(s).toLocaleString('en') : s.toFixed(2);
+}
+function renderGear() {
+  const ed = GEAR[curGearMode]?.[curEidolon];
+  const el = document.getElementById('gear-display');
+  if (!ed) { el.innerHTML = '<div class="no-data">No data found for this combination.</div>'; return; }
+  const cats = ['Relics', 'Planar_Set', 'Lightcones'];
+  const lbs  = { Relics: 'Cavern Relics', Planar_Set: 'Planar Ornaments', Lightcones: 'Light Cones' };
+  el.innerHTML = cats.map(cat => {
+    const top = (ed[cat] || []).slice(0, 5);
+    return `<div class="gear-category"><div class="gear-cat-title">${lbs[cat]}</div>${
+      !top.length ? '<div class="no-data" style="padding:0.5rem 0;font-size:0.75rem;">No data</div>' :
+      top.map((item, i) =>
+        `<div class="gear-row">
+          <div class="gear-name-row"><span class="gear-name">${item.name}</span>${gearBadge(i, item.rate)}</div>
+          <div class="gear-bar-row">
+            <div class="gear-bar-bg"><div class="gear-bar-fill" style="width:${Math.round(item.rate*100)}%"></div></div>
+            <span class="gear-pct">${(item.rate*100).toFixed(1)}%</span>
+          </div>
+          <div class="gear-score">Avg Score: ${fmtScore(curGearMode, item.score)}</div>
+        </div>`
+      ).join('')
+    }</div>`;
+  }).join('');
+}
+
+// ── META ──
+function switchMetaMode(mode, el) {
+  curMetaMode = mode;
+  document.querySelectorAll('#tab-meta .meta-mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderMeta();
+}
+function parseTeam(str) {
+  return str.replace(/^\(|\)$/g, '').split(', ').map(s => s.trim());
+}
+function fmtMeta(mode, s) {
+  return (mode === 'PURE_FICTION' || mode === 'APOC') ? Math.round(s).toLocaleString('en') : Number(s).toFixed(2);
+}
+function teamCard(t, mode) {
+  const members = parseTeam(t.team);
+  const icons = members.map(m =>
+    `<div class="team-icon-wrap">
+      <img class="team-icon ${m === CHAR_NAME ? 'main-slot' : ''}" src="${getIcon(m)}" alt="${m}"
+        onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2252%22 height=%2252%22><rect width=%2252%22 height=%2252%22 rx=%2226%22 fill=%22%23130f20%22/><text x=%2250%25%22 y=%2255%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 fill=%22%23e8d44d%22 font-size=%2218%22>${m[0]}</text></svg>'">
+      <div class="team-icon-name">${m}</div>
+    </div>`
+  ).join('');
+  return `<div class="team-card">
+    <span class="mode-pill">${mode.replace('_',' ')}</span>
+    <div class="team-icons-row">${icons}</div>
+    <div class="team-stats-row">
+      <div class="team-stat"><span class="team-stat-val">${t.samples.toLocaleString()}</span><span class="team-stat-lbl">Samples</span></div>
+      <div class="team-stat"><span class="team-stat-val">${t.appearance.toFixed(2)}×</span><span class="team-stat-lbl">Appearance</span></div>
+      <div class="team-stat"><span class="team-stat-val">${fmtMeta(mode,t.weighted)}</span><span class="team-stat-lbl">Avg Weighted Score</span></div>
+      <div class="team-stat"><span class="team-stat-val">${fmtMeta(mode,t.best)}</span><span class="team-stat-lbl">Best Ver.</span></div>
+    </div>
+  </div>`;
+}
+function renderMeta() {
+  const mode = curMetaMode, teams = TEAMS[mode] || [], archs = ARCHETYPES[mode] || [];
+  const el = document.getElementById('meta-display');
+  let html = `<div style="margin-bottom:0.5rem;font-size:0.72rem;color:var(--text-dim);letter-spacing:0.05em;text-transform:uppercase;">Top Teams — ${mode.replace(/_/g,' ')}</div>`;
+  html += !teams.length ? '<div class="no-data">No data found for this mode.</div>'
+    : '<div class="teams-grid">' + teams.slice(0,5).map(t => teamCard(t, mode)).join('') + '</div>';
+  html += '<div class="section-header" style="padding:1.5rem 0 0.8rem;">Archetypes</div>';
+  html += !archs.length ? '<div class="no-data">No archetype data for this mode.</div>'
+    : '<div class="arch-grid">' + archs.slice(0,8).map(a =>
+        `<div class="arch-card">
+          <div class="arch-core">${a.core}</div>
+          <div class="arch-stats">
+            <div class="arch-score">${fmtMeta(mode, a.weighted)}</div>
+            <div class="arch-samples">${a.samples.toLocaleString()} samples</div>
+          </div>
+        </div>`
+      ).join('') + '</div>';
+  el.innerHTML = html;
+}
+
+// ── DUOS ──
+function switchDuoMode(mode, el) {
+  curDuoMode = mode;
+  document.querySelectorAll('#tab-duos .meta-mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderDuos();
+}
+function renderDuos() {
+  const mode = curDuoMode, duos = DUOS[mode] || [];
+  const el = document.getElementById('duos-display');
+  if (!duos.length) { el.innerHTML = `<div class="no-data">No duo data found for ${mode.replace(/_/g,' ')}.</div>`; return; }
+  el.innerHTML = '<div class="duos-grid">' + duos.slice(0,8).map(d => {
+    const conf = Math.round(d.confidence * 100);
+    return `<div class="duo-card">
+      <span class="mode-pill">${mode.replace(/_/g,' ')}</span>
+      <div class="duo-icons-row">
+        <div class="team-icon-wrap">
+          <img class="team-icon main-slot" src="${getIcon(CHAR_NAME)}" alt="${CHAR_NAME}">
+          <div class="team-icon-name">${CHAR_NAME}</div>
+        </div>
+        <span class="duo-plus">+</span>
+        <div class="team-icon-wrap">
+          <img class="team-icon" src="${getIcon(d.partner)}" alt="${d.partner}">
+          <div class="team-icon-name">${d.partner}</div>
+        </div>
+        <div style="margin-left:0.5rem;">
+          <div class="duo-partner-name">${d.partner}</div>
+          <div style="font-size:0.65rem;color:var(--text-dim);">${d.samples.toLocaleString()} samples</div>
+        </div>
+      </div>
+      <div class="duo-stats-row">
+        <div class="duo-stat"><span class="duo-stat-val">${d.appearance.toFixed(2)}%</span><span class="duo-stat-lbl">Appearance</span></div>
+        <div class="duo-stat"><span class="duo-stat-val">${fmtMeta(mode, d.weighted)}</span><span class="duo-stat-lbl">Avg Weighted Score</span></div>
+        <div class="duo-stat"><span class="duo-stat-val">${fmtMeta(mode, d.best)}</span><span class="duo-stat-lbl">Best Ver.</span></div>
+      </div>
+      <div class="confidence-bar">
+        <div class="conf-label"><span>Co-occurrence Confidence</span><span>${conf}%</span></div>
+        <div class="conf-bg"><div class="conf-fill" style="width:${Math.min(conf,100)}%"></div></div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ── PARTICLES ──
+function initParticles() {
+  const c = document.getElementById('particles');
+  const colors = [getComputedStyle(document.documentElement).getPropertyValue('--particle1').trim(),
+                  getComputedStyle(document.documentElement).getPropertyValue('--particle2').trim()];
+  for (let i = 0; i < 28; i++) {
+    const p = document.createElement('div');
+    p.className = 'spark';
+    const sz = Math.random() * 3 + 0.8;
+    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;bottom:${Math.random()*10-5}%;background:${colors[Math.random()>0.5?0:1]};--dx:${(Math.random()-0.5)*90}px;animation-duration:${Math.random()*12+7}s;animation-delay:${Math.random()*14}s;`;
+    c.appendChild(p);
+  }
+}
+
+// ── INIT ──
+initParticles();
+renderGear();
+renderMeta();
+renderDuos();
+</script>
+</body>
+</html>

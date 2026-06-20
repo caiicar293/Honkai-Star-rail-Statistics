@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Herta — Character Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+/*
+ ╔══════════════════════════════════════════════════════════════╗
+ ║  HSR CHARACTER DASHBOARD TEMPLATE                           ║
+ ║  Injection points are marked with:           ║
+ ║  All visual logic lives here. Only inject DATA below.       ║
+ ╚══════════════════════════════════════════════════════════════╝
+ 
+ ELEMENT THEME GUIDE — replace CSS vars in :root for each character:
+   Quantum   → --c1:#8b6eff  --c2:#c8a8ff  --c3:#6040cc  --particle1:#8b6eff  --particle2:#c8a8ff
+   Ice       → --c1:#6eb4f7  --c2:#a8d4ff  --c3:#3a7acc  --particle1:#6eb4f7  --particle2:#a8d4ff
+   Fire      → --c1:#e05a30  --c2:#f5a060  --c3:#b03010  --particle1:#e05a30  --particle2:#f5a060
+   Wind      → --c1:#4ecfa0  --c2:#a0f0d0  --c3:#20a070  --particle1:#4ecfa0  --particle2:#a0f0d0
+   Lightning → --c1:#e8d44d  --c2:#c080ff  --c3:#f0e880  --particle1:#e8d44d  --particle2:#c080ff
+   Imaginary → --c1:#e8c97a  --c2:#f0dfa0  --c3:#a8883a  --particle1:#e8c97a  --particle2:#c8a060
+   Physical  → --c1:#c0cce0  --c2:#e8eef8  --c3:#8090a8  --particle1:#c0cce0  --particle2:#e8eef8
+*/
+:root {
+  /* ── INJECT ELEMENT THEME ── */
+  --c1: #6eb4f7;
+  --c2: #a8d4ff;
+  --c3: #3a7acc;
+  --particle1: #6eb4f7;
+  --particle2: #a8d4ff;
+  --glow-color: rgba(110,180,247,0.4);
+  /* ── END THEME ── */
+
+  --bg0: #08060f;
+  --bg1: #0e0b18;
+  --bg2: #130f20;
+  --bg3: #181428;
+  --bg4: #1e1930;
+  --text-bright: #f5f0ff;
+  --text-main: #c8bce8;
+  --text-muted: #7860a8;
+  --text-dim: #4a3870;
+  --gold: #e8c97a;
+  --gold2: #f0dfa0;
+  --border: rgba(var(--c1-raw, 232,212,77), 0.12);
+  --border2: rgba(var(--c1-raw, 232,212,77), 0.28);
+  /* fallback borders using c1 with opacity */
+  --border-c: color-mix(in srgb, var(--c1) 12%, transparent);
+  --border2-c: color-mix(in srgb, var(--c1) 28%, transparent);
+  --border-hover: color-mix(in srgb, var(--c1) 50%, transparent);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text-main);min-height:100vh;overflow-x:hidden;}
+
+/* ── PARTICLES ── */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.spark{position:absolute;border-radius:50%;opacity:0;animation:sparkFloat linear infinite;}
+@keyframes sparkFloat{
+  0%{transform:translateY(0) translateX(0) scale(0.2);opacity:0;}
+  15%{opacity:0.9;}
+  85%{opacity:0.3;}
+  100%{transform:translateY(-100vh) translateX(var(--dx)) scale(0.1);opacity:0;}
+}
+
+/* ── NAV ── */
+#nav{position:sticky;top:0;z-index:100;background:rgba(8,6,15,0.92);backdrop-filter:blur(18px);border-bottom:1px solid var(--border-c);display:flex;align-items:center;padding:0 2rem;}
+.nav-logo{font-family:'Cinzel',serif;font-weight:700;font-size:0.85rem;color:var(--c1);letter-spacing:0.15em;text-transform:uppercase;padding:1rem 1.5rem 1rem 0;border-right:1px solid var(--border-c);margin-right:1.5rem;white-space:nowrap;}
+.nav-tab{font-family:'Cinzel',serif;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);padding:1.1rem 1.2rem;cursor:pointer;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s;white-space:nowrap;}
+.nav-tab:hover{color:var(--text-bright);}
+.nav-tab.active{color:var(--c1);border-bottom-color:var(--c1);}
+
+/* ── HERO ── */
+#hero{position:relative;min-height:420px;display:flex;align-items:center;padding:3rem 3rem 3rem 3.5rem;overflow:hidden;background:linear-gradient(135deg,var(--bg1) 0%,var(--bg0) 60%);}
+.hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse 55% 80% at 72% 50%, color-mix(in srgb, var(--c1) 10%, transparent) 0%, color-mix(in srgb, var(--c2) 6%, transparent) 40%, transparent 70%);pointer-events:none;}
+.hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(color-mix(in srgb,var(--c1) 4%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--c2) 4%,transparent) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse 80% 100% at 50% 50%,black 30%,transparent 80%);}
+.hero-content{position:relative;z-index:2;flex:1;max-width:55%;}
+.hero-tag-row{display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;}
+.hero-tag{font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:0.2rem 0.65rem;border-radius:3px;}
+.hero-tag.element{background:color-mix(in srgb,var(--c1) 15%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 35%,transparent);}
+.hero-tag.path{background:color-mix(in srgb,var(--c2) 12%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 30%,transparent);}
+.hero-tag.ver{background:color-mix(in srgb,var(--c1) 6%,transparent);color:var(--text-muted);border:1px solid var(--border-c);}
+.hero-name{font-family:'Cinzel',serif;font-size:clamp(3rem,6vw,5rem);font-weight:900;line-height:0.9;color:var(--text-bright);letter-spacing:-0.02em;text-shadow:0 0 60px color-mix(in srgb,var(--c1) 40%,transparent),0 0 100px color-mix(in srgb,var(--c2) 20%,transparent),0 2px 4px rgba(0,0,0,0.9);margin-bottom:0.5rem;}
+.hero-sub{font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--c1);opacity:0.65;margin-bottom:1.5rem;}
+.hero-stats-row{display:flex;gap:1.5rem;flex-wrap:wrap;}
+.hero-stat{text-align:center;}
+.hero-stat-val{font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;color:var(--c2);display:block;line-height:1;}
+.hero-stat-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);display:block;margin-top:0.15rem;}
+.hero-portrait{position:absolute;right:0;bottom:0;top:0;width:45%;pointer-events:none;z-index:1;display:flex;align-items:flex-end;justify-content:flex-end;}
+.hero-portrait img{height:110%;max-height:480px;object-fit:contain;filter:drop-shadow(0 0 40px color-mix(in srgb,var(--c1) 40%,transparent)) drop-shadow(0 0 80px color-mix(in srgb,var(--c2) 20%,transparent));animation:portraitFloat 6s ease-in-out infinite;}
+@keyframes portraitFloat{0%,100%{transform:translateY(0px);}50%{transform:translateY(-12px);}}
+.hero-portrait-fade{position:absolute;inset:0;background:linear-gradient(to right,var(--bg0) 0%,transparent 35%);}
+
+/* ── CONTENT SHELL ── */
+#content{padding:0 2.5rem 3rem;max-width:1400px;margin:0 auto;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* ── CARD ── */
+.card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1.5rem;}
+.card-title{font-family:'Cinzel',serif;font-size:0.8rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--c1);margin-bottom:1.2rem;display:flex;align-items:center;gap:0.6rem;}
+.card-title::after{content:'';flex:1;height:1px;background:var(--border2-c);}
+.section-header{padding:2rem 0 1rem;font-family:'Cinzel',serif;font-size:0.75rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:1rem;}
+.section-header::before,.section-header::after{content:'';flex:1;height:1px;background:var(--border-c);}
+
+/* ── OVERVIEW ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.stat-cell{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:1rem;text-align:center;transition:border-color 0.2s;}
+.stat-cell:hover{border-color:var(--border2-c);}
+.stat-cell.featured{background:linear-gradient(135deg,color-mix(in srgb,var(--c1) 8%,transparent),color-mix(in srgb,var(--c2) 5%,transparent));border-color:color-mix(in srgb,var(--c1) 38%,transparent);grid-column:span 2;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.stat-val{font-family:'Cinzel',serif;font-size:1.6rem;font-weight:700;color:var(--text-bright);display:block;line-height:1;}
+.stat-cell.featured .stat-val{font-size:2.4rem;color:var(--c1);}
+.stat-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);display:block;margin-top:0.3rem;}
+.stat-cell.featured .stat-lbl{font-size:0.78rem;color:var(--c2);}
+
+.main-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.main-stat-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:0.9rem;}
+.main-stat-slot{font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem;}
+.main-stat-pill{display:inline-block;font-size:0.72rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:4px;margin:0.15rem 0.15rem 0 0;}
+.main-stat-pill.dominant{background:color-mix(in srgb,var(--c1) 18%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 45%,transparent);}
+.main-stat-pill.alt{background:color-mix(in srgb,var(--c2) 12%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 30%,transparent);}
+
+.substat-row{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.45rem;}
+.substat-name{font-size:0.72rem;color:var(--text-main);width:150px;flex-shrink:0;}
+.substat-bar-bg{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.substat-bar-fill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--c3),var(--c1));}
+.substat-val{font-size:0.72rem;color:var(--text-muted);width:52px;text-align:right;flex-shrink:0;}
+
+.percentile-section{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.percentile-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:1rem;}
+.percentile-title{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--c1);margin-bottom:0.8rem;}
+.percentile-row{display:flex;justify-content:space-between;align-items:center;padding:0.25rem 0;border-bottom:1px solid color-mix(in srgb,var(--c1) 7%,transparent);}
+.percentile-row:last-child{border-bottom:none;}
+.p-label{font-size:0.68rem;color:var(--text-dim);}
+.p-val{font-size:0.78rem;font-weight:700;color:var(--text-bright);}
+.p-val.p50{color:var(--c1);font-size:0.88rem;}
+.avg-sidebar{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-top:1rem;}
+.avg-item{background:var(--bg3);border:1px solid var(--border-c);border-radius:5px;padding:0.6rem 0.8rem;}
+.avg-item-lbl{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);}
+.avg-item-val{font-size:0.9rem;font-weight:700;color:var(--text-bright);}
+
+/* ── GEAR ── */
+.mode-tabs-row,.eidolon-tabs-row{display:flex;gap:0.4rem;margin-bottom:1rem;flex-wrap:wrap;}
+.mode-tab,.eidolon-tab{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:0.5rem 1rem;border:1px solid var(--border-c);border-radius:5px;background:var(--bg3);color:var(--text-muted);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.mode-tab:hover,.eidolon-tab:hover{color:var(--text-bright);border-color:var(--border2-c);}
+.mode-tab.active,.eidolon-tab.active{color:var(--c1);background:color-mix(in srgb,var(--c1) 8%,transparent);border-color:var(--c1);}
+.eidolon-tab.e6.active{color:var(--gold);background:rgba(232,201,122,0.10);border-color:var(--gold);}
+.gear-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+.gear-category{background:var(--bg2);border:1px solid var(--border-c);border-radius:7px;padding:1rem;}
+.gear-cat-title{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--c2);margin-bottom:0.8rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border-c);}
+.gear-row{margin-bottom:0.6rem;}
+.gear-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;}
+.gear-name{font-size:0.75rem;color:var(--text-bright);font-weight:600;flex:1;margin-right:0.5rem;}
+.gear-badge{font-size:0.58rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.4rem;border-radius:3px;white-space:nowrap;}
+.badge-dom{background:color-mix(in srgb,var(--c1) 22%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 50%,transparent);}
+.badge-sig{background:rgba(232,201,122,0.2);color:var(--gold);border:1px solid rgba(232,201,122,0.4);}
+.badge-alt{background:color-mix(in srgb,var(--c2) 15%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 35%,transparent);}
+.gear-bar-row{display:flex;align-items:center;gap:0.5rem;}
+.gear-bar-bg{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.gear-bar-fill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--c3),var(--c1));}
+.gear-pct{font-size:0.68rem;color:var(--text-muted);width:38px;text-align:right;flex-shrink:0;}
+.gear-score{font-size:0.65rem;color:var(--text-dim);}
+
+/* ── META / DUOS ── */
+.meta-mode-tabs{display:flex;gap:0.4rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+.meta-mode-tab{font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;padding:0.45rem 0.9rem;border:1px solid var(--border-c);border-radius:5px;background:var(--bg3);color:var(--text-muted);cursor:pointer;transition:all 0.2s;}
+.meta-mode-tab:hover{color:var(--text-bright);border-color:var(--border2-c);}
+.meta-mode-tab.active{color:var(--c1);background:color-mix(in srgb,var(--c1) 8%,transparent);border-color:var(--c1);}
+
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1rem;margin-bottom:2rem;}
+.team-card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1rem;transition:border-color 0.2s;}
+.team-card:hover{border-color:var(--border2-c);}
+.team-icons-row{display:flex;gap:0.4rem;margin-bottom:0.8rem;align-items:flex-start;flex-wrap:wrap;}
+.team-icon-wrap{position:relative;}
+.team-icon{width:52px;height:52px;border-radius:50%;border:2px solid color-mix(in srgb,var(--c1) 18%,transparent);object-fit:cover;background:var(--bg3);display:block;}
+.team-icon.main-slot{border-color:var(--c1);box-shadow:0 0 10px color-mix(in srgb,var(--c1) 50%,transparent),0 0 24px color-mix(in srgb,var(--c1) 18%,transparent);}
+.team-icon-name{font-size:0.56rem;text-align:center;color:var(--text-muted);margin-top:0.2rem;max-width:52px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.team-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0.4rem;font-size:0.68rem;}
+.team-stat{text-align:center;}
+.team-stat-val{font-weight:700;color:var(--text-bright);display:block;}
+.team-stat-lbl{color:var(--text-dim);}
+.mode-pill{display:inline-block;font-size:0.6rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.15rem 0.5rem;border-radius:3px;background:color-mix(in srgb,var(--c1) 9%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 25%,transparent);margin-bottom:0.6rem;}
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.7rem;}
+.arch-card{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:0.8rem 1rem;display:flex;align-items:center;gap:0.8rem;}
+.arch-core{font-size:0.75rem;font-weight:700;color:var(--text-bright);flex:1;}
+.arch-score{font-size:0.8rem;font-weight:700;color:var(--c1);}
+.arch-samples{font-size:0.68rem;color:var(--text-muted);}
+
+.duos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem;}
+.duo-card{background:var(--bg2);border:1px solid var(--border-c);border-radius:8px;padding:1rem;transition:border-color 0.2s;}
+.duo-card:hover{border-color:var(--border2-c);}
+.duo-icons-row{display:flex;align-items:center;gap:0.7rem;margin-bottom:0.7rem;}
+.duo-plus{font-size:1.2rem;color:var(--text-dim);font-weight:300;}
+.duo-partner-name{font-size:0.85rem;font-weight:700;color:var(--text-bright);}
+.duo-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;font-size:0.68rem;}
+.duo-stat{background:var(--bg3);border-radius:4px;padding:0.35rem 0.5rem;text-align:center;}
+.duo-stat-val{font-weight:700;color:var(--text-bright);display:block;}
+.duo-stat-lbl{color:var(--text-dim);font-size:0.6rem;}
+.confidence-bar{margin-top:0.5rem;}
+.conf-label{font-size:0.62rem;color:var(--text-muted);margin-bottom:0.2rem;display:flex;justify-content:space-between;}
+.conf-bg{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.conf-fill{height:100%;border-radius:2px;background:linear-gradient(to right,var(--c3),var(--c1));}
+
+.no-data{padding:2rem;text-align:center;color:var(--text-dim);font-style:italic;font-size:0.85rem;}
+#footer{background:var(--bg1);border-top:1px solid var(--border-c);padding:1.2rem 2.5rem;text-align:center;font-size:0.68rem;color:var(--text-dim);letter-spacing:0.05em;line-height:1.8;}
+#footer span{color:var(--text-muted);}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg0);}
+::-webkit-scrollbar-thumb{background:var(--c3);border-radius:3px;}
+
+@media(max-width:768px){
+  #hero{padding:2rem 1.5rem;} .hero-portrait{display:none;} .hero-content{max-width:100%;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);} .gear-grid{grid-template-columns:1fr;}
+  #content{padding:0 1rem 2rem;} #nav{padding:0 0.8rem;overflow-x:auto;}
+  .main-stats-row{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div id="particles"></div>
+
+<nav id="nav">
+  <div class="nav-logo">The Herta</div>
+  <div class="nav-tab active" onclick="switchTab('overview',this)">Overview</div>
+  <div class="nav-tab" onclick="switchTab('gear',this)">Gear Usage</div>
+  <div class="nav-tab" onclick="switchTab('meta',this)">Endgame Meta</div>
+  <div class="nav-tab" onclick="switchTab('duos',this)">Duo Synergies</div>
+</nav>
+
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-tag-row">
+      <span class="hero-tag element">Ice</span>
+      <span class="hero-tag path">Erudition</span>
+      <span class="hero-tag ver">v4.3.1 Data</span>
+    </div>
+    <div class="hero-name">The Herta</div>
+    <div class="hero-sub">Genius Society #83</div>
+    <div class="hero-stats-row">
+      <!-- ══ INJECT:HERO_STATS ══
+           Format: 3–4 hero-stat blocks showing the character's key numbers.
+           Example:
+           <div class="hero-stat">
+             <span class="hero-stat-val">51,367</span>
+             <span class="hero-stat-lbl">Sampled Builds</span>
+           </div>
+      -->
+      <div class="hero-stat">
+  <span class="hero-stat-val">194,582</span>
+  <span class="hero-stat-lbl">Sampled Builds</span>
+</div>
+<div class="hero-stat">
+  <span class="hero-stat-val">77.2%</span>
+  <span class="hero-stat-lbl">Avg CRIT Rate</span>
+</div>
+<div class="hero-stat">
+  <span class="hero-stat-val">143.4%</span>
+  <span class="hero-stat-lbl">Avg CRIT DMG</span>
+</div>
+      <!-- ══ END INJECT:HERO_STATS ══ -->
+    </div>
+  </div>
+  <div class="hero-portrait">
+    <div class="hero-portrait-fade"></div>
+    <img src="https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/cb19bc39920370309b3aceff744e8651.png" alt="The Herta" onerror="this.style.display='none'">
+  </div>
+</section>
+
+<div id="content">
+
+<!-- ══════════════════════════════════════
+     OVERVIEW TAB
+══════════════════════════════════════ -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="section-header">Build Statistics — 194,582 Samples · 35 Versions</div>
+  <div class="card" style="margin-bottom:1rem;">
+    <div class="card-title">Core Stats (Averages)</div>
+    <div class="stat-grid">
+      <!-- ══ INJECT:STAT_CELLS ══
+           Include 2 featured cells (grid-column:span 2) for the defining stats,
+           then 6 regular stat-cell blocks for the remaining stats.
+           Featured example:
+           <div class="stat-cell featured">
+             <span class="stat-val">73.7%</span>
+             <span class="stat-lbl">CRIT Rate — Defining Stat</span>
+           </div>
+           Regular example:
+           <div class="stat-cell">
+             <span class="stat-val">2,411</span>
+             <span class="stat-lbl">Avg ATK</span>
+           </div>
+      -->
+      <div class="stat-cell featured">
+  <span class="stat-val">77.2%</span>
+  <span class="stat-lbl">Avg CRIT Rate — Defining Stat</span>
+</div>
+<div class="stat-cell featured">
+  <span class="stat-val">143.4%</span>
+  <span class="stat-lbl">Avg CRIT DMG — Defining Stat</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">3,195</span>
+  <span class="stat-lbl">Avg ATK</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">3,123</span>
+  <span class="stat-lbl">Avg HP</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">1,075</span>
+  <span class="stat-lbl">Avg DEF</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">120.7</span>
+  <span class="stat-lbl">Avg SPD</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">56.7%</span>
+  <span class="stat-lbl">Avg Ice DMG</span>
+</div>
+<div class="stat-cell">
+  <span class="stat-val">8.4%</span>
+  <span class="stat-lbl">Avg Effect RES</span>
+</div>
+      <!-- ══ END INJECT:STAT_CELLS ══ -->
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem;">Main Stat Choices</div>
+    <div class="main-stats-row">
+      <!-- ══ INJECT:MAIN_STATS ══
+           4 main-stat-card blocks (Body, Feet, Sphere, Rope).
+           Each has main-stat-pill.dominant for the top choice, .alt for secondary.
+           Example:
+           <div class="main-stat-card">
+             <div class="main-stat-slot">Body</div>
+             <span class="main-stat-pill dominant">CRIT Rate 79.2%</span>
+             <span class="main-stat-pill alt">CRIT DMG 20.2%</span>
+           </div>
+      -->
+      <div class="main-stat-card">
+  <div class="main-stat-slot">Body</div>
+  <span class="main-stat-pill dominant">CRIT Rate 70.6%</span>
+  <span class="main-stat-pill alt">CRIT DMG 28.7%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Feet</div>
+  <span class="main-stat-pill dominant">ATK 58.9%</span>
+  <span class="main-stat-pill alt">SPD 40.5%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Sphere</div>
+  <span class="main-stat-pill dominant">Ice DMG Boost 88.3%</span>
+  <span class="main-stat-pill alt">ATK 11.3%</span>
+</div>
+<div class="main-stat-card">
+  <div class="main-stat-slot">Rope</div>
+  <span class="main-stat-pill dominant">ATK 96.2%</span>
+  <span class="main-stat-pill alt">Energy Regeneration Rate 3.1%</span>
+</div>
+      <!-- ══ END INJECT:MAIN_STATS ══ -->
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem;">Substat Distribution (Avg)</div>
+    <div>
+      <!-- ══ INJECT:SUBSTATS ══
+           substat-row blocks ordered by avg value descending.
+           Bar width = (this_val / max_val * 100)%.
+           Example:
+           <div class="substat-row">
+             <span class="substat-name">CRIT DMG sub</span>
+             <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:100%"></div></div>
+             <span class="substat-val">64.3%</span>
+           </div>
+      -->
+      <div class="substat-row">
+    <span class="substat-name">Crit Dmg Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:100.0%"></div></div>
+    <span class="substat-val">74.2</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Crit Rate Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:43.4%"></div></div>
+    <span class="substat-val">32.2</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Atk Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:21.7%"></div></div>
+    <span class="substat-val">16.1</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Break Effect Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:17.7%"></div></div>
+    <span class="substat-val">13.1</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Def Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:16.0%"></div></div>
+    <span class="substat-val">11.8</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Hp Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:13.6%"></div></div>
+    <span class="substat-val">10.1</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Effect Res Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:11.3%"></div></div>
+    <span class="substat-val">8.4</span>
+    </div>
+<div class="substat-row">
+    <span class="substat-name">Effect Hit Rate Sub</span>
+    <div class="substat-bar-bg"><div class="substat-bar-fill" style="width:11.2%"></div></div>
+    <span class="substat-val">8.3</span>
+    </div>
+      <!-- ══ END INJECT:SUBSTATS ══ -->
+    </div>
+  </div>
+
+  <div class="percentile-section">
+    <!-- ══ INJECT:PERCENTILES ══
+         Two percentile-card blocks for the 2 most relevant stats.
+         Each has 5 percentile-row blocks: p5, p25, p50 (use p-val p50 class), p75, p95.
+         Example:
+         <div class="percentile-card">
+           <div class="percentile-title">CRIT Rate Spread</div>
+           <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">54.6%</span></div>
+           <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">75.4%</span></div>
+           ...
+         </div>
+    -->
+    <div class="percentile-card">
+  <div class="percentile-title">CRIT Rate Spread</div>
+  <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">55.1%</span></div>
+  <div class="percentile-row"><span class="p-label">p25</span><span class="p-val">70.7%</span></div>
+  <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">78.5%</span></div>
+  <div class="percentile-row"><span class="p-label">p75</span><span class="p-val">85.9%</span></div>
+  <div class="percentile-row"><span class="p-label">p95</span><span class="p-val">94.7%</span></div>
+</div>
+<div class="percentile-card">
+  <div class="percentile-title">CRIT DMG Spread</div>
+  <div class="percentile-row"><span class="p-label">p5</span><span class="p-val">97.3%</span></div>
+  <div class="percentile-row"><span class="p-label">p25</span><span class="p-val">123.9%</span></div>
+  <div class="percentile-row"><span class="p-label">p50 (median)</span><span class="p-val p50">142.7%</span></div>
+  <div class="percentile-row"><span class="p-label">p75</span><span class="p-val">162.8%</span></div>
+  <div class="percentile-row"><span class="p-label">p95</span><span class="p-val">191.9%</span></div>
+</div>
+    <!-- ══ END INJECT:PERCENTILES ══ -->
+  </div>
+
+  <div class="avg-sidebar">
+    <!-- ══ INJECT:AVG_SIDEBAR ══
+         6 avg-item blocks for supplementary stats and dataset info.
+         Last 2–3 items should be: Dataset Versions, Total Samples, Latest Version.
+         Example:
+         <div class="avg-item">
+           <div class="avg-item-lbl">SPD Spread p25–p75</div>
+           <div class="avg-item-val">136.5 – 160.6</div>
+         </div>
+    -->
+    <div class="avg-item">
+  <div class="avg-item-lbl">CRIT Rate Spread p25–p75</div>
+  <div class="avg-item-val">70.7% – 85.9%</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">CRIT DMG Spread p25–p75</div>
+  <div class="avg-item-val">123.9% – 162.8%</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">ATK Spread p25–p75</div>
+  <div class="avg-item-val">2,921 – 3,439</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Total Samples</div>
+  <div class="avg-item-val">194,582</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Dataset Versions</div>
+  <div class="avg-item-val">35</div>
+</div>
+<div class="avg-item">
+  <div class="avg-item-lbl">Latest Version</div>
+  <div class="avg-item-val">4.3.1</div>
+</div>
+    <!-- ══ END INJECT:AVG_SIDEBAR ══ -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     GEAR TAB
+══════════════════════════════════════ -->
+<div id="tab-gear" class="tab-panel">
+  <div class="section-header">Gear Usage — v4.3.1</div>
+  <div class="mode-tabs-row">
+    <div class="mode-tab active" onclick="switchGearMode('MOC',this)">Memory of Chaos</div>
+    <div class="mode-tab" onclick="switchGearMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="mode-tab" onclick="switchGearMode('APOC',this)">Apoc. Shadow</div>
+    <div class="mode-tab" onclick="switchGearMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="mode-tab" onclick="switchGearMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div class="eidolon-tabs-row">
+    <div class="eidolon-tab active" onclick="switchEidolon('E0',this)">E0 — No Eidolons</div>
+    <div class="eidolon-tab" onclick="switchEidolon('E1',this)">E1</div>
+    <div class="eidolon-tab" onclick="switchEidolon('E2',this)">E2</div>
+    <div class="eidolon-tab e6" onclick="switchEidolon('E6',this)">E6 — Full Constellation</div>
+  </div>
+  <div id="gear-display" class="gear-grid"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     META TAB
+══════════════════════════════════════ -->
+<div id="tab-meta" class="tab-panel">
+  <div class="section-header">Endgame Meta — Teams &amp; Archetypes</div>
+  <div class="meta-mode-tabs">
+    <div class="meta-mode-tab active" onclick="switchMetaMode('MOC',this)">MOC</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('APOC',this)">Apoc. Shadow</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="meta-mode-tab" onclick="switchMetaMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div id="meta-display"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     DUOS TAB
+══════════════════════════════════════ -->
+<div id="tab-duos" class="tab-panel">
+  <div class="section-header">Duo Synergies</div>
+  <div class="meta-mode-tabs">
+    <div class="meta-mode-tab active" onclick="switchDuoMode('MOC',this)">MOC</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('PURE_FICTION',this)">Pure Fiction</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('APOC',this)">Apoc. Shadow</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('ANOMALY_F0',this)">Anomaly F0</div>
+    <div class="meta-mode-tab" onclick="switchDuoMode('ANOMALY_F4',this)">Anomaly F4</div>
+  </div>
+  <div id="duos-display"></div>
+</div>
+
+</div><!-- /#content -->
+
+<footer id="footer">
+  <div>Data sourced from <span>hsr-statistics-duckdb MCP server</span> &amp; <span>hsr-scanner-duckdb MCP server</span></div>
+  <div>Latest version: <span>4.3.1</span> · up_to_eidolon_level: <span>6</span></div>
+  <div style="margin-top:0.3rem;color:#2a1e50;">No parametric memory used for meta or gear content — all data extracted directly from MCP databases</div>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  DATA INJECTION ZONE
+//  Replace everything between the ══ INJECT and ══ END markers.
+//  Do NOT touch anything outside this zone.
+// ══════════════════════════════════════════════════════════════
+
+// ══ INJECT:CHAR_NAME ══
+const CHAR_NAME = "The Herta";
+// ══ END INJECT:CHAR_NAME ══
+
+// ══ INJECT:ICONS ══
+// Map of character name → icon URL (u0250d CDN variant preferred).
+// Must include the main character + all teammates appearing in TEAMS/DUOS.
+const ICONS = {"Anaxa": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/9b9330374b47f57fbe85f662b058ceb5.png", "Aventurine": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d55ee208926f730670cd241af2c1a785.png", "Dan Heng \u2022 Permansor Terrae": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d4643f6b758c03ac5bbb1c9ee28b4f4e.png", "Herta": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/9481189050eaaeac47afb4e59efb50f6.png", "Huohuo": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/a2f18e9dd74da7d5e5f3765882c43449.png", "Hyacine": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4459630552fa374281787a9e8b8153ce.png", "Ice Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0250d/271e4bd6730bbc1e22ae8ab74fc4ca4c.png", "Jade": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/2febd76f96242a3659542b4963103a7b.png", "Lingsha": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/124b31d922cbd3312b0248892c8fc688.png", "Robin": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/55afa6f201c9ff0b6cd2d4fca2c3cec0.png", "The Herta": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/cb19bc39920370309b3aceff744e8651.png", "Tribbie": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/6d4c07fa8602822f99052f797de4d017.png"};
+// ══ END INJECT:ICONS ══
+
+// ══ INJECT:GEAR ══
+// Structure: { moc, pf, apoc, anomaly } → { E0, E1, E2, E6 }
+//            → { Relics, Planar_Set, Lightcones }
+//            → [ { name, rate (0–1 decimal), score } ]
+// rate is a decimal (0.847 = 84.7%). score unit depends on mode.
+const GEAR = {"ANOMALY_F0": {"E0": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.715, "score": 3.4}, {"name": "Night on the Milky Way", "rate": 0.0789, "score": 3.74}, {"name": "Today Is Another Peaceful Day", "rate": 0.059, "score": 3.3400000000000003}, {"name": "Eternal Calculus", "rate": 0.0531, "score": 4.02}, {"name": "Geniuses\u0027 Repose", "rate": 0.0296, "score": 3.64}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8595, "score": 3.5}, {"name": "Rutilant Arena", "rate": 0.1261, "score": 3.28}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0089, "score": 3.63}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0019, "score": 4.45}, {"name": "Inert Salsotto", "rate": 0.0019, "score": 3.55}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9663, "score": 3.48}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0066, "score": 3.03}, {"name": "Poet of Mourning Collapse", "rate": 0.0062, "score": 2.97}, {"name": "Flex", "rate": 0.0029, "score": 4.06}, {"name": "Eagle of Twilight Line", "rate": 0.0021, "score": 3.67}]}, "E1": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.8174, "score": 3.35}, {"name": "Night on the Milky Way", "rate": 0.0515, "score": 3.17}, {"name": "Today Is Another Peaceful Day", "rate": 0.0353, "score": 2.7900000000000005}, {"name": "Eternal Calculus", "rate": 0.0265, "score": 3.5}, {"name": "Geniuses\u0027 Repose", "rate": 0.025, "score": 3.71}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8884, "score": 3.29}, {"name": "Rutilant Arena", "rate": 0.0938, "score": 3.54}, {"name": "Inert Salsotto", "rate": 0.0089, "score": 3.0}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0089, "score": 4.17}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9735, "score": 3.3400000000000003}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0074, "score": 3.0}, {"name": "Flex", "rate": 0.0059, "score": 2.5}, {"name": "Genius of Brilliant Stars", "rate": 0.0029, "score": 2.0}, {"name": "Hunter of Glacial Forest", "rate": 0.0015, "score": 1.0}]}, "E2": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.9448, "score": 2.4}, {"name": "Today Is Another Peaceful Day", "rate": 0.0193, "score": 2.53}, {"name": "Night on the Milky Way", "rate": 0.0175, "score": 3.4199999999999995}, {"name": "The Great Cosmic Enterprise", "rate": 0.0057, "score": 2.92}, {"name": "Eternal Calculus", "rate": 0.0048, "score": 2.91}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8012, "score": 2.43}, {"name": "Rutilant Arena", "rate": 0.1798, "score": 2.43}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0105, "score": 2.15}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0055, "score": 2.46}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0011, "score": 3.4}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9791, "score": 2.43}, {"name": "Poet of Mourning Collapse", "rate": 0.0089, "score": 2.82}, {"name": "Genius of Brilliant Stars", "rate": 0.0036, "score": 1.44}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.003, "score": 3.0}, {"name": "Hunter of Glacial Forest", "rate": 0.0011, "score": 2.2}]}, "E6": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.9957, "score": 1.46}, {"name": "The Great Cosmic Enterprise", "rate": 0.0021, "score": 0.0}, {"name": "Only Silence Remains", "rate": 0.0021, "score": 3.0}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8073, "score": 1.4800000000000002}, {"name": "Rutilant Arena", "rate": 0.1842, "score": 1.33}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0043, "score": 2.0}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0043, "score": 2.0}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9808, "score": 1.45}, {"name": "Poet of Mourning Collapse", "rate": 0.0128, "score": 2.33}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0043, "score": 0.5}, {"name": "Wavestrider Captain", "rate": 0.0021, "score": 0.0}]}}, "ANOMALY_F4": {"E0": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.8864, "score": 5.78}, {"name": "The Great Cosmic Enterprise", "rate": 0.0398, "score": 6.0}, {"name": "Night on the Milky Way", "rate": 0.0284, "score": 6.0}, {"name": "Eternal Calculus", "rate": 0.017, "score": 5.669999999999999}, {"name": "Today Is Another Peaceful Day", "rate": 0.0114, "score": 5.5}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8229, "score": 5.8}, {"name": "Rutilant Arena", "rate": 0.1714, "score": 5.8}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0057, "score": 6.0}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9771, "score": 5.78}, {"name": "Eagle of Twilight Line, Scholar Lost in Erudition", "rate": 0.0114, "score": 6.0}, {"name": "Genius of Brilliant Stars, Scholar Lost in Erudition", "rate": 0.0057, "score": 6.0}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0057, "score": 6.0}]}, "E1": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.8974, "score": 5.49}, {"name": "The Great Cosmic Enterprise", "rate": 0.0256, "score": 5.0}, {"name": "Before Dawn", "rate": 0.0256, "score": 5.0}, {"name": "Night on the Milky Way", "rate": 0.0256, "score": 6.0}, {"name": "Today Is Another Peaceful Day", "rate": 0.0256, "score": 3.0}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.85, "score": 5.38}, {"name": "Rutilant Arena", "rate": 0.1, "score": 5.5}, {"name": "The Wondrous BananAmusement Park", "rate": 0.025, "score": 6.0}, {"name": "Inert Salsotto", "rate": 0.025, "score": 6.0}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.975, "score": 5.43}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.025, "score": 5.0}]}, "E2": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.9579, "score": 4.58}, {"name": "Night on the Milky Way", "rate": 0.0156, "score": 5.54}, {"name": "Today Is Another Peaceful Day", "rate": 0.0132, "score": 4.82}, {"name": "The Great Cosmic Enterprise", "rate": 0.0072, "score": 5.33}, {"name": "Before Dawn", "rate": 0.0024, "score": 4.5}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.785, "score": 4.58}, {"name": "Rutilant Arena", "rate": 0.192, "score": 4.72}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0121, "score": 4.1}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0085, "score": 5.0}, {"name": "Inert Salsotto", "rate": 0.0024, "score": 6.0}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9784, "score": 4.62}, {"name": "Poet of Mourning Collapse", "rate": 0.0084, "score": 5.0}, {"name": "Genius of Brilliant Stars", "rate": 0.006, "score": 1.6}, {"name": "Genius of Brilliant Stars, Flex", "rate": 0.0012, "score": 4.0}, {"name": "Hunter of Glacial Forest", "rate": 0.0012, "score": 5.0}]}, "E6": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.9929, "score": 2.69}, {"name": "The Great Cosmic Enterprise", "rate": 0.0071, "score": 4.0}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.7914, "score": 2.72}, {"name": "Rutilant Arena", "rate": 0.1942, "score": 2.59}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0144, "score": 3.5}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9857, "score": 2.66}, {"name": "Poet of Mourning Collapse", "rate": 0.0143, "score": 5.5}]}}, "APOC": {"E0": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.547, "score": 3358.34}, {"name": "Today Is Another Peaceful Day", "rate": 0.1408, "score": 3391.2200000000003}, {"name": "Night on the Milky Way", "rate": 0.1044, "score": 3281.19}, {"name": "Geniuses\u0027 Repose", "rate": 0.0774, "score": 3135.62}, {"name": "Eternal Calculus", "rate": 0.0763, "score": 3116.9599999999996}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8587, "score": 3300.99}, {"name": "Rutilant Arena", "rate": 0.1199, "score": 3406.44}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0138, "score": 3260.71}, {"name": "Inert Salsotto", "rate": 0.0028, "score": 3258.77}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0015, "score": 3337.1900000000005}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9682, "score": 3311.96}, {"name": "Poet of Mourning Collapse", "rate": 0.0069, "score": 3470.36}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0053, "score": 3314.94}, {"name": "Hunter of Glacial Forest", "rate": 0.0032, "score": 3215.43}, {"name": "Flex", "rate": 0.0018, "score": 3071.28}]}, "E1": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.7541, "score": 3389.86}, {"name": "Today Is Another Peaceful Day", "rate": 0.0791, "score": 3510.48}, {"name": "Night on the Milky Way", "rate": 0.0589, "score": 3278.46}, {"name": "Geniuses\u0027 Repose", "rate": 0.0486, "score": 3349.07}, {"name": "Eternal Calculus", "rate": 0.0281, "score": 3194.3799999999997}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8485, "score": 3374.8099999999995}, {"name": "Rutilant Arena", "rate": 0.1292, "score": 3441.17}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0127, "score": 3472.9199999999996}, {"name": "Inert Salsotto", "rate": 0.0063, "score": 3061.16}, {"name": "Duran, Dynasty of Running Wolves", "rate": 0.0013, "score": 3679.25}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9745, "score": 3383.75}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0063, "score": 3322.52}, {"name": "Flex", "rate": 0.003, "score": 3422.0}, {"name": "Scholar Lost in Erudition, The Wind-Soaring Valorous", "rate": 0.002, "score": 3461.33}, {"name": "Poet of Mourning Collapse", "rate": 0.002, "score": 3447.67}]}, "E2": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.9189, "score": 3597.69}, {"name": "Today Is Another Peaceful Day", "rate": 0.0297, "score": 3634.45}, {"name": "Night on the Milky Way", "rate": 0.0207, "score": 3428.6}, {"name": "Geniuses\u0027 Repose", "rate": 0.0098, "score": 3469.6899999999996}, {"name": "Eternal Calculus", "rate": 0.007, "score": 3403.62}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8091, "score": 3589.05}, {"name": "Rutilant Arena", "rate": 0.1725, "score": 3608.3599999999997}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0107, "score": 3616.05}, {"name": "The Wondrous BananAmusement Park", "rate": 0.002, "score": 3561.68}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0018, "score": 3611.71}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9768, "score": 3591.67}, {"name": "Poet of Mourning Collapse", "rate": 0.0088, "score": 3553.28}, {"name": "Genius of Brilliant Stars", "rate": 0.0034, "score": 3787.97}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0029, "score": 3563.11}, {"name": "Hunter of Glacial Forest", "rate": 0.0017, "score": 3731.81}]}, "E6": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.9963, "score": 3706.4600000000005}, {"name": "Only Silence Remains", "rate": 0.0012, "score": 3637.0}, {"name": "Passkey", "rate": 0.0012, "score": 3868.0}, {"name": "The Great Cosmic Enterprise", "rate": 0.0012, "score": 3737.0}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8265, "score": 3700.7099999999996}, {"name": "Rutilant Arena", "rate": 0.1623, "score": 3737.72}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0037, "score": 3599.0}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0025, "score": 3887.0}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0025, "score": 3415.0}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9765, "score": 3705.75}, {"name": "Poet of Mourning Collapse", "rate": 0.0136, "score": 3633.18}, {"name": "Genius of Brilliant Stars", "rate": 0.0037, "score": 3907.0}, {"name": "Hunter of Glacial Forest", "rate": 0.0025, "score": 3951.0}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0025, "score": 3733.0}]}}, "MOC": {"E0": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.5692, "score": 7.13}, {"name": "Today Is Another Peaceful Day", "rate": 0.1431, "score": 7.45}, {"name": "Night on the Milky Way", "rate": 0.101, "score": 8.08}, {"name": "Eternal Calculus", "rate": 0.0708, "score": 8.95}, {"name": "Geniuses\u0027 Repose", "rate": 0.07, "score": 8.56}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8594, "score": 7.64}, {"name": "Rutilant Arena", "rate": 0.1204, "score": 6.84}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0131, "score": 7.779999999999999}, {"name": "Inert Salsotto", "rate": 0.0026, "score": 7.940000000000001}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0018, "score": 7.6}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.972, "score": 7.55}, {"name": "Poet of Mourning Collapse", "rate": 0.0073, "score": 6.79}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.004, "score": 7.39}, {"name": "Hunter of Glacial Forest", "rate": 0.0027, "score": 8.06}, {"name": "Genius of Brilliant Stars", "rate": 0.0015, "score": 6.51}]}, "E1": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.7711, "score": 6.68}, {"name": "Today Is Another Peaceful Day", "rate": 0.0779, "score": 6.279999999999999}, {"name": "Night on the Milky Way", "rate": 0.0515, "score": 7.59}, {"name": "Geniuses\u0027 Repose", "rate": 0.0484, "score": 7.55}, {"name": "Eternal Calculus", "rate": 0.0268, "score": 7.65}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8567, "score": 6.89}, {"name": "Rutilant Arena", "rate": 0.123, "score": 5.93}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0148, "score": 7.25}, {"name": "Inert Salsotto", "rate": 0.0038, "score": 7.45}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0007, "score": 7.0}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9821, "score": 6.779999999999999}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0041, "score": 7.580000000000001}, {"name": "Poet of Mourning Collapse", "rate": 0.0034, "score": 7.7}, {"name": "The Wind-Soaring Valorous", "rate": 0.0017, "score": 10.0}, {"name": "Genius of Brilliant Stars", "rate": 0.0014, "score": 7.25}]}, "E2": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.9231, "score": 4.57}, {"name": "Today Is Another Peaceful Day", "rate": 0.0311, "score": 4.18}, {"name": "Night on the Milky Way", "rate": 0.0193, "score": 6.4}, {"name": "Geniuses\u0027 Repose", "rate": 0.0098, "score": 6.99}, {"name": "Eternal Calculus", "rate": 0.0057, "score": 6.1899999999999995}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8109, "score": 4.68}, {"name": "Rutilant Arena", "rate": 0.17, "score": 4.38}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0106, "score": 4.33}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0023, "score": 5.76}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0022, "score": 4.5}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9794, "score": 4.64}, {"name": "Poet of Mourning Collapse", "rate": 0.0097, "score": 4.59}, {"name": "Genius of Brilliant Stars", "rate": 0.0029, "score": 2.44}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0017, "score": 3.56}, {"name": "Hunter of Glacial Forest", "rate": 0.0016, "score": 1.87}]}, "E6": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.9952, "score": 2.66}, {"name": "The Great Cosmic Enterprise", "rate": 0.0024, "score": 5.5}, {"name": "Life Should Be Cast to Flames", "rate": 0.0012, "score": 0.0}, {"name": "Only Silence Remains", "rate": 0.0012, "score": 6.0}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8331, "score": 2.74}, {"name": "Rutilant Arena", "rate": 0.1548, "score": 2.34}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0036, "score": 0.0}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0036, "score": 2.67}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0024, "score": 6.5}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9855, "score": 2.68}, {"name": "Poet of Mourning Collapse", "rate": 0.0109, "score": 2.78}, {"name": "Genius of Brilliant Stars", "rate": 0.0024, "score": 0.0}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0012, "score": 6.0}]}}, "PURE_FICTION": {"E0": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.5429, "score": 35779.62}, {"name": "Today Is Another Peaceful Day", "rate": 0.1368, "score": 35092.67}, {"name": "Night on the Milky Way", "rate": 0.1065, "score": 34062.39}, {"name": "Eternal Calculus", "rate": 0.0819, "score": 32530.17}, {"name": "Geniuses\u0027 Repose", "rate": 0.0753, "score": 33235.78}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.863, "score": 34809.52}, {"name": "Rutilant Arena", "rate": 0.1166, "score": 35860.41}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0135, "score": 34722.31}, {"name": "Inert Salsotto", "rate": 0.0025, "score": 34549.94}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0015, "score": 36000.85}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9639, "score": 34932.24}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0074, "score": 34519.92}, {"name": "Poet of Mourning Collapse", "rate": 0.0061, "score": 36169.65}, {"name": "Flex", "rate": 0.0034, "score": 34156.38}, {"name": "Hunter of Glacial Forest", "rate": 0.003, "score": 33679.59}]}, "E1": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.7459, "score": 36642.79}, {"name": "Today Is Another Peaceful Day", "rate": 0.0788, "score": 36411.32}, {"name": "Night on the Milky Way", "rate": 0.0626, "score": 35256.14}, {"name": "Geniuses\u0027 Repose", "rate": 0.0505, "score": 34713.45}, {"name": "Eternal Calculus", "rate": 0.0331, "score": 33245.64}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8552, "score": 36288.35}, {"name": "Rutilant Arena", "rate": 0.1243, "score": 36707.79}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0124, "score": 36646.9}, {"name": "Inert Salsotto", "rate": 0.0056, "score": 35961.54}, {"name": "Space Sealing Station", "rate": 0.0006, "score": 38880.0}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9735, "score": 36366.38}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0089, "score": 34068.57}, {"name": "Flex", "rate": 0.0025, "score": 29203.33}, {"name": "Hunter of Glacial Forest", "rate": 0.0021, "score": 34520.0}, {"name": "The Wind-Soaring Valorous, Flex", "rate": 0.0013, "score": 21066.67}]}, "E2": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.9204, "score": 39417.48}, {"name": "Today Is Another Peaceful Day", "rate": 0.029, "score": 38507.12}, {"name": "Night on the Milky Way", "rate": 0.0209, "score": 38132.66}, {"name": "Geniuses\u0027 Repose", "rate": 0.0102, "score": 37545.0}, {"name": "Eternal Calculus", "rate": 0.0075, "score": 38629.09}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8083, "score": 39329.6}, {"name": "Rutilant Arena", "rate": 0.1721, "score": 39371.99}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.012, "score": 39660.88}, {"name": "Firmament Frontline: Glamoth", "rate": 0.0023, "score": 38466.67}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0019, "score": 39550.4}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9778, "score": 39339.36}, {"name": "Poet of Mourning Collapse", "rate": 0.0094, "score": 38844.48}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0029, "score": 39372.63}, {"name": "Genius of Brilliant Stars", "rate": 0.0028, "score": 39597.84}, {"name": "Hunter of Glacial Forest", "rate": 0.0012, "score": 39780.0}]}, "E6": {"Lightcones": [{"name": "Into the Unreachable Veil", "rate": 0.998, "score": 39846.85}, {"name": "Only Silence Remains", "rate": 0.001, "score": 40000.0}, {"name": "The Great Cosmic Enterprise", "rate": 0.001, "score": 40000.0}], "Planar_Set": [{"name": "Izumo Gensei \u0026 Takama Divine Realm", "rate": 0.8315, "score": 39819.98}, {"name": "Rutilant Arena", "rate": 0.1616, "score": 40000.0}, {"name": "The Wondrous BananAmusement Park", "rate": 0.0029, "score": 38773.33}, {"name": "Sigonia, the Unclaimed Desolation", "rate": 0.0029, "score": 40000.0}, {"name": "Firmament Frontline: Glamoth", "rate": 0.001, "score": 40000.0}], "Relics": [{"name": "Scholar Lost in Erudition", "rate": 0.9756, "score": 39843.32}, {"name": "Poet of Mourning Collapse", "rate": 0.0107, "score": 40000.0}, {"name": "Genius of Brilliant Stars", "rate": 0.0049, "score": 40000.0}, {"name": "Hunter of Glacial Forest", "rate": 0.0049, "score": 40000.0}, {"name": "Scholar Lost in Erudition, Flex", "rate": 0.0039, "score": 40000.0}]}}};
+// ══ END INJECT:GEAR ══
+
+// ══ INJECT:TEAMS ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { team: "(A, B, C, D)", appearance, score, weighted, best, samples } ]
+const TEAMS = {"ANOMALY_F0": [{"appearance": 1.68, "best": 1.54, "samples": 2198.0, "score": 3.04, "team": "(The Herta, Tribbie, Anaxa, Dan Heng \u2022 Permansor Terrae)", "weighted": 2.83}, {"appearance": 1.07, "best": 2.09, "samples": 1493.0, "score": 3.76, "team": "(Aventurine, The Herta, Tribbie, Anaxa)", "weighted": 3.03}, {"appearance": 0.85, "best": 1.56, "samples": 1121.0, "score": 2.97, "team": "(The Herta, Tribbie, Anaxa, Hyacine)", "weighted": 2.78}, {"appearance": 0.52, "best": 1.71, "samples": 749.0, "score": 3.28, "team": "(Lingsha, The Herta, Tribbie, Anaxa)", "weighted": 2.22}, {"appearance": 0.52, "best": 2.24, "samples": 696.0, "score": 3.82, "team": "(Herta, The Herta, Tribbie, Dan Heng \u2022 Permansor Terrae)", "weighted": 3.11}], "ANOMALY_F4": [{"appearance": 0.53, "best": 3.86, "samples": 560.0, "score": 4.55, "team": "(The Herta, Tribbie, Anaxa, Dan Heng \u2022 Permansor Terrae)", "weighted": 4.39}, {"appearance": 0.31, "best": 3.33, "samples": 276.0, "score": 4.1, "team": "(The Herta, Tribbie, Anaxa, Hyacine)", "weighted": 4.59}, {"appearance": 0.1, "best": 4.98, "samples": 57.0, "score": 5.02, "team": "(Aventurine, The Herta, Tribbie, Anaxa)", "weighted": 5.0}, {"appearance": 0.08, "best": 5.1, "samples": 49.0, "score": 5.49, "team": "(The Herta, Ice Trailblazer, Anaxa, Dan Heng \u2022 Permansor Terrae)", "weighted": 5.18}, {"appearance": 0.07, "best": 4.0, "samples": 42.0, "score": 4.89, "team": "(Jade, The Herta, Tribbie, Dan Heng \u2022 Permansor Terrae)", "weighted": 5.02}], "APOC": [{"appearance": 1.75, "best": 3483.77, "samples": 2777.0, "score": 3242.15, "team": "(The Herta, Tribbie, Anaxa, Dan Heng \u2022 Permansor Terrae)", "weighted": 3374.29}, {"appearance": 0.91, "best": 3626.99, "samples": 2098.0, "score": 3388.79, "team": "(The Herta, Tribbie, Anaxa, Hyacine)", "weighted": 3423.91}, {"appearance": 0.73, "best": 3600.79, "samples": 1835.0, "score": 3208.13, "team": "(Aventurine, The Herta, Tribbie, Anaxa)", "weighted": 3338.16}, {"appearance": 0.57, "best": 3587.08, "samples": 1441.0, "score": 3261.8, "team": "(Huohuo, The Herta, Tribbie, Anaxa)", "weighted": 3323.03}, {"appearance": 0.67, "best": 3408.23, "samples": 1363.0, "score": 1657.78, "team": "(Herta, Aventurine, Robin, The Herta)", "weighted": 3270.54}], "MOC": [{"appearance": 1.08, "best": 4.76, "samples": 2553.0, "score": 7.03, "team": "(Aventurine, The Herta, Tribbie, Anaxa)", "weighted": 6.61}, {"appearance": 0.97, "best": 3.14, "samples": 2135.0, "score": 6.12, "team": "(The Herta, Tribbie, Anaxa, Hyacine)", "weighted": 6.08}, {"appearance": 1.37, "best": 3.89, "samples": 2117.0, "score": 5.91, "team": "(The Herta, Tribbie, Anaxa, Dan Heng \u2022 Permansor Terrae)", "weighted": 6.08}, {"appearance": 0.68, "best": 5.71, "samples": 1348.0, "score": 7.62, "team": "(Herta, Aventurine, The Herta, Tribbie)", "weighted": 7.37}, {"appearance": 0.58, "best": 3.8, "samples": 1332.0, "score": 5.66, "team": "(Lingsha, The Herta, Tribbie, Anaxa)", "weighted": 5.84}], "PURE_FICTION": [{"appearance": 2.65, "best": 36596.76, "samples": 3707.0, "score": 33833.0, "team": "(Herta, The Herta, Tribbie, Dan Heng \u2022 Permansor Terrae)", "weighted": 33736.93}, {"appearance": 1.39, "best": 39807.25, "samples": 3699.0, "score": 35280.91, "team": "(Herta, Aventurine, The Herta, Tribbie)", "weighted": 37067.45}, {"appearance": 2.51, "best": 36304.82, "samples": 3491.0, "score": 34434.25, "team": "(The Herta, Tribbie, Anaxa, Dan Heng \u2022 Permansor Terrae)", "weighted": 34316.66}, {"appearance": 1.14, "best": 39951.3, "samples": 3065.0, "score": 35876.34, "team": "(Herta, Lingsha, The Herta, Tribbie)", "weighted": 37213.89}, {"appearance": 1.17, "best": 37330.72, "samples": 2860.0, "score": 30294.88, "team": "(Herta, Aventurine, Robin, The Herta)", "weighted": 34554.92}]};
+// ══ END INJECT:TEAMS ══
+
+// ══ INJECT:ARCHETYPES ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { core, appearance, score, weighted, best, samples } ]
+const ARCHETYPES = {"ANOMALY_F0": [{"appearance": 7.05, "best": 1.93, "core": "The Herta + Anaxa", "samples": 9689.0, "score": 3.39, "weighted": 2.89}, {"appearance": 2.39, "best": 2.46, "core": "Herta + The Herta", "samples": 3333.0, "score": 3.96, "weighted": 3.12}, {"appearance": 1.9, "best": 1.89, "core": "Jade + The Herta", "samples": 2643.0, "score": 3.42, "weighted": 2.65}, {"appearance": 0.59, "best": 2.19, "core": "Serval + The Herta", "samples": 827.0, "score": 3.83, "weighted": 3.02}, {"appearance": 0.18, "best": 2.02, "core": "Argenti + The Herta", "samples": 247.0, "score": 3.53, "weighted": 2.72}, {"appearance": 0.15, "best": 2.55, "core": "The Herta", "samples": 208.0, "score": 3.82, "weighted": 3.83}, {"appearance": 0.15, "best": 3.02, "core": "Himeko + The Herta", "samples": 152.0, "score": 4.41, "weighted": 3.23}, {"appearance": 0.03, "best": 2.0, "core": "The Herta + Evernight", "samples": 32.0, "score": 2.72, "weighted": 2.72}], "ANOMALY_F4": [{"appearance": 1.09, "best": 3.5, "core": "The Herta + Anaxa", "samples": 1144.0, "score": 4.32, "weighted": 4.46}, {"appearance": 0.13, "best": 3.5, "core": "Jade + The Herta", "samples": 118.0, "score": 5.22, "weighted": 5.06}, {"appearance": 0.09, "best": 4.5, "core": "Herta + The Herta", "samples": 82.0, "score": 5.29, "weighted": 5.36}, {"appearance": 0.05, "best": 4.0, "core": "Serval + The Herta", "samples": 35.0, "score": 4.76, "weighted": 5.2}, {"appearance": 0.03, "best": 3.86, "core": "The Herta", "samples": 9.0, "score": 4.93, "weighted": 4.34}, {"appearance": 0.01, "best": 5.0, "core": "Argenti + The Herta", "samples": 7.0, "score": 5.54, "weighted": 5.57}, {"appearance": 0.01, "best": 4.0, "core": "The Herta + Anaxa + Ashveil", "samples": 2.0, "score": 4.0, "weighted": 4.0}, {"appearance": 0.01, "best": 6.0, "core": "The Herta + Evernight", "samples": 2.0, "score": 6.0, "weighted": 6.0}], "APOC": [{"appearance": 8.25, "best": 3441.18, "core": "Herta + The Herta", "samples": 20792.0, "score": 2819.47, "weighted": 3312.69}, {"appearance": 7.11, "best": 3539.25, "core": "The Herta + Anaxa", "samples": 17900.0, "score": 3279.74, "weighted": 3340.72}, {"appearance": 5.16, "best": 3598.44, "core": "Jade + The Herta", "samples": 13064.0, "score": 3124.47, "weighted": 3455.6}, {"appearance": 1.73, "best": 3569.38, "core": "Serval + The Herta", "samples": 4208.0, "score": 3048.22, "weighted": 3431.94}, {"appearance": 0.64, "best": 3593.9, "core": "Argenti + The Herta", "samples": 1601.0, "score": 2911.15, "weighted": 3430.33}, {"appearance": 0.22, "best": 3394.5, "core": "The Herta", "samples": 594.0, "score": 2508.66, "weighted": 2891.63}, {"appearance": 0.15, "best": 3640.0, "core": "Himeko + The Herta", "samples": 357.0, "score": 2713.01, "weighted": 3034.26}, {"appearance": 0.12, "best": 3488.0, "core": "Herta + Jade + The Herta", "samples": 195.0, "score": 2343.01, "weighted": 3073.8}], "MOC": [{"appearance": 7.5, "best": 4.76, "core": "The Herta + Anaxa", "samples": 17083.0, "score": 6.39, "weighted": 6.23}, {"appearance": 7.3, "best": 6.24, "core": "Herta + The Herta", "samples": 16617.0, "score": 7.64, "weighted": 7.6}, {"appearance": 5.61, "best": 4.61, "core": "Jade + The Herta", "samples": 12797.0, "score": 6.85, "weighted": 6.65}, {"appearance": 2.39, "best": 5.35, "core": "Serval + The Herta", "samples": 5319.0, "score": 7.01, "weighted": 6.83}, {"appearance": 0.48, "best": 4.0, "core": "Argenti + The Herta", "samples": 1084.0, "score": 6.38, "weighted": 6.32}, {"appearance": 0.19, "best": 0.0, "core": "The Herta", "samples": 474.0, "score": 8.36, "weighted": 8.59}, {"appearance": 0.09, "best": 6.95, "core": "Himeko + The Herta", "samples": 199.0, "score": 9.11, "weighted": 8.19}, {"appearance": 0.08, "best": 3.0, "core": "Rappa + The Herta", "samples": 124.0, "score": 9.12, "weighted": 8.39}], "PURE_FICTION": [{"appearance": 19.6, "best": 38656.68, "core": "Herta + The Herta", "samples": 49866.0, "score": 34731.96, "weighted": 35484.67}, {"appearance": 9.92, "best": 38492.62, "core": "The Herta + Anaxa", "samples": 22953.0, "score": 34439.79, "weighted": 34554.5}, {"appearance": 8.01, "best": 39102.96, "core": "Jade + The Herta", "samples": 20504.0, "score": 35978.08, "weighted": 36784.8}, {"appearance": 1.42, "best": 37466.96, "core": "Serval + The Herta", "samples": 3457.0, "score": 33191.51, "weighted": 35298.67}, {"appearance": 0.93, "best": 38376.68, "core": "Argenti + The Herta", "samples": 2328.0, "score": 34753.08, "weighted": 35604.88}, {"appearance": 0.41, "best": 37614.59, "core": "Herta + Jade + The Herta", "samples": 1010.0, "score": 31423.43, "weighted": 34223.32}, {"appearance": 0.37, "best": 34984.49, "core": "The Herta", "samples": 951.0, "score": 31106.76, "weighted": 31553.36}, {"appearance": 0.35, "best": 35398.86, "core": "Himeko + The Herta", "samples": 831.0, "score": 30831.94, "weighted": 32265.13}]};
+// ══ END INJECT:ARCHETYPES ══
+
+// ══ INJECT:DUOS ══
+// Structure: { MOC, PURE_FICTION, APOC, ANOMALY_F0, ANOMALY_F4 }
+//            → [ { partner, samples, appearance, confidence (0–1), score, weighted, best } ]
+const DUOS = {"ANOMALY_F0": [{"appearance": 9.0757, "best": 1.88, "confidence": 0.7454, "partner": "Tribbie", "samples": 12477.0, "score": 3.29, "weighted": 2.68}, {"appearance": 7.0843, "best": 1.94, "confidence": 0.6421, "partner": "Anaxa", "samples": 9742.0, "score": 3.39, "weighted": 2.9}, {"appearance": 3.9671, "best": 2.02, "confidence": 0.386, "partner": "Dan Heng \u2022 Permansor Terrae", "samples": 5251.0, "score": 3.47, "weighted": 3.14}, {"appearance": 2.4114, "best": 2.48, "confidence": 0.1389, "partner": "Herta", "samples": 3364.0, "score": 3.96, "weighted": 3.13}, {"appearance": 2.3829, "best": 2.65, "confidence": 0.174, "partner": "Aventurine", "samples": 3351.0, "score": 3.92, "weighted": 3.25}, {"appearance": 1.9257, "best": 1.91, "confidence": 0.1413, "partner": "Jade", "samples": 2676.0, "score": 3.43, "weighted": 2.66}, {"appearance": 1.7714, "best": 1.81, "confidence": 0.1864, "partner": "Hyacine", "samples": 2369.0, "score": 3.22, "weighted": 2.93}, {"appearance": 1.4743, "best": 2.09, "confidence": 0.0676, "partner": "Lingsha", "samples": 2136.0, "score": 3.61, "weighted": 2.44}], "ANOMALY_F4": [{"appearance": 1.0943, "best": 3.62, "confidence": 0.8227, "partner": "Tribbie", "samples": 1150.0, "score": 4.52, "weighted": 4.54}, {"appearance": 1.0971, "best": 3.5, "confidence": 0.8544, "partner": "Anaxa", "samples": 1146.0, "score": 4.31, "weighted": 4.46}, {"appearance": 0.7943, "best": 4.0, "confidence": 0.6151, "partner": "Dan Heng \u2022 Permansor Terrae", "samples": 836.0, "score": 4.68, "weighted": 4.58}, {"appearance": 0.43, "best": 3.75, "confidence": 0.3058, "partner": "Hyacine", "samples": 387.0, "score": 4.41, "weighted": 4.69}, {"appearance": 0.166, "best": 0.0, "confidence": 0.097, "partner": "Ice Trailblazer", "samples": 121.0, "score": 3.18, "weighted": 4.73}, {"appearance": 0.1283, "best": 3.5, "confidence": 0.086, "partner": "Jade", "samples": 118.0, "score": 5.22, "weighted": 5.06}, {"appearance": 0.0883, "best": 4.5, "confidence": 0.0518, "partner": "Herta", "samples": 82.0, "score": 5.29, "weighted": 5.36}, {"appearance": 0.1275, "best": 5.0, "confidence": 0.0705, "partner": "Aventurine", "samples": 76.0, "score": 5.2, "weighted": 5.2}], "APOC": [{"appearance": 11.0308, "best": 3591.87, "confidence": 0.6469, "partner": "Tribbie", "samples": 28303.0, "score": 3315.45, "weighted": 3417.09}, {"appearance": 8.4462, "best": 3434.02, "confidence": 0.2335, "partner": "Herta", "samples": 21294.0, "score": 2803.12, "weighted": 3300.64}, {"appearance": 7.2036, "best": 3528.42, "confidence": 0.6238, "partner": "Anaxa", "samples": 18122.0, "score": 3269.96, "weighted": 3333.55}, {"appearance": 5.5938, "best": 3541.1, "confidence": 0.1728, "partner": "Ice Trailblazer", "samples": 14199.0, "score": 3237.68, "weighted": 3450.06}, {"appearance": 5.3246, "best": 3592.34, "confidence": 0.1601, "partner": "Jade", "samples": 13466.0, "score": 3113.66, "weighted": 3444.09}, {"appearance": 5.27, "best": 3470.53, "confidence": 0.1751, "partner": "Aventurine", "samples": 13403.0, "score": 3019.97, "weighted": 3331.4}, {"appearance": 3.5208, "best": 3417.99, "confidence": 0.1104, "partner": "Robin", "samples": 8930.0, "score": 2974.8, "weighted": 3306.18}, {"appearance": 3.3938, "best": 3591.71, "confidence": 0.1242, "partner": "Lingsha", "samples": 8815.0, "score": 3117.27, "weighted": 3415.93}], "MOC": [{"appearance": 10.4842, "best": 4.39, "confidence": 0.6545, "partner": "Tribbie", "samples": 24593.0, "score": 6.32, "weighted": 6.25}, {"appearance": 7.5791, "best": 4.8, "confidence": 0.6103, "partner": "Anaxa", "samples": 17250.0, "score": 6.4, "weighted": 6.23}, {"appearance": 7.3908, "best": 6.28, "confidence": 0.213, "partner": "Herta", "samples": 16829.0, "score": 7.66, "weighted": 7.64}, {"appearance": 6.1438, "best": 6.02, "confidence": 0.2181, "partner": "Aventurine", "samples": 14504.0, "score": 7.76, "weighted": 7.35}, {"appearance": 5.7169, "best": 4.68, "confidence": 0.1788, "partner": "Jade", "samples": 13031.0, "score": 6.89, "weighted": 6.69}, {"appearance": 5.3638, "best": 5.75, "confidence": 0.1647, "partner": "Ice Trailblazer", "samples": 12178.0, "score": 7.1, "weighted": 7.3}, {"appearance": 3.9131, "best": 4.63, "confidence": 0.1229, "partner": "Lingsha", "samples": 9080.0, "score": 6.5, "weighted": 6.38}, {"appearance": 3.9523, "best": 5.04, "confidence": 0.1087, "partner": "Robin", "samples": 8976.0, "score": 7.45, "weighted": 6.67}], "PURE_FICTION": [{"appearance": 20.5817, "best": 38494.54, "confidence": 0.4775, "partner": "Herta", "samples": 52292.0, "score": 34560.95, "weighted": 35320.75}, {"appearance": 18.4533, "best": 39662.5, "confidence": 0.5523, "partner": "Tribbie", "samples": 50180.0, "score": 36519.18, "weighted": 36509.78}, {"appearance": 10.218, "best": 38300.39, "confidence": 0.3159, "partner": "Anaxa", "samples": 23606.0, "score": 34304.1, "weighted": 34429.75}, {"appearance": 8.8842, "best": 38940.31, "confidence": 0.1896, "partner": "Ice Trailblazer", "samples": 22038.0, "score": 34795.0, "weighted": 35878.77}, {"appearance": 8.5475, "best": 38911.43, "confidence": 0.2023, "partner": "Jade", "samples": 21837.0, "score": 35754.8, "weighted": 36593.34}, {"appearance": 8.5375, "best": 38120.98, "confidence": 0.1837, "partner": "Aventurine", "samples": 21832.0, "score": 33381.07, "weighted": 35134.67}, {"appearance": 7.79, "best": 38016.31, "confidence": 0.1545, "partner": "Robin", "samples": 19309.0, "score": 32712.74, "weighted": 34826.17}, {"appearance": 7.4658, "best": 39266.85, "confidence": 0.1575, "partner": "Lingsha", "samples": 19061.0, "score": 34534.05, "weighted": 36080.94}]};
+// ══ END INJECT:DUOS ══
+
+// ══════════════════════════════════════════════════════════════
+//  RENDERING ENGINE — DO NOT MODIFY
+// ══════════════════════════════════════════════════════════════
+
+let curGearMode = 'MOC', curEidolon = 'E0', curMetaMode = 'MOC', curDuoMode = 'MOC';
+
+function getIcon(n) {
+  return ICONS[n] || `https://ui-avatars.com/api/?name=${encodeURIComponent(n.slice(0,2))}&background=130f20&color=e8d44d&size=52`;
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── GEAR ──
+function switchGearMode(mode, el) {
+  curGearMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderGear();
+}
+function switchEidolon(e, el) {
+  curEidolon = e;
+  document.querySelectorAll('.eidolon-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderGear();
+}
+function gearBadge(i, rate) {
+  if (i === 0 && rate >= 0.5)  return '<span class="gear-badge badge-dom">Dominant</span>';
+  if (i === 0 && rate >= 0.25) return '<span class="gear-badge badge-sig">Signature</span>';
+  if (i === 1 && rate >= 0.15) return '<span class="gear-badge badge-alt">Alt Sig</span>';
+  return '';
+}
+function fmtScore(mode, s) {
+  return (mode === 'pf' || mode === 'apoc') ? Math.round(s).toLocaleString('en') : s.toFixed(2);
+}
+function renderGear() {
+  const ed = GEAR[curGearMode]?.[curEidolon];
+  const el = document.getElementById('gear-display');
+  if (!ed) { el.innerHTML = '<div class="no-data">No data found for this combination.</div>'; return; }
+  const cats = ['Relics', 'Planar_Set', 'Lightcones'];
+  const lbs  = { Relics: 'Cavern Relics', Planar_Set: 'Planar Ornaments', Lightcones: 'Light Cones' };
+  el.innerHTML = cats.map(cat => {
+    const top = (ed[cat] || []).slice(0, 5);
+    return `<div class="gear-category"><div class="gear-cat-title">${lbs[cat]}</div>${
+      !top.length ? '<div class="no-data" style="padding:0.5rem 0;font-size:0.75rem;">No data</div>' :
+      top.map((item, i) =>
+        `<div class="gear-row">
+          <div class="gear-name-row"><span class="gear-name">${item.name}</span>${gearBadge(i, item.rate)}</div>
+          <div class="gear-bar-row">
+            <div class="gear-bar-bg"><div class="gear-bar-fill" style="width:${Math.round(item.rate*100)}%"></div></div>
+            <span class="gear-pct">${(item.rate*100).toFixed(1)}%</span>
+          </div>
+          <div class="gear-score">Avg Score: ${fmtScore(curGearMode, item.score)}</div>
+        </div>`
+      ).join('')
+    }</div>`;
+  }).join('');
+}
+
+// ── META ──
+function switchMetaMode(mode, el) {
+  curMetaMode = mode;
+  document.querySelectorAll('#tab-meta .meta-mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderMeta();
+}
+function parseTeam(str) {
+  return str.replace(/^\(|\)$/g, '').split(', ').map(s => s.trim());
+}
+function fmtMeta(mode, s) {
+  return (mode === 'PURE_FICTION' || mode === 'APOC') ? Math.round(s).toLocaleString('en') : Number(s).toFixed(2);
+}
+function teamCard(t, mode) {
+  const members = parseTeam(t.team);
+  const icons = members.map(m =>
+    `<div class="team-icon-wrap">
+      <img class="team-icon ${m === CHAR_NAME ? 'main-slot' : ''}" src="${getIcon(m)}" alt="${m}"
+        onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2252%22 height=%2252%22><rect width=%2252%22 height=%2252%22 rx=%2226%22 fill=%22%23130f20%22/><text x=%2250%25%22 y=%2255%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 fill=%22%23e8d44d%22 font-size=%2218%22>${m[0]}</text></svg>'">
+      <div class="team-icon-name">${m}</div>
+    </div>`
+  ).join('');
+  return `<div class="team-card">
+    <span class="mode-pill">${mode.replace('_',' ')}</span>
+    <div class="team-icons-row">${icons}</div>
+    <div class="team-stats-row">
+      <div class="team-stat"><span class="team-stat-val">${t.samples.toLocaleString()}</span><span class="team-stat-lbl">Samples</span></div>
+      <div class="team-stat"><span class="team-stat-val">${t.appearance.toFixed(2)}×</span><span class="team-stat-lbl">Appearance</span></div>
+      <div class="team-stat"><span class="team-stat-val">${fmtMeta(mode,t.weighted)}</span><span class="team-stat-lbl">Avg Weighted Score</span></div>
+      <div class="team-stat"><span class="team-stat-val">${fmtMeta(mode,t.best)}</span><span class="team-stat-lbl">Best Ver.</span></div>
+    </div>
+  </div>`;
+}
+function renderMeta() {
+  const mode = curMetaMode, teams = TEAMS[mode] || [], archs = ARCHETYPES[mode] || [];
+  const el = document.getElementById('meta-display');
+  let html = `<div style="margin-bottom:0.5rem;font-size:0.72rem;color:var(--text-dim);letter-spacing:0.05em;text-transform:uppercase;">Top Teams — ${mode.replace(/_/g,' ')}</div>`;
+  html += !teams.length ? '<div class="no-data">No data found for this mode.</div>'
+    : '<div class="teams-grid">' + teams.slice(0,5).map(t => teamCard(t, mode)).join('') + '</div>';
+  html += '<div class="section-header" style="padding:1.5rem 0 0.8rem;">Archetypes</div>';
+  html += !archs.length ? '<div class="no-data">No archetype data for this mode.</div>'
+    : '<div class="arch-grid">' + archs.slice(0,8).map(a =>
+        `<div class="arch-card">
+          <div class="arch-core">${a.core}</div>
+          <div class="arch-stats">
+            <div class="arch-score">${fmtMeta(mode, a.weighted)}</div>
+            <div class="arch-samples">${a.samples.toLocaleString()} samples</div>
+          </div>
+        </div>`
+      ).join('') + '</div>';
+  el.innerHTML = html;
+}
+
+// ── DUOS ──
+function switchDuoMode(mode, el) {
+  curDuoMode = mode;
+  document.querySelectorAll('#tab-duos .meta-mode-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderDuos();
+}
+function renderDuos() {
+  const mode = curDuoMode, duos = DUOS[mode] || [];
+  const el = document.getElementById('duos-display');
+  if (!duos.length) { el.innerHTML = `<div class="no-data">No duo data found for ${mode.replace(/_/g,' ')}.</div>`; return; }
+  el.innerHTML = '<div class="duos-grid">' + duos.slice(0,8).map(d => {
+    const conf = Math.round(d.confidence * 100);
+    return `<div class="duo-card">
+      <span class="mode-pill">${mode.replace(/_/g,' ')}</span>
+      <div class="duo-icons-row">
+        <div class="team-icon-wrap">
+          <img class="team-icon main-slot" src="${getIcon(CHAR_NAME)}" alt="${CHAR_NAME}">
+          <div class="team-icon-name">${CHAR_NAME}</div>
+        </div>
+        <span class="duo-plus">+</span>
+        <div class="team-icon-wrap">
+          <img class="team-icon" src="${getIcon(d.partner)}" alt="${d.partner}">
+          <div class="team-icon-name">${d.partner}</div>
+        </div>
+        <div style="margin-left:0.5rem;">
+          <div class="duo-partner-name">${d.partner}</div>
+          <div style="font-size:0.65rem;color:var(--text-dim);">${d.samples.toLocaleString()} samples</div>
+        </div>
+      </div>
+      <div class="duo-stats-row">
+        <div class="duo-stat"><span class="duo-stat-val">${d.appearance.toFixed(2)}%</span><span class="duo-stat-lbl">Appearance</span></div>
+        <div class="duo-stat"><span class="duo-stat-val">${fmtMeta(mode, d.weighted)}</span><span class="duo-stat-lbl">Avg Weighted Score</span></div>
+        <div class="duo-stat"><span class="duo-stat-val">${fmtMeta(mode, d.best)}</span><span class="duo-stat-lbl">Best Ver.</span></div>
+      </div>
+      <div class="confidence-bar">
+        <div class="conf-label"><span>Co-occurrence Confidence</span><span>${conf}%</span></div>
+        <div class="conf-bg"><div class="conf-fill" style="width:${Math.min(conf,100)}%"></div></div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ── PARTICLES ──
+function initParticles() {
+  const c = document.getElementById('particles');
+  const colors = [getComputedStyle(document.documentElement).getPropertyValue('--particle1').trim(),
+                  getComputedStyle(document.documentElement).getPropertyValue('--particle2').trim()];
+  for (let i = 0; i < 28; i++) {
+    const p = document.createElement('div');
+    p.className = 'spark';
+    const sz = Math.random() * 3 + 0.8;
+    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;bottom:${Math.random()*10-5}%;background:${colors[Math.random()>0.5?0:1]};--dx:${(Math.random()-0.5)*90}px;animation-duration:${Math.random()*12+7}s;animation-delay:${Math.random()*14}s;`;
+    c.appendChild(p);
+  }
+}
+
+// ── INIT ──
+initParticles();
+renderGear();
+renderMeta();
+renderDuos();
+</script>
+</body>
+</html>

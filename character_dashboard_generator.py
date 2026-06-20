@@ -111,7 +111,7 @@ class CharacterDashboard:
 
     DESIRED_MODES = ['MOC', 'PURE_FICTION', 'APOC', 'ANOMALY_F0', 'ANOMALY_F4']
 
-    def __init__(self, character_name, db_path=None, icons_path=None, custom_build_stats=None, template_dir=".", template_name="dashboard_template_python.html"):
+    def __init__(self, character_name, db_path=None, icons_path=None, custom_build_stats=None, template_dir=".", template_name="character_sheet_dashboard_template.html"):
         """
         Initializes the dashboard generator.
         

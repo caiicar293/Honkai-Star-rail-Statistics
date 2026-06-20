@@ -33,29 +33,42 @@ class CharacterDashboard:
     """
 
     TEAMS_QUERY = """
-    WITH RankedTeams AS (
+    WITH Exploded AS (
         SELECT 
-            Game_Mode, Team, 
+            Game_Mode, Team,
             Simple_Avg_Appearance AS appearance, 
             Simple_Avg_Score AS score, 
             Weighted_Avg_Score AS weighted, 
             Best_Version_Avg AS best, 
             Total_Samples AS samples,
-            ROW_NUMBER() OVER(PARTITION BY Game_Mode ORDER BY Total_Samples DESC) as rn
-        FROM 
-            team_meta_summary
-        WHERE 
-            Team LIKE ? AND at_eidolon_level = 0 AND up_to_eidolon_level = 6
+            trim(unnest(string_split(trim(Team, '()'), ','))) AS member
+        FROM team_meta_summary
+        WHERE at_eidolon_level = 0 AND up_to_eidolon_level = 6
+    ),
+    RankedTeams AS (
+        SELECT DISTINCT
+            Game_Mode, Team, appearance, score, weighted, best, samples,
+            ROW_NUMBER() OVER(PARTITION BY Game_Mode ORDER BY samples DESC) as rn
+        FROM Exploded
+        WHERE member = ?
     )
     SELECT Game_Mode, Team, appearance, score, weighted, best, samples
     FROM RankedTeams WHERE rn <= 5 ORDER BY Game_Mode, samples DESC;
     """
 
     ARCHETYPES_QUERY = """
-    SELECT Game_Mode, Archetype_Core, Simple_Avg_Appearance, Simple_Avg_Score,
+    WITH Exploded AS (
+        SELECT
+            Game_Mode, Archetype_Core, Simple_Avg_Appearance, Simple_Avg_Score,
+            Weighted_Avg_Score, Best_Version_Avg, Total_Samples,
+            trim(unnest(string_split(Archetype_Core, '+'))) AS member
+        FROM archetype_meta_summary
+        WHERE at_eidolon_level = 0 AND up_to_eidolon_level = 6
+    )
+    SELECT DISTINCT Game_Mode, Archetype_Core, Simple_Avg_Appearance, Simple_Avg_Score,
            Weighted_Avg_Score, Best_Version_Avg, Total_Samples
-    FROM archetype_meta_summary
-    WHERE Archetype_Core LIKE ? AND at_eidolon_level = 0 AND up_to_eidolon_level = 6
+    FROM Exploded
+    WHERE member = ?
     ORDER BY Game_Mode, Total_Samples DESC;
     """
 
@@ -213,7 +226,7 @@ class CharacterDashboard:
 
     def _extract_teams(self, con):
         try:
-            results = con.execute(self.TEAMS_QUERY, [f"%{self.character_name}%"]).fetchall()
+            results = con.execute(self.TEAMS_QUERY, [self.character_name]).fetchall()
             desired_order = ['MOC', 'PURE_FICTION', 'APOC', 'ANOMALY_F0', 'ANOMALY_F4']
             output = {mode: [] for mode in desired_order}
             columns = ['game_mode', 'team', 'appearance', 'score', 'weighted', 'best', 'samples']
@@ -230,7 +243,7 @@ class CharacterDashboard:
 
     def _extract_archetypes(self, con):
         try:
-            results = con.execute(self.ARCHETYPES_QUERY, [f"%{self.character_name}%"]).fetchall()
+            results = con.execute(self.ARCHETYPES_QUERY, [self.character_name]).fetchall()
             desired_order = ['MOC', 'PURE_FICTION', 'APOC', 'ANOMALY_F0', 'ANOMALY_F4']
             output = {mode: [] for mode in desired_order}
             columns = ['game_mode', 'core', 'appearance', 'score', 'weighted', 'best', 'samples']

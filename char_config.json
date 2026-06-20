@@ -1,0 +1,2959 @@
+[{
+    "character_name": "Acheron",
+    "element": "Lightning",
+    "path": "Nihility",
+    "subtitle": "Emanator of Nihility",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Castorice",
+    "element": "Quantum",
+    "path": "Rememberance",
+    "subtitle": "The Quantum Enigma",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "HP",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "CRIT Rate",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "HP",
+      "CRIT DMG",
+      "CRIT Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Firefly",
+    "element": "Fire",
+    "path": "Destruction",
+    "subtitle": "Stellaron Hunter SAM",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "SPD",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Ruan Mei",
+    "element": "Ice",
+    "path": "Harmony",
+    "subtitle": "Genius Society #81",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "SPD",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Kafka",
+    "element": "Lightning",
+    "path": "Nihility",
+    "subtitle": "Stellaron Hunter",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "Effect Hit Rate",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Effect Hit Rate",
+      "SPD",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "The Herta",
+    "element": "Ice",
+    "path": "Erudition",
+    "subtitle": "Genius Society #83",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Robin",
+    "element": "Physical",
+    "path": "Harmony",
+    "subtitle": "Halovian Singer",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "ATK",
+      "Energy Regeneration Rate"
+    ],
+    "supporting_stats": [
+      "HP",
+      "CRIT DMG",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "ATK",
+      "Energy Regeneration Rate",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Sparkle",
+    "element": "Quantum",
+    "path": "Harmony",
+    "subtitle": "Masked Fool",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "SPD",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "Energy Regeneration Rate",
+      "ATK",
+      "DEF",
+      "CRIT Rate",
+      "HP",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "CRIT DMG",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Tribbie",
+    "element": "Quantum",
+    "path": "Harmony",
+    "subtitle": "Oti Alfalfa's Associate",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "HP",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "CRIT Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "Energy Regeneration Rate",
+      "DMG Boost"
+    ],
+    "sidebar_spread_stats": [
+      "HP",
+      "CRIT DMG",
+      "CRIT Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Sunday",
+    "element": "Imaginary",
+    "path": "Harmony",
+    "subtitle": "Order's Puppet",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "CRIT DMG",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT DMG",
+      "SPD",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Hyacine",
+    "element": "Wind",
+    "path": "Rememberance",
+    "subtitle": "The Wind Enigma",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "SPD",
+      "HP"
+    ],
+    "supporting_stats": [
+      "Outgoing Healing Boost",
+      "ATK",
+      "DEF",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "HP",
+      "Outgoing Healing Boost"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Jingliu",
+    "element": "Ice",
+    "path": "Destruction",
+    "subtitle": "Transcendent Flash",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Feixiao",
+    "element": "Wind",
+    "path": "Hunt",
+    "subtitle": "Merlin's Claw",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Black Swan",
+    "element": "Wind",
+    "path": "Nihility",
+    "subtitle": "Memokeeper",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "Effect Hit Rate",
+      "ATK"
+    ],
+    "supporting_stats": [
+      "SPD",
+      "HP",
+      "DEF",
+      "DMG Boost",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Effect Hit Rate",
+      "ATK",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Silver Wolf",
+    "element": "Quantum",
+    "path": "Nihility",
+    "subtitle": "Stellaron Hunter",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "Effect Hit Rate",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DMG Boost",
+      "SPD",
+      "Effect Hit Rate",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "Effect Hit Rate",
+      "SPD",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Fu Xuan",
+    "element": "Quantum",
+    "path": "Preservation",
+    "subtitle": "Master Diviner",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "HP",
+      "DEF"
+    ],
+    "supporting_stats": [
+      "CRIT Rate",
+      "ATK",
+      "CRIT DMG",
+      "SPD",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "HP",
+      "DEF",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Aventurine",
+    "element": "Imaginary",
+    "path": "Preservation",
+    "subtitle": "IPC Strategic Investment Department",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "DEF",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "DEF",
+      "CRIT DMG",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Phainon",
+    "element": "Physical",
+    "path": "Destruction",
+    "subtitle": "World Bearer",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Seele",
+    "element": "Quantum",
+    "path": "Hunt",
+    "subtitle": "Butterfly on Sword Tip",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Evernight",
+    "element": "Ice",
+    "path": "Rememberance",
+    "subtitle": "The Ice Enigma",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "HP",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "CRIT Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "HP",
+      "CRIT DMG",
+      "CRIT Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Blade",
+    "element": "Wind",
+    "path": "Destruction",
+    "subtitle": "Stellaron Hunter",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "HP",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "CRIT Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "HP",
+      "CRIT DMG",
+      "CRIT Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Dan Heng • Imbibitor Lunae",
+    "element": "Imaginary",
+    "path": "Destruction",
+    "subtitle": "High Elder of the Vidyadhara",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Cyrene",
+    "element": "Ice",
+    "path": "Rememberance",
+    "subtitle": "The Ice Enigma",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "SPD",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "CRIT Rate",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "CRIT DMG",
+      "HP"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Jing Yuan",
+    "element": "Lightning",
+    "path": "Erudition",
+    "subtitle": "Divine Foresight",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Topaz & Numby",
+    "element": "Fire",
+    "path": "Hunt",
+    "subtitle": "IPC Senior Manager",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Fugue",
+    "element": "Fire",
+    "path": "Nihility",
+    "subtitle": "Tingyun's Return",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "SPD",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Huohuo",
+    "element": "Wind",
+    "path": "Abundance",
+    "subtitle": "Ten-Lords Commission Judge",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "Outgoing Healing Boost",
+      "HP"
+    ],
+    "supporting_stats": [
+      "Energy Regeneration Rate",
+      "DEF",
+      "SPD",
+      "ATK",
+      "Effect RES",
+      "Break Effect"
+    ],
+    "sidebar_spread_stats": [
+      "Outgoing Healing Boost",
+      "HP",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Bronya",
+    "element": "Wind",
+    "path": "Harmony",
+    "subtitle": "Supreme Guardian of Belobog",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "SPD",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "Energy Regeneration Rate",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "CRIT DMG",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Anaxa",
+    "element": "Wind",
+    "path": "Erudition",
+    "subtitle": "The Scholar",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "Energy Regeneration Rate",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Hysilens",
+    "element": "Physical",
+    "path": "Nihility",
+    "subtitle": "Daughter of the Sea",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "Effect Hit Rate",
+      "ATK"
+    ],
+    "supporting_stats": [
+      "HP",
+      "DMG Boost",
+      "DEF",
+      "SPD",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Effect Hit Rate",
+      "ATK",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Lingsha",
+    "element": "Fire",
+    "path": "Abundance",
+    "subtitle": "Cauldron Master",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "Outgoing Healing Boost"
+    ],
+    "supporting_stats": [
+      "SPD",
+      "ATK",
+      "DEF",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "Outgoing Healing Boost",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Luocha",
+    "element": "Imaginary",
+    "path": "Abundance",
+    "subtitle": "Foreign Trader",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "Outgoing Healing Boost",
+      "ATK"
+    ],
+    "supporting_stats": [
+      "HP",
+      "Energy Regeneration Rate",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Outgoing Healing Boost",
+      "ATK",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Saber",
+    "element": "Wind",
+    "path": "Destruction",
+    "subtitle": "Lartoria",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Aglaea",
+    "element": "Lightning",
+    "path": "Destruction",
+    "subtitle": "Golden Fleece",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "SPD",
+      "ATK",
+      "DEF",
+      "DMG Boost",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Dr. Ratio",
+    "element": "Imaginary",
+    "path": "Hunt",
+    "subtitle": "Intelligentsia Guild Member",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Himeko",
+    "element": "Fire",
+    "path": "Erudition",
+    "subtitle": "Navigator of the Astral Express",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Jade",
+    "element": "Quantum",
+    "path": "Erudition",
+    "subtitle": "IPC Strategic Investment Department",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Archer",
+    "element": "Quantum",
+    "path": "Hunt",
+    "subtitle": "Emiya",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Yao Guang",
+    "element": "Physical",
+    "path": "Elation",
+    "subtitle": "The Seer Strategist",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "SPD",
+      "ATK",
+      "DEF",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Mydei",
+    "element": "Imaginary",
+    "path": "Destruction",
+    "subtitle": "The Last Prince",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "HP",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "CRIT Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "HP",
+      "CRIT DMG",
+      "CRIT Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Jiaoqiu",
+    "element": "Fire",
+    "path": "Nihility",
+    "subtitle": "Healer of the Yaoqing",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "Effect Hit Rate",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DMG Boost",
+      "SPD",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Effect Hit Rate",
+      "SPD",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Silver Wolf LV.999",
+    "element": "Imaginary",
+    "path": "Elation",
+    "subtitle": "Emanator of Elation",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "SPD",
+      "CRIT Rate"
+    ],
+    "supporting_stats": [
+      "CRIT DMG",
+      "ATK",
+      "DEF",
+      "HP",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Yunli",
+    "element": "Physical",
+    "path": "Destruction",
+    "subtitle": "Flaming Heart",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Dan Heng • Permansor Terrae",
+    "element": "Physical",
+    "path": "Preservation",
+    "subtitle": "Guardian of the Earth's Coreflame",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "ATK",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "CRIT Rate",
+      "DEF",
+      "SPD",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "ATK",
+      "SPD",
+      "HP"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Boothill",
+    "element": "Physical",
+    "path": "Hunt",
+    "subtitle": "Galaxy Ranger",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "SPD",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Ice Trailblazer",
+    "element": "Ice",
+    "path": "Remembrance",
+    "subtitle": "The Trailblazer",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "CRIT DMG",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DMG Boost",
+      "CRIT Rate",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Clara",
+    "element": "Physical",
+    "path": "Destruction",
+    "subtitle": "Svarog's Family",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Rappa",
+    "element": "Imaginary",
+    "path": "Erudition",
+    "subtitle": "Galaxy Ranger",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "ATK"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "ATK",
+      "SPD" 
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Cerydra",
+    "element": "Wind",
+    "path": "Harmony",
+    "subtitle": "Imperator",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "ATK",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "SPD",
+      "CRIT DMG",
+      "DEF",
+      "HP",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "ATK",
+      "SPD",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Cipher",
+    "element": "Quantum",
+    "path": "Nihility",
+    "subtitle": "Fleet-footed Thief Star",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "SPD",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "CRIT Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "CRIT DMG",
+      "CRIT Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "The Dahlia",
+    "element": "Fire",
+    "path": "Nihility",
+    "subtitle": "Constance",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "SPD",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Argenti",
+    "element": "Physical",
+    "path": "Erudition",
+    "subtitle": "Knight of Beauty",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Sparxie",
+    "element": "Fire",
+    "path": "Elation",
+    "subtitle": "The Streamer",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "DMG Boost",
+      "DEF",
+      "SPD",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Welt",
+    "element": "Imaginary",
+    "path": "Nihility",
+    "subtitle": "Former Sovereign of Anti-Entropy",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "ATK",
+      "Effect Hit Rate"
+    ],
+    "supporting_stats": [
+      "SPD",
+      "CRIT Rate",
+      "DMG Boost",
+      "CRIT DMG",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "ATK",
+      "Effect Hit Rate",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Imaginary Trailblazer",
+    "element": "Imaginary",
+    "path": "Harmony",
+    "subtitle": "The Trailblazer",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "SPD",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Herta",
+    "element": "Ice",
+    "path": "Erudition",
+    "subtitle": "Genius Society #83",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Qingque",
+    "element": "Quantum",
+    "path": "Erudition",
+    "subtitle": "Divination Commission Slacker",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Evanescia",
+    "element": "Physical",
+    "path": "Elation",
+    "subtitle": "The Overseer of the Phantasmoon Games",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "Energy Regeneration Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Gepard",
+    "element": "Ice",
+    "path": "Preservation",
+    "subtitle": "Silvermane Guard Captain",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "DEF",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DMG Boost",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "DEF",
+      "SPD",
+      "Effect RES"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Tingyun",
+    "element": "Lightning",
+    "path": "Harmony",
+    "subtitle": "Amicassador of the Sky-Faring Commission",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "SPD",
+      "ATK"
+    ],
+    "supporting_stats": [
+      "HP",
+      "DMG Boost",
+      "DEF",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "ATK",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Imaginary March 7th",
+    "element": "Imaginary",
+    "path": "Hunt",
+    "subtitle": "Astral Express Passenger",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Gallagher",
+    "element": "Fire",
+    "path": "Abundance",
+    "subtitle": "Bloodhound Family Security Officer",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "Outgoing Healing Boost",
+      "ATK",
+      "HP",
+      "SPD",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "SPD",
+      "Outgoing Healing Boost"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Bailu",
+    "element": "Lightning",
+    "path": "Abundance",
+    "subtitle": "Healer of the Vidyadhara",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "Outgoing Healing Boost",
+      "HP"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Outgoing Healing Boost",
+      "HP",
+      "Effect RES"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Ashveil",
+    "element": "Lightning",
+    "path": "The Ashen Detective",
+    "subtitle": "The Lightning Enigma",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Yanqing",
+    "element": "Ice",
+    "path": "Hunt",
+    "subtitle": "Cloud Knight Lieutenant",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Mortenax Blade",
+    "element": "Fire",
+    "path": "Nihility",
+    "subtitle": "Stellaron Hunter",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "SPD",
+      "DMG Boost",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "HP"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Xueyi",
+    "element": "Quantum",
+    "path": "Destruction",
+    "subtitle": "Ten-Lords Commission Judge",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "CRIT Rate",
+      "ATK",
+      "DMG Boost",
+      "SPD",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "CRIT DMG",
+      "CRIT Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Dan Heng",
+    "element": "Wind",
+    "path": "Hunt",
+    "subtitle": "Astral Express Guard",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Pela",
+    "element": "Ice",
+    "path": "Nihility",
+    "subtitle": "Intelligence Officer of the Silvermane Guards",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "Effect Hit Rate",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "Energy Regeneration Rate",
+      "ATK",
+      "DEF",
+      "DMG Boost",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Effect Hit Rate",
+      "SPD",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Lightning Trailblazer",
+    "element": "Lightning",
+    "path": "Elation",
+    "subtitle": "The Trailblazer",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "SPD",
+      "ATK",
+      "DEF",
+      "HP",
+      "Energy Regeneration Rate",
+      "DMG Boost"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Guinaifen",
+    "element": "Fire",
+    "path": "Nihility",
+    "subtitle": "Street Performer",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "Effect Hit Rate",
+      "Break Effect"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "DMG Boost",
+      "SPD",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "Effect Hit Rate",
+      "Break Effect",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Serval",
+    "element": "Lightning",
+    "path": "Erudition",
+    "subtitle": "Mechanic of Belobog",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Ice March 7th",
+    "element": "Ice",
+    "path": "Preservation",
+    "subtitle": "Astral Express Passenger",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "DEF",
+      "Effect Hit Rate"
+    ],
+    "supporting_stats": [
+      "Effect RES",
+      "ATK",
+      "Energy Regeneration Rate",
+      "SPD",
+      "Break Effect",
+      "DMG Boost"
+    ],
+    "sidebar_spread_stats": [
+      "DEF",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Moze",
+    "element": "Lightning",
+    "path": "Hunt",
+    "subtitle": "Shadow Guard",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Asta",
+    "element": "Fire",
+    "path": "Harmony",
+    "subtitle": "Lead Researcher of Herta Space Station",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "SPD",
+      "HP"
+    ],
+    "supporting_stats": [
+      "Energy Regeneration Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "DMG Boost"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "HP",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Sampo",
+    "element": "Wind",
+    "path": "Nihility",
+    "subtitle": "Underworld Mercenary",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "Effect Hit Rate",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "Energy Regeneration Rate",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Effect Hit Rate",
+      "SPD",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Sushang",
+    "element": "Physical",
+    "path": "Hunt",
+    "subtitle": "Novice Cloud Knight",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "CRIT DMG",
+      "Break Effect"
+    ],
+    "supporting_stats": [
+      "CRIT Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "DMG Boost",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT DMG",
+      "Break Effect",
+      "CRIT Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Lynx",
+    "element": "Quantum",
+    "path": "Abundance",
+    "subtitle": "Landau Family Youngest",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "Outgoing Healing Boost",
+      "HP"
+    ],
+    "supporting_stats": [
+      "Energy Regeneration Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Outgoing Healing Boost",
+      "HP",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Fire Trailblazer",
+    "element": "Fire",
+    "path": "Preservation",
+    "subtitle": "The Trailblazer",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "DEF",
+      "SPD"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "Energy Regeneration Rate",
+      "DMG Boost",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "DEF",
+      "SPD",
+      "HP"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Yukong",
+    "element": "Imaginary",
+    "path": "Harmony",
+    "subtitle": "Helm Master of the Sky-Faring Commission",
+    "theme_c1": "#e8c97a",
+    "theme_c2": "#f0dfa0",
+    "theme_c3": "#a8883a",
+    "theme_p1": "#e8c97a",
+    "theme_p2": "#c8a060",
+    "theme_glow": "rgba(232,201,122,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "SPD",
+      "HP",
+      "DEF",
+      "ATK",
+      "DMG Boost",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Hanya",
+    "element": "Physical",
+    "path": "Harmony",
+    "subtitle": "Ten-Lords Commission Judge",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "SPD",
+      "HP"
+    ],
+    "supporting_stats": [
+      "DEF",
+      "Break Effect",
+      "ATK",
+      "Energy Regeneration Rate",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "HP",
+      "DEF"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Hook",
+    "element": "Fire",
+    "path": "Destruction",
+    "subtitle": "Boss of The Moles",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DMG Boost",
+      "SPD",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Misha",
+    "element": "Ice",
+    "path": "Destruction",
+    "subtitle": "The Reverie Bellboy",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "SPD",
+      "DEF",
+      "DMG Boost",
+      "Energy Regeneration Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Luka",
+    "element": "Physical",
+    "path": "Nihility",
+    "subtitle": "Underworld Fighter",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "Break Effect",
+      "Effect Hit Rate"
+    ],
+    "supporting_stats": [
+      "SPD",
+      "ATK",
+      "DEF",
+      "Effect RES",
+      "DMG Boost",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "Break Effect",
+      "Effect Hit Rate",
+      "SPD"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Arlan",
+    "element": "Lightning",
+    "path": "Destruction",
+    "subtitle": "Head of Herta Space Station Security",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Natasha",
+    "element": "Physical",
+    "path": "Abundance",
+    "subtitle": "Underworld Doctor",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "Outgoing Healing Boost",
+      "HP"
+    ],
+    "supporting_stats": [
+      "Energy Regeneration Rate",
+      "ATK",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "Outgoing Healing Boost",
+      "HP",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Physical Trailblazer",
+    "element": "Physical",
+    "path": "Destruction",
+    "subtitle": "The Trailblazer",
+    "theme_c1": "#c0cce0",
+    "theme_c2": "#e8eef8",
+    "theme_c3": "#8090a8",
+    "theme_p1": "#c0cce0",
+    "theme_p2": "#e8eef8",
+    "theme_glow": "rgba(192,204,224,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  }
+]

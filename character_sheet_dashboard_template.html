@@ -56,13 +56,9 @@
 body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text-main);min-height:100vh;overflow-x:hidden;}
 
 /* ── PARTICLES ── */
-#particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
-.spark{position:absolute;border-radius:50%;opacity:0;animation:sparkFloat linear infinite;}
-@keyframes sparkFloat{
-  0%{transform:translateY(0) translateX(0) scale(0.2);opacity:0;}
-  15%{opacity:0.9;}
-  85%{opacity:0.3;}
-  100%{transform:translateY(-100vh) translateX(var(--dx)) scale(0.1);opacity:0;}
+#particles{position:fixed;inset:0;pointer-events:none;z-index:2;}
+@media(prefers-reduced-motion:reduce){
+  .hero-glow,.hero-grid,.hero-portrait img{animation:none!important;}
 }
 
 /* ── NAV ── */
@@ -74,8 +70,10 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
 
 /* ── HERO ── */
 #hero{position:relative;min-height:420px;display:flex;align-items:center;padding:3rem 3rem 3rem 3.5rem;overflow:hidden;background:linear-gradient(135deg,var(--bg1) 0%,var(--bg0) 60%);}
-.hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse 55% 80% at 72% 50%, color-mix(in srgb, var(--c1) 10%, transparent) 0%, color-mix(in srgb, var(--c2) 6%, transparent) 40%, transparent 70%);pointer-events:none;}
-.hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(color-mix(in srgb,var(--c1) 4%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--c2) 4%,transparent) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse 80% 100% at 50% 50%,black 30%,transparent 80%);}
+.hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse 55% 80% at 72% 50%, color-mix(in srgb, var(--c1) 10%, transparent) 0%, color-mix(in srgb, var(--c2) 6%, transparent) 40%, transparent 70%);pointer-events:none;animation:heroGlowPulse 7s ease-in-out infinite;}
+@keyframes heroGlowPulse{0%,100%{opacity:0.8;}50%{opacity:1;}}
+.hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(color-mix(in srgb,var(--c1) 4%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--c2) 4%,transparent) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse 80% 100% at 50% 50%,black 30%,transparent 80%);animation:gridDrift 26s linear infinite;}
+@keyframes gridDrift{0%{background-position:0 0;}100%{background-position:40px 40px;}}
 .hero-content{position:relative;z-index:2;flex:1;max-width:55%;}
 .hero-tag-row{display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;}
 .hero-tag{font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:0.2rem 0.65rem;border-radius:3px;}
@@ -221,7 +219,7 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
 </head>
 <body>
 
-<div id="particles"></div>
+<canvas id="particles" aria-hidden="true"></canvas>
 
 <nav id="nav">
   <div class="nav-logo">{{CHAR_NAME}}</div>
@@ -616,16 +614,106 @@ function renderDuos() {
 
 // ── PARTICLES ──
 function initParticles() {
-  const c = document.getElementById('particles');
-  const colors = [getComputedStyle(document.documentElement).getPropertyValue('--particle1').trim(),
-                  getComputedStyle(document.documentElement).getPropertyValue('--particle2').trim()];
-  for (let i = 0; i < 28; i++) {
-    const p = document.createElement('div');
-    p.className = 'spark';
-    const sz = Math.random() * 3 + 0.8;
-    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;bottom:${Math.random()*10-5}%;background:${colors[Math.random()>0.5?0:1]};--dx:${(Math.random()-0.5)*90}px;animation-duration:${Math.random()*12+7}s;animation-delay:${Math.random()*14}s;`;
-    c.appendChild(p);
+  const canvas = document.getElementById('particles');
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext('2d');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Pull the character's element theme colors straight from CSS vars
+  const readVar = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  function hexToRgb(hex) {
+    if (!hex) return null;
+    let h = hex.replace('#', '').trim();
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+    const n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
+  const palette = [readVar('--particle1'), readVar('--particle2'), readVar('--glow-color')]
+    .map(hexToRgb).filter(Boolean);
+  if (!palette.length) palette.push([232, 201, 122], [245, 240, 255]);
+
+  const LINK_DIST = 100;
+  let w, h, dpr, motes = [], raf = null, running = false, t = 0;
+
+  function spawnMote(fromBottom) {
+    const c = palette[Math.floor(Math.random() * palette.length)];
+    return {
+      x: Math.random() * w,
+      y: fromBottom ? h + Math.random() * 40 : Math.random() * h,
+      r: Math.random() * 1.6 + 0.6,
+      speed: Math.random() * 0.22 + 0.06,
+      sway: Math.random() * 0.4 + 0.15,
+      swayPhase: Math.random() * Math.PI * 2,
+      twinklePhase: Math.random() * Math.PI * 2,
+      twinkleSpeed: Math.random() * 0.015 + 0.006,
+      c,
+    };
+  }
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = window.innerWidth; h = window.innerHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const count = Math.max(22, Math.min(55, Math.floor((w * h) / 34000)));
+    motes = Array.from({ length: count }, () => spawnMote(false));
+  }
+
+  function frame() {
+    t++;
+    ctx.clearRect(0, 0, w, h);
+
+    // sparse constellation threads between nearby motes
+    for (let i = 0; i < motes.length; i++) {
+      const a = motes[i];
+      for (let j = i + 1; j < motes.length; j++) {
+        const b = motes[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < LINK_DIST) {
+          ctx.strokeStyle = `rgba(${a.c[0]},${a.c[1]},${a.c[2]},${(1 - dist / LINK_DIST) * 0.09})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      }
+    }
+
+    for (const m of motes) {
+      m.y -= m.speed;
+      m.x += Math.sin(t * 0.01 + m.swayPhase) * m.sway * 0.05;
+      if (m.y < -10) Object.assign(m, spawnMote(true));
+
+      const twinkle = 0.28 + Math.sin(t * m.twinkleSpeed + m.twinklePhase) * 0.24;
+      const alpha = Math.max(0.06, twinkle);
+      const [r, g, b] = m.c;
+
+      const glowR = m.r * 5;
+      const grad = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, glowR);
+      grad.addColorStop(0, `rgba(${r},${g},${b},${alpha * 0.5})`);
+      grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(m.x, m.y, glowR, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(0.85, alpha + 0.18)})`;
+      ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    if (running) raf = requestAnimationFrame(frame);
+  }
+
+  function start() { if (!running) { running = true; raf = requestAnimationFrame(frame); } }
+  function stop()  { running = false; if (raf) cancelAnimationFrame(raf); raf = null; }
+
+  resize();
+  if (reduceMotion) frame(); else start();
+
+  let resizeTimer;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 200); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stop(); else if (!reduceMotion) start();
+  });
 }
 
 // ── INIT ──

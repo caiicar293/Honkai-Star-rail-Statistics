@@ -278,6 +278,71 @@ class DashboardGenerator:
             "version_safe": safe_version
         })
 
+    CHARACTERS_JSON = "characters.json"
+    CHARACTERS_TEMPLATE = "characters_index_template.html.j2"
+    DASHBOARD_SUFFIX = "_Dashboard.html"
+
+    def generate_characters_index(self, version: str, characters_json_path: Path = None):
+        """Rebuilds docs/characters/index.html (the Character Database browser)
+        from characters.json + character_icons.json + whatever
+        *_Dashboard.html files currently exist in docs/characters/.
+        Safe to call even if no character sheets have been generated yet.
+        """
+        print(f"\n[INFO] Generating Character Database for {version}...")
+        characters_dir = self.output_base / "characters"
+        if not characters_dir.exists():
+            print(f"  [SKIP] {characters_dir} does not exist yet.")
+            return
+
+        meta_path = characters_json_path or Path(self.CHARACTERS_JSON)
+        if not meta_path.exists():
+            print(f"  [WARN] {meta_path} not found — character badges will be skipped.")
+            meta = {}
+        else:
+            with open(meta_path, encoding="utf-8") as f:
+                meta = json.load(f)
+
+        names = sorted(
+            f.name[: -len(self.DASHBOARD_SUFFIX)]
+            for f in characters_dir.glob(f"*{self.DASHBOARD_SUFFIX}")
+        )
+        if not names:
+            print(f"  [SKIP] No *{self.DASHBOARD_SUFFIX} files found in {characters_dir}.")
+            return
+
+        records, missing_meta, missing_icon = [], [], []
+        for name in names:
+            m = meta.get(name)
+            icon = self.icons.get(name)
+            if m is None:
+                missing_meta.append(name)
+            if icon is None:
+                missing_icon.append(name)
+            records.append({
+                "name": name,
+                "file": f"{name}{self.DASHBOARD_SUFFIX}",
+                "icon": icon,
+                "path": m.get("path") if m else None,
+                "element": m.get("element") if m else None,
+                "rarity": m.get("rarity") if m else None,
+                "role": m.get("role") if m else [],
+                "release_phase": m.get("release_phase") if m else None,
+                "id": m.get("id") if m else None,
+            })
+
+        if missing_meta:
+            print(f"  [WARN] Missing characters.json entry for: {', '.join(missing_meta)}")
+        if missing_icon:
+            print(f"  [WARN] Missing character_icons.json entry for: {', '.join(missing_icon)}")
+
+        records.sort(key=lambda r: r["name"])
+        out_file = characters_dir / "index.html"
+        self.render_file(self.CHARACTERS_TEMPLATE, out_file, {
+            "version": version,
+            "characters": records,
+            "characters_json": json.dumps(records, ensure_ascii=False),
+        })
+
     def close(self):
         self.conn.close()
 
@@ -309,6 +374,10 @@ def main():
         
         # Generate the root routing hub
         generator.generate_index(args.version)
+
+        # Generate the Character Database browser (docs/characters/index.html)
+        generator.generate_characters_index(args.version)
+
         print("\n[SUCCESS] Pipeline complete.")
     finally:
         generator.close()

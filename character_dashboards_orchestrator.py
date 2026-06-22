@@ -7,7 +7,7 @@ load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath("__file__"))
 DB_PATH =os.getenv("DB_File")
-CHARACTER_ICONS_PATH = (r'Other Dashboards/character_icons.json')
+CHARACTER_ICONS_PATH = (r'character_icons.json')
 
 
 import orjson
@@ -26,5 +26,5 @@ for char in user_inputs:
         custom_build_stats=char
     )
 
-    dashboard.generate(output_file=f"docs/characters/{char['character_name']}_Dashboard.html")
+    dashboard.generate(output_file=f"docs/characters/{char['character_name']}_Dashboard.html",path_prefix="../")
     

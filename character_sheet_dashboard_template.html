@@ -86,10 +86,46 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
 .hero-stat{text-align:center;}
 .hero-stat-val{font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;color:var(--c2);display:block;line-height:1;}
 .hero-stat-lbl{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);display:block;margin-top:0.15rem;}
-.hero-portrait{position:absolute;right:0;bottom:0;top:0;width:45%;pointer-events:none;z-index:1;display:flex;align-items:flex-end;justify-content:flex-end;}
-.hero-portrait img{height:110%;max-height:480px;object-fit:contain;filter:drop-shadow(0 0 40px color-mix(in srgb,var(--c1) 40%,transparent)) drop-shadow(0 0 80px color-mix(in srgb,var(--c2) 20%,transparent));animation:portraitFloat 6s ease-in-out infinite;}
-@keyframes portraitFloat{0%,100%{transform:translateY(0px);}50%{transform:translateY(-12px);}}
-.hero-portrait-fade{position:absolute;inset:0;background:linear-gradient(to right,var(--bg0) 0%,transparent 35%);}
+.hero-portrait{
+  position:absolute;right:0;bottom:0;top:0;width:46%;
+  pointer-events:none;z-index:1;
+  display:flex;align-items:center;justify-content:center;
+  /* seamless left-edge blend — no separate fade div needed */
+  mask-image:linear-gradient(to right,transparent 0%,black 18%,black 100%);
+  -webkit-mask-image:linear-gradient(to right,transparent 0%,black 18%,black 100%);
+}
+.hero-portrait-frame{
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  margin-right:2.5rem;
+}
+.hero-portrait img{
+  width:min(300px,72%);
+  aspect-ratio:3/4;
+  object-fit:cover;
+  object-position:center top;
+  border-radius:10px;
+  border:1px solid color-mix(in srgb,var(--c1) 50%,transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb,var(--c1) 18%,transparent),
+    0 0 24px color-mix(in srgb,var(--c1) 45%,transparent),
+    0 0 60px color-mix(in srgb,var(--c1) 22%,transparent),
+    0 0 100px color-mix(in srgb,var(--c2) 14%,transparent),
+    0 16px 48px rgba(0,0,0,0.85);
+  animation:portraitFloat 6s ease-in-out infinite;
+}
+/* scanline sheen overlay on the image */
+.hero-portrait img::after{content:'';} /* not valid on img; handled by frame pseudo below */
+.hero-portrait-frame::before,.hero-portrait-frame::after{
+  content:'';position:absolute;
+  width:28px;height:28px;
+  border-color:var(--c1);border-style:solid;
+  opacity:0.9;
+}
+.hero-portrait-frame::before{top:-4px;left:-4px;border-width:2px 0 0 2px;border-radius:3px 0 0 0;}
+.hero-portrait-frame::after{bottom:-4px;right:-4px;border-width:0 2px 2px 0;border-radius:0 0 3px 0;}
+/* extra corner brackets via a wrapper — we add them with a sibling span injected in HTML */
+@keyframes portraitFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
 
 /* ── CONTENT SHELL ── */
 #content{padding:0 2.5rem 3rem;max-width:1400px;margin:0 auto;}
@@ -210,9 +246,32 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
 ::-webkit-scrollbar-thumb{background:var(--c3);border-radius:3px;}
 
 @media(max-width:768px){
-  #hero{padding:2rem 1.5rem;} .hero-portrait{display:none;} .hero-content{max-width:100%;}
-  .stat-grid{grid-template-columns:repeat(2,1fr);} .gear-grid{grid-template-columns:1fr;}
-  #content{padding:0 1rem 2rem;} #nav{padding:0 0.8rem;overflow-x:auto;}
+  #hero{padding:2rem 1.5rem;min-height:360px;}
+  .hero-content{max-width:100%;position:relative;z-index:3;}
+
+  /* show portrait as a faint atmospheric background on mobile */
+  .hero-portrait{
+    width:100%;right:0;left:0;
+    justify-content:flex-end;
+    opacity:0.22;
+    mask-image:none;-webkit-mask-image:none;
+  }
+  .hero-portrait-frame{margin-right:0;}
+  .hero-portrait img{
+    width:auto;height:100%;
+    max-height:360px;
+    aspect-ratio:auto;
+    border:none;
+    box-shadow:none;
+    border-radius:0;
+    animation:none;
+  }
+  .hero-portrait-frame::before,.hero-portrait-frame::after{display:none;}
+
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .gear-grid{grid-template-columns:1fr;}
+  #content{padding:0 1rem 2rem;}
+  #nav{padding:0 0.8rem;overflow-x:auto;}
   .main-stats-row{grid-template-columns:repeat(2,1fr);}
 }
 </style>
@@ -254,8 +313,9 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
     </div>
   </div>
   <div class="hero-portrait">
-    <div class="hero-portrait-fade"></div>
-    <img src="{{CHAR_ICON_URL}}" alt="{{CHAR_NAME}}" onerror="this.style.display='none'">
+    <div class="hero-portrait-frame">
+      <img src="{{PATH_PREFIX}}assets/character_portraits/{{CHAR_NAME}}.webp" alt="{{CHAR_NAME}}" onerror="this.style.display='none'">
+    </div>
   </div>
 </section>
 
@@ -421,6 +481,11 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
 const CHAR_NAME = "{{CHAR_NAME}}";
 // ══ END INJECT:CHAR_NAME ══
 
+// ══ INJECT:PATH_PREFIX ══
+// Relative path from this file back to docs/ root. e.g. "../" for docs/characters/
+const PATH_PREFIX = "{{PATH_PREFIX}}";
+// ══ END INJECT:PATH_PREFIX ══
+
 // ══ INJECT:ICONS ══
 // Map of character name → icon URL (u0250d CDN variant preferred).
 // Must include the main character + all teammates appearing in TEAMS/DUOS.
@@ -458,9 +523,10 @@ const DUOS = {{ DUOS | tojson }};
 // ══════════════════════════════════════════════════════════════
 
 let curGearMode = 'MOC', curEidolon = 'E0', curMetaMode = 'MOC', curDuoMode = 'MOC';
-
 function getIcon(n) {
-  return ICONS[n] || `https://ui-avatars.com/api/?name=${encodeURIComponent(n.slice(0,2))}&background=130f20&color=e8d44d&size=52`;
+  const path = ICONS[n];
+  if (path) return PATH_PREFIX + path;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent((n||'?').slice(0,2))}&background=130f20&color=e8d44d&size=52&bold=true`;
 }
 
 function switchTab(tab, el) {
@@ -554,7 +620,7 @@ function renderMeta() {
   const el = document.getElementById('meta-display');
   let html = `<div style="margin-bottom:0.5rem;font-size:0.72rem;color:var(--text-dim);letter-spacing:0.05em;text-transform:uppercase;">Top Teams — ${mode.replace(/_/g,' ')}</div>`;
   html += !teams.length ? '<div class="no-data">No data found for this mode.</div>'
-    : '<div class="teams-grid">' + teams.slice(0,5).map(t => teamCard(t, mode)).join('') + '</div>';
+    : '<div class="teams-grid">' + teams.slice(0,9).map(t => teamCard(t, mode)).join('') + '</div>';
   html += '<div class="section-header" style="padding:1.5rem 0 0.8rem;">Archetypes</div>';
   html += !archs.length ? '<div class="no-data">No archetype data for this mode.</div>'
     : '<div class="arch-grid">' + archs.slice(0,8).map(a =>
@@ -580,7 +646,7 @@ function renderDuos() {
   const mode = curDuoMode, duos = DUOS[mode] || [];
   const el = document.getElementById('duos-display');
   if (!duos.length) { el.innerHTML = `<div class="no-data">No duo data found for ${mode.replace(/_/g,' ')}.</div>`; return; }
-  el.innerHTML = '<div class="duos-grid">' + duos.slice(0,8).map(d => {
+  el.innerHTML = '<div class="duos-grid">' + duos.slice(0,9).map(d => {
     const conf = Math.round(d.confidence * 100);
     return `<div class="duo-card">
       <span class="mode-pill">${mode.replace(/_/g,' ')}</span>

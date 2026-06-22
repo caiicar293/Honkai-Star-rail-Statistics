@@ -29,7 +29,7 @@ class CharacterDashboard:
             Antecedent = ? AND at_eidolon_level = 0 AND up_to_eidolon_level = 6
     )
     SELECT Game_Mode, partner, samples, appearance, confidence, score, weighted, best
-    FROM RankedDuos WHERE rn <= 8 ORDER BY Game_Mode, samples DESC;
+    FROM RankedDuos WHERE rn <= 9 ORDER BY Game_Mode, samples DESC;
     """
 
     TEAMS_QUERY = """
@@ -53,7 +53,7 @@ class CharacterDashboard:
         WHERE member = ?
     )
     SELECT Game_Mode, Team, appearance, score, weighted, best, samples
-    FROM RankedTeams WHERE rn <= 5 ORDER BY Game_Mode, samples DESC;
+    FROM RankedTeams WHERE rn <= 9 ORDER BY Game_Mode, samples DESC;
     """
 
     ARCHETYPES_QUERY = """
@@ -498,7 +498,7 @@ class CharacterDashboard:
 
         return "\n".join(lines)
     
-    def generate(self, output_file="output.html"):
+    def generate(self, output_file="output.html",path_prefix=None):
         """Executes the extraction pipeline and compiles the final HTML."""
         con = duckdb.connect(self.db_path, read_only=True)
         
@@ -536,6 +536,7 @@ class CharacterDashboard:
         master_template_vars = {
             # Identity Tokens
             "CHAR_NAME": self.character_name,
+            "PATH_PREFIX": f"{path_prefix}",
             "CHAR_ELEMENT": element,
             "CHAR_PATH": get_stat("path", "Unknown"),
             "CHAR_SUBTITLE": get_stat("subtitle", "Unknown"),

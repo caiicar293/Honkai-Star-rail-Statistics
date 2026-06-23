@@ -92,12 +92,15 @@ class HonkaiStatistics_builds:
     def _build_stats(self):
         lazy_frames = []
         if self.mode == "all":
+            unique_versions = []
             for key in self.keys:
                 raw_val = os.getenv(key)
                 if raw_val:
-                    for v in [v.strip() for v in raw_val.split(',') if v.strip()]:
-                        if v not in self.skip_versions:
-                            lazy_frames.append(self._get_version_lazyframe(v))
+                    unique_versions +=[v.strip() for v in raw_val.split(',') if v.strip()]
+            unique_versions = set(unique_versions)
+            for v in unique_versions:
+                if v not in self.skip_versions:
+                    lazy_frames.append(self._get_version_lazyframe(v))
         else:
             lazy_frames.append(self._get_version_lazyframe(self.mode))
 

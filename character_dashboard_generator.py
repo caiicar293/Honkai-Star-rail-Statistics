@@ -111,6 +111,37 @@ class CharacterDashboard:
 
     DESIRED_MODES = ['MOC', 'PURE_FICTION', 'APOC', 'ANOMALY_F0', 'ANOMALY_F4']
 
+    # Mode display labels for the eidolon section
+    MODE_LABELS = {
+        'MOC':          'Memory of Chaos',
+        'PURE_FICTION': 'Pure Fiction',
+        'APOC':         'Apoc. Shadow',
+        'ANOMALY_ALL':  'Anomaly F0',
+        'ANOMALY_F4':   'Anomaly F4',
+    }
+
+    META_QUERY = """
+    SELECT
+        Game_Mode,
+        role,
+        availability,
+        release_phase,
+        Eidolon_0_pct_pct,
+        Eidolon_1_pct_pct,
+        Eidolon_2_pct_pct,
+        Eidolon_3_pct_pct,
+        Eidolon_4_pct_pct,
+        Eidolon_5_pct_pct,
+        Eidolon_6_pct_pct,
+        Total_Samples
+    FROM character_meta_summary
+    WHERE Character = ?
+      AND at_eidolon_level = 0
+      AND up_to_eidolon_level = 6
+      AND Game_Mode IN ('MOC','PURE_FICTION','APOC','ANOMALY_ALL','ANOMALY_F4')
+    ORDER BY Game_Mode;
+    """
+
     def __init__(self, character_name, db_path=None, icons_path=None, custom_build_stats=None, template_dir=".", template_name="character_sheet_dashboard_template.html"):
         """
         Initializes the dashboard generator.
@@ -280,6 +311,96 @@ class CharacterDashboard:
             all_icons = {}
             
         return {name: all_icons.get(name, "") for name in unique_names if name}
+
+    def _extract_meta_summary(self, con):
+        """
+        Pulls character_meta_summary for the 5 primary modes.
+        Returns:
+            meta_rows: list of dicts (one per mode with eidolon pct data)
+            char_info: dict with role, availability, release_phase from first row
+        """
+        try:
+            results = con.execute(self.META_QUERY, [self.character_name]).fetchall()
+        except Exception as e:
+            print(f"Warning: could not fetch character_meta_summary: {e}")
+            return [], {}
+
+        columns = [
+            'game_mode', 'role', 'availability', 'release_phase',
+            'e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6',
+            'total_samples',
+        ]
+        meta_rows = []
+        char_info = {}
+
+        for row in results:
+            d = dict(zip(columns, row))
+            if not char_info:
+                char_info = {
+                    'role':          d.get('role', ''),
+                    'availability':  d.get('availability', ''),
+                    'release_phase': d.get('release_phase', ''),
+                }
+            meta_rows.append(d)
+
+        return meta_rows, char_info
+
+    def _generate_eidolon_breakdown_html(self, meta_rows):
+        """
+        Builds the EIDOLON_DATA HTML block.
+        The _pct_pct column values are already plain percentages (e.g. 44.8),
+        stored with a redundant suffix in DuckDB. We display them as "44.8%".
+        Dominant bar (highest pct in the row) gets .dominant class for bold text.
+        """
+        if not meta_rows:
+            return '<div class="no-data">No eidolon distribution data available.</div>'
+
+        eid_levels = ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6']
+        label_map  = {
+            'e0': 'E0', 'e1': 'E1', 'e2': 'E2',
+            'e3': 'E3', 'e4': 'E4', 'e5': 'E5', 'e6': 'E6',
+        }
+
+        blocks = []
+        for row in meta_rows:
+            mode      = row['game_mode']
+            samples   = int(row['total_samples']) if row['total_samples'] else 0
+            mode_lbl  = self.MODE_LABELS.get(mode, mode)
+
+            # Values from DB — already plain % floats; nulls map to 0
+            vals = {k: float(row.get(k) or 0) for k in eid_levels}
+
+            # Find the dominant eidolon tier for bolding
+            dominant = max(vals, key=vals.get) if any(vals.values()) else None
+
+            # Max value for bar scaling (capped so 100% fills the bar)
+            max_val = max(vals.values()) if any(vals.values()) else 1.0
+
+            bar_rows = []
+            for k in eid_levels:
+                pct     = vals[k]
+                width   = (pct / max_val) * 100 if max_val > 0 else 0
+                is_dom  = ' dominant' if k == dominant else ''
+                bar_rows.append(
+                    f'<div class="eid-bar-row">'
+                    f'<span class="eid-lbl {k}">{label_map[k]}</span>'
+                    f'<div class="eid-bar-bg">'
+                    f'<div class="eid-bar-fill {k}" style="width:{width:.1f}%"></div>'
+                    f'</div>'
+                    f'<span class="eid-pct{is_dom}">{pct:.1f}%</span>'
+                    f'</div>'
+                )
+
+            samples_str = f'{samples:,}' if samples else '—'
+            blocks.append(
+                f'<div class="eid-mode-block">'
+                f'<div class="eid-mode-label">{mode_lbl}'
+                f'<span class="eid-mode-samples">n={samples_str}</span></div>'
+                f'<div class="eid-bars">{"".join(bar_rows)}</div>'
+                f'</div>'
+            )
+
+        return '\n'.join(blocks)
 
     def _embed_with_jinja(self, output_path, template_vars):
         env = Environment(loader=FileSystemLoader(self.template_dir))
@@ -509,6 +630,7 @@ class CharacterDashboard:
         teams_data = self._extract_teams(con)
         duos_data = self._extract_duos(con)
         archetypes_data = self._extract_archetypes(con)
+        meta_rows, char_info = self._extract_meta_summary(con)
         icons_map = self._build_icons_dictionary(teams_data, duos_data)
         con.close()
 
@@ -531,6 +653,15 @@ class CharacterDashboard:
         substats_html = self._generate_substats_html(db_builds_data)
         percentiles_html = self._generate_percentiles_html(db_builds_data, defining_stats)
         avg_sidebar_html = self._generate_avg_sidebar_html(db_builds_data, sidebar_spreads, sidebar_meta, latest_version)
+        eidolon_data_html = self._generate_eidolon_breakdown_html(meta_rows)
+
+        # Role/availability: prefer custom_build_stats override, then DB, then blank
+        char_role = self.custom_build_stats.get(
+            "role", char_info.get("role", "")
+        ).upper()  # e.g. "dps" → "DPS"
+        char_avail = self.custom_build_stats.get(
+            "availability", char_info.get("availability", "")
+        )
 
         # Bind parameters
         master_template_vars = {
@@ -542,6 +673,8 @@ class CharacterDashboard:
             "CHAR_SUBTITLE": get_stat("subtitle", "Unknown"),
             "CHAR_ICON_URL": icons_map.get(self.character_name, ""),
             "DATA_VERSION": latest_version,
+            "CHAR_ROLE": char_role,
+            "CHAR_AVAILABILITY": char_avail,
             
             # Numeric Overviews (Auto-pulled from DB)
             "TOTAL_SAMPLES": f"{int(db_builds_data.get('total_sample_size', 0)):,}",
@@ -562,6 +695,7 @@ class CharacterDashboard:
             "SUBSTATS": substats_html,
             "PERCENTILES": percentiles_html,
             "AVG_SIDEBAR": avg_sidebar_html,
+            "EIDOLON_DATA": eidolon_data_html,
 
             # JavaScript Globals
             "ICONS": icons_map,

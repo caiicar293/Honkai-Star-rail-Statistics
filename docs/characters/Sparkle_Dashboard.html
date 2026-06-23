@@ -79,7 +79,34 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
 .hero-tag{font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:0.2rem 0.65rem;border-radius:3px;}
 .hero-tag.element{background:color-mix(in srgb,var(--c1) 15%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 35%,transparent);}
 .hero-tag.path{background:color-mix(in srgb,var(--c2) 12%,transparent);color:var(--c2);border:1px solid color-mix(in srgb,var(--c2) 30%,transparent);}
+.hero-tag.role{background:rgba(30,180,120,0.12);color:#4ecfa0;border:1px solid rgba(30,180,120,0.3);text-transform:capitalize;}
+.hero-tag.avail{background:rgba(255,210,60,0.1);color:#f5c842;border:1px solid rgba(255,210,60,0.28);}
 .hero-tag.ver{background:color-mix(in srgb,var(--c1) 6%,transparent);color:var(--text-muted);border:1px solid var(--border-c);}
+
+/* ── CARD SUB-TITLE ── */
+.card-sub{font-size:0.72rem;color:var(--text-dim);margin-top:-0.7rem;margin-bottom:1.2rem;letter-spacing:0.04em;}
+
+/* ── EIDOLON BREAKDOWN ── */
+.eid-breakdown-card{margin-top:1rem;}
+.eid-modes-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.2rem;}
+.eid-mode-block{background:var(--bg3);border:1px solid var(--border-c);border-radius:6px;padding:1rem;}
+.eid-mode-label{font-family:'Cinzel',serif;font-size:0.68rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--c1);margin-bottom:0.85rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border2-c);}
+.eid-mode-samples{font-size:0.62rem;color:var(--text-dim);margin-left:0.4rem;font-family:monospace;}
+.eid-bars{display:flex;flex-direction:column;gap:0.42rem;}
+.eid-bar-row{display:flex;align-items:center;gap:0.5rem;}
+.eid-lbl{font-size:0.66rem;font-weight:700;letter-spacing:0.06em;width:22px;flex-shrink:0;color:var(--text-muted);}
+.eid-lbl.e0{color:#78d9a8;}
+.eid-lbl.e2{color:var(--c2);}
+.eid-lbl.e6{color:#f5c842;}
+.eid-bar-bg{flex:1;height:7px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;}
+.eid-bar-fill{height:100%;border-radius:4px;background:rgba(255,255,255,0.22);transition:width 0.6s ease;}
+.eid-bar-fill.e0{background:linear-gradient(to right,#2db87a,#4ecfa0);}
+.eid-bar-fill.e1{background:rgba(160,140,255,0.5);}
+.eid-bar-fill.e2{background:linear-gradient(to right,var(--c3),var(--c2));}
+.eid-bar-fill.e3,.eid-bar-fill.e4,.eid-bar-fill.e5{background:rgba(180,160,255,0.4);}
+.eid-bar-fill.e6{background:linear-gradient(to right,#c8a000,#f5c842);}
+.eid-pct{font-size:0.66rem;color:var(--text-dim);width:36px;text-align:right;flex-shrink:0;font-family:monospace;}
+.eid-pct.dominant{color:var(--text-bright);font-weight:700;}
 .hero-name{font-family:'Cinzel',serif;font-size:clamp(3rem,6vw,5rem);font-weight:900;line-height:0.9;color:var(--text-bright);letter-spacing:-0.02em;text-shadow:0 0 60px color-mix(in srgb,var(--c1) 40%,transparent),0 0 100px color-mix(in srgb,var(--c2) 20%,transparent),0 2px 4px rgba(0,0,0,0.9);margin-bottom:0.5rem;}
 .hero-sub{font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--c1);opacity:0.65;margin-bottom:1.5rem;}
 .hero-stats-row{display:flex;gap:1.5rem;flex-wrap:wrap;}
@@ -295,6 +322,8 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
     <div class="hero-tag-row">
       <span class="hero-tag element">Quantum</span>
       <span class="hero-tag path">Harmony</span>
+      <span class="hero-tag role">AMPLIFIER</span>
+      <span class="hero-tag avail">Limited 5*</span>
       <span class="hero-tag ver">v4.3.1 Data</span>
     </div>
     <div class="hero-name">Sparkle</div>
@@ -545,6 +574,36 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
 </div>
     <!-- ══ END INJECT:AVG_SIDEBAR ══ -->
   </div>
+
+  <!-- ══════════════════════════════════════
+       EIDOLON BREAKDOWN SECTION
+  ══════════════════════════════════════ -->
+  <div class="card eid-breakdown-card">
+    <div class="card-title">Eidolon Distribution — All Game Modes</div>
+    <div class="card-sub">Share of sampled builds per eidolon level. E0 = no eidolons owned.</div>
+    <!-- ══ INJECT:EIDOLON_DATA ══
+         One eid-mode-block per game mode. Each contains 7 eid-bar-row entries (E0–E6).
+         Example:
+         <div class="eid-mode-block">
+           <div class="eid-mode-label">MOC</div>
+           <div class="eid-bars">
+             <div class="eid-bar-row">
+               <span class="eid-lbl">E0</span>
+               <div class="eid-bar-bg"><div class="eid-bar-fill e0" style="width:44.8%"></div></div>
+               <span class="eid-pct">44.8%</span>
+             </div>
+           </div>
+         </div>
+    -->
+    <div class="eid-modes-grid">
+      <div class="eid-mode-block"><div class="eid-mode-label">Anomaly F0<span class="eid-mode-samples">n=46,880</span></div><div class="eid-bars"><div class="eid-bar-row"><span class="eid-lbl e0">E0</span><div class="eid-bar-bg"><div class="eid-bar-fill e0" style="width:100.0%"></div></div><span class="eid-pct dominant">54.8%</span></div><div class="eid-bar-row"><span class="eid-lbl e1">E1</span><div class="eid-bar-bg"><div class="eid-bar-fill e1" style="width:51.8%"></div></div><span class="eid-pct">28.4%</span></div><div class="eid-bar-row"><span class="eid-lbl e2">E2</span><div class="eid-bar-bg"><div class="eid-bar-fill e2" style="width:23.2%"></div></div><span class="eid-pct">12.7%</span></div><div class="eid-bar-row"><span class="eid-lbl e3">E3</span><div class="eid-bar-bg"><div class="eid-bar-fill e3" style="width:2.9%"></div></div><span class="eid-pct">1.6%</span></div><div class="eid-bar-row"><span class="eid-lbl e4">E4</span><div class="eid-bar-bg"><div class="eid-bar-fill e4" style="width:0.7%"></div></div><span class="eid-pct">0.4%</span></div><div class="eid-bar-row"><span class="eid-lbl e5">E5</span><div class="eid-bar-bg"><div class="eid-bar-fill e5" style="width:0.2%"></div></div><span class="eid-pct">0.1%</span></div><div class="eid-bar-row"><span class="eid-lbl e6">E6</span><div class="eid-bar-bg"><div class="eid-bar-fill e6" style="width:3.6%"></div></div><span class="eid-pct">2.0%</span></div></div></div>
+<div class="eid-mode-block"><div class="eid-mode-label">Anomaly F4<span class="eid-mode-samples">n=11,685</span></div><div class="eid-bars"><div class="eid-bar-row"><span class="eid-lbl e0">E0</span><div class="eid-bar-bg"><div class="eid-bar-fill e0" style="width:100.0%"></div></div><span class="eid-pct dominant">41.8%</span></div><div class="eid-bar-row"><span class="eid-lbl e1">E1</span><div class="eid-bar-bg"><div class="eid-bar-fill e1" style="width:85.1%"></div></div><span class="eid-pct">35.6%</span></div><div class="eid-bar-row"><span class="eid-lbl e2">E2</span><div class="eid-bar-bg"><div class="eid-bar-fill e2" style="width:40.0%"></div></div><span class="eid-pct">16.7%</span></div><div class="eid-bar-row"><span class="eid-lbl e3">E3</span><div class="eid-bar-bg"><div class="eid-bar-fill e3" style="width:5.6%"></div></div><span class="eid-pct">2.3%</span></div><div class="eid-bar-row"><span class="eid-lbl e4">E4</span><div class="eid-bar-bg"><div class="eid-bar-fill e4" style="width:1.4%"></div></div><span class="eid-pct">0.6%</span></div><div class="eid-bar-row"><span class="eid-lbl e5">E5</span><div class="eid-bar-bg"><div class="eid-bar-fill e5" style="width:0.3%"></div></div><span class="eid-pct">0.1%</span></div><div class="eid-bar-row"><span class="eid-lbl e6">E6</span><div class="eid-bar-bg"><div class="eid-bar-fill e6" style="width:6.9%"></div></div><span class="eid-pct">2.9%</span></div></div></div>
+<div class="eid-mode-block"><div class="eid-mode-label">Apoc. Shadow<span class="eid-mode-samples">n=68,578</span></div><div class="eid-bars"><div class="eid-bar-row"><span class="eid-lbl e0">E0</span><div class="eid-bar-bg"><div class="eid-bar-fill e0" style="width:100.0%"></div></div><span class="eid-pct dominant">63.8%</span></div><div class="eid-bar-row"><span class="eid-lbl e1">E1</span><div class="eid-bar-bg"><div class="eid-bar-fill e1" style="width:28.9%"></div></div><span class="eid-pct">18.5%</span></div><div class="eid-bar-row"><span class="eid-lbl e2">E2</span><div class="eid-bar-bg"><div class="eid-bar-fill e2" style="width:20.6%"></div></div><span class="eid-pct">13.1%</span></div><div class="eid-bar-row"><span class="eid-lbl e3">E3</span><div class="eid-bar-bg"><div class="eid-bar-fill e3" style="width:1.9%"></div></div><span class="eid-pct">1.2%</span></div><div class="eid-bar-row"><span class="eid-lbl e4">E4</span><div class="eid-bar-bg"><div class="eid-bar-fill e4" style="width:0.6%"></div></div><span class="eid-pct">0.4%</span></div><div class="eid-bar-row"><span class="eid-lbl e5">E5</span><div class="eid-bar-bg"><div class="eid-bar-fill e5" style="width:0.1%"></div></div><span class="eid-pct">0.1%</span></div><div class="eid-bar-row"><span class="eid-lbl e6">E6</span><div class="eid-bar-bg"><div class="eid-bar-fill e6" style="width:4.5%"></div></div><span class="eid-pct">2.8%</span></div></div></div>
+<div class="eid-mode-block"><div class="eid-mode-label">Memory of Chaos<span class="eid-mode-samples">n=72,357</span></div><div class="eid-bars"><div class="eid-bar-row"><span class="eid-lbl e0">E0</span><div class="eid-bar-bg"><div class="eid-bar-fill e0" style="width:100.0%"></div></div><span class="eid-pct dominant">62.9%</span></div><div class="eid-bar-row"><span class="eid-lbl e1">E1</span><div class="eid-bar-bg"><div class="eid-bar-fill e1" style="width:28.3%"></div></div><span class="eid-pct">17.8%</span></div><div class="eid-bar-row"><span class="eid-lbl e2">E2</span><div class="eid-bar-bg"><div class="eid-bar-fill e2" style="width:22.8%"></div></div><span class="eid-pct">14.4%</span></div><div class="eid-bar-row"><span class="eid-lbl e3">E3</span><div class="eid-bar-bg"><div class="eid-bar-fill e3" style="width:1.9%"></div></div><span class="eid-pct">1.2%</span></div><div class="eid-bar-row"><span class="eid-lbl e4">E4</span><div class="eid-bar-bg"><div class="eid-bar-fill e4" style="width:0.7%"></div></div><span class="eid-pct">0.5%</span></div><div class="eid-bar-row"><span class="eid-lbl e5">E5</span><div class="eid-bar-bg"><div class="eid-bar-fill e5" style="width:0.2%"></div></div><span class="eid-pct">0.1%</span></div><div class="eid-bar-row"><span class="eid-lbl e6">E6</span><div class="eid-bar-bg"><div class="eid-bar-fill e6" style="width:4.9%"></div></div><span class="eid-pct">3.1%</span></div></div></div>
+<div class="eid-mode-block"><div class="eid-mode-label">Pure Fiction<span class="eid-mode-samples">n=54,639</span></div><div class="eid-bars"><div class="eid-bar-row"><span class="eid-lbl e0">E0</span><div class="eid-bar-bg"><div class="eid-bar-fill e0" style="width:100.0%"></div></div><span class="eid-pct dominant">62.3%</span></div><div class="eid-bar-row"><span class="eid-lbl e1">E1</span><div class="eid-bar-bg"><div class="eid-bar-fill e1" style="width:28.5%"></div></div><span class="eid-pct">17.7%</span></div><div class="eid-bar-row"><span class="eid-lbl e2">E2</span><div class="eid-bar-bg"><div class="eid-bar-fill e2" style="width:23.3%"></div></div><span class="eid-pct">14.5%</span></div><div class="eid-bar-row"><span class="eid-lbl e3">E3</span><div class="eid-bar-bg"><div class="eid-bar-fill e3" style="width:2.0%"></div></div><span class="eid-pct">1.3%</span></div><div class="eid-bar-row"><span class="eid-lbl e4">E4</span><div class="eid-bar-bg"><div class="eid-bar-fill e4" style="width:0.8%"></div></div><span class="eid-pct">0.5%</span></div><div class="eid-bar-row"><span class="eid-lbl e5">E5</span><div class="eid-bar-bg"><div class="eid-bar-fill e5" style="width:0.2%"></div></div><span class="eid-pct">0.1%</span></div><div class="eid-bar-row"><span class="eid-lbl e6">E6</span><div class="eid-bar-bg"><div class="eid-bar-fill e6" style="width:5.7%"></div></div><span class="eid-pct">3.6%</span></div></div></div>
+    </div>
+    <!-- ══ END INJECT:EIDOLON_DATA ══ -->
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -621,6 +680,13 @@ const CHAR_NAME = "Sparkle";
 // Relative path from this file back to docs/ root. e.g. "../" for docs/characters/
 const PATH_PREFIX = "../";
 // ══ END INJECT:PATH_PREFIX ══
+
+// ══ INJECT:CHAR_META ══
+// role: raw DB value e.g. "dps", "support", "sustain"
+// availability: e.g. "Limited 5*", "Standard 5*", "4*"
+const CHAR_ROLE = "AMPLIFIER";
+const CHAR_AVAILABILITY = "Limited 5*";
+// ══ END INJECT:CHAR_META ══
 
 // ══ INJECT:ICONS ══
 // Map of character name → icon URL (u0250d CDN variant preferred).

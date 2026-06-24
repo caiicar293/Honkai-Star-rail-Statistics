@@ -63,7 +63,7 @@ class HonkaiDataPlatform:
             "MOC": {
                 "class":    HonkaiStatistics_V2_Batch,
                 "prefix":   "moc",
-                "versions": get_env_list("MOC_VERSIONS"),
+                "versions": get_env_list("MOC_VERSIONS")[::-1],
                 "floor":    12,
                 "has_node": True,
                 "era":      "MODERN",
@@ -71,7 +71,7 @@ class HonkaiDataPlatform:
             "PURE_FICTION": {
                 "class":    HonkaiStatistics_V2_Pure_fiction_Batch,
                 "prefix":   "pure_fiction",
-                "versions": get_env_list("PF_VERSIONS"),
+                "versions": get_env_list("PF_VERSIONS")[::-1],
                 "floor":    4,
                 "has_node": True,
                 "era":      "MODERN",

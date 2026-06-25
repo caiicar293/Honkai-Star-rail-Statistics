@@ -211,31 +211,60 @@ class HonkaiStatistics_V2_APOC_Batch:
 
         
         
-        # 1. First pass: Create and sort the pairs
+        # 1. Create and sort the pairs
         df_struct = df_struct.with_columns(
             pl.col("char_cons_pairs").list.eval(
                 pl.element().sort_by(pl.element().struct.field('char').replace_strict(char_to_index, default=999))
             ).alias("char_cons_pairs_sorted")
         )
         
-        # 2. Second pass: Extract the team_key from the newly created column
+        # 2. Extract archetypes using the fully created sorted column
+        #    (Notice the added .struct.field('char') in the filter!)
         df_struct = df_struct.with_columns(
             pl.col("char_cons_pairs_sorted").list.eval(
-                pl.element().struct.field('char')
-            ).alias("team_key") # Make sure the alias is OUTSIDE the eval
+                pl.element().filter(
+                    pl.element().struct.field('char').is_in(dps_names) & 
+                    pl.element().struct.field('char').is_not_null()
+                )
+            ).alias("archetypes_pairs_sorted")
         )
+        
+        # 2. Second pass: Extract the team_key from the newly created column
+        df_struct = df_struct.with_columns([
+            pl.col("char_cons_pairs_sorted").list.eval(
+                pl.element().struct.field('char')
+            ).alias("team_key"),
+            pl.col("archetypes_pairs_sorted").list.eval(
+                pl.element().struct.field('char')
+            ).alias("archetype_key") ]
+        )
+        
+        df_struct = df_struct.with_columns([
+            pl.col("char_cons_pairs_sorted").list.eval(
+                pl.element().struct.field('char').cast(pl.String) +
+                "(E" + pl.element().struct.field('eidolon').cast(pl.Int64).cast(pl.String)  + ")"
+        ).alias("char_cons_zipped_sorted"),
+            pl.col("archetypes_pairs_sorted").list.eval(
+                pl.element().struct.field('char').cast(pl.String) +
+                "(E" + pl.element().struct.field('eidolon').cast(pl.Int64).cast(pl.String)  + ")"
+        ).alias("archetypes_pairs_zipped_sorted")])
+        
+        
          
 
         self.lf = df_struct
         
         
         if self.node == 0 or self.node == "all":
-            base_cols_for_n = ["uid", "version", "node", "round_num", "max_eidolon","char_cons_pairs_sorted","estimated_min_cost","estimated_max_cost","temp_team","has_sustain","star_num","row_max_stars"] 
+            base_cols_for_n = ["uid", "version", "node", "round_num", "max_eidolon","char_cons_zipped_sorted","archetypes_pairs_zipped_sorted","estimated_min_cost","estimated_max_cost","has_sustain","star_num","row_max_stars","team_key",'archetype_key'] 
             lf_base_for_combined = self.lf.select(base_cols_for_n)
 
             def _node_lf(node_num, scores_alias, ed_alias,min_cost_alias,max_cost_alias):
                 return lf_base_for_combined.filter(pl.col("node") == node_num).select([
-                    pl.col("char_cons_pairs_sorted").alias(f"n{node_num}_char_cons_pairs_sorted"),
+                    pl.col("char_cons_zipped_sorted").alias(f"n{node_num}_char_cons_zipped_sorted"),
+                    pl.col("archetypes_pairs_zipped_sorted").alias(f"n{node_num}archetypes_zipped_sorted"),
+                    pl.col("team_key").alias(f"n{node_num}_team_key"),
+                    pl.col("archetype_key").alias(f"n{node_num}archetype_key"),
                     pl.col("uid"), pl.col("version"),
                     pl.col("round_num").alias(scores_alias),
                     pl.col("max_eidolon").alias(ed_alias),
@@ -299,13 +328,29 @@ class HonkaiStatistics_V2_APOC_Batch:
                 self.lf.select([
                     "uid", "round_num", "has_sustain", "version",
                     "estimated_min_cost", "estimated_max_cost", "node","max_eidolon",
-                    'temp_team',"row_max_stars","star_num"
+                    'team_key',"row_max_stars","star_num",
                     
                 ])
-            ).explode("temp_team")
+            ).explode("team_key")
             
+            base_data2 = (
+                self.lf.select([
+                    "uid", "round_num", "has_sustain", "version",
+                    "estimated_min_cost", "estimated_max_cost", "node","max_eidolon",
+                    "row_max_stars","star_num",'char_cons_zipped_sorted',
+                    
+                ])
+            ).explode("char_cons_zipped_sorted")
             
-            self.chars_max_eid = base_data.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "temp_team","max_eidolon"]).agg([
+            self.chars_max_eid = base_data.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "team_key","max_eidolon"]).agg([
+                pl.col("uid").count().alias("Samples"),
+                pl.col("round_num").alias("Scores"),
+                pl.col("uid").unique().alias("uids"),
+                pl.col("has_sustain").sum().alias("Total_Sustains"),
+                (pl.col("star_num") == pl.col("row_max_stars")).sum().alias("total_full_star_clears")
+            ]).collect()
+            
+            self.chars_eidolon_char= base_data2.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "char_cons_zipped_sorted"]).agg([
                 pl.col("uid").count().alias("Samples"),
                 pl.col("round_num").alias("Scores"),
                 pl.col("uid").unique().alias("uids"),
@@ -314,7 +359,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             ]).collect()
             
             
-            self.chars= self.chars_max_eid.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "temp_team"]).agg([
+            self.chars= self.chars_max_eid.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "team_key"]).agg([
                 pl.col('Samples').sum(),
                 pl.col("Scores"),
                 pl.col("uids").unique(),
@@ -323,7 +368,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             ])
 
             
-            self.teams = self.lf.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "char_cons_pairs_sorted","team_key","max_eidolon","has_sustain"]).agg([
+            self.teams = self.lf.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "char_cons_zipped_sorted","team_key", "archetypes_pairs_zipped_sorted","archetype_key","max_eidolon","has_sustain"]).agg([
     
                 pl.count("uid").alias("Samples"),
                 pl.col("round_num").alias("Scores"),
@@ -332,7 +377,13 @@ class HonkaiStatistics_V2_APOC_Batch:
             ]).collect()
         
            
-           
+            self.archetypes = self.teams.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "archetypes_pairs_zipped_sorted","archetype_key","max_eidolon","has_sustain"]).agg([
+    
+                pl.count("Samples"),
+                pl.col("Scores").alias("Scores"),
+                pl.col("uids").unique(),
+                pl.col("total_full_star_clears").sum()
+            ])
            
             self.total_samples_df = self.lf.group_by(
             "version", "node"
@@ -342,7 +393,7 @@ class HonkaiStatistics_V2_APOC_Batch:
     def _process_combined_data(self, combined):
         # Determine which node char columns exist in the combined frame
         # Starward: n1_chars, n2_chars, n3_chars  |  Standard: n1_chars, n2_chars
-        node_char_cols = [c for c in combined.collect_schema().names() if c.endswith("_pairs_sorted") or c.endswith("_has_sustain")]
+        node_char_cols = [c for c in combined.collect_schema().names() if c.endswith("_zipped_sorted") or c.endswith("_has_sustain") or c.endswith("_key")]
       
         self.combined_team_stats = (
             combined.group_by(["version", "combined_max_ed","total_min_estimated_cost","total_max_estimated_cost","star_num"] + node_char_cols)
@@ -353,6 +404,27 @@ class HonkaiStatistics_V2_APOC_Batch:
                 (pl.col("star_num") == pl.col("row_max_stars")).sum().alias("total_full_star_clears")
             ])
             .collect()
+        )
+        
+        # 1. Explicitly list the columns you are aggregating
+        agg_cols = ["Samples", "Scores", "uids", "total_full_star_clears"]
+
+        # 2. Build the grouping keys by excluding both the unwanted strings AND the agg columns
+        group_keys = [
+            c for c in self.combined_team_stats.collect_schema().names() 
+            if not c.endswith("_char_cons_zipped_sorted") 
+            and c not in agg_cols
+        ]
+
+        # 3. Perform the group_by and the aggregations safely
+        self.combined_archetype_stats = (
+            self.combined_team_stats.group_by(group_keys)
+            .agg([
+                pl.col("Samples").sum().alias("Samples"),          # Sum the previous counts
+                pl.col("Scores").mean().alias("Scores"),           # Average the scores
+                pl.col("uids").explode().unique().alias("uids"),   # Flatten the UIDs and get unique
+                pl.col("total_full_star_clears").sum().alias("total_full_star_clears")
+            ])
         )
 
 

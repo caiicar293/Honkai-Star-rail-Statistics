@@ -341,7 +341,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 ])
             ).explode("char_cons_zipped_sorted")
             
-            self.chars_max_eid = base_data.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "team_key","max_eidolon"]).agg([
+            self.chars_max_eidolon_cost_individual_eidolon = base_data.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "team_key","max_eidolon"]).agg([
                 pl.col("uid").count().alias("Samples"),
                 pl.col("round_num").alias("Scores"),
                 pl.col("uid").unique().alias("uids"),
@@ -349,7 +349,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 (pl.col("star_num") == pl.col("row_max_stars")).sum().alias("total_full_star_clears")
             ]).collect()
             
-            self.chars_eidolon_char= base_data2.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "char_cons_zipped_sorted"]).agg([
+            self.chars_by_cost_individual_eidolon= base_data2.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "char_cons_zipped_sorted"]).agg([
                 pl.col("uid").count().alias("Samples"),
                 pl.col("round_num").alias("Scores"),
                 pl.col("uid").unique().alias("uids"),
@@ -358,7 +358,15 @@ class HonkaiStatistics_V2_APOC_Batch:
             ]).collect()
             
             
-            self.chars= self.chars_max_eid.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "team_key"]).agg([
+            self.chars_by_cost= self.chars_max_eidolon_cost_individual_eidolon.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "team_key"]).agg([
+                pl.col('Samples').sum(),
+                pl.col("Scores").explode(),
+                pl.col("uids").explode(),
+                pl.col("Total_Sustains").sum(),
+                pl.col("total_full_star_clears").sum()
+            ])
+            
+            self.chars_by_individual_eidolons= self.chars_by_cost_individual_eidolon.group_by(["version", "node", "char_cons_zipped_sorted"]).agg([
                 pl.col('Samples').sum(),
                 pl.col("Scores").explode(),
                 pl.col("uids").explode(),
@@ -453,3 +461,241 @@ class HonkaiStatistics_V2_APOC_Batch:
 
         # Store node_char_cols for use in get_combined_* methods
         self._node_char_cols = node_char_cols
+        
+        
+        
+        # ------------------------------------------------------------------
+    # Public getters (Display Functions)
+    # ------------------------------------------------------------------
+    
+    def get_teams_df(self):
+        df = self.teams.join(
+            self.total_samples_df, on=["version", "node"], how="left"
+        ).with_columns([
+            pl.col("char_cons_zipped_sorted").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
+            pl.col("archetypes_pairs_zipped_sorted").list.join(" + ").map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String).alias("Archetype Core"),
+            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            (pl.col("total_full_star_clears") / pl.col("Samples") * 100).round(2).alias("Full Star Rate (%)"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
+            pl.col("Scores").list.median().round(2).alias("Median Scores"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
+            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+            pl.col("Scores").list.min().alias("Min Scores"),
+            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
+            pl.col("Scores").list.max().alias("Max Scores")
+        ]).sort(["version", "node", "Samples"], descending=[True, False, True])
+
+        return df.with_row_index("Rank", offset=1).select([
+            "Rank", "version", "estimated_min_cost", "estimated_max_cost", "node", "max_eidolon",
+            "Team", "Archetype Core", "has_sustain",
+            "Appearance Rate (%)", "Samples", "Full Star Rate (%)",
+            "Min Scores", "25th Percentile Scores", "Median Scores",
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+        ])
+
+    def get_archetypes_df(self):
+        df = self.archetypes.join(
+            self.total_samples_df, on=["version", "node"], how="left"
+        ).with_columns([
+            pl.col("archetypes_pairs_zipped_sorted").list.join(" + ").map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String).alias("Archetype Core"),
+            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            (pl.col("total_full_star_clears") / pl.col("Samples") * 100).round(2).alias("Full Star Rate (%)"),
+            (pl.col("has_sustain") / pl.col("Samples") * 100).round(2).alias("Sustain Percentage (%)"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
+            pl.col("Scores").list.median().round(2).alias("Median Scores"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
+            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+            pl.col("Scores").list.min().alias("Min Scores"),
+            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
+            pl.col("Scores").list.max().alias("Max Scores")
+        ]).sort(["version", "node", "Samples"], descending=[True, False, True])
+
+        return df.with_row_index("Rank", offset=1).select([
+            "Rank", "version", "estimated_min_cost", "estimated_max_cost", "node", "max_eidolon",
+            "Archetype Core", "Appearance Rate (%)", "Samples", "Full Star Rate (%)", "Sustain Percentage (%)",
+            "Min Scores", "25th Percentile Scores", "Median Scores",
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+        ])
+
+    def get_chars_by_cost_df(self):
+        df = self.chars_by_cost.join(
+            self.total_samples_df, on=["version", "node"], how="left"
+        ).with_columns([
+            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            (pl.col("total_full_star_clears") / pl.col("Samples") * 100).round(2).alias("Full Star Rate (%)"),
+            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain Percentage (%)"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
+            pl.col("Scores").list.median().round(2).alias("Median Scores"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
+            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+            pl.col("Scores").list.min().alias("Min Scores"),
+            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
+            pl.col("Scores").list.max().alias("Max Scores")
+        ]).sort(["version", "node", "Samples"], descending=[True, False, True])
+
+        return df.with_row_index("Rank", offset=1).select([
+            "Rank", "version", "estimated_min_cost", "estimated_max_cost", "node",
+            pl.col("team_key").alias("Character"),
+            "Appearance Rate (%)", "Samples", "Full Star Rate (%)", "Sustain Percentage (%)",
+            "Min Scores", "25th Percentile Scores", "Median Scores",
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+        ])
+
+    def get_chars_by_individual_eidolons_df(self):
+        df = self.chars_by_individual_eidolons.join(
+            self.total_samples_df, on=["version", "node"], how="left"
+        ).with_columns([
+            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            (pl.col("total_full_star_clears") / pl.col("Samples") * 100).round(2).alias("Full Star Rate (%)"),
+            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain Percentage (%)"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
+            pl.col("Scores").list.median().round(2).alias("Median Scores"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
+            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+            pl.col("Scores").list.min().alias("Min Scores"),
+            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
+            pl.col("Scores").list.max().alias("Max Scores")
+        ]).sort(["version", "node", "Samples"], descending=[True, False, True])
+
+        return df.with_row_index("Rank", offset=1).select([
+            "Rank", "version", "node",
+            pl.col("char_cons_zipped_sorted").alias("Character (Eidolon)"),
+            "Appearance Rate (%)", "Samples", "Full Star Rate (%)", "Sustain Percentage (%)",
+            "Min Scores", "25th Percentile Scores", "Median Scores",
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+        ])
+
+    def get_duos_stats(self):
+        # Calculate support for individual antecedents and consequents
+        char_freq = (
+            self.chars_by_individual_eidolons.lazy()
+            .join(self.total_samples_df.lazy(), on=["version", "node"], how="left")
+            .select([
+                "version", "node", pl.col("char_cons_zipped_sorted").alias("Character"),
+                (pl.col("Samples") / pl.col("version_total_samples")).alias("char_support")
+            ])
+        )
+
+        rules = (
+            self.duos.lazy()
+            .join(char_freq, left_on=["version", "node", "Antecedent"], right_on=["version", "node", "Character"], how="left")
+            .rename({"char_support": "support_A"})
+            .join(char_freq, left_on=["version", "node", "Consequent"], right_on=["version", "node", "Character"], how="left")
+            .rename({"char_support": "support_C"})
+            .join(self.total_samples_df.lazy(), on=["version", "node"], how="left")
+        )
+
+        return rules.with_columns([
+            (pl.col("Samples") / pl.col("version_total_samples")).alias("support"),
+        ]).with_columns([
+            (pl.col("support") / pl.col("support_A")).alias("confidence"),
+        ]).with_columns([
+            (pl.col("confidence") / pl.col("support_C")).alias("lift"),
+            (pl.col("support") - (pl.col("support_A") * pl.col("support_C"))).alias("leverage"),
+            ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction"),
+            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            (pl.col("total_full_star_clears") / pl.col("Samples") * 100).round(2).alias("Full Star Rate (%)"),
+            (pl.col("has_sustain") / pl.col("Samples") * 100).round(2).alias("Sustain Percentage (%)"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
+            pl.col("Scores").list.median().round(2).alias("Median Scores"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
+            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+            pl.col("Scores").list.min().alias("Min Scores"),
+            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
+            pl.col("Scores").list.max().alias("Max Scores")
+        ]).select([
+            "version", "node", "Antecedent", "Consequent", "Samples",
+            "Appearance Rate (%)", "Full Star Rate (%)", "Sustain Percentage (%)",
+            pl.col("confidence").round(3).alias("Confidence"),
+            pl.col("lift").round(3).alias("Lift"),
+            pl.col("leverage").round(4).alias("Leverage"),
+            pl.col("conviction").round(3).alias("Conviction"),
+            "Min Scores", "25th Percentile Scores", "Median Scores",
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+        ]).sort(["version", "node", "Lift"], descending=[True, False, True]).collect()
+
+    def get_combined_team_df(self):
+        node_char_cols = self._node_char_cols
+        
+        # Categorize columns based on their suffixes
+        team_cols = [c for c in node_char_cols if c.endswith("_char_cons_zipped_sorted")]
+        arch_cols = [c for c in node_char_cols if c.endswith("_archetypes_zipped_sorted")]
+        sustain_cols = [c for c in node_char_cols if c.endswith("_has_sustain")]
+        
+        df = self.combined_team_stats.join(
+            self.combined_total_samples_df, on=["version"], how="left" 
+        ).with_columns([
+            *[
+                # Dynamically renames "n1_char_cons..." to "Team Node 1", etc.
+                pl.col(c).list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias(f"Team Node {c.split('_')[0][1:]}")
+                for c in team_cols
+            ],
+            *[
+                # Dynamically renames "n1_archetypes..." to "Archetype Node 1", etc.
+                pl.col(c).list.join(" + ").alias(f"Archetype Node {c.split('_')[0][1:]}").map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
+                for c in arch_cols
+            ],
+            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            (pl.col("total_full_star_clears") / pl.col("Samples") * 100).round(2).alias("Full Star Rate (%)"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
+            pl.col("Scores").list.median().round(2).alias("Median Scores"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
+            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+            pl.col("Scores").list.min().alias("Min Scores"),
+            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
+            pl.col("Scores").list.max().alias("Max Scores")
+        ]).sort(["version", "Samples"], descending=[True, True])
+
+        # Interleave Team and Archetype columns so they display side-by-side per node
+        display_pairs = []
+        for c in team_cols:
+            node_num = c.split('_')[0][1:]
+            display_pairs.extend([f"Team Node {node_num}", f"Archetype Node {node_num}"])
+
+        return df.with_row_index("Rank", offset=1).select([
+            "Rank", "version", "combined_max_ed", "total_min_estimated_cost", "total_max_estimated_cost",
+            *display_pairs, *sustain_cols,
+            "Appearance Rate (%)", "Samples", "Full Star Rate (%)",
+            "Min Scores", "25th Percentile Scores", "Median Scores",
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+        ])
+
+    def get_combined_archetype_df(self):
+        # Dynamically fetch the list columns from the dataframe grouping keys
+        list_cols = [c for c in self.combined_archetype_stats.columns if c.endswith("archetypes_zipped_sorted")]
+        sustain_cols = [c for c in self.combined_archetype_stats.columns if c.endswith("_has_sustain")]
+
+        df = self.combined_archetype_stats.join(
+            self.combined_total_samples_df, on=["version"], how="left"
+        ).with_columns([
+            *[
+                # Dynamically renames "n1_archetypes..." to "Archetype Node 1", etc.
+                pl.col(c).list.join(" + ").alias(f"Archetype Node {c.split('_')[0][1:]}").map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
+                for c in list_cols
+            ],
+            # Handle the sustain aggregation correctly (which was weighted by samples previously)
+            *[
+                (pl.col(c) / pl.col("Samples") * 100).round(2).alias(f"{c} (%)")
+                for c in sustain_cols
+            ],
+            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            (pl.col("total_full_star_clears") / pl.col("Samples") * 100).round(2).alias("Full Star Rate (%)"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
+            pl.col("Scores").list.median().round(2).alias("Median Scores"),
+            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
+            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+            pl.col("Scores").list.min().alias("Min Scores"),
+            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
+            pl.col("Scores").list.max().alias("Max Scores")
+        ]).sort(["version", "Samples"], descending=[True, True])
+
+        # Track the generated aliases for final column selection
+        arch_aliases = [f"Archetype Node {c.split('_')[0][1:]}" for c in list_cols]
+        sustain_perc_cols = [f"{c} (%)" for c in sustain_cols]
+
+        return df.with_row_index("Rank", offset=1).select([
+            "Rank", "version", "combined_max_ed", "total_min_estimated_cost", "total_max_estimated_cost",
+            *arch_aliases, "Appearance Rate (%)", "Samples", "Full Star Rate (%)", *sustain_perc_cols,
+            "Min Scores", "25th Percentile Scores", "Median Scores",
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+        ])

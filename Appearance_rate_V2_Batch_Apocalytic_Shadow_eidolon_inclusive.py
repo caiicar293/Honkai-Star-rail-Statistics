@@ -262,9 +262,9 @@ class HonkaiStatistics_V2_APOC_Batch:
             def _node_lf(node_num, scores_alias, ed_alias,min_cost_alias,max_cost_alias):
                 return lf_base_for_combined.filter(pl.col("node") == node_num).select([
                     pl.col("char_cons_zipped_sorted").alias(f"n{node_num}_char_cons_zipped_sorted"),
-                    pl.col("archetypes_pairs_zipped_sorted").alias(f"n{node_num}archetypes_zipped_sorted"),
+                    pl.col("archetypes_pairs_zipped_sorted").alias(f"n{node_num}_archetypes_zipped_sorted"),
                     pl.col("team_key").alias(f"n{node_num}_team_key"),
-                    pl.col("archetype_key").alias(f"n{node_num}archetype_key"),
+                    pl.col("archetype_key").alias(f"n{node_num}_archetype_key"),
                     pl.col("uid"), pl.col("version"),
                     pl.col("round_num").alias(scores_alias),
                     pl.col("max_eidolon").alias(ed_alias),
@@ -281,16 +281,15 @@ class HonkaiStatistics_V2_APOC_Batch:
             join_keys = ["uid", "version", "star_num","row_max_stars"]
             combined = n1.join(n2, on=join_keys, how="inner")
 
-            # Only join n3 if the column exists AND this is actually a Starward Mode query.
-            # is_starward=False players in a Starward-era file only have nodes 1 & 2;
-            # inner-joining against an empty n3 would wipe the entire combined frame.
+            # FIXED: Change how="inner" to how="left" so older versions lacking Node 3 data are preserved.
+            # Fixed addition: Use pl.sum_horizontal and pl.max_horizontal to smoothly handle nulls from older versions.
             if self._has_starward_col and self.is_starward:
                 n3 = _node_lf(3, "n3_Scores", "n3_max_ed",'n3_min_estimated_cost','n3_max_estimated_cost')
-                combined = combined.join(n3, on=join_keys, how="inner")
+                combined = combined.join(n3, on=join_keys, how="left")
                 combined = combined.with_columns([
-                    (pl.col("n1_Scores") + pl.col("n2_Scores") + pl.col("n3_Scores")).alias("total_Scores"),
-                    (pl.col("n1_min_estimated_cost") + pl.col("n2_min_estimated_cost") + pl.col("n3_min_estimated_cost")).alias("total_min_estimated_cost"),
-                    (pl.col("n1_max_estimated_cost") + pl.col("n2_max_estimated_cost") + pl.col("n3_max_estimated_cost")).alias("total_max_estimated_cost"),
+                    pl.sum_horizontal(["n1_Scores", "n2_Scores", "n3_Scores"]).alias("total_Scores"),
+                    pl.sum_horizontal(["n1_min_estimated_cost", "n2_min_estimated_cost", "n3_min_estimated_cost"]).alias("total_min_estimated_cost"),
+                    pl.sum_horizontal(["n1_max_estimated_cost", "n2_max_estimated_cost", "n3_max_estimated_cost"]).alias("total_max_estimated_cost"),
                     pl.max_horizontal(["n1_max_ed", "n2_max_ed", "n3_max_ed"]).alias("combined_max_ed")
                 ])
             else:
@@ -361,8 +360,8 @@ class HonkaiStatistics_V2_APOC_Batch:
             
             self.chars= self.chars_max_eid.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "team_key"]).agg([
                 pl.col('Samples').sum(),
-                pl.col("Scores"),
-                pl.col("uids").unique(),
+                pl.col("Scores").explode(),
+                pl.col("uids").explode(),
                 pl.col("Total_Sustains").sum(),
                 pl.col("total_full_star_clears").sum()
             ])
@@ -377,14 +376,32 @@ class HonkaiStatistics_V2_APOC_Batch:
             ]).collect()
         
            
-            self.archetypes = self.teams.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "archetypes_pairs_zipped_sorted","archetype_key","max_eidolon","has_sustain"]).agg([
+            self.archetypes = self.teams.group_by(["version", "estimated_min_cost", "estimated_max_cost", "node", "archetypes_pairs_zipped_sorted","archetype_key","max_eidolon"]).agg([
     
-                pl.count("Samples"),
-                pl.col("Scores").alias("Scores"),
-                pl.col("uids").unique(),
-                pl.col("total_full_star_clears").sum()
+                pl.sum("Samples"),
+                pl.col("Scores").explode(),
+                pl.col("uids").explode().unique(),
+                pl.col("total_full_star_clears").sum(),
+                (pl.col("has_sustain") * pl.col('Samples')).sum()
             ])
-           
+
+            
+            new = self.teams.select("version","node",'char_cons_zipped_sorted',"Samples","Scores","total_full_star_clears","has_sustain")
+            new = new.with_columns(pl.col('char_cons_zipped_sorted').alias("Consequent"))
+            result = new.explode('char_cons_zipped_sorted').explode('Consequent')
+            result = result.filter(pl.col("char_cons_zipped_sorted") != pl.col("Consequent"))
+
+            self.duos = result.group_by(
+                ["version", "node", pl.col('char_cons_zipped_sorted').alias('Antecedent'), "Consequent"]
+            ).agg([
+                pl.sum("Samples"),
+                pl.col("Scores").list.explode().alias("Scores"),
+                pl.col("total_full_star_clears").sum(),
+                (pl.col("has_sustain") * pl.col('Samples')).sum()
+            ])
+        
+        
+        
             self.total_samples_df = self.lf.group_by(
             "version", "node"
             ).agg(pl.col("uid").n_unique().alias("version_total_samples")).collect() 
@@ -396,7 +413,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         node_char_cols = [c for c in combined.collect_schema().names() if c.endswith("_zipped_sorted") or c.endswith("_has_sustain") or c.endswith("_key")]
       
         self.combined_team_stats = (
-            combined.group_by(["version", "combined_max_ed","total_min_estimated_cost","total_max_estimated_cost","star_num"] + node_char_cols)
+            combined.group_by(["version", "combined_max_ed","total_min_estimated_cost","total_max_estimated_cost"] + node_char_cols)
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("total_Scores").alias("Scores"),
@@ -412,18 +429,20 @@ class HonkaiStatistics_V2_APOC_Batch:
         # 2. Build the grouping keys by excluding both the unwanted strings AND the agg columns
         group_keys = [
             c for c in self.combined_team_stats.collect_schema().names() 
-            if not c.endswith("_char_cons_zipped_sorted") 
+            if not c.endswith(("_char_cons_zipped_sorted", "_team_key","_has_sustain")) 
             and c not in agg_cols
         ]
+        
 
         # 3. Perform the group_by and the aggregations safely
         self.combined_archetype_stats = (
             self.combined_team_stats.group_by(group_keys)
             .agg([
-                pl.col("Samples").sum().alias("Samples"),          # Sum the previous counts
-                pl.col("Scores").mean().alias("Scores"),           # Average the scores
-                pl.col("uids").explode().unique().alias("uids"),   # Flatten the UIDs and get unique
-                pl.col("total_full_star_clears").sum().alias("total_full_star_clears")
+                pl.col("Samples").sum(),        # Sum the previous counts
+                pl.col("Scores").explode() ,          # Average the scores
+                pl.col("uids").explode().unique(),  # Flatten the UIDs and get unique
+                pl.col("total_full_star_clears").sum().alias("total_full_star_clears"),
+                (cs.ends_with("_has_sustain") * pl.col("Samples")).sum()
             ])
         )
 
@@ -434,5 +453,3 @@ class HonkaiStatistics_V2_APOC_Batch:
 
         # Store node_char_cols for use in get_combined_* methods
         self._node_char_cols = node_char_cols
-            
-        

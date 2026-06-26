@@ -11,6 +11,7 @@ from Appearance_rate_V2_batch_Apocalytic_Shadow import HonkaiStatistics_V2_APOC_
 from Appearance_rate_V2_batch_anomaly import HonkaiStatistics_V2_Anomaly_Batch
 from Appearance_rates_Legacy import HonkaiStatistics_Legacy ,HonkaiStatistics_Legacy_Batch
 from Appearance_rate_builds import HonkaiStatistics_builds
+from Appearance_rate_V2_batch_all_modes_by_cost import HonkaiStatistics_V2_eidolon_batch
 load_dotenv()
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -30,6 +31,47 @@ class HonkaiDataPlatform:
         # era="MODERN" -> uses eidolon loop [0,1,2,6], full schema
         # era="LEGACY" -> no eidolon loop, up_to_eidolon=6, eidolon cols NULL
         # -----------------------------------------------------------------
+        # -----------------------------------------------------------------
+        # Cost-stratified mode config (HonkaiStatistics_V2_eidolon_batch)
+        # era="MODERN" — uses same parquet files as modern modes.
+        # All versions and all nodes/floors are always aggregated together.
+        # Results go into separate *_by_cost tables.
+        # -----------------------------------------------------------------
+        self.cost_config = {
+            "MOC_COST": {
+                "mode_arg": "moc",
+                "prefix":   "moc",
+                "versions": get_env_list("MOC_VERSIONS")[::-1],
+                "floor":    12,
+                "has_node": True,
+                "era":      "MODERN",
+            },
+            "PURE_FICTION_COST": {
+                "mode_arg": "pure fiction",
+                "prefix":   "pure_fiction",
+                "versions": get_env_list("PF_VERSIONS")[::-1],
+                "floor":    4,
+                "has_node": True,
+                "era":      "MODERN",
+            },
+            "APOC_COST": {
+                "mode_arg": "apoc",
+                "prefix":   "apoc",
+                "versions": get_env_list("APOC_VERSIONS")[::-1],
+                "floor":    4,
+                "has_node": True,
+                "era":      "MODERN",
+            },
+            "ANOMALY_COST": {
+                "mode_arg": "anomaly",
+                "prefix":   "anomaly",
+                "versions": get_env_list("ANOMALY_VERSIONS"),
+                "floor":    0,
+                "has_node": False,
+                "era":      "MODERN",
+            },
+        }
+
         self.config = {
             # ---- LEGACY (pre-2.2.2, no cons cols in main parquet) --------
             "MOC_LEGACY": {
@@ -281,6 +323,58 @@ class HonkaiDataPlatform:
             return cls(sub_mode=mode_arg,floor=f)
 
     # ------------------------------------------------------------------
+    def _process_cost(self, conn, mode, cfg):
+        """Run the cost-stratified batch for one mode (all versions, all nodes/floors)."""
+        era    = "MODERN"
+        prefix = cfg["prefix"]
+        m_arg  = cfg["mode_arg"]
+        f      = cfg["floor"]
+        # Always all versions, all nodes/floors
+        v = "all"
+        n = "all" if cfg["has_node"] else None
+        floor_arg = "all" if m_arg == "anomaly" else f
+        e = "all"   # eidolon sentinel — cost scraper handles eidolon internally
+
+        print(f"  [COST] {mode} mode={m_arg} v=all nodes/floors=all")
+        try:
+            scraper = HonkaiStatistics_V2_eidolon_batch(
+                version=v,
+                floor=floor_arg,
+                node=n if n is not None else 0,
+                by_ed=None,
+                mode=m_arg,
+            )
+        except Exception as ex:
+            print(f"  !!! Cost scraper init failed for {mode}: {ex}")
+            return
+
+        # Per-node/floor tables
+        self._db_save(conn,
+            self._standardize(scraper.get_teams_df(), mode, v, e, f, n, era),
+            f"{prefix}_by_cost_teams")
+        self._db_save(conn,
+            self._standardize(scraper.get_archetypes_df(), mode, v, e, f, n, era),
+            f"{prefix}_by_cost_archetypes")
+        self._db_save(conn,
+            self._standardize(scraper.get_chars_by_cost_df(), mode, v, e, f, n, era),
+            f"{prefix}_by_cost_chars")
+        self._db_save(conn,
+            self._standardize(scraper.get_chars_by_individual_eidolons_df(), mode, v, e, f, n, era),
+            f"{prefix}_by_cost_chars_by_eidolon")
+        self._db_save(conn,
+            self._standardize(scraper.get_duos_stats(), mode, v, e, f, n, era),
+            f"{prefix}_by_cost_duos")
+
+        # Combined (cross-node) tables
+        print(f"  [COST] Combined tables for {mode}")
+        self._db_save(conn,
+            self._standardize(scraper.get_combined_team_df(), mode, v, e, f, "Both", era),
+            f"{prefix}_by_cost_dual_or_triple_teams")
+        self._db_save(conn,
+            self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, "Both", era),
+            f"{prefix}_by_cost_dual_or_triple_archetypes")
+
+    # ------------------------------------------------------------------
     def _process_modern(self, conn, mode, cfg, v, e, f, n, eidolons):
         era = "MODERN"
         print(f"  [MODERN] {mode} v={v} e={e} floor={f} node={n}")
@@ -405,6 +499,7 @@ class HonkaiDataPlatform:
         target_version=None,
         modern_strategy="all_at_once",  # all_at_once | per_version | per_node | per_eidolon | granular
         legacy_strategy="all_at_once",  # all_at_once | per_version
+        run_cost=True,                  # whether to run the cost-stratified pass
     ):
         conn = duckdb.connect(self.db_name)
         modes_to_run = [target_mode] if target_mode else list(self.config.keys())
@@ -435,10 +530,29 @@ class HonkaiDataPlatform:
         self._orchestrate_legacy(conn, legacy_modes, legacy_strategy, specific_versions)
 
         # ------------------------------------------------------------------
-        # PASS 3 — Sort
+        # PASS 3 — COST-STRATIFIED
+        # ------------------------------------------------------------------
+        if run_cost:
+            print("=" * 60)
+            print("PASS 3: COST-STRATIFIED  [all versions, all nodes/floors]")
+            print("=" * 60)
+            # Determine which cost modes to run
+            if target_mode:
+                # Map a regular mode key to its cost counterpart if supplied
+                cost_key = target_mode + "_COST"
+                cost_modes_to_run = [cost_key] if cost_key in self.cost_config else list(self.cost_config.keys())
+            else:
+                cost_modes_to_run = list(self.cost_config.keys())
+            for mode in cost_modes_to_run:
+                self._process_cost(conn, mode, self.cost_config[mode])
+                print(f"  [commit] {mode} cost pass done")
+                conn.commit()
+
+        # ------------------------------------------------------------------
+        # PASS 4 — Sort
         # ------------------------------------------------------------------
         print("=" * 60)
-        print("PASS 3: Sorting all tables")
+        print("PASS 4: Sorting all tables")
         print("=" * 60)
         all_tables = conn.execute(
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
@@ -452,7 +566,7 @@ class HonkaiDataPlatform:
         print("Done.")
 
         # ------------------------------------------------------------------
-        # PASS 4 — Builds
+        # PASS 5 — Builds
         # ------------------------------------------------------------------
         builds = HonkaiStatistics_builds()
         builds.save_to_db()

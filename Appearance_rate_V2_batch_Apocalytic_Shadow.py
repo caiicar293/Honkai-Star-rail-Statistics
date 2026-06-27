@@ -676,7 +676,6 @@ class HonkaiStatistics_V2_APOC_Batch:
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Archetype Core", "Usage %", "Samples", "Sustain_Percentage",
-            pl.col("Total_Sustains").alias("Sustain Samples"),
             pl.col("Total_Sustains").alias("Sustain Samples"), "Full_Clear_Rate", "Total_Full_Clears",
             "Min Scores", "25th %", "Median", "75th %", "Avg Scores", "Max Scores", "Std Dev Scores"
         ])

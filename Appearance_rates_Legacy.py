@@ -1101,10 +1101,15 @@ class HonkaiStatistics_Legacy_Batch:
         if self.floor != "all":
             lf = lf.filter(pl.col("floor") == self.floor)
 
-        # --- sustain flag ---
+        row_max_stars_expr = (
+            pl.lit(3)
+        )
+        
+        # --- sustain flag & star num---
         lf = lf.with_columns(
             pl.any_horizontal([pl.col(c).is_in(sustain_names) for c in char_cols])
-              .alias("has_sustain")
+              .alias("has_sustain"),
+            (pl.col('star_num') == row_max_stars_expr).alias("is_full_clear"), 
         )
 
         # --- score filter ---
@@ -1116,7 +1121,7 @@ class HonkaiStatistics_Legacy_Batch:
         self.lf = lf
 
         # --- combined (cross-node) data ---
-        base_cols = ["uid", "version", "floor", "node", self.score_col] + char_cols
+        base_cols = ["uid", "version", "floor", "node", self.score_col,"has_sustain","is_full_clear"] + char_cols
         lf_base   = lf.select(base_cols)
 
         n1 = lf_base.filter(pl.col("node") == 1).select([
@@ -1125,6 +1130,8 @@ class HonkaiStatistics_Legacy_Batch:
               .list.eval(pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999)))
               .alias("n1_chars"),
             pl.col(self.score_col).alias("n1_score"),
+            pl.col("has_sustain").alias("n1_has_sustain"),
+            pl.col("is_full_clear")
         ])
         n2 = lf_base.filter(pl.col("node") == 2).select([
             "uid", "version", "floor",
@@ -1132,9 +1139,11 @@ class HonkaiStatistics_Legacy_Batch:
               .list.eval(pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999)))
               .alias("n2_chars"),
             pl.col(self.score_col).alias("n2_score"),
+            pl.col("has_sustain").alias("n2_has_sustain"),
+            pl.col("is_full_clear")
         ])
 
-        combined = n1.join(n2, on=["uid", "version", "floor"], how="inner")
+        combined = n1.join(n2, on=["uid", "version", "floor","is_full_clear"], how="inner")
 
         if self.mode == "moc":
             combined = combined.with_columns(pl.col("n1_score").alias("total_score"))
@@ -1175,7 +1184,7 @@ class HonkaiStatistics_Legacy_Batch:
         # Unpivot chars + join char build data
         chars_long = (
             lf.unpivot(
-                index=["uid", self.score_col, "has_sustain"] + seg_keys,
+                index=["uid", self.score_col, "has_sustain","is_full_clear"] + seg_keys,
                 on=char_cols,
                 value_name="Character",
             )
@@ -1237,6 +1246,7 @@ class HonkaiStatistics_Legacy_Batch:
                 pl.count("uid").alias("Total_Samples"),
                 pl.col(self.score_col).alias("Total_Scores"),
                 pl.col("has_sustain").sum().alias("Total_Sustains"),
+                pl.col("is_full_clear").sum().alias("Total_Full_Clears"),
                 pl.col("uid").unique().alias("uids"),
             ])
             .join(w_df, on=group_keys, how="left")
@@ -1258,24 +1268,25 @@ class HonkaiStatistics_Legacy_Batch:
                 pl.count("uid").alias("Samples"),
                 pl.col(self.score_col).alias("Scores"),
                 pl.col("uid").unique().alias("uids"),
+                pl.col("is_full_clear").sum().alias("Total_Full_Clears"),
                 pl.col("has_sustain").sum().alias("Total_Sustains"),
-            ])
+            ]).with_columns(
+                pl.col("team_key")
+                .list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null()))
+                .alias("archetype_key")
+            )
             .collect()
         )
 
         # Archetypes
         self.archetypes_stats = (
             self.team_stats
-            .with_columns(
-                pl.col("team_key")
-                  .list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null()))
-                  .alias("archetype_key")
-            )
             .group_by(seg_keys + ["archetype_key"])
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
                 pl.col("uids").list.explode().unique().alias("uids"),
+                pl.col("Total_Full_Clears").sum(),
                 pl.col("Total_Sustains").sum(),
             ])
         )
@@ -1295,6 +1306,7 @@ class HonkaiStatistics_Legacy_Batch:
             pl.col("Scores").list.explode().alias("Scores"),
             pl.col("uids").list.explode().unique().alias("uids"),
             pl.col("Total_Sustains").sum(),
+            pl.col("Total_Full_Clears").sum()
         ])
 
         self.total_samples_df = (
@@ -1312,21 +1324,24 @@ class HonkaiStatistics_Legacy_Batch:
                 pl.count("uid").alias("Samples"),
                 pl.col("total_score").alias("Scores"),
                 pl.col("uid").unique().alias("uids"),
+                pl.col("is_full_clear").sum().alias("Total_Full_Clears"),
+                cs.ends_with("_has_sustain").sum()
+            ]).with_columns([
+                pl.col("n1_chars").list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null())).alias("n1_archetype"),
+                pl.col("n2_chars").list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null())).alias("n2_archetype"),
             ])
             .collect()
         )
 
         self.combined_archetypes_stats = (
             self.combined_team_stats
-            .with_columns([
-                pl.col("n1_chars").list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null())).alias("n1_archetype"),
-                pl.col("n2_chars").list.eval(pl.element().filter(pl.element().is_in(dps_names) & pl.element().is_not_null())).alias("n2_archetype"),
-            ])
             .group_by(cmb_keys + ["n1_archetype", "n2_archetype"])
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
                 pl.col("uids").list.explode().unique().alias("uids"),
+                pl.col("Total_Full_Clears").sum(),
+                cs.ends_with("_has_sustain").sum()
             ])
         )
 
@@ -1501,6 +1516,7 @@ class HonkaiStatistics_Legacy_Batch:
             .with_columns([
                 (pl.col("Total_Samples") / pl.col("version_total_samples") * 100).round(3).alias("Appearance Rate (%)"),
                 (pl.col("Total_Sustains") / pl.col("Total_Samples") * 100).round(2).alias("Sustain_Percentage"),
+                (pl.col("Total_Full_Clears")/pl.col("Total_Samples")* 100).round(2).alias("Full_Clear_Rate"),
                 *self._score_stats_exprs("Total_Scores"),
             ])
             .sort(vk + ["Total_Samples"], descending=[True, True, False, True])
@@ -1512,6 +1528,7 @@ class HonkaiStatistics_Legacy_Batch:
             f"Min {m}", f"25th Percentile {m}", f"Median {m}",
             f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Sustain_Percentage",
+            "Total_Full_Clears", "Full_Clear_Rate",
         ])
 
     def get_team_df(self) -> pl.DataFrame:
@@ -1523,17 +1540,22 @@ class HonkaiStatistics_Legacy_Batch:
             .with_columns([
                 pl.col("team_key").list.join(", ")
                   .map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
+                  pl.col("archetype_key").list.join(" + ")
+                .map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
+                .alias("Archetype Core"),
                 (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
                 (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
+                (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(vk + ["Samples"], descending=[True, True, False, True])
             .with_row_index("Rank", offset=1)
         )
         return df.select([
-            "Rank", *vk, "Team", "Appearance Rate (%)", "Samples",
+            "Rank", *vk, "Team","Archetype Core", "Appearance Rate (%)", "Samples",
             f"Min {m}", f"25th Percentile {m}", f"Median {m}",
-            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}", "Sustain?",
+            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}", "Sustain?"
+            ,"Total_Full_Clears","Full_Clear_Rate"
         ])
 
     def get_archetype_df(self) -> pl.DataFrame:
@@ -1548,6 +1570,7 @@ class HonkaiStatistics_Legacy_Batch:
                   .alias("Archetype Core"),
                 (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Usage %"),
                 (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+                (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(vk + ["Samples"], descending=[True, True, False, True])
@@ -1555,7 +1578,7 @@ class HonkaiStatistics_Legacy_Batch:
         )
         return df.select([
             "Rank", *vk, "Archetype Core", "Usage %", "Samples",
-            "Sustain_Percentage", pl.col("Total_Sustains").alias("Sustain Samples"),
+            "Sustain_Percentage", pl.col("Total_Sustains").alias("Sustain Samples"), "Full_Clear_Rate", "Total_Full_Clears",
             f"Min {m}", f"25th Percentile {m}", f"Median {m}",
             f"75th Percentile {m}", f"Average {m}", f"Max {m}", f"Std Dev {m}",
         ])
@@ -1594,7 +1617,10 @@ class HonkaiStatistics_Legacy_Batch:
                 pl.col("lift").round(3).alias("Lift"),
                 pl.col("leverage").round(4).alias("Leverage"),
                 pl.col("conviction").round(3).alias("Conviction"),
+                 pl.col("Total_Sustains"),
                 (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+                pl.col("Total_Full_Clears"),
+                (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(vk + ["Lift"], descending=[True, True, False, True])
@@ -1711,39 +1737,86 @@ class HonkaiStatistics_Legacy_Batch:
         self._assert_combined()
         ck = self._CMB_KEYS
         m  = self.metric
+        node_char_cols = ["n1_chars","n2_chars"]
+        archetype_cols = [c.replace("_chars", "_archetype") for c in node_char_cols]
+        archetype_label_cols = [f"Core Node {i+1}" for i in range(len(node_char_cols))]
+        sustain_cols = [f"n{i+1}_has_sustain" for i in range(len(node_char_cols)) ]
         df = (
             self.combined_team_stats
             .join(self.combined_total_samples_df, on=ck, how="left")
             .with_columns([
-                pl.col("n1_chars").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team Node 1"),
-                pl.col("n2_chars").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team Node 2"),
-                (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+                *[
+                pl.col(c).list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String)
+                .alias(f"Team Node {i+1}")
+                for i, c in enumerate(node_char_cols)
+            ],
+            *[
+                pl.col(c).list.join(" + ")
+                .map_elements(lambda s: f"[{s}]" if s != "" else "[Other]", return_dtype=pl.String)
+                .alias(archetype_label_cols[i])
+                for i, c in enumerate(archetype_cols)
+            ],
+            *[
+                (pl.col(c) == pl.col("Samples"))
+                for c in sustain_cols
+            ],
+            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            
+            pl.col("Total_Full_Clears"),
+            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(ck + ["Samples"], descending=[True, True, True])
             .with_row_index("Rank", offset=1)
         )
-        return df.select(["Rank", *ck, "Team Node 1", "Team Node 2", "Appearance Rate (%)", "Samples",
-                          f"Min {m}", f"25th Percentile {m}", f"Median {m}",
-                          f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}"])
+        
+        team_label_cols = [f"Team Node {i+1}" for i in range(len(node_char_cols))]
+        
+        return df.select(["Rank", *ck, 
+                            *team_label_cols,
+                            *archetype_label_cols,
+                            *sustain_cols,
+                            "Total_Full_Clears", "Full_Clear_Rate", "Appearance Rate (%)", "Samples",
+                            f"Min {m}", f"25th Percentile {m}", f"Median {m}",
+                            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}"])
 
     def get_combined_archetype_df(self) -> pl.DataFrame:
         self._assert_combined()
         ck = self._CMB_KEYS
         m  = self.metric
+        
+        node_char_cols = ["n1_chars","n2_chars"]
+        archetype_cols = [c.replace("_chars", "_archetype") for c in node_char_cols]
+        archetype_label_cols = [f"Core Node {i+1}" for i in range(len(node_char_cols))]
+
+        sustain_cols = [f"n{i+1}_has_sustain" for i in range(len(node_char_cols)) ]
+        sustain_label_cols = [f"n{i+1}_Sustain_Percentage" for i in range(len(node_char_cols))]
+        
         df = (
             self.combined_archetypes_stats
             .join(self.combined_total_samples_df, on=ck, how="left")
             .with_columns([
-                pl.col("n1_archetype").list.join(" + ").map_elements(lambda s: f"[{s}]" if s != "" else "[Other]", return_dtype=pl.String).alias("Core Node 1"),
-                pl.col("n2_archetype").list.join(" + ").map_elements(lambda s: f"[{s}]" if s != "" else "[Other]", return_dtype=pl.String).alias("Core Node 2"),
-                (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            *[
+                pl.col(c).list.join(" + ")
+                .map_elements(lambda s: f"[{s}]" if s != "" else "[Other]", return_dtype=pl.String)
+                .alias(archetype_label_cols[i])
+                for i, c in enumerate(archetype_cols)
+            ],
+            *[
+                (pl.col(c) /pl.col("Samples")* 100).round(2).alias(sustain_label_cols[i])
+                for i, c in enumerate(sustain_cols)
+            ],
+            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            pl.col("Total_Full_Clears"),
+            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(ck + ["Samples"], descending=[True, True, True])
             .with_row_index("Rank", offset=1)
         )
-        return df.select(["Rank", *ck, "Core Node 1", "Core Node 2", "Appearance Rate (%)", "Samples",
+        return df.select(["Rank", *ck, *archetype_label_cols,
+            *sustain_cols,
+            *sustain_label_cols, "Appearance Rate (%)", "Samples",
                           f"Min {m}", f"25th Percentile {m}", f"Median {m}",
                           f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}"])
 

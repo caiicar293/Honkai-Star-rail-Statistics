@@ -695,10 +695,7 @@ class HonkaiStatistics_V2_eidolon_batch:
                 pl.col(c).list.join(" + ").alias(f"Archetype {label_prefix} {c.split('_')[0][1:]}").map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
                 for c in arch_cols
             ],
-            *[
-                pl.when(pl.col(c)).then(pl.col("Samples")).otherwise(0).alias(f"Sustain {label_prefix} {c.split('_')[0][1:]} Count")
-                for c in sustain_cols
-            ],
+
             (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
             pl.col("total_full_star_clears").alias("Full Star Clears"),
             (pl.col("total_full_star_clears") / pl.col("Samples") * 100).round(2).alias("Full Star Rate (%)"),
@@ -716,11 +713,11 @@ class HonkaiStatistics_V2_eidolon_batch:
             node_num = c.split('_')[0][1:]
             display_pairs.extend([f"Team {label_prefix} {node_num}", f"Archetype {label_prefix} {node_num}"])
             
-        sustain_count_cols = [f"Sustain {label_prefix} {c.split('_')[0][1:]} Count" for c in sustain_cols]
+        
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "combined_max_ed", "total_min_estimated_cost", "total_max_estimated_cost",
-            *display_pairs, *sustain_cols, *sustain_count_cols,
+            *display_pairs, *sustain_cols,
             "Appearance Rate (%)", "Samples", "Full Star Clears", "Full Star Rate (%)",
             f"Min {self.metric_name}", f"25th Percentile {self.metric_name}", f"Median {self.metric_name}",
             f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}"

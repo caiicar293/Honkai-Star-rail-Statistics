@@ -120,9 +120,17 @@
   .usage-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--teal)); }
   .usage-val { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent2); min-width: 42px; text-align: right; }
 
-  .sustain-high { color: var(--green); }
-  .sustain-mid  { color: var(--gold); }
-  .sustain-low  { color: var(--red); }
+  /* Particle canvas */
+  #particleCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.8; }
+
+  /* Sustain — plain informational, no quality colouring */
+  .sustain-high, .sustain-mid, .sustain-low { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); }
+
+  /* Full-star rate — red (low) → gold (mid) → green (high) */
+  .fullstar-pct  { font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .fullstar-high { color: var(--green); }
+  .fullstar-mid  { color: var(--gold); }
+  .fullstar-low  { color: var(--red); }
 
   .score-num { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); }
   .score-num.median { color: var(--accent); font-weight: 600; font-size: 13px; }
@@ -149,6 +157,7 @@
 </style>
 </head>
 <body>
+<canvas id="particleCanvas" aria-hidden="true"></canvas>
 <div class="container">
 
   <div class="header">
@@ -219,6 +228,8 @@
             <th data-col="Samples" class="num">Samples</th>
             <th data-col="Sustain_Percentage" class="num">Sustain %</th>
             <th data-col="Sustain_Samples" class="num">Sus. N</th>
+            <th data-col="Full_Clear_Rate_pct" class="num">Full Star %</th>
+            <th data-col="Total_Full_Clears" class="num">FS N</th>
             <th data-col="Min_Score" class="num">Min</th>
             <th data-col="Percentile_25" class="num">P25</th>
             <th data-col="Median_Score" class="num">Median</th>
@@ -246,7 +257,7 @@ const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
 const ROW_H      = 44;   // px — matches td padding (9px×2 + ~26px content)
 const OVERSCAN   = 6;
 const VIEWPORT_H = 600;
-const COL_COUNT  = 15;
+const COL_COUNT  = 17;
 
 // ---- Pre-process all rows once at load ----
 // Cache icon HTML and lowercased search string so virtual scroll never recomputes them
@@ -369,7 +380,7 @@ function iconEl(name) {
 function fmtPct(v)      { return v == null ? '—' : v.toFixed(1) + '%'; }
 function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
 function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
-function sustainCls(v)  { return v >= 95 ? 'sustain-high' : v >= 70 ? 'sustain-mid' : 'sustain-low'; }
+function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
 function eidLabel(at, upto) { return at === upto ? `E${at}` : `E${at}→${upto}`; }
 function eidCls(at, upto)   { return `eid-range-badge at${at}${at === upto ? ' exact' : ''}`; }
 
@@ -383,8 +394,10 @@ function rowHTML(r) {
     <td><div class="arch-cell"><div class="arch-icons">${r._iconsHtml}</div><span class="arch-name" title="${r.Archetype_Core}">${r.Archetype_Core}</span></div></td>
     <td class="num"><div class="usage-bar-wrap"><div class="usage-bar-bg"><div class="usage-bar-fill" style="width:${usagePct.toFixed(1)}%"></div></div><span class="usage-val">${fmtPct(r.Usage_pct)}</span></div></td>
     <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
-    <td class="num"><span class="${sustainCls(r.Sustain_Percentage)}">${fmtPct(r.Sustain_Percentage)}</span></td>
+    <td class="num"><span class="score-num">${fmtPct(r.Sustain_Percentage)}</span></td>
     <td class="num"><span class="score-num samp">${fmtInt(r.Sustain_Samples)}</span></td>
+    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>
+    <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>
     <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
     <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
     <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>
@@ -487,6 +500,59 @@ document.querySelectorAll('th[data-col]').forEach(th => {
     recompute();
   });
 });
+
+// ── Particle background ──────────────────────────────────────────────
+(function setupParticles() {
+  const canvas = document.getElementById('particleCanvas');
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext('2d');
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { drawOnce(); return; }
+  const PALETTE = ['56,189,248','45,212,191','167,139,250','251,191,36'];
+  const LINK    = 105;
+  let w, h, dpr, motes = [], raf, running = false, t = 0;
+  function mkMote(fromBottom) {
+    return { x: Math.random()*w, y: fromBottom ? h+8 : Math.random()*h,
+      vx:(Math.random()-.5)*.18, vy:-(Math.random()*.22+.06),
+      r:Math.random()*1.5+.55, tp:Math.random()*Math.PI*2,
+      ts:Math.random()*.016+.005, sw:Math.random()*.4+.12,
+      sp:Math.random()*Math.PI*2, c:PALETTE[Math.floor(Math.random()*PALETTE.length)] };
+  }
+  function resize() {
+    dpr = Math.min(devicePixelRatio||1,2);
+    w = innerWidth; h = innerHeight;
+    canvas.width=w*dpr; canvas.height=h*dpr;
+    canvas.style.cssText=`position:fixed;inset:0;width:${w}px;height:${h}px;`;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    const n = Math.max(22,Math.min(55,Math.floor(w*h/34000)));
+    motes = Array.from({length:n}, ()=>mkMote(false));
+  }
+  function paint(once) {
+    t++;
+    ctx.clearRect(0,0,w,h);
+    for (let i=0;i<motes.length;i++) {
+      const a=motes[i];
+      if (!once){ a.x+=a.vx; a.y+=a.vy; a.x+=Math.sin(t*.01+a.sp)*a.sw*.05; if(a.y<-10) Object.assign(a,mkMote(true)); }
+      for (let j=i+1;j<motes.length;j++){
+        const b=motes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+        if(d<LINK){ctx.strokeStyle=`rgba(${a.c},${(1-d/LINK)*.09})`;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+      }
+    }
+    motes.forEach(m=>{
+      const al=Math.max(.06,.28+Math.sin(t*m.ts+m.tp)*.22);
+      const gr=ctx.createRadialGradient(m.x,m.y,0,m.x,m.y,m.r*5);
+      gr.addColorStop(0,`rgba(${m.c},${al*.5})`); gr.addColorStop(1,`rgba(${m.c},0)`);
+      ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(m.x,m.y,m.r*5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=`rgba(${m.c},${Math.min(.85,al+.18)})`; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fill();
+    });
+    if(running) raf=requestAnimationFrame(()=>paint(false));
+  }
+  function drawOnce(){ resize(); paint(true); }
+  function start(){ if(!running){ running=true; raf=requestAnimationFrame(()=>paint(false)); } }
+  function stop(){ running=false; if(raf) cancelAnimationFrame(raf); }
+  resize(); start();
+  let rt; window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(resize,200);});
+  document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
+})();
 
 recompute();
 </script>

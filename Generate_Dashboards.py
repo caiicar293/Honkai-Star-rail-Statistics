@@ -159,7 +159,8 @@ class DashboardGenerator:
                 "{dim_field}", "Character", "Appearance_Rate_pct", "Samples",
                 "Min_Score", "Percentile_25", "Median_Score", "Percentile_75",
                 "Average_Score", "Std_Dev", "Max_Score", "Sustain_Samples",
-                "Sustain_Percentage", "rarity", "path", "element", "role",
+                "Sustain_Percentage", "Total_Full_Clears", "Full_Clear_Rate_pct",
+                "rarity", "path", "element", "role",
                 {eid_select}
             FROM {self.CHAR_TABLE}
             WHERE "version" = ? AND "mode" = ? AND "{dim_field}" IN ({placeholders})
@@ -175,7 +176,8 @@ class DashboardGenerator:
             SELECT
                 Rank, version, at_eidolon_level, up_to_eidolon_level,
                 {dim_field}, Archetype_Core, Usage_pct, Samples,
-                Sustain_Percentage, Sustain_Samples, Min_Score, Percentile_25,
+                Sustain_Percentage, Sustain_Samples, Full_Clear_Rate_pct, Total_Full_Clears,
+                Min_Score, Percentile_25,
                 Median_Score, Percentile_75, Average_Score, Max_Score, Std_Dev
             FROM {cfg['arch_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})
@@ -190,9 +192,9 @@ class DashboardGenerator:
         sql = f"""
             SELECT
                 Rank, version, at_eidolon_level, up_to_eidolon_level,
-                {dim_field}, Team, Appearance_Rate_pct, Samples, Min_Score,
+                {dim_field}, Team, Archetype_Core, Appearance_Rate_pct, Samples, Min_Score,
                 Percentile_25, Median_Score, Percentile_75, Average_Score,
-                Std_Dev, Max_Score, "Sustain?" AS sustain
+                Std_Dev, Max_Score, Full_Clear_Rate_pct, Total_Full_Clears, "Sustain?" AS sustain
             FROM {cfg['team_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})
             ORDER BY {dim_field}, at_eidolon_level, up_to_eidolon_level, Rank

@@ -196,6 +196,7 @@ class HonkaiDataPlatform:
             'Average':                   'Average_Score',
             'Points':                    'Scores',
             'Cycles':                    'Scores',
+            'Full_Clear_Rate':           'Full_Clear_Rate_pct'
         }
 
     # ------------------------------------------------------------------
@@ -489,7 +490,7 @@ class HonkaiDataPlatform:
           
             print(f"  [LEGACY] Gear for {mode} v{v}")
             self._db_save(conn,
-                self._standardize(scraper.display_top_gear().filter(pl.col('node')==0), mode, v, e, f,n, era),
+                self._standardize(scraper.display_top_gear(), mode, v, e, f,n, era),
                 f"{prefix}_stats_gear_usage")
 
     # ------------------------------------------------------------------

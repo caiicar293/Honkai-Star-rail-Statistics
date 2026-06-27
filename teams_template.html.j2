@@ -145,11 +145,23 @@
   .eid-range-badge.at2 { color: var(--e2); border-color: rgba(56,189,248,0.3);  background: rgba(56,189,248,0.07); }
   .eid-range-badge.at6 { color: var(--e6); border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }
 
+  /* Particle canvas */
+  #particleCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.8; }
+
   .sustain-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 2px 8px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 600; border: 1px solid; }
   .sustain-pill.yes { color: var(--green); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.08); }
   .sustain-pill.no  { color: var(--red);   border-color: rgba(248,113,113,0.3);  background: rgba(248,113,113,0.07); }
   .sustain-pill.yes::before { content: '✦'; font-size: 8px; }
   .sustain-pill.no::before  { content: '✕'; font-size: 9px; }
+
+  /* Archetype core pill */
+  .arch-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 600; border: 1px solid rgba(167,139,250,0.3); background: rgba(167,139,250,0.07); color: var(--purple); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Full-star rate */
+  .fullstar-pct  { font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .fullstar-high { color: var(--green); }
+  .fullstar-mid  { color: var(--gold); }
+  .fullstar-low  { color: var(--red); }
 
   .team-cell { display: flex; align-items: center; gap: 6px; min-width: 280px; max-width: 500px; }
   .team-icons { display: flex; align-items: center; flex-shrink: 0; }
@@ -190,6 +202,7 @@
 </style>
 </head>
 <body>
+<canvas id="particleCanvas" aria-hidden="true"></canvas>
 <div class="container">
 
   <div class="header">
@@ -276,9 +289,12 @@
             <th data-col="dim_key">{{ dim_label }}</th>
             <th data-col="eid_range_key">Eid. Range</th>
             <th data-col="Team">Team</th>
+            <th data-col="Archetype_Core">Archetype</th>
             <th data-col="Appearance_Rate_pct" class="num sorted">App. Rate %</th>
             <th data-col="Samples" class="num">Samples</th>
             <th data-col="Sustain">Sustain</th>
+            <th data-col="Full_Clear_Rate_pct" class="num">Full Star %</th>
+            <th data-col="Total_Full_Clears" class="num">FS N</th>
             <th data-col="Min_Score" class="num">Min</th>
             <th data-col="Percentile_25" class="num">P25</th>
             <th data-col="Median_Score" class="num">Median</th>
@@ -449,6 +465,7 @@ function iconEl(name) {
 function fmtPct(v)      { return v == null ? '—' : v.toFixed(2) + '%'; }
 function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
 function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
+function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
 function eidLabel(at, upto) { return at === upto ? `E${at}` : `E${at}→${upto}`; }
 function eidCls(at, upto)   { return `eid-range-badge at${at}${at === upto ? ' exact' : ''}`; }
 
@@ -458,14 +475,20 @@ function rowHTML(r) {
   const sustainHtml = r.Sustain
     ? `<span class="sustain-pill yes">Sustain</span>`
     : `<span class="sustain-pill no">No Sustain</span>`;
+  const archHtml = r.Archetype_Core
+    ? `<span class="arch-pill" title="${r.Archetype_Core}">${r.Archetype_Core}</span>`
+    : `<span class="score-num" style="color:var(--text3)">—</span>`;
   return `<tr>
     <td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>
     <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
     <td><span class="${eidCls(at,upto)}">${eidLabel(at,upto)}</span></td>
     <td><div class="team-cell"><div class="team-icons">${r._iconsHtml}</div><span class="team-name" title="${r.Team}">${r.Team}</span></div></td>
+    <td>${archHtml}</td>
     <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct)}</span></div></td>
     <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
     <td>${sustainHtml}</td>
+    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>
+    <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>
     <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
     <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
     <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>
@@ -488,7 +511,7 @@ function renderViewport() {
   const tableScroll = document.querySelector('.table-scroll');
 
   if (filteredData.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="14"><div class="empty-state"><div class="icon">⚡</div><p>No teams match current filters</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="17"><div class="empty-state"><div class="icon">⚡</div><p>No teams match current filters</p></div></td></tr>`;
     return;
   }
 
@@ -500,7 +523,7 @@ function renderViewport() {
 
   let html = '';
   if (paddingTop > 0) {
-    html += `<tr style="height:${paddingTop}px"><td colspan="14" style="padding:0;border:none"></td></tr>`;
+    html += `<tr style="height:${paddingTop}px"><td colspan="17" style="padding:0;border:none"></td></tr>`;
   }
 
   let lastDim = startIdx > 0 ? filteredData[startIdx - 1].dim_key : null;
@@ -508,14 +531,14 @@ function renderViewport() {
     const r = filteredData[i];
     if (r.dim_key !== lastDim) {
       const lbl = DIM_GROUP_LABELS[r.dim_key] || `${DIM_LABEL} ${r.dim_key}`;
-      html += `<tr class="group-sep"><td colspan="14"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
+      html += `<tr class="group-sep"><td colspan="17"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
       lastDim = r.dim_key;
     }
     html += rowHTML(r);
   }
 
   if (paddingBottom > 0) {
-    html += `<tr style="height:${paddingBottom}px"><td colspan="14" style="padding:0;border:none"></td></tr>`;
+    html += `<tr style="height:${paddingBottom}px"><td colspan="17" style="padding:0;border:none"></td></tr>`;
   }
 
   tbody.innerHTML = html;
@@ -645,6 +668,58 @@ document.querySelectorAll('th[data-col]').forEach(th => {
     recompute();
   });
 });
+
+// ── Particle background ──────────────────────────────────────────────
+(function setupParticles() {
+  const canvas = document.getElementById('particleCanvas');
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext('2d');
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { resize(); paint(true); return; }
+  const PALETTE = ['56,189,248','45,212,191','167,139,250','251,191,36'];
+  const LINK    = 105;
+  let w, h, dpr, motes = [], raf, running = false, t = 0;
+  function mkMote(fromBottom) {
+    return { x:Math.random()*w, y:fromBottom?h+8:Math.random()*h,
+      vx:(Math.random()-.5)*.18, vy:-(Math.random()*.22+.06),
+      r:Math.random()*1.5+.55, tp:Math.random()*Math.PI*2,
+      ts:Math.random()*.016+.005, sw:Math.random()*.4+.12,
+      sp:Math.random()*Math.PI*2, c:PALETTE[Math.floor(Math.random()*PALETTE.length)] };
+  }
+  function resize() {
+    dpr=Math.min(devicePixelRatio||1,2);
+    w=innerWidth; h=innerHeight;
+    canvas.width=w*dpr; canvas.height=h*dpr;
+    canvas.style.cssText=`position:fixed;inset:0;width:${w}px;height:${h}px;`;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    const n=Math.max(22,Math.min(55,Math.floor(w*h/34000)));
+    motes=Array.from({length:n},()=>mkMote(false));
+  }
+  function paint(once) {
+    t++;
+    ctx.clearRect(0,0,w,h);
+    for(let i=0;i<motes.length;i++){
+      const a=motes[i];
+      if(!once){a.x+=a.vx;a.y+=a.vy;a.x+=Math.sin(t*.01+a.sp)*a.sw*.05;if(a.y<-10)Object.assign(a,mkMote(true));}
+      for(let j=i+1;j<motes.length;j++){
+        const b=motes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+        if(d<LINK){ctx.strokeStyle=`rgba(${a.c},${(1-d/LINK)*.09})`;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+      }
+    }
+    motes.forEach(m=>{
+      const al=Math.max(.06,.28+Math.sin(t*m.ts+m.tp)*.22);
+      const gr=ctx.createRadialGradient(m.x,m.y,0,m.x,m.y,m.r*5);
+      gr.addColorStop(0,`rgba(${m.c},${al*.5})`);gr.addColorStop(1,`rgba(${m.c},0)`);
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(m.x,m.y,m.r*5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=`rgba(${m.c},${Math.min(.85,al+.18)})`;ctx.beginPath();ctx.arc(m.x,m.y,m.r,0,Math.PI*2);ctx.fill();
+    });
+    if(running) raf=requestAnimationFrame(()=>paint(false));
+  }
+  function start(){if(!running){running=true;raf=requestAnimationFrame(()=>paint(false));}}
+  function stop(){running=false;if(raf)cancelAnimationFrame(raf);}
+  resize();start();
+  let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(resize,200);});
+  document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
+})();
 
 recompute();
 </script>

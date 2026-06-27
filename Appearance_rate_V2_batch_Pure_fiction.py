@@ -891,6 +891,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level",
             *archetype_label_cols,
+            *sustain_cols,
             *sustain_label_cols,
             "Appearance Rate (%)", "Samples","Total_Full_Clears", "Full_Clear_Rate",
             "Min Points", "25th Percentile Points", "Median Points",

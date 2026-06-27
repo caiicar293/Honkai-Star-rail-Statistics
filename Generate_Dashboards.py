@@ -240,7 +240,7 @@ class DashboardGenerator:
         if self._has_data(self.CHAR_TABLE, version, "mode", cfg["char_db_mode"]):
             data = self.fetch_characters(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_characters.html"
-            self.render_file("character_stats_template_html.j2", out_file, {
+            self.render_file("character_stats_template.html.j2", out_file, {
                 **base_context,
                 "is_legacy": cfg["is_legacy"],
                 "data_json": json.dumps(data, ensure_ascii=False)

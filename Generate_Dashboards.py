@@ -39,6 +39,7 @@ class DashboardGenerator:
             "char_db_mode": "MOC",
             "arch_table": "moc_stats_archetypes",
             "team_table": "moc_stats_teams",
+            "cost_team_table": "moc_by_cost_teams",
             "mode_label": "MOC",
             "full_name": "Memory of Chaos",
             "subtitle": "FLOOR 12",
@@ -55,6 +56,7 @@ class DashboardGenerator:
             "char_db_mode": "APOC",
             "arch_table": "apoc_stats_archetypes",
             "team_table": "apoc_stats_teams",
+            "cost_team_table": "apoc_by_cost_teams",
             "mode_label": "APOC",
             "full_name": "Apocalyptic Shadow",
             "subtitle": "FLOOR 4",
@@ -71,6 +73,7 @@ class DashboardGenerator:
             "char_db_mode": "PURE_FICTION",
             "arch_table": "pure_fiction_stats_archetypes",
             "team_table": "pure_fiction_stats_teams",
+            "cost_team_table": "pure_fiction_by_cost_teams",
             "mode_label": "Pure Fiction",
             "full_name": "Pure Fiction",
             "subtitle": "FLOOR 4",
@@ -87,6 +90,7 @@ class DashboardGenerator:
             "char_db_mode": "ANOMALY",
             "arch_table": "anomaly_stats_archetypes",
             "team_table": "anomaly_stats_teams",
+            "cost_team_table": "anomaly_by_cost_teams",
             "mode_label": "Anomaly",
             "full_name": "Anomaly Arbitration",
             "subtitle": "FLOORS 0–4",
@@ -186,6 +190,26 @@ class DashboardGenerator:
         params = [version] + cfg["dim_values"]
         return self._clean_rows(self.conn.execute(sql, params))
 
+    def fetch_cost_teams(self, cfg: dict, version: str) -> list[dict]:
+        dim_field = cfg["dim_field"]
+        placeholders = ", ".join(["?" for _ in cfg["dim_values"]])
+        sql = f"""
+            SELECT
+                Rank, version, estimated_min_cost, estimated_max_cost,
+                {dim_field}, max_eidolon, Team, Archetype_Core, has_sustain,
+                Sustain_Count, Appearance_Rate_pct, Samples, Full_Star_Clears,
+                Full_Star_Rate_pct, Min_Score, Percentile_25, Median_Score,
+                Percentile_75, Average_Score, Std_Dev, Max_Score
+            FROM {cfg['cost_team_table']}
+            WHERE version = ? AND {dim_field} IN ({placeholders})
+            ORDER BY {dim_field}, estimated_min_cost, max_eidolon, Rank
+        """
+        params = [version] + cfg["dim_values"]
+        rows = self._clean_rows(self.conn.execute(sql, params))
+        for row in rows:
+            row["has_sustain"] = bool(row.get("has_sustain") or False)
+        return rows
+
     def fetch_teams(self, cfg: dict, version: str) -> list[dict]:
         dim_field = cfg["dim_field"]
         placeholders = ", ".join(["?" for _ in cfg["dim_values"]])
@@ -269,6 +293,18 @@ class DashboardGenerator:
             })
         else:
             print(f"  [SKIP] No team data found in {cfg['team_table']}.")
+
+        # 4. By-Cost Teams
+        cost_table = cfg.get("cost_team_table")
+        if cost_table and self._has_data(cost_table, version):
+            data = self.fetch_cost_teams(cfg, version)
+            out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_teams.html"
+            self.render_file("by_cost_teams_template.html.j2", out_file, {
+                **base_context,
+                "data_json": json.dumps(data, ensure_ascii=False)
+            })
+        else:
+            print(f"  [SKIP] No by-cost team data found for {mode_key}.")
 
     def generate_index(self, version: str):
         print(f"\n[INFO] Generating Hub Index for {version}...")

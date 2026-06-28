@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Archetype Tier List - $$EIDOLON$$ | v$$VERSION$$</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .meta-badge {
+            font-size: 0.45em;
+            color: #38bdf8;
+            border: 1px solid #38bdf8;
+            padding: 3px 8px;
+            border-radius: 4px;
+            vertical-align: middle;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(56, 189, 248, 0.1);
+        }
+        .version-text {
+            font-size: 0.45em;
+            color: #888;
+            font-weight: normal;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
+            align-items: center;
+        }
+        select {
+            padding: 8px 12px;
+            font-size: 16px;
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .tier-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            max-width: 1100px;
+            margin: 0 auto;
+            background-color: #000;
+            border: 2px solid #333;
+        }
+        .tier-row {
+            display: flex;
+            min-height: 80px;
+            border-bottom: 1px solid #333;
+        }
+        .tier-row:last-child {
+            border-bottom: none;
+        }
+        .tier-label {
+            width: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            color: #000;
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.3);
+            flex-shrink: 0;
+        }
+        /* Tier Colors */
+        .tier-T0 { background-color: #ff7f7f; }
+        .tier-T0\.5 { background-color: #ffbf7f; }
+        .tier-T1 { background-color: #ffff7f; }
+        .tier-T1\.5 { background-color: #bfff7f; }
+        .tier-T2 { background-color: #7fff7f; }
+
+        .tier-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 15px;
+            background-color: #222;
+            flex-grow: 1;
+            align-items: center;
+        }
+        
+        .archetype-wrapper {
+            display: flex;
+            flex-direction: column;
+            background-color: #333;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            align-items: center;
+            gap: 6px;
+        }
+        .archetype-score {
+            font-size: 12px;
+            font-weight: bold;
+            color: #ccc;
+            background-color: #1a1a1a;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #444;
+        }
+        .archetype-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+        }
+        .char-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 65px; 
+        }
+        .char-container img {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            background-color: #111;
+            object-fit: cover;
+            border: 1px solid #555;
+        }
+        .char-name {
+            font-size: 10px;
+            color: #aaa;
+            text-align: center;
+            margin-top: 5px;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+        .missing-icon {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #444;
+            color: #888;
+            font-size: 20px;
+            border-radius: 4px;
+            border: 1px solid #555;
+        }
+        .plus {
+            color: #666;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 15px; 
+        }
+    </style>
+</head>
+<body>
+
+    <h1>
+        Interactive Archetype Tier List 
+        <span class="meta-badge">$$EIDOLON$$</span>
+        <span class="version-text">v$$VERSION$$</span>
+    </h1>
+    
+    <div class="controls">
+        <label for="modeSelect">Select Game Mode: </label>
+        <select id="modeSelect" onchange="renderTierList()">
+            <option value="ANOMALY_F0">Anomaly F0</option>
+            <option value="ANOMALY_F4">Anomaly F4</option>
+            <option value="APOC">Apocalyptic Shadow (APOC)</option>
+            <option value="MOC">Memory of Chaos (MOC)</option>
+            <option value="PURE_FICTION">Pure Fiction</option>
+        </select>
+    </div>
+
+    <div class="tier-list" id="tierListContainer">
+        </div>
+
+    <script>
+        // Data Injected by Python Script
+        const iconData = $$ICON_DATA$$;
+        const rawCsvData = `$$RAW_CSV_DATA$$`;
+
+        const parsedData = rawCsvData.trim().split('\n').slice(1).map(row => {
+            const [Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier] = row.split(',');
+            return { Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier };
+        });
+
+        const tiers = ['T0', 'T0.5', 'T1', 'T1.5', 'T2'];
+
+        function renderTierList() {
+            const selectedMode = document.getElementById('modeSelect').value;
+            const container = document.getElementById('tierListContainer');
+            container.innerHTML = ''; 
+
+            tiers.forEach(tier => {
+                const matchingItems = parsedData.filter(d => d.Game_Mode === selectedMode && d.Tier === tier);
+
+                if (matchingItems.length === 0) return; 
+
+                // Dynamic Sorting Logic based on the game mode
+                matchingItems.sort((a, b) => {
+                    const scoreA = parseFloat(a.Weighted_Avg_Score);
+                    const scoreB = parseFloat(b.Weighted_Avg_Score);
+                    
+                    if (selectedMode === 'APOC' || selectedMode === 'PURE_FICTION') {
+                        // High score is better: sort descending
+                        return scoreB - scoreA;
+                    } else {
+                        // Low score (cycles/time) is better: sort ascending
+                        return scoreA - scoreB;
+                    }
+                });
+
+                const rowEl = document.createElement('div');
+                rowEl.className = 'tier-row';
+                
+                const tierClass = tier.replace('.', '\\.'); 
+                
+                const labelEl = document.createElement('div');
+                labelEl.className = `tier-label tier-${tierClass}`;
+                labelEl.innerText = tier;
+                rowEl.appendChild(labelEl);
+
+                const contentEl = document.createElement('div');
+                contentEl.className = 'tier-content';
+
+                matchingItems.forEach(item => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'archetype-wrapper';
+                    
+                    const scoreDiv = document.createElement('div');
+                    scoreDiv.className = 'archetype-score';
+                    scoreDiv.innerText = `Score: ${item.Weighted_Avg_Score}`;
+                    wrapper.appendChild(scoreDiv);
+
+                    const archGroup = document.createElement('div');
+                    archGroup.className = 'archetype-group';
+                    
+                    const characters = item.Archetype_Core.split(' + ').map(s => s.trim());
+                    
+                    characters.forEach((char, index) => {
+                        const charContainer = document.createElement('div');
+                        charContainer.className = 'char-container';
+
+                        const iconSrc = iconData[char];
+                        if (iconSrc) {
+                            const img = document.createElement('img');
+                            img.src = iconSrc;
+                            img.title = char;
+                            charContainer.appendChild(img);
+                        } else {
+                            const missing = document.createElement('div');
+                            missing.className = 'missing-icon';
+                            missing.innerText = '?';
+                            charContainer.appendChild(missing);
+                        }
+
+                        const nameLabel = document.createElement('div');
+                        nameLabel.className = 'char-name';
+                        nameLabel.innerText = char;
+                        charContainer.appendChild(nameLabel);
+
+                        archGroup.appendChild(charContainer);
+
+                        if (index < characters.length - 1) {
+                            const plus = document.createElement('span');
+                            plus.className = 'plus';
+                            plus.innerText = '+';
+                            archGroup.appendChild(plus);
+                        }
+                    });
+
+                    wrapper.appendChild(archGroup);
+                    contentEl.appendChild(wrapper);
+                });
+
+                rowEl.appendChild(contentEl);
+                container.appendChild(rowEl);
+            });
+        }
+
+        renderTierList();
+    </script>
+</body>
+</html>

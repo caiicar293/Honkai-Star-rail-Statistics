@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Archetype Tier List - E0 | v4.3.2</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .meta-badge {
+            font-size: 0.45em;
+            color: #38bdf8;
+            border: 1px solid #38bdf8;
+            padding: 3px 8px;
+            border-radius: 4px;
+            vertical-align: middle;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(56, 189, 248, 0.1);
+        }
+        .version-text {
+            font-size: 0.45em;
+            color: #888;
+            font-weight: normal;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
+            align-items: center;
+        }
+        select {
+            padding: 8px 12px;
+            font-size: 16px;
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .tier-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            max-width: 1100px;
+            margin: 0 auto;
+            background-color: #000;
+            border: 2px solid #333;
+        }
+        .tier-row {
+            display: flex;
+            min-height: 80px;
+            border-bottom: 1px solid #333;
+        }
+        .tier-row:last-child {
+            border-bottom: none;
+        }
+        .tier-label {
+            width: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            color: #000;
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.3);
+            flex-shrink: 0;
+        }
+        /* Tier Colors */
+        .tier-T0 { background-color: #ff7f7f; }
+        .tier-T0\.5 { background-color: #ffbf7f; }
+        .tier-T1 { background-color: #ffff7f; }
+        .tier-T1\.5 { background-color: #bfff7f; }
+        .tier-T2 { background-color: #7fff7f; }
+
+        .tier-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 15px;
+            background-color: #222;
+            flex-grow: 1;
+            align-items: center;
+        }
+        
+        .archetype-wrapper {
+            display: flex;
+            flex-direction: column;
+            background-color: #333;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            align-items: center;
+            gap: 6px;
+        }
+        .archetype-score {
+            font-size: 12px;
+            font-weight: bold;
+            color: #ccc;
+            background-color: #1a1a1a;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #444;
+        }
+        .archetype-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+        }
+        .char-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 65px; 
+        }
+        .char-container img {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            background-color: #111;
+            object-fit: cover;
+            border: 1px solid #555;
+        }
+        .char-name {
+            font-size: 10px;
+            color: #aaa;
+            text-align: center;
+            margin-top: 5px;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+        .missing-icon {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #444;
+            color: #888;
+            font-size: 20px;
+            border-radius: 4px;
+            border: 1px solid #555;
+        }
+        .plus {
+            color: #666;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 15px; 
+        }
+    </style>
+</head>
+<body>
+
+    <h1>
+        Interactive Archetype Tier List 
+        <span class="meta-badge">E0</span>
+        <span class="version-text">v4.3.2</span>
+    </h1>
+    
+    <div class="controls">
+        <label for="modeSelect">Select Game Mode: </label>
+        <select id="modeSelect" onchange="renderTierList()">
+            <option value="ANOMALY_F0">Anomaly F0</option>
+            <option value="ANOMALY_F4">Anomaly F4</option>
+            <option value="APOC">Apocalyptic Shadow (APOC)</option>
+            <option value="MOC">Memory of Chaos (MOC)</option>
+            <option value="PURE_FICTION">Pure Fiction</option>
+        </select>
+    </div>
+
+    <div class="tier-list" id="tierListContainer">
+        </div>
+
+    <script>
+        // Data Injected by Python Script
+        const iconData = {
+    "The Herta": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/cb19bc39920370309b3aceff744e8651.png",
+    "Lightning Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/411b9c981aad01d19570f66b9ba4ce96.png",
+    "Ice Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0250d/271e4bd6730bbc1e22ae8ab74fc4ca4c.png",
+    "Imaginary Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0250d/2686b718435e7ca1da748ac6756b0a5f.png",
+    "Physical Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/2e745113a15eec2610e3986689cb6a62.png",
+    "Fire Trailblazer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u42a2d/f277a9d839d5626a6f6136e04d27daee.png",
+    "Hyacine": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4459630552fa374281787a9e8b8153ce.png",
+    "Phainon": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/7d318b257430358b04e719a6714d86c0.png",
+    "Castorice": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/0b80e2c12cbad2bc96cd8d9b6f76b95a.png",
+    "Cipher": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/1e4fbbf3d2d72703e1d04b46adc4328b.png",
+    "Anaxa": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/9b9330374b47f57fbe85f662b058ceb5.png",
+    "Mydei": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/fe1eeac0734f4f536699ef291b126282.png",
+    "Tribbie": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/6d4c07fa8602822f99052f797de4d017.png",
+    "Hysilens": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/8dea8052fed6948d240265e03417c6cc.png",
+    "The Dahlia": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/7b43de0facc42d4c967b7d8773bc641f.png",
+    "Ruan Mei": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/8d9ba2fed6e41b3b9a0ec5708e09a873.png",
+    "Sunday": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/25dbbbc5878d215e01fff773534ace25.png",
+    "Robin": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/55afa6f201c9ff0b6cd2d4fca2c3cec0.png",
+    "Acheron": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/32efcb9506785b0233f1399e7e74261b.png",
+    "Black Swan": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d9c9a9af4fc7fd748f5a0172f89bfa6d.png",
+    "Sparkle": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/5225826f7e04a4ffb9680e094e4af1e5.png",
+    "Aglaea": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/aed706672ab35ac6ce0afa614c6fef4a.png",
+    "Boothill": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/2efb8d3267342a03038b5d5baa99b928.png",
+    "Jade": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/2febd76f96242a3659542b4963103a7b.png",
+    "Firefly": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/c8fdeb59e68f509309f8f01503d8dc9c.png",
+    "Rappa": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/a25174b8a06f29ad7d4fa3e9fd92018d.png",
+    "Jingliu": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/91b88ea8f0d6530713b3288efd47996c.png",
+    "Yunli": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/47f52f4096a43f230f5250d700c44c14.png",
+    "Kafka": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/8113f2756523d9d611912456014ed8c1.png",
+    "Dan Heng \u2022 Permansor Terrae": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d4643f6b758c03ac5bbb1c9ee28b4f4e.png",
+    "Cerydra": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/bf3901934e9210717a46c6a69155d9a5.png",
+    "Guinaifen": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/a729189ed5cc59db86072d8723081f7b.png",
+    "Feixiao": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/137c51b75711463c66c34c87c53a1395.png",
+    "Dr. Ratio": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/b676e5db4deca0b5835474d2b9f85fd0.png",
+    "Aventurine": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d55ee208926f730670cd241af2c1a785.png",
+    "Fu Xuan": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/e45264f362415646972bb7d87856bc4f.png",
+    "Luocha": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/2f34f7682ed29cbd6159bf9c98a4a3e2.png",
+    "Topaz & Numby": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d72410444b77eb70160946f29ed81749.png",
+    "Seele": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/ca580e2074cf4f09bab5ecc1b7c5454e.png",
+    "Bronya": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/9133b6248b7023d3c92ab9b18a3ae803.png",
+    "Silver Wolf": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/36eb72296ed1b078e64614c4c702cb06.png",
+    "Jing Yuan": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/f0d274ba75f6ec6082fd179b163ba37c.png",
+    "Gepard": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/e7ecb2ae25565e27dfad770f1a71fbd4.png",
+    "Yanqing": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d4374b27988a55c163b212cc1438b322.png",
+    "Cyrene": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/a880fd7c3d35c8254d508e224dae2004.png",
+    "Evernight": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4afcdb24ffbb3dd954617ba4318b0639.png",
+    "Huohuo": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/a2f18e9dd74da7d5e5f3765882c43449.png",
+    "Blade": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/a4cbf44365a4a18dbf5f72be92027682.png",
+    "Dan Heng \u2022 Imbibitor Lunae": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/114b258fa5beabe5c4529af44a04ab02.png",
+    "Argenti": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/70e076909e0d17b290ab552296c39a23.png",
+    "Lingsha": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/124b31d922cbd3312b0248892c8fc688.png",
+    "Fugue": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/a9a67d50de1c8c607dd8adfa8020f431.png",
+    "Clara": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/e92c5e2f81d60911476b80a9e142d36f.png",
+    "Dan Heng": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/a14216e9da98bf210b2af33f50637024.png",
+    "Sparxie": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/5ee74ada4c2cc11d91b6ee7b92f5104f.png",
+    "Himeko": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/602f8eac54da774f163e858791eebeef.png",
+    "Jiaoqiu": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/ee1184b33b6615973f79333291b1cfd5.png",
+    "Sampo": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/b7f1b0aad2325c936ec09db38d5e46cf.png",
+    "Luka": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/9c39e57459ce23f116e8e6f624634042.png",
+    "Imaginary March 7th": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/3ccd3e3ab53d1a9de9aaf476393aff88.png",
+    "Tingyun": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/eb35105004de8fd60523d395bfdcd6a0.png",
+    "Xueyi": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/3b3ee0eaa51723bffb7e745c2b88991c.png",
+    "Welt": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/ff337858ee1c146ecb4f95b7a1b5bd26.png",
+    "Bailu": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/e6b0b217261578d809fe079a495c7439.png",
+    "Herta": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/9481189050eaaeac47afb4e59efb50f6.png",
+    "Pela": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/f28b762da7dd4f893f085ff09050e328.png",
+    "Yukong": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4a64f1e8d573e89a7a697503d345a532.png",
+    "Asta": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/5bf45a7ec5869b7167a6c2e69dee044e.png",
+    "Hook": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/ec5582be09e9aa61d813f172da2cc1b6.png",
+    "Gallagher": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/64119d5506f60fa0c93357aa07dca5dc.png",
+    "Saber": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/cdd2e6e61e312de58c1e7dadbde45863.png",
+    "Archer": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/0aebb8e851feb9a6f1178c850910942e.png",
+    "Yao Guang": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4f824e1ae55486d99dc94371a602ee6e.png",
+    "Ashveil": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/cf246a98e76d6b0e0446ac77408943f7.png",
+    "Qingque": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/5ab74a2b7299f3bb65757ed202f25b21.png",
+    "Lynx": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/77e7b3d97f12bb26e777f7574f69dab3.png",
+    "Silver Wolf LV.999": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/9edeaad1b283a01d5e3b85b362eeac2d.png",
+    "Natasha": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/4d591cb49f39a686d1946c349533e890.png",
+    "Evanescia": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/cf4ddb725c2120a249aa883728a562f5.png",
+    "Arlan": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/c084fd36f8960c69d16a4a20daed4c1d.png",
+    "Serval": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/24fd2f3dbd345a7fc8763dca46943145.png",
+    "Moze": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/d9eb37ea51e392428442c17ab2de77a7.png",
+    "Misha": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/e227206546196e8308acd012604509ef.png",
+    "Sushang": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/c604b06b43ab00bef1d1689a35692203.png",
+    "Hanya": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_ua8b8d/cbe61b368008d0f96c454de4db4d7dc1.png",
+    "Mortenax Blade": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/ee669ca108fc20c7d05e03b45910ff72.png",
+    "Ice March 7th": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4ae37b9a57755fcfcca58dce9af56eb4.png"
+};
+        const rawCsvData = `Game_Mode,Archetype_Core,Weighted_Avg_Score,Tier
+ANOMALY_F0,Welt + Sparxie + Silver Wolf LV.999,1.57,T0
+ANOMALY_F0,Acheron + Ashveil,2.34,T0.5
+ANOMALY_F0,Castorice + Evernight,2.51,T0.5
+ANOMALY_F0,Sparxie + Silver Wolf LV.999,2.55,T0.5
+ANOMALY_F0,Sparxie,2.7,T0.5
+ANOMALY_F0,Sparxie + Evanescia,3.34,T1
+ANOMALY_F0,Evernight,3.45,T1
+ANOMALY_F0,Ashveil,3.54,T1
+ANOMALY_F0,Evanescia,3.6,T1
+ANOMALY_F0,Silver Wolf LV.999,3.61,T1
+ANOMALY_F0,Silver Wolf LV.999 + Evanescia,3.77,T1
+ANOMALY_F0,Kafka + Black Swan + Hysilens,3.78,T1
+ANOMALY_F0,Firefly,3.89,T1
+ANOMALY_F0,Castorice,3.96,T1
+ANOMALY_F0,Welt + Ashveil,4.06,T1.5
+ANOMALY_F0,Acheron,4.17,T1.5
+ANOMALY_F0,Feixiao + Ashveil,4.43,T1.5
+ANOMALY_F0,Mydei,4.46,T1.5
+ANOMALY_F0,Seele,4.6,T1.5
+ANOMALY_F0,Welt + Silver Wolf LV.999,4.79,T1.5
+ANOMALY_F0,Phainon,4.9,T1.5
+ANOMALY_F0,Anaxa,4.9,T1.5
+ANOMALY_F0,Kafka + Hysilens,4.93,T1.5
+ANOMALY_F0,Archer,5.15,T2
+ANOMALY_F0,Feixiao,5.22,T2
+ANOMALY_F0,Aglaea,5.28,T2
+ANOMALY_F0,Rappa,5.42,T2
+ANOMALY_F0,Saber,5.45,T2
+ANOMALY_F0,Serval + The Herta,5.62,T2
+ANOMALY_F0,The Herta + Anaxa,5.62,T2
+ANOMALY_F0,Jade + The Herta,5.64,T2
+ANOMALY_F0,Yunli,5.64,T2
+ANOMALY_F0,Herta + The Herta,5.66,T2
+ANOMALY_F0,Boothill,5.74,T2
+ANOMALY_F4,Welt + Sparxie + Silver Wolf LV.999,1.83,T0
+ANOMALY_F4,Welt + Silver Wolf LV.999,3.0,T0.5
+ANOMALY_F4,Sparxie,3.79,T0.5
+ANOMALY_F4,Sparxie + Silver Wolf LV.999,3.83,T0.5
+ANOMALY_F4,Silver Wolf LV.999 + Evanescia,4.26,T1
+ANOMALY_F4,Silver Wolf LV.999,4.27,T1
+ANOMALY_F4,Castorice + Evernight,4.58,T1.5
+ANOMALY_F4,Sparxie + Evanescia,4.61,T1.5
+ANOMALY_F4,Ashveil,4.65,T1.5
+ANOMALY_F4,Evernight,4.71,T1.5
+ANOMALY_F4,Evanescia,4.81,T1.5
+ANOMALY_F4,Kafka + Black Swan + Hysilens,5.27,T1.5
+ANOMALY_F4,Acheron + Ashveil,5.4,T1.5
+ANOMALY_F4,Welt + Ashveil,5.4,T1.5
+ANOMALY_F4,Mydei,5.5,T2
+ANOMALY_F4,Castorice,5.58,T2
+ANOMALY_F4,Acheron,5.61,T2
+ANOMALY_F4,Feixiao + Ashveil,5.67,T2
+ANOMALY_F4,Archer,5.67,T2
+ANOMALY_F4,Firefly,5.69,T2
+ANOMALY_F4,Phainon,5.72,T2
+ANOMALY_F4,Kafka + Hysilens,5.8,T2
+ANOMALY_F4,Anaxa,6.0,T2
+APOC,Yunli,1461.4,T2
+APOC,Herta + The Herta,1602.27,T2
+APOC,Serval + The Herta,1746.31,T2
+APOC,Feixiao,1910.07,T2
+APOC,Jade + The Herta,2301.03,T2
+APOC,Saber,2334.18,T2
+APOC,Aglaea,2571.65,T1.5
+APOC,The Herta + Anaxa,2607.38,T1.5
+APOC,Rappa,2819.53,T1
+APOC,Welt + Silver Wolf LV.999,2844.45,T1
+APOC,Phainon,2851.6,T1
+APOC,Boothill,2885.52,T1
+APOC,Seele,2910.11,T1
+APOC,Castorice,2970.29,T1
+APOC,Mydei,2980.01,T1
+APOC,Acheron,3004.66,T1
+APOC,Anaxa,3060.45,T1
+APOC,Feixiao + Ashveil,3157.18,T0.5
+APOC,Archer,3217.48,T0.5
+APOC,Kafka + Hysilens,3269.82,T0.5
+APOC,Evernight,3281.46,T0.5
+APOC,Silver Wolf LV.999,3315.43,T0.5
+APOC,Welt + Ashveil,3325.08,T0.5
+APOC,Firefly,3365.02,T0.5
+APOC,Evanescia,3372.4,T0.5
+APOC,Castorice + Evernight,3402.53,T0
+APOC,Ashveil,3410.4,T0
+APOC,Silver Wolf LV.999 + Evanescia,3412.15,T0
+APOC,Kafka + Black Swan + Hysilens,3427.35,T0
+APOC,Welt + Sparxie + Silver Wolf LV.999,3441.9,T0
+APOC,Sparxie + Evanescia,3446.44,T0
+APOC,Acheron + Ashveil,3539.46,T0
+APOC,Sparxie + Silver Wolf LV.999,3565.11,T0
+APOC,Sparxie,3595.81,T0
+MOC,Welt + Sparxie + Silver Wolf LV.999,2.07,T0
+MOC,Sparxie,5.34,T0
+MOC,Castorice + Evernight,5.72,T0.5
+MOC,Evernight,5.95,T0.5
+MOC,Sparxie + Silver Wolf LV.999,6.05,T0.5
+MOC,Welt + Silver Wolf LV.999,6.1,T0.5
+MOC,Seele,6.17,T0.5
+MOC,Kafka + Black Swan + Hysilens,6.59,T1
+MOC,Sparxie + Evanescia,6.82,T1
+MOC,Ashveil,6.9,T1
+MOC,Welt + Ashveil,7.07,T1
+MOC,Archer,7.07,T1
+MOC,Evanescia,7.15,T1
+MOC,Firefly,7.3,T1
+MOC,Silver Wolf LV.999,7.42,T1
+MOC,Jade + The Herta,7.56,T1.5
+MOC,Feixiao + Ashveil,7.64,T1.5
+MOC,Silver Wolf LV.999 + Evanescia,7.7,T1.5
+MOC,Anaxa,7.76,T1.5
+MOC,Castorice,7.81,T1.5
+MOC,Aglaea,7.84,T1.5
+MOC,The Herta + Anaxa,7.95,T1.5
+MOC,Kafka + Hysilens,7.95,T1.5
+MOC,Acheron + Ashveil,8.13,T1.5
+MOC,Mydei,8.22,T1.5
+MOC,Feixiao,8.4,T1.5
+MOC,Serval + The Herta,8.59,T2
+MOC,Herta + The Herta,8.71,T2
+MOC,Saber,8.72,T2
+MOC,Phainon,8.73,T2
+MOC,Rappa,9.07,T2
+MOC,Acheron,9.19,T2
+MOC,Boothill,9.29,T2
+MOC,Yunli,10.33,T2
+PURE_FICTION,Boothill,17123.33,T2
+PURE_FICTION,Yunli,21246.31,T2
+PURE_FICTION,Saber,22146.54,T2
+PURE_FICTION,Serval + The Herta,22869.09,T2
+PURE_FICTION,Archer,22940.44,T2
+PURE_FICTION,Aglaea,23378.46,T2
+PURE_FICTION,Phainon,24646.99,T1.5
+PURE_FICTION,Rappa,25806.85,T1.5
+PURE_FICTION,Feixiao,25822.22,T1.5
+PURE_FICTION,Welt + Ashveil,26102.86,T1.5
+PURE_FICTION,Feixiao + Ashveil,26148.05,T1.5
+PURE_FICTION,Anaxa,26176.6,T1.5
+PURE_FICTION,Mydei,26473.67,T1.5
+PURE_FICTION,The Herta + Anaxa,26682.36,T1.5
+PURE_FICTION,Kafka + Hysilens,27683.26,T1
+PURE_FICTION,Herta + The Herta,27984.32,T1
+PURE_FICTION,Seele,28226.88,T1
+PURE_FICTION,Acheron,28302.05,T1
+PURE_FICTION,Firefly,28312.66,T1
+PURE_FICTION,Jade + The Herta,28363.66,T1
+PURE_FICTION,Welt + Silver Wolf LV.999,29463.33,T1
+PURE_FICTION,Castorice,31902.71,T0.5
+PURE_FICTION,Silver Wolf LV.999,31919.68,T0.5
+PURE_FICTION,Kafka + Black Swan + Hysilens,31998.64,T0.5
+PURE_FICTION,Ashveil,33287.49,T0.5
+PURE_FICTION,Silver Wolf LV.999 + Evanescia,33347.23,T0.5
+PURE_FICTION,Sparxie,33352.35,T0.5
+PURE_FICTION,Sparxie + Evanescia,34019.33,T0.5
+PURE_FICTION,Acheron + Ashveil,34147.11,T0.5
+PURE_FICTION,Evanescia,35020.36,T0
+PURE_FICTION,Sparxie + Silver Wolf LV.999,35200.64,T0
+PURE_FICTION,Welt + Sparxie + Silver Wolf LV.999,35857.5,T0
+PURE_FICTION,Evernight,37168.54,T0
+PURE_FICTION,Castorice + Evernight,37742.62,T0
+`;
+
+        const parsedData = rawCsvData.trim().split('\n').slice(1).map(row => {
+            const [Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier] = row.split(',');
+            return { Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier };
+        });
+
+        const tiers = ['T0', 'T0.5', 'T1', 'T1.5', 'T2'];
+
+        function renderTierList() {
+            const selectedMode = document.getElementById('modeSelect').value;
+            const container = document.getElementById('tierListContainer');
+            container.innerHTML = ''; 
+
+            tiers.forEach(tier => {
+                const matchingItems = parsedData.filter(d => d.Game_Mode === selectedMode && d.Tier === tier);
+
+                if (matchingItems.length === 0) return; 
+
+                // Dynamic Sorting Logic based on the game mode
+                matchingItems.sort((a, b) => {
+                    const scoreA = parseFloat(a.Weighted_Avg_Score);
+                    const scoreB = parseFloat(b.Weighted_Avg_Score);
+                    
+                    if (selectedMode === 'APOC' || selectedMode === 'PURE_FICTION') {
+                        // High score is better: sort descending
+                        return scoreB - scoreA;
+                    } else {
+                        // Low score (cycles/time) is better: sort ascending
+                        return scoreA - scoreB;
+                    }
+                });
+
+                const rowEl = document.createElement('div');
+                rowEl.className = 'tier-row';
+                
+                const tierClass = tier.replace('.', '\\.'); 
+                
+                const labelEl = document.createElement('div');
+                labelEl.className = `tier-label tier-${tierClass}`;
+                labelEl.innerText = tier;
+                rowEl.appendChild(labelEl);
+
+                const contentEl = document.createElement('div');
+                contentEl.className = 'tier-content';
+
+                matchingItems.forEach(item => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'archetype-wrapper';
+                    
+                    const scoreDiv = document.createElement('div');
+                    scoreDiv.className = 'archetype-score';
+                    scoreDiv.innerText = `Score: ${item.Weighted_Avg_Score}`;
+                    wrapper.appendChild(scoreDiv);
+
+                    const archGroup = document.createElement('div');
+                    archGroup.className = 'archetype-group';
+                    
+                    const characters = item.Archetype_Core.split(' + ').map(s => s.trim());
+                    
+                    characters.forEach((char, index) => {
+                        const charContainer = document.createElement('div');
+                        charContainer.className = 'char-container';
+
+                        const iconSrc = iconData[char];
+                        if (iconSrc) {
+                            const img = document.createElement('img');
+                            img.src = iconSrc;
+                            img.title = char;
+                            charContainer.appendChild(img);
+                        } else {
+                            const missing = document.createElement('div');
+                            missing.className = 'missing-icon';
+                            missing.innerText = '?';
+                            charContainer.appendChild(missing);
+                        }
+
+                        const nameLabel = document.createElement('div');
+                        nameLabel.className = 'char-name';
+                        nameLabel.innerText = char;
+                        charContainer.appendChild(nameLabel);
+
+                        archGroup.appendChild(charContainer);
+
+                        if (index < characters.length - 1) {
+                            const plus = document.createElement('span');
+                            plus.className = 'plus';
+                            plus.innerText = '+';
+                            archGroup.appendChild(plus);
+                        }
+                    });
+
+                    wrapper.appendChild(archGroup);
+                    contentEl.appendChild(wrapper);
+                });
+
+                rowEl.appendChild(contentEl);
+                container.appendChild(rowEl);
+            });
+        }
+
+        renderTierList();
+    </script>
+</body>
+</html>

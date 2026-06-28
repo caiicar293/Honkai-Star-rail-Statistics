@@ -256,9 +256,9 @@
     .card[data-type="characters"] { border-top: 2px solid rgba(56,189,248,0.35); }
     .card[data-type="archetypes"] { border-top: 2px solid rgba(168,85,247,0.35); }
     .card[data-type="teams"]      { border-top: 2px solid rgba(74,222,128,0.35); }
-    .card[data-type="by-cost"]    { border-top: 2px solid rgba(250,204,21,0.35); } /* New accent for By-Cost */
+    .card[data-type="by-cost"]    { border-top: 2px solid rgba(250,204,21,0.35); } 
 
-    /* ── Feature card (Character Database) ────────────────── */
+    /* ── Feature card ────────────────── */
     .feature-card {
       display: flex;
       align-items: center;
@@ -371,6 +371,17 @@
         <div class="feature-text">
           <div class="feature-title">Character Database <span class="new-badge">NEW</span></div>
           <div class="feature-sub">Browse individual endgame performance sheets for every tracked character</div>
+        </div>
+        <div class="feature-arrow" aria-hidden="true">→</div>
+      </a>
+    </section>
+    
+    <section class="section" aria-label="Archetype Tier List" style="margin-top: 1.5rem;">
+      <a class="feature-card" id="tierListCard" href="archetype_tierlist_interactive.html" aria-label="Interactive Archetype Tier List">
+        <div class="feature-icon" aria-hidden="true">🏆</div>
+        <div class="feature-text">
+          <div class="feature-title">Archetype Tier List <span class="new-badge">NEW</span></div>
+          <div class="feature-sub">Interactive E0 tier lists across all endgame modes based on telemetry</div>
         </div>
         <div class="feature-arrow" aria-hidden="true">→</div>
       </a>
@@ -533,11 +544,11 @@
   animateIn(document.getElementById('heroSub'),      210);
   animateIn(document.getElementById('techStack'), 270);
   animateIn(document.getElementById('charDbCard'), 280);
+  animateIn(document.getElementById('tierListCard'), 280); // Animated new card
 
   document.querySelectorAll('.card').forEach((card, i) => {
     animateIn(card, 280 + i * 55);
   });
-
   document.querySelectorAll('.card').forEach(card => {
     card.addEventListener('click', function(e) {
       const rect   = this.getBoundingClientRect();

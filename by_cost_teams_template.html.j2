@@ -100,40 +100,69 @@
   }
   .cost-preset-btn:hover, .cost-preset-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.07); }
 
-  /* Slot panel */
-  .slot-panel {
-    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+  /* Unified character picker — replaces fixed slots with unlimited include/exclude chips */
+  .picker-panel {
     background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
     padding: 12px 14px; margin-bottom: 16px;
   }
-  .slot-panel-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; width: 100%; margin-bottom: 2px; }
-  .slot-panel-hint { font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; width: 100%; margin-top: -2px; margin-bottom: 6px; }
-  .slot-panel-hint kbd { background: var(--bg2); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 5px; font-size: 10px; color: var(--accent2); }
-  .slot { display: flex; flex-direction: column; gap: 4px; min-width: 180px; flex: 1; }
-  .slot-label { font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; letter-spacing: 0.05em; }
-  .slot-input-row { display: flex; gap: 4px; }
-  .slot input[type="text"] {
-    flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 5px;
-    color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px;
-    padding: 6px 10px; outline: none; transition: border-color 0.15s, background 0.15s;
+  .picker-panel-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; margin-bottom: 2px; }
+  .picker-panel-hint { font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; margin-bottom: 10px; }
+  .picker-panel-hint kbd { background: var(--bg2); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 5px; font-size: 10px; color: var(--accent2); }
+
+  .picker-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .picker-chip {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 16px; padding: 3px 6px 3px 4px;
+    font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 700; border: 1px solid; cursor: default;
+    user-select: none; transition: transform 0.1s;
   }
-  .slot input[type="text"]:focus { border-color: var(--accent); }
-  .slot input[type="text"].slot-filled { border-color: var(--accent2); background: rgba(56,189,248,0.06); }
-  .slot input[type="text"].slot-exclude.slot-filled { border-color: var(--red); background: rgba(248,113,113,0.06); }
-  .slot-mode-btn {
-    background: var(--bg2); border: 1px solid var(--border); color: var(--text2);
-    font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700;
-    border-radius: 5px; padding: 6px 10px; cursor: pointer; transition: all 0.15s; min-width: 36px;
+  .picker-chip:hover { transform: translateY(-1px); }
+  .picker-chip.include { color: var(--green); border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
+  .picker-chip.exclude { color: var(--red);   border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
+  .picker-chip img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.15); }
+  .picker-chip .chip-icon-ph { width: 20px; height: 20px; border-radius: 50%; background: var(--panel2); display:flex; align-items:center; justify-content:center; font-size: 8px; color: var(--text3); }
+  .picker-chip .chip-mode { font-size: 10px; opacity: 0.8; }
+  .picker-chip .chip-eid { font-size: 10px; opacity: 0.75; font-family: 'Share Tech Mono', monospace; }
+  .picker-chip .chip-remove { background: none; border: none; color: inherit; cursor: pointer; font-size: 13px; line-height: 1; padding: 1px 3px; border-radius: 50%; opacity: 0.7; transition: opacity 0.15s, background 0.15s; }
+  .picker-chip .chip-remove:hover { opacity: 1; background: rgba(255,255,255,0.12); }
+  .picker-chips-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0; }
+
+  .picker-search-wrap { position: relative; }
+  .picker-search-row { display: flex; gap: 8px; align-items: center; }
+  .picker-search-input-wrap { position: relative; flex: 1; min-width: 200px; max-width: 420px; }
+  .picker-search-input-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
+  #charPickerInput { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
+  #charPickerInput:focus { border-color: var(--accent); }
+  #charPickerInput::placeholder { color: var(--text3); }
+  .picker-clear-all { background: var(--bg2); border: 1px solid var(--border); color: var(--text3); font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600; border-radius: 5px; padding: 7px 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .picker-clear-all:hover { border-color: var(--red); color: var(--red); }
+
+  .picker-grid-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+    background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    width: min(560px, 90vw); max-height: 360px; overflow-y: auto;
   }
-  .slot-mode-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .slot-mode-btn.mode-include { color: var(--green); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.06); }
-  .slot-mode-btn.mode-exclude { color: var(--red); border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.06); }
-  .slot-clear-all {
-    background: var(--bg2); border: 1px solid var(--border); color: var(--text3);
-    font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600;
-    border-radius: 5px; padding: 6px 12px; cursor: pointer; transition: all 0.15s; height: 34px; align-self: flex-end;
+  .picker-grid-dropdown.open { display: block; }
+  .picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; }
+  .picker-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 2px; border-radius: 6px; transition: background 0.12s; position: relative; }
+  .picker-cell:hover { background: rgba(56,189,248,0.08); }
+  .picker-cell img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--border2); }
+  .picker-cell .cell-icon-ph { width: 38px; height: 38px; border-radius: 50%; background: var(--panel); display:flex; align-items:center; justify-content:center; font-size: 10px; color: var(--text3); border: 1.5px solid var(--border2); }
+  .picker-cell .cell-name { font-size: 9px; color: var(--text2); text-align: center; line-height: 1.15; max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .picker-cell.is-include img, .picker-cell.is-include .cell-icon-ph { border-color: var(--green); box-shadow: 0 0 0 2px rgba(74,222,128,0.35); }
+  .picker-cell.is-exclude img, .picker-cell.is-exclude .cell-icon-ph { border-color: var(--red); box-shadow: 0 0 0 2px rgba(248,113,113,0.35); }
+  .picker-grid-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 16px; text-align: center; }
+
+  /* Eidolon row shown beneath the input when a character is focused for eidolon-specific pick */
+  .picker-eid-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border2); }
+  .picker-eid-row-label { width: 100%; font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; margin-bottom: 2px; }
+  .picker-eid-btn {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 10.5px; font-weight: 700;
+    border-radius: 4px; padding: 3px 8px; cursor: pointer; transition: all 0.15s;
   }
-  .slot-clear-all:hover { border-color: var(--red); color: var(--red); }
+  .picker-eid-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .picker-eid-btn.any { border-color: var(--accent2); color: var(--accent2); }
 
   .search-wrap { position: relative; min-width: 240px; max-width: 400px; flex: 1; }
   .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
@@ -320,22 +349,31 @@
     </div>
   </div>
 
-  <!-- Character slot include/exclude panel -->
-  <div class="slot-panel">
-    <div class="slot-panel-title">Character Filters — toggle ✓ include / ✕ exclude per slot</div>
-    <div class="slot-panel-hint">Eidolon-aware: type <kbd>Acheron(E2)</kbd> to match exact eidolon level, or just <kbd>Acheron</kbd> for any eidolon. Works with the datalist autocomplete.</div>
-    {% for i in range(1, 5) %}
-    <div class="slot">
-      <div class="slot-label">Slot {{ i }}</div>
-      <div class="slot-input-row">
-        <input type="text" id="slotInput{{ i }}" class="slot-input" list="charList" placeholder="e.g. Acheron or Acheron(E2)" data-slot="{{ i }}"/>
-        <button class="slot-mode-btn mode-include" id="slotMode{{ i }}" data-slot="{{ i }}" title="Click to toggle include/exclude">✓</button>
-      </div>
+  <!-- Unified character picker: unlimited include/exclude, left-click=include (any eidolon), right-click=exclude (any eidolon). Click eidolon chips for exact eidolon targeting. -->
+  <div class="picker-panel">
+    <div class="picker-panel-title">Character Filters — unlimited include/exclude</div>
+    <div class="picker-panel-hint">
+      Click a character to <b style="color:var(--green)">include</b> (any eidolon). Right-click to <b style="color:var(--red)">exclude</b> (any eidolon). After picking, use the eidolon row that appears to narrow to an exact level, e.g. <kbd>Acheron(E2)</kbd>.
     </div>
-    {% endfor %}
-    <button class="slot-clear-all" id="slotClearAll">Clear all</button>
+
+    <div class="picker-chips" id="pickerChips">
+      <span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>
+    </div>
+    <div class="picker-eid-row" id="pickerEidRow" style="display:none;"></div>
+
+    <div class="picker-search-row">
+      <div class="picker-search-wrap">
+        <div class="picker-search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input id="charPickerInput" type="text" placeholder="Search characters to include/exclude…" autocomplete="off"/>
+        </div>
+        <div class="picker-grid-dropdown" id="pickerGridDropdown">
+          <div class="picker-grid" id="pickerGrid"></div>
+        </div>
+      </div>
+      <button class="picker-clear-all" id="pickerClearAll">Clear all</button>
+    </div>
   </div>
-  <datalist id="charList"></datalist>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
 
@@ -399,21 +437,26 @@ const MAX_RATE   = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
 const MIN_COST_G = Math.min(...RAW_DATA.map(r => r.estimated_min_cost));
 const MAX_COST_G = Math.max(...RAW_DATA.map(r => r.estimated_max_cost));
 
-// Datalist: base names + eidolon-qualified variants e.g. "Acheron(E2)"
-const charListSet = new Set();
+// Build base-name -> set of eidolon tags seen, for the eidolon-picker row
+const BASE_NAME_EIDOLONS = new Map(); // baseLower -> Set('e0','e1',...)
+const BASE_NAME_DISPLAY  = new Map(); // baseLower -> display name (first-seen casing)
 RAW_DATA.forEach(r => r._members.forEach(m => {
-  charListSet.add(m.replace(/\s*\(E\d\)/gi,'').trim()); // plain name
-  const em = m.match(/\(E\d\)/i);
-  if (em) charListSet.add(m.replace(/\s*\(E\d\)/gi,'').trim() + em[0]); // Name(E#)
+  const baseDisplay = m.replace(/\s*\(E\d\)/gi,'').trim();
+  const baseLower   = baseDisplay.toLowerCase();
+  if (!BASE_NAME_DISPLAY.has(baseLower)) BASE_NAME_DISPLAY.set(baseLower, baseDisplay);
+  const em = m.match(/\((e\d)\)/i);
+  if (em) {
+    if (!BASE_NAME_EIDOLONS.has(baseLower)) BASE_NAME_EIDOLONS.set(baseLower, new Set());
+    BASE_NAME_EIDOLONS.get(baseLower).add(em[1].toLowerCase());
+  }
 }));
-const ALL_CHAR_NAMES = [...charListSet].sort();
+const ALL_CHAR_NAMES = [...BASE_NAME_DISPLAY.values()].sort();
 
-(function populateCharList() {
-  const dl   = document.getElementById('charList');
-  const frag = document.createDocumentFragment();
-  ALL_CHAR_NAMES.forEach(n => { const o = document.createElement('option'); o.value = n; frag.appendChild(o); });
-  dl.appendChild(frag);
-})();
+function lookupIconUrl(name) {
+  let url = ICONS[name] || ICONS[name.replace(/\s+LV\.\d+$/,'').trim()];
+  if (url && !url.startsWith('http')) url = "{{ path_prefix }}" + url;
+  return url || null;
+}
 
 // Token index for fast substring search (eidolon tags included)
 const TOKEN_INDEX = new Map();
@@ -462,8 +505,9 @@ let costMinFilter = MIN_COST_G;
 let costMaxFilter = MAX_COST_G;
 let sortCol       = 'Appearance_Rate_pct';
 let sortAsc       = false;
-const slotFilters = [null, null, null, null];
-let filteredData  = [];
+// Character filters: Map<key, {name, mode, eid: 'any'|'e0'..'e6'}> — key = `${baseLower}::${eid}`
+let charFilters  = new Map();
+let filteredData = [];
 
 function recompute() {
   let candidate;
@@ -484,26 +528,21 @@ function recompute() {
     r.estimated_max_cost <= costMaxFilter
   );
 
-  const activeSlots = slotFilters.filter(Boolean);
-  if (activeSlots.length) {
+  const activeFilters = [...charFilters.values()];
+  if (activeFilters.length) {
     candidate = candidate.filter(r => {
-      for (const slot of activeSlots) {
-        const q      = slot.name.toLowerCase().trim();
-        const hasEid = /\(e\d\)/i.test(q);
+      for (const f of activeFilters) {
         let present;
-        if (hasEid) {
-          // exact eidolon match: find member whose base+eid matches
-          const base   = q.replace(/\s*\(e\d\)/gi,'').trim();
-          const eidTag = (q.match(/\((e\d)\)/i)||[])[1];
+        if (f.eid === 'any') {
+          present = r._membersBase.includes(f.base);
+        } else {
           present = r._members.some(m => {
             const ml = m.toLowerCase();
-            return ml.replace(/\s*\(e\d\)/gi,'').trim() === base && ml.includes('(' + eidTag + ')');
+            return ml.replace(/\s*\(e\d\)/gi,'').trim() === f.base && ml.includes('(' + f.eid + ')');
           });
-        } else {
-          present = r._membersBase.includes(q);
         }
-        if (slot.mode === 'include' && !present) return false;
-        if (slot.mode === 'exclude' && present)  return false;
+        if (f.mode === 'include' && !present) return false;
+        if (f.mode === 'exclude' && present)  return false;
       }
       return true;
     });
@@ -705,39 +744,170 @@ document.getElementById('costResetBtn').addEventListener('click', () => {
   applyPreset(MIN_COST_G, MAX_COST_G);
 });
 
-// Slot filters
-function updateSlot(idx) {
-  const inp = document.getElementById(`slotInput${idx+1}`);
-  const btn = document.getElementById(`slotMode${idx+1}`);
-  const val = inp.value.trim();
-  if (!val) { slotFilters[idx] = null; inp.classList.remove('slot-filled','slot-exclude'); return; }
-  const mode = btn.classList.contains('mode-exclude') ? 'exclude' : 'include';
-  slotFilters[idx] = { name: val, mode };
-  inp.classList.add('slot-filled');
-  inp.classList.toggle('slot-exclude', mode === 'exclude');
+// ---- Unified character picker (unlimited include/exclude, eidolon-aware) ----
+
+function chipKey(base, eid) { return `${base}::${eid}`; }
+
+let openEidBase = null; // which character currently has the eidolon row expanded
+
+function renderChips() {
+  const wrap = document.getElementById('pickerChips');
+  if (charFilters.size === 0) {
+    wrap.innerHTML = `<span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>`;
+    openEidBase = null;
+    renderEidRow();
+    return;
+  }
+  wrap.innerHTML = [...charFilters.values()].map(f => {
+    const display = BASE_NAME_DISPLAY.get(f.base) || f.base;
+    const url = lookupIconUrl(display);
+    const iconHtml = url
+      ? `<img src="${url}" alt="${display}" onerror="this.style.display='none'"/>`
+      : `<span class="chip-icon-ph">${display.slice(0,2).toUpperCase()}</span>`;
+    const modeIcon = f.mode === 'include' ? '✓' : '✕';
+    const eidLabel = f.eid === 'any' ? '' : `<span class="chip-eid">${f.eid.toUpperCase()}</span>`;
+    return `<span class="picker-chip ${f.mode}" data-chip="${chipKey(f.base,f.eid)}" data-base="${f.base}" title="Click to set exact eidolon">${iconHtml}<span>${display}</span>${eidLabel}<span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${chipKey(f.base,f.eid)}" title="Remove">×</button></span>`;
+  }).join('');
+
+  wrap.querySelectorAll('.picker-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      if (e.target.closest('.chip-remove')) return;
+      const base = chip.dataset.base;
+      openEidBase = (openEidBase === base) ? null : base;
+      renderEidRow();
+    });
+  });
+
+  wrap.querySelectorAll('.chip-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      charFilters.delete(btn.dataset.remove);
+      if (openEidBase && ![...charFilters.values()].some(f => f.base === openEidBase)) openEidBase = null;
+      renderChips();
+      renderPickerGrid(document.getElementById('charPickerInput').value.trim());
+      recompute();
+    });
+  });
+
+  renderEidRow();
 }
 
-for (let i = 0; i < 4; i++) {
-  document.getElementById(`slotInput${i+1}`).addEventListener('input', debounce(() => { updateSlot(i); recompute(); }, 200));
-  document.getElementById(`slotMode${i+1}`).addEventListener('click', () => {
-    const btn = document.getElementById(`slotMode${i+1}`);
-    const isEx = btn.classList.toggle('mode-exclude');
-    btn.classList.toggle('mode-include', !isEx);
-    btn.textContent = isEx ? '✕' : '✓';
-    updateSlot(i); recompute();
+// Render the eidolon-selection row for whichever character chip is currently open
+function renderEidRow() {
+  const row = document.getElementById('pickerEidRow');
+  if (!openEidBase) { row.style.display = 'none'; row.innerHTML = ''; return; }
+
+  const display = BASE_NAME_DISPLAY.get(openEidBase) || openEidBase;
+  // Determine current mode for this character (use whatever filter currently exists for it)
+  const existing = [...charFilters.values()].find(f => f.base === openEidBase);
+  const mode = existing ? existing.mode : 'include';
+  const currentEid = existing ? existing.eid : 'any';
+  const eidolonsSeen = [...(BASE_NAME_EIDOLONS.get(openEidBase) || new Set())].sort();
+
+  const eidButtons = ['any', ...['e0','e1','e2','e3','e4','e5','e6'].filter(e => eidolonsSeen.includes(e))].map(eid => {
+    const isActive = eid === currentEid;
+    const label = eid === 'any' ? 'Any' : eid.toUpperCase();
+    return `<button class="picker-eid-btn ${eid === 'any' ? 'any' : ''}" data-eid="${eid}" style="${isActive ? 'background:var(--accent);color:var(--bg);border-color:var(--accent);' : ''}">${label}</button>`;
+  }).join('');
+
+  row.style.display = 'flex';
+  row.innerHTML = `<div class="picker-eid-row-label">${display} — exact eidolon for this ${mode === 'include' ? 'include' : 'exclude'} filter</div>${eidButtons}`;
+
+  row.querySelectorAll('.picker-eid-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const newEid = btn.dataset.eid;
+      // Remove any existing filter(s) for this base, then set the new one
+      [...charFilters.keys()].forEach(k => { if (charFilters.get(k).base === openEidBase) charFilters.delete(k); });
+      charFilters.set(chipKey(openEidBase, newEid), { base: openEidBase, mode, eid: newEid });
+      renderChips(); // re-renders chips and re-opens the eid row for openEidBase automatically
+      renderPickerGrid(document.getElementById('charPickerInput').value.trim());
+      recompute();
+    });
   });
 }
 
-document.getElementById('slotClearAll').addEventListener('click', () => {
-  for (let i = 0; i < 4; i++) {
-    const inp = document.getElementById(`slotInput${i+1}`);
-    const btn = document.getElementById(`slotMode${i+1}`);
-    inp.value = ''; inp.classList.remove('slot-filled','slot-exclude');
-    btn.classList.remove('mode-exclude'); btn.classList.add('mode-include'); btn.textContent = '✓';
-    slotFilters[i] = null;
+// Set or toggle a filter for a base character at a given eidolon scope ('any' or 'e0'..'e6')
+function setCharFilter(base, mode, eid) {
+  const key = chipKey(base, eid);
+  const existing = charFilters.get(key);
+  if (existing && existing.mode === mode) {
+    charFilters.delete(key); // clicking same state again removes it
+  } else {
+    charFilters.set(key, { base, mode, eid });
   }
+  renderChips();
+  renderPickerGrid(document.getElementById('charPickerInput').value.trim());
+  recompute();
+}
+
+// Cell click handlers: left = include(any), right = exclude(any)
+function cellState(base) {
+  const anyKeyInc = chipKey(base, 'any');
+  const f = charFilters.get(anyKeyInc);
+  if (f) return f.mode;
+  // also reflect if any eidolon-specific filter exists for this base
+  for (const v of charFilters.values()) {
+    if (v.base === base) return v.mode;
+  }
+  return null;
+}
+
+function renderPickerGrid(query) {
+  const grid = document.getElementById('pickerGrid');
+  const q = (query || '').toLowerCase();
+  const matches = q
+    ? ALL_CHAR_NAMES.filter(n => n.toLowerCase().includes(q))
+    : ALL_CHAR_NAMES;
+
+  if (matches.length === 0) {
+    grid.innerHTML = `<div class="picker-grid-empty">No characters found</div>`;
+    return;
+  }
+
+  grid.innerHTML = matches.map(name => {
+    const base = name.toLowerCase();
+    const state = cellState(base);
+    const stateCls = state ? (state === 'include' ? 'is-include' : 'is-exclude') : '';
+    const url = lookupIconUrl(name);
+    const iconHtml = url
+      ? `<img src="${url}" alt="${name}" onerror="this.style.display='none'"/>`
+      : `<div class="cell-icon-ph">${name.slice(0,2).toUpperCase()}</div>`;
+    return `<div class="picker-cell ${stateCls}" data-base="${base.replace(/"/g,'&quot;')}" title="${name} — left-click include, right-click exclude">${iconHtml}<div class="cell-name">${name}</div></div>`;
+  }).join('');
+
+  grid.querySelectorAll('.picker-cell').forEach(cell => {
+    cell.addEventListener('click', () => setCharFilter(cell.dataset.base, 'include', 'any'));
+    cell.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      setCharFilter(cell.dataset.base, 'exclude', 'any');
+    });
+  });
+}
+
+const pickerInput        = document.getElementById('charPickerInput');
+const pickerGridDropdown = document.getElementById('pickerGridDropdown');
+
+pickerInput.addEventListener('focus', () => {
+  pickerGridDropdown.classList.add('open');
+  renderPickerGrid(pickerInput.value.trim());
+});
+pickerInput.addEventListener('input', debounce(() => {
+  renderPickerGrid(pickerInput.value.trim());
+}, 120));
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.picker-search-wrap')) {
+    pickerGridDropdown.classList.remove('open');
+  }
+});
+
+document.getElementById('pickerClearAll').addEventListener('click', () => {
+  charFilters.clear();
+  renderChips();
+  renderPickerGrid(pickerInput.value.trim());
   recompute();
 });
+
+renderChips();
 
 document.querySelectorAll('th[data-col]').forEach(th => {
   th.addEventListener('click', () => {

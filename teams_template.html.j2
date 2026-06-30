@@ -71,42 +71,79 @@
   #searchInput:focus { border-color: var(--accent); }
   #searchInput::placeholder { color: var(--text3); }
 
-  /* Character slot filter panel */
-  .slot-panel {
-    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+  /* Unified character picker — replaces fixed slots with unlimited include/exclude chips */
+  .picker-panel {
     background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
     padding: 12px 14px; margin-bottom: 16px;
   }
-  .slot-panel-title {
+  .picker-panel-title {
     font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em;
-    font-family: 'Share Tech Mono', monospace; width: 100%; margin-bottom: 2px;
+    font-family: 'Share Tech Mono', monospace; margin-bottom: 2px;
   }
-  .slot { display: flex; flex-direction: column; gap: 4px; min-width: 160px; flex: 1; }
-  .slot-input-row { display: flex; gap: 4px; }
-  .slot input[type="text"] {
-    flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 5px;
+  .picker-panel-hint {
+    font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; margin-bottom: 10px;
+  }
+  .picker-panel-hint kbd {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 3px;
+    padding: 1px 5px; font-size: 10px; color: var(--accent2);
+  }
+
+  .picker-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .picker-chip {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 16px; padding: 3px 6px 3px 4px;
+    font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 700; border: 1px solid; cursor: default;
+    user-select: none; transition: transform 0.1s;
+  }
+  .picker-chip:hover { transform: translateY(-1px); }
+  .picker-chip.include { color: var(--green); border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
+  .picker-chip.exclude { color: var(--red);   border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
+  .picker-chip img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.15); }
+  .picker-chip .chip-icon-ph { width: 20px; height: 20px; border-radius: 50%; background: var(--panel2); display:flex; align-items:center; justify-content:center; font-size: 8px; color: var(--text3); }
+  .picker-chip .chip-mode { font-size: 10px; opacity: 0.8; }
+  .picker-chip .chip-remove {
+    background: none; border: none; color: inherit; cursor: pointer; font-size: 13px; line-height: 1;
+    padding: 1px 3px; border-radius: 50%; opacity: 0.7; transition: opacity 0.15s, background 0.15s;
+  }
+  .picker-chip .chip-remove:hover { opacity: 1; background: rgba(255,255,255,0.12); }
+  .picker-chips-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0; }
+
+  .picker-search-wrap { position: relative; }
+  .picker-search-row { display: flex; gap: 8px; align-items: center; }
+  .picker-search-input-wrap { position: relative; flex: 1; min-width: 200px; max-width: 420px; }
+  .picker-search-input-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
+  #charPickerInput {
+    width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 5px;
     color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px;
-    padding: 6px 10px; outline: none; transition: border-color 0.15s, background 0.15s;
+    padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s;
   }
-  .slot input[type="text"]:focus { border-color: var(--accent); }
-  .slot input[type="text"].slot-filled { border-color: var(--accent2); background: rgba(56,189,248,0.06); }
-  .slot input[type="text"].slot-exclude.slot-filled { border-color: var(--red); background: rgba(248,113,113,0.06); }
-  .slot-mode-btn {
-    background: var(--bg2); border: 1px solid var(--border); color: var(--text2);
-    font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700;
-    border-radius: 5px; padding: 6px 10px; cursor: pointer; transition: all 0.15s;
-    min-width: 36px;
-  }
-  .slot-mode-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .slot-mode-btn.mode-include { color: var(--green); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.06); }
-  .slot-mode-btn.mode-exclude { color: var(--red); border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.06); }
-  .slot-clear-all {
+  #charPickerInput:focus { border-color: var(--accent); }
+  #charPickerInput::placeholder { color: var(--text3); }
+  .picker-clear-all {
     background: var(--bg2); border: 1px solid var(--border); color: var(--text3);
     font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600;
-    border-radius: 5px; padding: 6px 12px; cursor: pointer; transition: all 0.15s;
-    height: 34px; align-self: flex-end;
+    border-radius: 5px; padding: 7px 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
   }
-  .slot-clear-all:hover { border-color: var(--red); color: var(--red); }
+  .picker-clear-all:hover { border-color: var(--red); color: var(--red); }
+
+  .picker-grid-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+    background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    width: min(560px, 90vw); max-height: 340px; overflow-y: auto;
+  }
+  .picker-grid-dropdown.open { display: block; }
+  .picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; }
+  .picker-cell {
+    display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer;
+    padding: 4px 2px; border-radius: 6px; transition: background 0.12s; position: relative;
+  }
+  .picker-cell:hover { background: rgba(56,189,248,0.08); }
+  .picker-cell img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--border2); }
+  .picker-cell .cell-icon-ph { width: 38px; height: 38px; border-radius: 50%; background: var(--panel); display:flex; align-items:center; justify-content:center; font-size: 10px; color: var(--text3); border: 1.5px solid var(--border2); }
+  .picker-cell .cell-name { font-size: 9px; color: var(--text2); text-align: center; line-height: 1.15; max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .picker-cell.is-include img, .picker-cell.is-include .cell-icon-ph { border-color: var(--green); box-shadow: 0 0 0 2px rgba(74,222,128,0.35); }
+  .picker-cell.is-exclude img, .picker-cell.is-exclude .cell-icon-ph { border-color: var(--red); box-shadow: 0 0 0 2px rgba(248,113,113,0.35); }
+  .picker-grid-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 16px; text-align: center; }
 
   .results-info { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0 8px; letter-spacing: 0.06em; }
   .results-info span { color: var(--accent); }
@@ -263,20 +300,30 @@
 
   </div>
 
-  <!-- Character slot include/exclude panel -->
-  <div class="slot-panel">
-    <div class="slot-panel-title">Character Filters — toggle ✓ include / ✕ exclude per slot</div>
-    {% for i in range(1, 5) %}
-    <div class="slot">
-      <div class="slot-input-row">
-        <input type="text" id="slotInput{{ i }}" class="slot-input" list="charList" placeholder="Character {{ i }}" data-slot="{{ i }}"/>
-        <button class="slot-mode-btn mode-include" id="slotMode{{ i }}" data-slot="{{ i }}" title="Click to toggle include/exclude">✓</button>
-      </div>
+  <!-- Unified character picker: unlimited include/exclude, left-click=include, right-click=exclude -->
+  <div class="picker-panel">
+    <div class="picker-panel-title">Character Filters — unlimited include/exclude</div>
+    <div class="picker-panel-hint">
+      Click a character below to <b style="color:var(--green)">include</b> it (team must contain). Right-click (or long-press) to <b style="color:var(--red)">exclude</b> it (team must not contain). Click again to remove.
     </div>
-    {% endfor %}
-    <button class="slot-clear-all" id="slotClearAll">Clear all</button>
+
+    <div class="picker-chips" id="pickerChips">
+      <span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>
+    </div>
+
+    <div class="picker-search-row">
+      <div class="picker-search-wrap">
+        <div class="picker-search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input id="charPickerInput" type="text" placeholder="Search characters to include/exclude…" autocomplete="off"/>
+        </div>
+        <div class="picker-grid-dropdown" id="pickerGridDropdown">
+          <div class="picker-grid" id="pickerGrid"></div>
+        </div>
+      </div>
+      <button class="picker-clear-all" id="pickerClearAll">Clear all</button>
+    </div>
   </div>
-  <datalist id="charList"></datalist>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
 
@@ -336,16 +383,13 @@ const MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
 
 const ALL_CHAR_NAMES = [...new Set(RAW_DATA.flatMap(r => r._members))].sort();
 
-(function populateCharList() {
-  const dl = document.getElementById('charList');
-  const frag = document.createDocumentFragment();
-  ALL_CHAR_NAMES.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    frag.appendChild(opt);
-  });
-  dl.appendChild(frag);
-})();
+// Build a lookup of base name -> icon url for the picker grid
+function lookupIconUrl(name) {
+  let url = ICONS[name];
+  if (!url) url = ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
+  if (url && !url.startsWith('http')) url = "{{ path_prefix }}" + url;
+  return url || null;
+}
 
 const TOKEN_INDEX = new Map();
 RAW_DATA.forEach((r, i) => {
@@ -387,8 +431,8 @@ let searchTerm    = '';
 let sortCol       = 'Appearance_Rate_pct';
 let sortAsc       = false;
 
-// Character slot filters: index 0-3 for slots 1-4. Each: { name, mode: 'include'|'exclude' } | null
-const slotFilters = [null, null, null, null];
+// Character filters: Map<charNameLower, { name, mode: 'include'|'exclude' }> — unlimited entries
+const charFilters = new Map();
 
 let filteredData = [];
 
@@ -409,13 +453,13 @@ function recompute() {
     (r.Sustain ? showSustain : showNoSustain)
   );
 
-  const activeSlots = slotFilters.filter(Boolean);
-  if (activeSlots.length > 0) {
+  const activeFilters = [...charFilters.values()];
+  if (activeFilters.length > 0) {
     candidate = candidate.filter(r => {
-      for (const slot of activeSlots) {
-        const present = r._membersLower.includes(slot.name.toLowerCase());
-        if (slot.mode === 'include' && !present) return false;
-        if (slot.mode === 'exclude' && present)  return false;
+      for (const f of activeFilters) {
+        const present = r._membersLower.includes(f.name.toLowerCase());
+        if (f.mode === 'include' && !present) return false;
+        if (f.mode === 'exclude' && present)  return false;
       }
       return true;
     });
@@ -594,67 +638,117 @@ document.getElementById('searchInput').addEventListener('input', debounce(e => {
   recompute();
 }, 200));
 
-// ---- Character slot filters ----
+// ---- Unified character picker (unlimited include/exclude) ----
 
-function updateSlotFromInput(slotIdx) {
-  const input   = document.getElementById(`slotInput${slotIdx + 1}`);
-  const modeBtn = document.getElementById(`slotMode${slotIdx + 1}`);
-  const val = input.value.trim();
-
-  if (val === '') {
-    slotFilters[slotIdx] = null;
-    input.classList.remove('slot-filled', 'slot-exclude');
+function renderChips() {
+  const wrap = document.getElementById('pickerChips');
+  if (charFilters.size === 0) {
+    wrap.innerHTML = `<span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>`;
     return;
   }
+  wrap.innerHTML = [...charFilters.values()].map(f => {
+    const url = lookupIconUrl(f.name);
+    const iconHtml = url
+      ? `<img src="${url}" alt="${f.name}" onerror="this.style.display='none'"/>`
+      : `<span class="chip-icon-ph">${f.name.slice(0,2).toUpperCase()}</span>`;
+    const modeIcon = f.mode === 'include' ? '✓' : '✕';
+    return `<span class="picker-chip ${f.mode}" data-chip="${f.name.toLowerCase()}">${iconHtml}<span>${f.name}</span><span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${f.name.toLowerCase()}" title="Remove">×</button></span>`;
+  }).join('');
 
-  const exact = ALL_CHAR_NAMES.find(n => n.toLowerCase() === val.toLowerCase());
-  const name = exact || val;
-
-  const mode = modeBtn.classList.contains('mode-exclude') ? 'exclude' : 'include';
-  slotFilters[slotIdx] = { name, mode };
-
-  input.classList.add('slot-filled');
-  input.classList.toggle('slot-exclude', mode === 'exclude');
-}
-
-for (let i = 0; i < 4; i++) {
-  const input   = document.getElementById(`slotInput${i + 1}`);
-  const modeBtn = document.getElementById(`slotMode${i + 1}`);
-
-  input.addEventListener('input', debounce(() => {
-    updateSlotFromInput(i);
-    document.querySelector('.table-scroll').scrollTop = 0;
-    recompute();
-  }, 200));
-
-  modeBtn.addEventListener('click', () => {
-    const isExclude = modeBtn.classList.toggle('mode-exclude');
-    modeBtn.classList.toggle('mode-include', !isExclude);
-    modeBtn.textContent = isExclude ? '✕' : '✓';
-    modeBtn.title = isExclude
-      ? 'Excluding this character — click to switch to include'
-      : 'Including this character — click to switch to exclude';
-    updateSlotFromInput(i);
-    document.querySelector('.table-scroll').scrollTop = 0;
-    recompute();
+  wrap.querySelectorAll('.chip-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      charFilters.delete(btn.dataset.remove);
+      renderChips();
+      renderPickerGrid(document.getElementById('charPickerInput').value.trim().toLowerCase());
+      recompute();
+    });
   });
 }
 
-document.getElementById('slotClearAll').addEventListener('click', () => {
-  for (let i = 0; i < 4; i++) {
-    const input   = document.getElementById(`slotInput${i + 1}`);
-    const modeBtn = document.getElementById(`slotMode${i + 1}`);
-    input.value = '';
-    input.classList.remove('slot-filled', 'slot-exclude');
-    modeBtn.classList.remove('mode-exclude');
-    modeBtn.classList.add('mode-include');
-    modeBtn.textContent = '✓';
-    modeBtn.title = 'Click to toggle include/exclude';
-    slotFilters[i] = null;
+function cycleCharFilter(name) {
+  const key = name.toLowerCase();
+  const existing = charFilters.get(key);
+  if (!existing) {
+    charFilters.set(key, { name, mode: 'include' });
+  } else if (existing.mode === 'include') {
+    charFilters.set(key, { name, mode: 'exclude' });
+  } else {
+    charFilters.delete(key);
   }
-  document.querySelector('.table-scroll').scrollTop = 0;
+  renderChips();
+  renderPickerGrid(document.getElementById('charPickerInput').value.trim().toLowerCase());
+  recompute();
+}
+
+function setCharFilterMode(name, mode) {
+  const key = name.toLowerCase();
+  const existing = charFilters.get(key);
+  if (existing && existing.mode === mode) {
+    charFilters.delete(key); // clicking same mode again removes it
+  } else {
+    charFilters.set(key, { name, mode });
+  }
+  renderChips();
+  renderPickerGrid(document.getElementById('charPickerInput').value.trim().toLowerCase());
+  recompute();
+}
+
+function renderPickerGrid(query) {
+  const grid = document.getElementById('pickerGrid');
+  const q = (query || '').toLowerCase();
+  const matches = q
+    ? ALL_CHAR_NAMES.filter(n => n.toLowerCase().includes(q))
+    : ALL_CHAR_NAMES;
+
+  if (matches.length === 0) {
+    grid.innerHTML = `<div class="picker-grid-empty">No characters found</div>`;
+    return;
+  }
+
+  grid.innerHTML = matches.map(name => {
+    const key = name.toLowerCase();
+    const existing = charFilters.get(key);
+    const stateCls = existing ? (existing.mode === 'include' ? 'is-include' : 'is-exclude') : '';
+    const url = lookupIconUrl(name);
+    const iconHtml = url
+      ? `<img src="${url}" alt="${name}" onerror="this.style.display='none'"/>`
+      : `<div class="cell-icon-ph">${name.slice(0,2).toUpperCase()}</div>`;
+    return `<div class="picker-cell ${stateCls}" data-char="${name.replace(/"/g,'&quot;')}" title="${name} — left-click include, right-click exclude">${iconHtml}<div class="cell-name">${name}</div></div>`;
+  }).join('');
+
+  grid.querySelectorAll('.picker-cell').forEach(cell => {
+    cell.addEventListener('click', () => setCharFilterMode(cell.dataset.char, 'include'));
+    cell.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      setCharFilterMode(cell.dataset.char, 'exclude');
+    });
+  });
+}
+
+const pickerInput        = document.getElementById('charPickerInput');
+const pickerGridDropdown = document.getElementById('pickerGridDropdown');
+
+pickerInput.addEventListener('focus', () => {
+  pickerGridDropdown.classList.add('open');
+  renderPickerGrid(pickerInput.value.trim());
+});
+pickerInput.addEventListener('input', debounce(() => {
+  renderPickerGrid(pickerInput.value.trim());
+}, 120));
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.picker-search-wrap')) {
+    pickerGridDropdown.classList.remove('open');
+  }
+});
+
+document.getElementById('pickerClearAll').addEventListener('click', () => {
+  charFilters.clear();
+  renderChips();
+  renderPickerGrid(pickerInput.value.trim());
   recompute();
 });
+
+renderChips();
 
 document.querySelectorAll('th[data-col]').forEach(th => {
   th.addEventListener('click', () => {

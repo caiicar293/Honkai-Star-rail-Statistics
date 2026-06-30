@@ -163,6 +163,8 @@
   }
   .picker-eid-btn:hover { border-color: var(--accent); color: var(--accent); }
   .picker-eid-btn.any { border-color: var(--accent2); color: var(--accent2); }
+  .picker-eid-btn.eid-active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .picker-eid-btn.eid-active.mode-exclude { background: var(--red); border-color: var(--red); color: var(--bg); }
 
   .search-wrap { position: relative; min-width: 240px; max-width: 400px; flex: 1; }
   .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
@@ -353,7 +355,7 @@
   <div class="picker-panel">
     <div class="picker-panel-title">Character Filters — unlimited include/exclude</div>
     <div class="picker-panel-hint">
-      Click a character to <b style="color:var(--green)">include</b> (any eidolon). Right-click to <b style="color:var(--red)">exclude</b> (any eidolon). After picking, use the eidolon row that appears to narrow to an exact level, e.g. <kbd>Acheron(E2)</kbd>.
+      Click a character to <b style="color:var(--green)">include</b> (any eidolon). Right-click to <b style="color:var(--red)">exclude</b> (any eidolon). Click the chip to open the eidolon row and select one or more exact eidolons, e.g. exclude <kbd>E2, E3, E4, E5, E6</kbd> at once.
     </div>
 
     <div class="picker-chips" id="pickerChips">
@@ -505,7 +507,8 @@ let costMinFilter = MIN_COST_G;
 let costMaxFilter = MAX_COST_G;
 let sortCol       = 'Appearance_Rate_pct';
 let sortAsc       = false;
-// Character filters: Map<key, {name, mode, eid: 'any'|'e0'..'e6'}> — key = `${baseLower}::${eid}`
+// Character filters: Map<base, {base, mode, eids: Set('e0'..'e6') | null}>
+// eids === null means "any eidolon" (no narrowing). A non-null Set means only those exact eidolons count.
 let charFilters  = new Map();
 let filteredData = [];
 
@@ -533,12 +536,14 @@ function recompute() {
     candidate = candidate.filter(r => {
       for (const f of activeFilters) {
         let present;
-        if (f.eid === 'any') {
+        if (!f.eids || f.eids.size === 0) {
           present = r._membersBase.includes(f.base);
         } else {
           present = r._members.some(m => {
             const ml = m.toLowerCase();
-            return ml.replace(/\s*\(e\d\)/gi,'').trim() === f.base && ml.includes('(' + f.eid + ')');
+            if (ml.replace(/\s*\(e\d\)/gi,'').trim() !== f.base) return false;
+            const em = ml.match(/\((e\d)\)/i);
+            return em && f.eids.has(em[1]);
           });
         }
         if (f.mode === 'include' && !present) return false;
@@ -744,11 +749,14 @@ document.getElementById('costResetBtn').addEventListener('click', () => {
   applyPreset(MIN_COST_G, MAX_COST_G);
 });
 
-// ---- Unified character picker (unlimited include/exclude, eidolon-aware) ----
-
-function chipKey(base, eid) { return `${base}::${eid}`; }
+// ---- Unified character picker (unlimited include/exclude, multi-eidolon-aware) ----
 
 let openEidBase = null; // which character currently has the eidolon row expanded
+
+function eidLabelFor(f) {
+  if (!f.eids || f.eids.size === 0) return '';
+  return [...f.eids].sort().map(e => e.toUpperCase()).join(',');
+}
 
 function renderChips() {
   const wrap = document.getElementById('pickerChips');
@@ -765,8 +773,9 @@ function renderChips() {
       ? `<img src="${url}" alt="${display}" onerror="this.style.display='none'"/>`
       : `<span class="chip-icon-ph">${display.slice(0,2).toUpperCase()}</span>`;
     const modeIcon = f.mode === 'include' ? '✓' : '✕';
-    const eidLabel = f.eid === 'any' ? '' : `<span class="chip-eid">${f.eid.toUpperCase()}</span>`;
-    return `<span class="picker-chip ${f.mode}" data-chip="${chipKey(f.base,f.eid)}" data-base="${f.base}" title="Click to set exact eidolon">${iconHtml}<span>${display}</span>${eidLabel}<span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${chipKey(f.base,f.eid)}" title="Remove">×</button></span>`;
+    const eidText = eidLabelFor(f);
+    const eidLabel = eidText ? `<span class="chip-eid">${eidText}</span>` : '';
+    return `<span class="picker-chip ${f.mode}" data-base="${f.base}" title="Click to set exact eidolon(s)">${iconHtml}<span>${display}</span>${eidLabel}<span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${f.base}" title="Remove">×</button></span>`;
   }).join('');
 
   wrap.querySelectorAll('.picker-chip').forEach(chip => {
@@ -782,7 +791,7 @@ function renderChips() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       charFilters.delete(btn.dataset.remove);
-      if (openEidBase && ![...charFilters.values()].some(f => f.base === openEidBase)) openEidBase = null;
+      if (openEidBase === btn.dataset.remove) openEidBase = null;
       renderChips();
       renderPickerGrid(document.getElementById('charPickerInput').value.trim());
       recompute();
@@ -792,33 +801,45 @@ function renderChips() {
   renderEidRow();
 }
 
-// Render the eidolon-selection row for whichever character chip is currently open
+// Render the eidolon multi-select row for whichever character chip is currently open
 function renderEidRow() {
   const row = document.getElementById('pickerEidRow');
   if (!openEidBase) { row.style.display = 'none'; row.innerHTML = ''; return; }
 
-  const display = BASE_NAME_DISPLAY.get(openEidBase) || openEidBase;
-  // Determine current mode for this character (use whatever filter currently exists for it)
-  const existing = [...charFilters.values()].find(f => f.base === openEidBase);
-  const mode = existing ? existing.mode : 'include';
-  const currentEid = existing ? existing.eid : 'any';
-  const eidolonsSeen = [...(BASE_NAME_EIDOLONS.get(openEidBase) || new Set())].sort();
+  const f = charFilters.get(openEidBase);
+  if (!f) { row.style.display = 'none'; row.innerHTML = ''; return; }
 
-  const eidButtons = ['any', ...['e0','e1','e2','e3','e4','e5','e6'].filter(e => eidolonsSeen.includes(e))].map(eid => {
-    const isActive = eid === currentEid;
-    const label = eid === 'any' ? 'Any' : eid.toUpperCase();
-    return `<button class="picker-eid-btn ${eid === 'any' ? 'any' : ''}" data-eid="${eid}" style="${isActive ? 'background:var(--accent);color:var(--bg);border-color:var(--accent);' : ''}">${label}</button>`;
+  const display = BASE_NAME_DISPLAY.get(openEidBase) || openEidBase;
+  const eidolonsSeen = [...(BASE_NAME_EIDOLONS.get(openEidBase) || new Set())].sort();
+  const selected = f.eids || new Set();
+
+  const anyActive = !f.eids || f.eids.size === 0;
+  const modeCls = f.mode === 'exclude' ? 'mode-exclude' : '';
+  const anyBtn = `<button class="picker-eid-btn any ${anyActive ? 'eid-active ' + modeCls : ''}" data-eid="any">Any</button>`;
+  const eidButtons = eidolonsSeen.map(eid => {
+    const isActive = selected.has(eid);
+    return `<button class="picker-eid-btn ${isActive ? 'eid-active ' + modeCls : ''}" data-eid="${eid}">${eid.toUpperCase()}</button>`;
   }).join('');
 
   row.style.display = 'flex';
-  row.innerHTML = `<div class="picker-eid-row-label">${display} — exact eidolon for this ${mode === 'include' ? 'include' : 'exclude'} filter</div>${eidButtons}`;
+  row.innerHTML = `<div class="picker-eid-row-label">${display} — exact eidolon(s) for this ${f.mode === 'include' ? 'include' : 'exclude'} filter (multi-select)</div>${anyBtn}${eidButtons}`;
 
   row.querySelectorAll('.picker-eid-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const newEid = btn.dataset.eid;
-      // Remove any existing filter(s) for this base, then set the new one
-      [...charFilters.keys()].forEach(k => { if (charFilters.get(k).base === openEidBase) charFilters.delete(k); });
-      charFilters.set(chipKey(openEidBase, newEid), { base: openEidBase, mode, eid: newEid });
+      const eid = btn.dataset.eid;
+      const current = charFilters.get(openEidBase);
+      if (!current) return;
+      if (eid === 'any') {
+        current.eids = null; // clear narrowing, fall back to any eidolon
+      } else {
+        if (!current.eids) current.eids = new Set();
+        if (current.eids.has(eid)) {
+          current.eids.delete(eid);
+          if (current.eids.size === 0) current.eids = null;
+        } else {
+          current.eids.add(eid);
+        }
+      }
       renderChips(); // re-renders chips and re-opens the eid row for openEidBase automatically
       renderPickerGrid(document.getElementById('charPickerInput').value.trim());
       recompute();
@@ -826,30 +847,22 @@ function renderEidRow() {
   });
 }
 
-// Set or toggle a filter for a base character at a given eidolon scope ('any' or 'e0'..'e6')
-function setCharFilter(base, mode, eid) {
-  const key = chipKey(base, eid);
-  const existing = charFilters.get(key);
+// Toggle a base character on/off at a given mode ('include' | 'exclude'), any eidolon by default
+function setCharFilter(base, mode) {
+  const existing = charFilters.get(base);
   if (existing && existing.mode === mode) {
-    charFilters.delete(key); // clicking same state again removes it
+    charFilters.delete(base); // clicking same mode again removes it
   } else {
-    charFilters.set(key, { base, mode, eid });
+    charFilters.set(base, { base, mode, eids: null });
   }
   renderChips();
   renderPickerGrid(document.getElementById('charPickerInput').value.trim());
   recompute();
 }
 
-// Cell click handlers: left = include(any), right = exclude(any)
 function cellState(base) {
-  const anyKeyInc = chipKey(base, 'any');
-  const f = charFilters.get(anyKeyInc);
-  if (f) return f.mode;
-  // also reflect if any eidolon-specific filter exists for this base
-  for (const v of charFilters.values()) {
-    if (v.base === base) return v.mode;
-  }
-  return null;
+  const f = charFilters.get(base);
+  return f ? f.mode : null;
 }
 
 function renderPickerGrid(query) {
@@ -876,10 +889,10 @@ function renderPickerGrid(query) {
   }).join('');
 
   grid.querySelectorAll('.picker-cell').forEach(cell => {
-    cell.addEventListener('click', () => setCharFilter(cell.dataset.base, 'include', 'any'));
+    cell.addEventListener('click', () => setCharFilter(cell.dataset.base, 'include'));
     cell.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      setCharFilter(cell.dataset.base, 'exclude', 'any');
+      setCharFilter(cell.dataset.base, 'exclude');
     });
   });
 }

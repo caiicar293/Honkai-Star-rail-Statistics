@@ -7,6 +7,7 @@
 <link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/fflate"></script>
 <style>
   :root {
     --bg: #090c14; --bg2: #0d1220;
@@ -411,11 +412,30 @@
 
 </div>
 <script>
-const RAW_DATA         = {{ data_json }};
 const ICONS            = {{ icons_json }};
 const DIM_FIELD        = '{{ dim_field }}';
 const DIM_LABEL        = '{{ dim_label }}';
 const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
+let RAW_DATA = [];
+
+async function initializeApp() {
+    try {
+        const response = await fetch("{{ data_filename }}");
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const buffer = await response.arrayBuffer();
+        const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
+        RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
+        runApp();
+    } catch (err) {
+        console.error('Data load error:', err);
+        const info = document.getElementById('resultsInfo');
+        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
+        const tbody = document.getElementById('tableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+    }
+}
+
+function runApp() {
 
 const ROW_H      = 46;
 const OVERSCAN   = 6;
@@ -981,6 +1001,9 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 })();
 
 recompute();
+}
+
+initializeApp();
 </script>
 </body>
 </html>

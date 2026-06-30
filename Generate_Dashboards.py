@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 import duckdb
+import gzip
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 load_dotenv()
@@ -231,6 +232,10 @@ class DashboardGenerator:
 
     # -- Rendering ------------------------------------------------------------
 
+    def _write_gz_json(self, out_dir: Path, filename: str, data) -> None:
+        with gzip.open(out_dir / filename, 'wb', compresslevel=6) as f:
+            f.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
+
     def render_file(self, template_name: str, out_path: Path, context: dict):
         template = self.env.get_template(template_name)
         html = template.render(**context)
@@ -264,10 +269,12 @@ class DashboardGenerator:
         if self._has_data(self.CHAR_TABLE, version, "mode", cfg["char_db_mode"]):
             data = self.fetch_characters(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_characters.html"
+            filename = f"{cfg['file_prefix']}_{safe_version}_characters_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data)
             self.render_file("character_stats_template.html.j2", out_file, {
                 **base_context,
                 "is_legacy": cfg["is_legacy"],
-                "data_json": json.dumps(data, ensure_ascii=False)
+                "data_filename": filename
             })
         else:
             print(f"  [SKIP] No character data found for {cfg['char_db_mode']}.")
@@ -276,9 +283,11 @@ class DashboardGenerator:
         if self._has_data(cfg["arch_table"], version):
             data = self.fetch_archetypes(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_archetypes.html"
+            filename = f"{cfg['file_prefix']}_{safe_version}_archetypes_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data)
             self.render_file("archetypes_template.html.j2", out_file, {
                 **base_context,
-                "data_json": json.dumps(data, ensure_ascii=False)
+                "data_filename": filename
             })
         else:
             print(f"  [SKIP] No archetype data found in {cfg['arch_table']}.")
@@ -287,24 +296,33 @@ class DashboardGenerator:
         if self._has_data(cfg["team_table"], version):
             data = self.fetch_teams(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_teams.html"
+            filename = f"{cfg['file_prefix']}_{safe_version}_teams_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data)
             self.render_file("teams_template.html.j2", out_file, {
                 **base_context,
-                "data_json": json.dumps(data, ensure_ascii=False)
+                "data_filename": filename
             })
         else:
             print(f"  [SKIP] No team data found in {cfg['team_table']}.")
 
-        # 4. By-Cost Teams
         cost_table = cfg.get("cost_team_table")
         if cost_table and self._has_data(cost_table, version):
             data = self.fetch_cost_teams(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_teams.html"
+            
+            # 1. Update extension to .json.gz
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_teams_data.json.gz"
+            
+            # 2. Write the file locally using gzip compression
+            self._write_gz_json(mode_dir, filename, data)
+                
+            # 3. Pass just the filename to your Jinja template context
             self.render_file("by_cost_teams_template.html.j2", out_file, {
                 **base_context,
-                "data_json": json.dumps(data, ensure_ascii=False)
+                "data_filename": filename  # Pass it as a clean template variable
             })
         else:
-            print(f"  [SKIP] No by-cost team data found for {mode_key}.")
+            print(f"   [SKIP] No by-cost team data found for {mode_key}.")
 
     def generate_index(self, version: str):
         print(f"\n[INFO] Generating Hub Index for {version}...")

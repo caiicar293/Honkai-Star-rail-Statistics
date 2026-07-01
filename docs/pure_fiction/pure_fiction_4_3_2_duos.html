@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pure Fiction 4.3.2 — Character Duos</title>
+<link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/fflate"></script>
+<style>
+  :root {
+    --bg: #090c14; --bg2: #0d1220; --bg3: #111827;
+    --panel: #141c2e; --panel2: #1a2338;
+    --border: #1e2d47; --border2: #243552;
+    --accent: #38bdf8; --accent2: #7dd3fc;
+    --gold: #fbbf24; --gold2: #f59e0b;
+    --teal: #2dd4bf; --purple: #a78bfa;
+    --red: #f87171; --green: #4ade80; --orange: #fb923c;
+    --muted: #4a5d7a;
+    --text: #e2eaf6; --text2: #8fa3c0; --text3: #506070;
+    --dim0: #6366f1; --dim1: #38bdf8; --dim2: #f472b6;
+    --dim3: #fb923c; --dim4: #a78bfa;
+    --e0: #94a3b8; --e1: #4ade80; --e2: #38bdf8; --e6: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Exo 2', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  .container { position: relative; z-index: 1; max-width: 1800px; margin: 0 auto; padding: 24px; }
+
+  /* HEADER */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); gap: 20px; flex-wrap: wrap; }
+  .header-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.25); border-radius: 4px; padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+  .header-badge::before { content: '●'; font-size: 7px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .header h1 { font-family: 'Rajdhani', sans-serif; font-size: 36px; font-weight: 700; letter-spacing: 0.06em; line-height: 1; }
+  .header h1 span { color: var(--accent); }
+  .header-sub { font-size: 13px; color: var(--text2); margin-top: 5px; font-family: 'Share Tech Mono', monospace; letter-spacing: 0.05em; }
+  .header-meta { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .meta-chip { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; text-align: center; min-width: 90px; }
+  .meta-chip .val { font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700; color: var(--accent); display: block; line-height: 1; }
+  .meta-chip .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; }
+
+  /* CONTROLS */
+  .controls { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end; }
+  .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; }
+  .btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
+  .btn-toggle { background: var(--panel); border: 1px solid var(--border); color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 5px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; white-space: nowrap; }
+  .btn-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-toggle.dim-0.active { background: rgba(99,102,241,0.12);  border-color: var(--dim0); color: var(--dim0); }
+  .btn-toggle.dim-1.active { background: rgba(56,189,248,0.12);  border-color: var(--dim1); color: var(--dim1); }
+  .btn-toggle.dim-2.active { background: rgba(244,114,182,0.12); border-color: var(--dim2); color: var(--dim2); }
+  .btn-toggle.dim-3.active { background: rgba(251,146,60,0.12);  border-color: var(--dim3); color: var(--dim3); }
+  .btn-toggle.dim-4.active { background: rgba(167,139,250,0.12); border-color: var(--dim4); color: var(--dim4); }
+  .btn-toggle.range.at0.active { border-color: var(--e0); color: var(--e0); background: rgba(148,163,184,0.08); }
+  .btn-toggle.range.at1.active { border-color: var(--e1); color: var(--e1); background: rgba(74,222,128,0.07); }
+  .btn-toggle.range.at2.active { border-color: var(--e2); color: var(--e2); background: rgba(56,189,248,0.08); }
+  .btn-toggle.range.at6.active { border-color: var(--e6); color: var(--e6); background: rgba(251,191,36,0.09); }
+
+  /* Search */
+  .search-wrap { position: relative; min-width: 260px; max-width: 440px; flex: 1; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
+  #searchInput { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
+  #searchInput:focus { border-color: var(--accent); }
+  #searchInput::placeholder { color: var(--text3); }
+
+  .results-info { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0 8px; letter-spacing: 0.06em; }
+  .results-info span { color: var(--accent); }
+
+  /* TABLE */
+  .table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); box-shadow: 0 4px 40px rgba(0,0,0,0.4); }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--panel2); border-bottom: 2px solid var(--border2); }
+  th { padding: 11px 12px; text-align: left; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
+  th:hover { color: var(--accent); }
+  th.sorted { color: var(--accent); }
+  th.sorted::after { content: ' ↓'; }
+  th.sorted.asc::after { content: ' ↑'; }
+  th.num { text-align: right; }
+  tbody tr { border-bottom: 1px solid rgba(30,45,71,0.6); transition: background 0.1s; }
+  tbody tr:hover { background: rgba(56,189,248,0.04); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; }
+  td.num { text-align: right; }
+
+  .rank-cell { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); text-align: center; min-width: 36px; }
+  .rank-cell.top3 { color: var(--gold); font-weight: bold; }
+
+  /* Dim badge */
+  .dim-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; }
+  .dim-badge.d0 { background: rgba(99,102,241,0.2);  color: var(--dim0); border: 1px solid rgba(99,102,241,0.4); }
+  .dim-badge.d1 { background: rgba(56,189,248,0.15);  color: var(--dim1); border: 1px solid rgba(56,189,248,0.35); }
+  .dim-badge.d2 { background: rgba(244,114,182,0.15); color: var(--dim2); border: 1px solid rgba(244,114,182,0.35); }
+  .dim-badge.d3 { background: rgba(251,146,60,0.15);  color: var(--dim3); border: 1px solid rgba(251,146,60,0.35); }
+  .dim-badge.d4 { background: rgba(167,139,250,0.15); color: var(--dim4); border: 1px solid rgba(167,139,250,0.35); }
+
+  /* Eid range badge */
+  .eid-range-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 6px; font-family: 'Share Tech Mono', monospace; font-size: 10px; border: 1px solid; }
+  .eid-range-badge.exact { font-weight: 700; font-size: 11px; }
+  .eid-range-badge.at0 { color: var(--e0); border-color: rgba(148,163,184,0.3); background: rgba(148,163,184,0.06); }
+  .eid-range-badge.at1 { color: var(--e1); border-color: rgba(74,222,128,0.3);  background: rgba(74,222,128,0.06); }
+  .eid-range-badge.at2 { color: var(--e2); border-color: rgba(56,189,248,0.3);  background: rgba(56,189,248,0.07); }
+  .eid-range-badge.at6 { color: var(--e6); border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }
+
+  /* Duo pair cell */
+  .duo-cell { display: flex; align-items: center; gap: 8px; min-width: 300px; }
+  .char-icon { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border2); object-fit: cover; background: var(--bg2); flex-shrink: 0; }
+  .char-icon-placeholder { width: 30px; height: 30px; border-radius: 50%; background: var(--panel2); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--text3); flex-shrink: 0; }
+  .duo-arrow { color: var(--teal); font-size: 16px; flex-shrink: 0; font-weight: 700; }
+  .duo-names { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+  .duo-ant { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .duo-con { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Association rule metric badges */
+  .lift-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+  .lift-high { color: var(--green);  border-color: rgba(74,222,128,0.35);  background: rgba(74,222,128,0.08); }
+  .lift-mid  { color: var(--gold);   border-color: rgba(251,191,36,0.35);  background: rgba(251,191,36,0.08); }
+  .lift-low  { color: var(--text3);  border-color: var(--border);          background: transparent; }
+
+  .conf-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+  .conf-high { color: var(--accent); border-color: rgba(56,189,248,0.35);  background: rgba(56,189,248,0.08); }
+  .conf-mid  { color: var(--text2);  border-color: var(--border2);         background: transparent; }
+
+  .conv-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid; color: var(--purple); border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.07); white-space: nowrap; }
+
+  /* Rate bar */
+  .rate-bar-wrap { display: flex; align-items: center; gap: 7px; min-width: 120px; }
+  .rate-bar-bg { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; min-width: 55px; }
+  .rate-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--accent)); }
+  .rate-val { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent2); min-width: 44px; text-align: right; }
+
+  /* Score cells */
+  .score-num { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); }
+  .score-num.median { color: var(--accent); font-weight: 600; font-size: 13px; }
+  .score-num.avg    { color: var(--gold); font-size: 13px; }
+  .score-num.maxv   { color: var(--purple); }
+  .score-num.std    { color: var(--text3); font-size: 11px; }
+  .score-num.samp   { color: var(--text2); }
+
+  /* Full-star rate */
+  .fullstar-pct  { font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .fullstar-high { color: var(--green); }
+  .fullstar-mid  { color: var(--gold); }
+  .fullstar-low  { color: var(--red); }
+
+  /* Sustain — plain informational */
+  .sustain-pct { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); }
+
+  /* Group separators — combined dim + eid range label */
+  .group-sep td { background: var(--bg2); padding: 5px 12px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; border-bottom: 1px solid var(--border2); }
+  .group-label-0 { color: var(--dim0); }
+  .group-label-1 { color: var(--dim1); }
+  .group-label-2 { color: var(--dim2); }
+  .group-label-3 { color: var(--dim3); }
+  .group-label-4 { color: var(--dim4); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-state p { font-family: 'Share Tech Mono', monospace; font-size: 13px; }
+
+  #particleCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.8; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+<body>
+<canvas id="particleCanvas" aria-hidden="true"></canvas>
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-badge">Pure Fiction · Duos</div>
+      <h1>Pure Fiction <span>4.3.2</span> Character Duos</h1>
+      <div class="header-sub">FLOOR 4 · ENDGAME ANALYTICS · CO-OCCURRENCE &amp; SYNERGY PAIRS</div>
+    </div>
+    <div class="header-meta">
+      <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Pairs</div></div>
+      <div class="meta-chip"><span class="val" id="visibleSamples">—</span><div class="lbl">Samples</div></div>
+      <div class="meta-chip"><span class="val">4.3.2</span><div class="lbl">Version</div></div>
+    </div>
+  </div>
+
+  <div class="controls">
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Node</div>
+      <div class="btn-group" id="dimFilters">
+        
+        <button class="btn-toggle dim-0 active" data-dim="0">N0</button>
+        
+        <button class="btn-toggle dim-1 active" data-dim="1">N1</button>
+        
+        <button class="btn-toggle dim-2 active" data-dim="2">N2</button>
+        
+        <button class="btn-toggle dim-3 active" data-dim="3">N3</button>
+        
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Eidolon Range (at → up_to)</div>
+      <div class="btn-group" id="eidFilters">
+        <button class="btn-toggle range at0 active" data-at="0" data-upto="0">E0</button>
+        <button class="btn-toggle range at0 active" data-at="0" data-upto="1">E0→1</button>
+        <button class="btn-toggle range at0 active" data-at="0" data-upto="2">E0→2</button>
+        <button class="btn-toggle range at0 active" data-at="0" data-upto="6">E0→6</button>
+        <button class="btn-toggle range at1 active" data-at="1" data-upto="1">E1</button>
+        <button class="btn-toggle range at1 active" data-at="1" data-upto="2">E1→2</button>
+        <button class="btn-toggle range at1 active" data-at="1" data-upto="6">E1→6</button>
+        <button class="btn-toggle range at2 active" data-at="2" data-upto="2">E2</button>
+        <button class="btn-toggle range at2 active" data-at="2" data-upto="6">E2→6</button>
+        <button class="btn-toggle range at6 active" data-at="6" data-upto="6">E6</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group" style="flex:1; min-width:260px; max-width:440px;">
+      <div class="ctrl-label">Character Search — matches Antecedent or Consequent</div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="searchInput" type="text" placeholder="e.g. Acheron · Robin · Huohuo…"/>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="results-info" id="resultsInfo">Loading…</div>
+
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th class="num">#</th>
+            <th data-col="dim_key">Node</th>
+            <th data-col="eid_range_key">Eid. Range</th>
+            <th data-col="Antecedent">Antecedent → Consequent</th>
+            <th data-col="Appearance_Rate_pct" class="num sorted">App. Rate %</th>
+            <th data-col="Samples" class="num">Samples</th>
+            <th data-col="Confidence" class="num">Confidence</th>
+            <th data-col="Lift" class="num">Lift</th>
+            <th data-col="Conviction" class="num">Conviction</th>
+            <th data-col="Leverage" class="num">Leverage</th>
+            <th data-col="Sustain_Percentage" class="num">Sustain %</th>
+            <th data-col="Full_Clear_Rate_pct" class="num">Full Star %</th>
+            <th data-col="Total_Full_Clears" class="num">FS N</th>
+            <th data-col="Min_Score" class="num">Min</th>
+            <th data-col="Percentile_25" class="num">P25</th>
+            <th data-col="Median_Score" class="num">Median</th>
+            <th data-col="Percentile_75" class="num">P75</th>
+            <th data-col="Average_Score" class="num">Avg</th>
+            <th data-col="Max_Score" class="num">Max</th>
+            <th data-col="Std_Dev" class="num">σ</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<script>
+const ICONS            = {"The Herta": "assets/icons/the_herta.webp", "Lightning Trailblazer": "assets/icons/lightning_trailblazer.webp", "Ice Trailblazer": "assets/icons/ice_trailblazer.webp", "Imaginary Trailblazer": "assets/icons/imaginary_trailblazer.webp", "Physical Trailblazer": "assets/icons/physical_trailblazer.webp", "Fire Trailblazer": "assets/icons/fire_trailblazer.webp", "Hyacine": "assets/icons/hyacine.webp", "Phainon": "assets/icons/phainon.webp", "Castorice": "assets/icons/castorice.webp", "Cipher": "assets/icons/cipher.webp", "Anaxa": "assets/icons/anaxa.webp", "Mydei": "assets/icons/mydei.webp", "Tribbie": "assets/icons/tribbie.webp", "Hysilens": "assets/icons/hysilens.webp", "The Dahlia": "assets/icons/the_dahlia.webp", "Ruan Mei": "assets/icons/ruan_mei.webp", "Sunday": "assets/icons/sunday.webp", "Robin": "assets/icons/robin.webp", "Acheron": "assets/icons/acheron.webp", "Black Swan": "assets/icons/black_swan.webp", "Sparkle": "assets/icons/sparkle.webp", "Aglaea": "assets/icons/aglaea.webp", "Boothill": "assets/icons/boothill.webp", "Jade": "assets/icons/jade.webp", "Firefly": "assets/icons/firefly.webp", "Rappa": "assets/icons/rappa.webp", "Jingliu": "assets/icons/jingliu.webp", "Yunli": "assets/icons/yunli.webp", "Kafka": "assets/icons/kafka.webp", "Dan Heng • Permansor Terrae": "assets/icons/dan_heng_permansor_terrae.webp", "Cerydra": "assets/icons/cerydra.webp", "Guinaifen": "assets/icons/guinaifen.webp", "Feixiao": "assets/icons/feixiao.webp", "Dr. Ratio": "assets/icons/dr_ratio.webp", "Aventurine": "assets/icons/aventurine.webp", "Fu Xuan": "assets/icons/fu_xuan.webp", "Luocha": "assets/icons/luocha.webp", "Topaz & Numby": "assets/icons/topaz_numby.webp", "Seele": "assets/icons/seele.webp", "Bronya": "assets/icons/bronya.webp", "Silver Wolf": "assets/icons/silver_wolf.webp", "Jing Yuan": "assets/icons/jing_yuan.webp", "Gepard": "assets/icons/gepard.webp", "Yanqing": "assets/icons/yanqing.webp", "Cyrene": "assets/icons/cyrene.webp", "Evernight": "assets/icons/evernight.webp", "Huohuo": "assets/icons/huohuo.webp", "Blade": "assets/icons/blade.webp", "Dan Heng • Imbibitor Lunae": "assets/icons/dan_heng_imbibitor_lunae.webp", "Argenti": "assets/icons/argenti.webp", "Lingsha": "assets/icons/lingsha.webp", "Fugue": "assets/icons/fugue.webp", "Clara": "assets/icons/clara.webp", "Dan Heng": "assets/icons/dan_heng.webp", "Sparxie": "assets/icons/sparxie.webp", "Himeko": "assets/icons/himeko.webp", "Jiaoqiu": "assets/icons/jiaoqiu.webp", "Sampo": "assets/icons/sampo.webp", "Luka": "assets/icons/luka.webp", "Imaginary March 7th": "assets/icons/imaginary_march_7th.webp", "Tingyun": "assets/icons/tingyun.webp", "Xueyi": "assets/icons/xueyi.webp", "Welt": "assets/icons/welt.webp", "Bailu": "assets/icons/bailu.webp", "Herta": "assets/icons/herta.webp", "Pela": "assets/icons/pela.webp", "Yukong": "assets/icons/yukong.webp", "Asta": "assets/icons/asta.webp", "Hook": "assets/icons/hook.webp", "Gallagher": "assets/icons/gallagher.webp", "Saber": "assets/icons/saber.webp", "Archer": "assets/icons/archer.webp", "Yao Guang": "assets/icons/yao_guang.webp", "Ashveil": "assets/icons/ashveil.webp", "Qingque": "assets/icons/qingque.webp", "Lynx": "assets/icons/lynx.webp", "Silver Wolf LV.999": "assets/icons/silver_wolf_lv999.webp", "Natasha": "assets/icons/natasha.webp", "Evanescia": "assets/icons/evanescia.webp", "Arlan": "assets/icons/arlan.webp", "Serval": "assets/icons/serval.webp", "Moze": "assets/icons/moze.webp", "Misha": "assets/icons/misha.webp", "Sushang": "assets/icons/sushang.webp", "Hanya": "assets/icons/hanya.webp", "Mortenax Blade": "assets/icons/mortenax_blade.webp", "Ice March 7th": "assets/icons/ice_march_7th.webp"};
+const DIM_FIELD        = 'node';
+const DIM_LABEL        = 'Node';
+const DIM_GROUP_LABELS = {"0": "NODE 0 \u2014 All Nodes", "1": "NODE 1 \u2014 First Half", "2": "NODE 2 \u2014 Second Half", "3": "NODE 3 \u2014 Third Half"};
+const COL_COUNT        = 20;
+let RAW_DATA = [];
+
+async function initializeApp() {
+    try {
+        const response = await fetch("pure_fiction_4_3_2_duos_data.json.gz");
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const buffer = await response.arrayBuffer();
+        const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
+        RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
+        runApp();
+    } catch (err) {
+        console.error('Data load error:', err);
+        const info = document.getElementById('resultsInfo');
+        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
+        const tbody = document.getElementById('tableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${COL_COUNT}"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+    }
+}
+
+function runApp() {
+
+const ROW_H      = 48;
+const OVERSCAN   = 6;
+const VIEWPORT_H = 600;
+
+// ── Pre-process ───────────────────────────────────────────────────────────
+RAW_DATA.forEach(r => {
+    r.dim_key       = r[DIM_FIELD];
+    r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
+    r._antLower     = r.Antecedent.toLowerCase();
+    r._conLower     = r.Consequent.toLowerCase();
+    r._pairLower    = r._antLower + ' ' + r._conLower;
+    r._antIcon      = iconEl(r.Antecedent);
+    r._conIcon      = iconEl(r.Consequent);
+});
+
+const MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
+
+// Token index — matches either Antecedent or Consequent name
+const TOKEN_INDEX = new Map();
+RAW_DATA.forEach((r, i) => {
+    const tokens = r._pairLower.split(/[\s\(\),\/\+•&]+/).filter(t => t.length >= 2);
+    new Set(tokens).forEach(tok => {
+        if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
+        TOKEN_INDEX.get(tok).push(i);
+    });
+});
+
+function searchIndex(query) {
+    const words = query.split(/\s+/).filter(Boolean);
+    if (!words.length) return null;
+    let resultSet = null;
+    for (const word of words) {
+        const hits = new Set();
+        TOKEN_INDEX.forEach((indices, tok) => { if (tok.includes(word)) indices.forEach(i => hits.add(i)); });
+        resultSet = resultSet === null ? hits : new Set([...resultSet].filter(i => hits.has(i)));
+        if (!resultSet.size) break;
+    }
+    return resultSet;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+const activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
+const activeRanges = new Set([
+    '0_0','0_1','0_2','0_6',
+    '1_1','1_2','1_6',
+    '2_2','2_6','6_6'
+]);
+let searchTerm   = '';
+let sortCol      = 'Appearance_Rate_pct';
+let sortAsc      = false;
+let filteredData = [];
+
+function recompute() {
+    let candidate;
+    if (searchTerm.length >= 2) {
+        const hits = searchIndex(searchTerm);
+        candidate = hits ? [...hits].map(i => RAW_DATA[i]) : [];
+    } else if (searchTerm.length === 1) {
+        candidate = RAW_DATA.filter(r => r._pairLower.includes(searchTerm));
+    } else {
+        candidate = RAW_DATA;
+    }
+
+    filteredData = candidate.filter(r =>
+        activeDims.has(r.dim_key) && activeRanges.has(r.eid_range_key)
+    );
+
+    filteredData.sort((a, b) => {
+        let av = a[sortCol], bv = b[sortCol];
+        if (typeof av === 'string') av = av.toLowerCase();
+        if (typeof bv === 'string') bv = bv.toLowerCase();
+        if (av == null) return 1; if (bv == null) return -1;
+        return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+    });
+
+    updateMeta();
+    document.querySelector('.table-scroll').scrollTop = 0;
+    renderViewport();
+}
+
+function updateMeta() {
+    document.getElementById('visibleCount').textContent = filteredData.length.toLocaleString();
+    const ssum = filteredData.reduce((s, r) => s + (r.Samples || 0), 0);
+    document.getElementById('visibleSamples').textContent = ssum > 9999 ? (ssum/1000).toFixed(0)+'K' : ssum.toLocaleString();
+    document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> duo pairs`;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function iconEl(name) {
+    let url = ICONS[name] || ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
+    if (url) {
+        if (!url.startsWith('http')) url = "../" + url;
+        return `<img class="char-icon" src="${url}" alt="${name}" title="${name}" onerror="this.style.display='none'"/>`;
+    }
+    return `<div class="char-icon-placeholder" title="${name}">${name.slice(0,2).toUpperCase()}</div>`;
+}
+
+function fmtPct(v, d=1) { return v == null ? '—' : v.toFixed(d) + '%'; }
+function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
+function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
+function eidLabel(at, upto) { return at === upto ? `E${at}` : `E${at}→${upto}`; }
+function eidCls(at, upto)   { return `eid-range-badge at${at}${at === upto ? ' exact' : ''}`; }
+function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
+
+function liftBadge(v) {
+    if (v == null) return '—';
+    const cls = v >= 1.5 ? 'lift-high' : v >= 1.1 ? 'lift-mid' : 'lift-low';
+    return `<span class="lift-badge ${cls}">${v.toFixed(3)}</span>`;
+}
+function confBadge(v) {
+    if (v == null) return '—';
+    const cls = v >= 0.6 ? 'conf-high' : 'conf-mid';
+    return `<span class="conf-badge ${cls}">${v.toFixed(3)}</span>`;
+}
+function convBadge(v) {
+    if (v == null) return '—';
+    return `<span class="conv-badge">${v.toFixed(3)}</span>`;
+}
+
+function rowHTML(r, rank) {
+    const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
+    const at = r.at_eidolon_level, upto = r.up_to_eidolon_level;
+    return `<tr>
+    <td class="rank-cell${rank<=3?' top3':''}">${rank}</td>
+    <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
+    <td><span class="${eidCls(at,upto)}">${eidLabel(at,upto)}</span></td>
+    <td><div class="duo-cell">${r._antIcon}<div class="duo-names"><span class="duo-ant">${r.Antecedent}</span><span class="duo-con">→ ${r.Consequent}</span></div><span class="duo-arrow">⇄</span>${r._conIcon}</div></td>
+    <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct,2)}</span></div></td>
+    <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
+    <td class="num">${confBadge(r.Confidence)}</td>
+    <td class="num">${liftBadge(r.Lift)}</td>
+    <td class="num">${convBadge(r.Conviction)}</td>
+    <td class="num"><span class="score-num std">${fmtNum(r.Leverage,4)}</span></td>
+    <td class="num"><span class="sustain-pct">${fmtPct(r.Sustain_Percentage)}</span></td>
+    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>
+    <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
+    <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span></td>
+    <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
+    <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
+    <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+  </tr>`;
+}
+
+// ── Virtual scroll ─────────────────────────────────────────────────────────
+(function setupVirtualScroll() {
+    const ts = document.querySelector('.table-scroll');
+    ts.style.maxHeight = VIEWPORT_H + 'px';
+    ts.style.overflowY = 'auto';
+    ts.addEventListener('scroll', renderViewport, { passive: true });
+})();
+
+function renderViewport() {
+    const tbody = document.getElementById('tableBody');
+    const ts    = document.querySelector('.table-scroll');
+
+    if (!filteredData.length) {
+        tbody.innerHTML = `<tr><td colspan="${COL_COUNT}"><div class="empty-state"><div class="icon">⚡</div><p>No duo pairs match current filters</p></div></td></tr>`;
+        return;
+    }
+
+    const scrollTop = ts.scrollTop;
+    const startIdx  = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+    const endIdx    = Math.min(filteredData.length, Math.ceil((scrollTop + VIEWPORT_H) / ROW_H) + OVERSCAN);
+    const padTop    = startIdx * ROW_H;
+    const padBot    = (filteredData.length - endIdx) * ROW_H;
+
+    let html = '';
+    if (padTop > 0) html += `<tr style="height:${padTop}px"><td colspan="${COL_COUNT}" style="padding:0;border:none"></td></tr>`;
+
+    // Group by dim + eid range together (50k rows have many natural groupings)
+    let lastGroup = startIdx > 0 ? `${filteredData[startIdx-1].dim_key}_${filteredData[startIdx-1].eid_range_key}` : null;
+    for (let i = startIdx; i < endIdx; i++) {
+        const r = filteredData[i];
+        const group = `${r.dim_key}_${r.eid_range_key}`;
+        if (group !== lastGroup) {
+            const at = r.at_eidolon_level, upto = r.up_to_eidolon_level;
+            const dimLbl = DIM_GROUP_LABELS[r.dim_key] || `${DIM_LABEL} ${r.dim_key}`;
+            html += `<tr class="group-sep"><td colspan="${COL_COUNT}"><span class="group-label-${r.dim_key}">${dimLbl} · ${eidLabel(at, upto)}</span></td></tr>`;
+            lastGroup = group;
+        }
+        html += rowHTML(r, i + 1);
+    }
+
+    if (padBot > 0) html += `<tr style="height:${padBot}px"><td colspan="${COL_COUNT}" style="padding:0;border:none"></td></tr>`;
+    tbody.innerHTML = html;
+}
+
+// ── Debounce ──────────────────────────────────────────────────────────────
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ── Event listeners ────────────────────────────────────────────────────────
+document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const d = parseInt(btn.dataset.dim);
+        if (activeDims.has(d)) { if (activeDims.size > 1) { activeDims.delete(d); btn.classList.remove('active'); } }
+        else { activeDims.add(d); btn.classList.add('active'); }
+        recompute();
+    });
+});
+
+document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const key = `${btn.dataset.at}_${btn.dataset.upto}`;
+        if (activeRanges.has(key)) { if (activeRanges.size > 1) { activeRanges.delete(key); btn.classList.remove('active'); } }
+        else { activeRanges.add(key); btn.classList.add('active'); }
+        recompute();
+    });
+});
+
+document.getElementById('searchInput').addEventListener('input', debounce(e => {
+    searchTerm = e.target.value.trim().toLowerCase();
+    recompute();
+}, 200));
+
+document.querySelectorAll('th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        if (sortCol === col) sortAsc = !sortAsc;
+        else { sortCol = col; sortAsc = false; }
+        document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
+        th.classList.add('sorted'); if (sortAsc) th.classList.add('asc');
+        recompute();
+    });
+});
+
+// ── Particles ─────────────────────────────────────────────────────────────
+(function setupParticles() {
+    const canvas = document.getElementById('particleCanvas');
+    if (!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext('2d');
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const PALETTE = ['56,189,248','45,212,191','167,139,250','251,191,36'];
+    const LINK = 105;
+    let w, h, dpr, motes = [], raf, running = false, t = 0;
+    function mkMote(fb) {
+        return { x:Math.random()*w, y:fb?h+8:Math.random()*h, vx:(Math.random()-.5)*.18, vy:-(Math.random()*.22+.06),
+            r:Math.random()*1.5+.55, tp:Math.random()*Math.PI*2, ts:Math.random()*.016+.005,
+            sw:Math.random()*.4+.12, sp:Math.random()*Math.PI*2, c:PALETTE[Math.floor(Math.random()*PALETTE.length)] };
+    }
+    function resize() {
+        dpr=Math.min(devicePixelRatio||1,2); w=innerWidth; h=innerHeight;
+        canvas.width=w*dpr; canvas.height=h*dpr;
+        canvas.style.cssText=`position:fixed;inset:0;width:${w}px;height:${h}px;`;
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+        motes=Array.from({length:Math.max(22,Math.min(55,Math.floor(w*h/34000)))},()=>mkMote(false));
+    }
+    function paint() {
+        t++; ctx.clearRect(0,0,w,h);
+        for(let i=0;i<motes.length;i++){
+            const a=motes[i]; a.x+=a.vx; a.y+=a.vy; a.x+=Math.sin(t*.01+a.sp)*a.sw*.05;
+            if(a.y<-10) Object.assign(a,mkMote(true));
+            for(let j=i+1;j<motes.length;j++){
+                const b=motes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+                if(d<LINK){ctx.strokeStyle=`rgba(${a.c},${(1-d/LINK)*.09})`;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+            }
+        }
+        motes.forEach(m=>{
+            const al=Math.max(.06,.28+Math.sin(t*m.ts+m.tp)*.22);
+            const gr=ctx.createRadialGradient(m.x,m.y,0,m.x,m.y,m.r*5);
+            gr.addColorStop(0,`rgba(${m.c},${al*.5})`); gr.addColorStop(1,`rgba(${m.c},0)`);
+            ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(m.x,m.y,m.r*5,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle=`rgba(${m.c},${Math.min(.85,al+.18)})`; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fill();
+        });
+        if(running) raf=requestAnimationFrame(paint);
+    }
+    function start(){if(!running){running=true;raf=requestAnimationFrame(paint);}}
+    function stop(){running=false;if(raf)cancelAnimationFrame(raf);}
+    resize(); start();
+    let rt; window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(resize,200);});
+    document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
+})();
+
+recompute();
+}
+
+initializeApp();
+</script>
+</body>
+</html>

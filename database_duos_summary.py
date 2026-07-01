@@ -95,9 +95,11 @@ class HonkaiDuosSummaryAnalyzer:
 
                 -- Association metrics
                 ROUND(AVG(Lift), 4)                                                     AS Simple_Avg_Lift,
+                ROUND(MEDIAN(Lift), 4)                                                  AS Median_Lift,
                 ROUND(SUM(Lift * Samples) / NULLIF(SUM(Samples), 0), 4)                 AS Weighted_Avg_Lift,
                 ROUND(AVG(Leverage), 4)                                                 AS Simple_Avg_Leverage,
                 ROUND(AVG(Conviction), 4)                                               AS Simple_Avg_Conviction,
+                ROUND(MEDIAN(Conviction), 4)                                            AS Median_Conviction,
 
                 -- Score metrics
                 ROUND(AVG(Average_Score), 2)                                            AS Simple_Avg_Score,
@@ -108,7 +110,14 @@ class HonkaiDuosSummaryAnalyzer:
 
                 -- Metadata
                 SUM(Samples)                                                            AS Total_Samples,
-                ROUND(AVG(Sustain_Percentage), 4)                                       AS Avg_Sustain_Percentage,
+                ROUND(
+                    100.0 * SUM(Total_Sustains) / NULLIF(SUM(Samples), 0),      
+                    2
+                )                                                                       AS Sustain_Percentage,                                   
+                ROUND(
+                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
+                    2
+                )                                                                      AS Full_Star_Rate_pct,
                 STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC)                AS Versions_Used
             FROM {task['table']}
             WHERE Samples > 0

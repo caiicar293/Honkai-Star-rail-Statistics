@@ -41,6 +41,7 @@ class DashboardGenerator:
             "arch_table": "moc_stats_archetypes",
             "team_table": "moc_stats_teams",
             "cost_team_table": "moc_by_cost_teams",
+            "duo_table": "moc_stats_duos",
             "mode_label": "MOC",
             "full_name": "Memory of Chaos",
             "subtitle": "FLOOR 12",
@@ -58,6 +59,7 @@ class DashboardGenerator:
             "arch_table": "apoc_stats_archetypes",
             "team_table": "apoc_stats_teams",
             "cost_team_table": "apoc_by_cost_teams",
+            "duo_table": "apoc_stats_duos",
             "mode_label": "APOC",
             "full_name": "Apocalyptic Shadow",
             "subtitle": "FLOOR 4",
@@ -75,6 +77,7 @@ class DashboardGenerator:
             "arch_table": "pure_fiction_stats_archetypes",
             "team_table": "pure_fiction_stats_teams",
             "cost_team_table": "pure_fiction_by_cost_teams",
+            "duo_table": "pure_fiction_stats_duos",
             "mode_label": "Pure Fiction",
             "full_name": "Pure Fiction",
             "subtitle": "FLOOR 4",
@@ -92,6 +95,7 @@ class DashboardGenerator:
             "arch_table": "anomaly_stats_archetypes",
             "team_table": "anomaly_stats_teams",
             "cost_team_table": "anomaly_by_cost_teams",
+            "duo_table": "anomaly_stats_duos",
             "mode_label": "Anomaly",
             "full_name": "Anomaly Arbitration",
             "subtitle": "FLOORS 0–4",
@@ -211,6 +215,24 @@ class DashboardGenerator:
             row["has_sustain"] = bool(row.get("has_sustain") or False)
         return rows
 
+    def fetch_duos(self, cfg: dict, version: str) -> list[dict]:
+        dim_field = cfg["dim_field"]
+        placeholders = ", ".join(["?" for _ in cfg["dim_values"]])
+        sql = f"""
+            SELECT
+                version, at_eidolon_level, up_to_eidolon_level,
+                {dim_field}, Antecedent, Consequent, Samples,
+                Appearance_Rate_pct, Confidence, Lift, Leverage, Conviction,
+                Total_Sustains, Sustain_Percentage, Total_Full_Clears, Full_Clear_Rate_pct,
+                Percentile_25, Median_Score, Percentile_75, Std_Dev,
+                Min_Score, Average_Score, Max_Score
+            FROM {cfg['duo_table']}
+            WHERE version = ? AND {dim_field} IN ({placeholders})
+            ORDER BY {dim_field}, at_eidolon_level, up_to_eidolon_level, Appearance_Rate_pct DESC
+        """
+        params = [version] + cfg["dim_values"]
+        return self._clean_rows(self.conn.execute(sql, params))
+
     def fetch_teams(self, cfg: dict, version: str) -> list[dict]:
         dim_field = cfg["dim_field"]
         placeholders = ", ".join(["?" for _ in cfg["dim_values"]])
@@ -304,6 +326,20 @@ class DashboardGenerator:
             })
         else:
             print(f"  [SKIP] No team data found in {cfg['team_table']}.")
+
+        # 4. Duos
+        duo_table = cfg.get("duo_table")
+        if duo_table and self._has_data(duo_table, version):
+            data = self.fetch_duos(cfg, version)
+            out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_duos.html"
+            filename = f"{cfg['file_prefix']}_{safe_version}_duos_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data)
+            self.render_file("duos_template.html.j2", out_file, {
+                **base_context,
+                "data_filename": filename
+            })
+        else:
+            print(f"  [SKIP] No duo data found for {mode_key}.")
 
         cost_table = cfg.get("cost_team_table")
         if cost_table and self._has_data(cost_table, version):

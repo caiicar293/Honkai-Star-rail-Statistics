@@ -32,14 +32,22 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 load_dotenv()
 
 class DashboardGenerator:
+    def get_env_list(key):
+            val = os.getenv(key)
+            return val.split(",") if val else []
+        
+        
+        
     # Core mode configurations mapped to their specific database tables and output routes
     MODE_CONFIG = {
         "moc": {
             "folder": "moc",
             "file_prefix": "moc",
             "char_db_mode": "MOC",
+            "versions": get_env_list("MOC_VERSIONS"),
             "arch_table": "moc_stats_archetypes",
             "team_table": "moc_stats_teams",
+            "cost_archetype_table": "moc_by_cost_archetypes",
             "cost_team_table": "moc_by_cost_teams",
             "duo_table": "moc_stats_duos",
             "mode_label": "MOC",
@@ -52,13 +60,51 @@ class DashboardGenerator:
             "dim_btn_label": lambda d: f"N{d}",
             "is_legacy": False,
         },
+        "moc_legacy": {
+            "folder": "moc",
+            "file_prefix": "moc",
+            "char_db_mode": "MOC_LEGACY",
+            "versions": get_env_list("MOC_VERSIONS_LEGACY"),
+            "arch_table": "moc_stats_archetypes",
+            "team_table": "moc_stats_teams",
+            "duo_table": "moc_stats_duos",
+            "mode_label": "MOC",
+            "full_name": "Memory of Chaos",
+            "subtitle": "FLOOR 10",
+            "dim_field": "node",
+            "dim_label": "Node",
+            "dim_values": [0, 1, 2],
+            "dim_group_labels": {0: "NODE 0 — All Nodes", 1: "NODE 1 — First Half", 2: "NODE 2 — Second Half"},
+            "dim_btn_label": lambda d: f"N{d}",
+            "is_legacy": True,
+        },
+        "moc_late_legacy": {
+            "folder": "moc",
+            "file_prefix": "moc",
+            "char_db_mode": "MOC_LATE_LEGACY",
+            "versions": get_env_list("MOC_VERSIONS_LATE_LEGACY"),
+            "arch_table": "moc_stats_archetypes",
+            "team_table": "moc_stats_teams",
+            "duo_table": "moc_stats_duos",
+            "mode_label": "MOC",
+            "full_name": "Memory of Chaos",
+            "subtitle": "FLOOR 10",
+            "dim_field": "node",
+            "dim_label": "Node",
+            "dim_values": [0, 1, 2],
+            "dim_group_labels": {0: "NODE 0 — All Nodes", 1: "NODE 1 — First Half", 2: "NODE 2 — Second Half"},
+            "dim_btn_label": lambda d: f"N{d}",
+            "is_legacy": True,
+        },
         "apoc": {
             "folder": "apoc",
             "file_prefix": "apoc",
             "char_db_mode": "APOC",
+            "versions": get_env_list("APOC_VERSIONS"),
             "arch_table": "apoc_stats_archetypes",
             "team_table": "apoc_stats_teams",
             "cost_team_table": "apoc_by_cost_teams",
+            "cost_archetype_table": "apoc_by_cost_archetypes",
             "duo_table": "apoc_stats_duos",
             "mode_label": "APOC",
             "full_name": "Apocalyptic Shadow",
@@ -74,9 +120,11 @@ class DashboardGenerator:
             "folder": "pure_fiction",
             "file_prefix": "pure_fiction",
             "char_db_mode": "PURE_FICTION",
+            "versions": get_env_list("PURE_FICTION_VERSIONS"),
             "arch_table": "pure_fiction_stats_archetypes",
             "team_table": "pure_fiction_stats_teams",
             "cost_team_table": "pure_fiction_by_cost_teams",
+            "cost_archetype_table": "pure_fiction_by_cost_archetypes",
             "duo_table": "pure_fiction_stats_duos",
             "mode_label": "Pure Fiction",
             "full_name": "Pure Fiction",
@@ -88,13 +136,33 @@ class DashboardGenerator:
             "dim_btn_label": lambda d: f"N{d}",
             "is_legacy": False,
         },
+        "pf_legacy": {
+            "folder": "pure_fiction",
+            "file_prefix": "pure_fiction",
+            "char_db_mode": "PURE_FICTION_LEGACY",
+            "versions": get_env_list("PURE_FICTION_VERSIONS_LEGACY"),
+            "arch_table": "pure_fiction_stats_archetypes",
+            "team_table": "pure_fiction_stats_teams",
+            "duo_table": "pure_fiction_stats_duos",
+            "mode_label": "Pure Fiction",
+            "full_name": "Pure Fiction",
+            "subtitle": "FLOOR 4",
+            "dim_field": "node",
+            "dim_label": "Node",
+            "dim_values": [0, 1, 2, 3],
+            "dim_group_labels": {0: "NODE 0 — All Nodes", 1: "NODE 1 — First Half", 2: "NODE 2 — Second Half", 3: "NODE 3 — Third Half"},
+            "dim_btn_label": lambda d: f"N{d}",
+            "is_legacy": True,
+        },
         "anomaly": {
             "folder": "anomaly_arbitration",
             "file_prefix": "anomaly",
             "char_db_mode": "ANOMALY",
+            "versions": get_env_list("ANOMALY_VERSIONS"),
             "arch_table": "anomaly_stats_archetypes",
             "team_table": "anomaly_stats_teams",
             "cost_team_table": "anomaly_by_cost_teams",
+            "cost_archetype_table": "anomaly_by_cost_archetypes",
             "duo_table": "anomaly_stats_duos",
             "mode_label": "Anomaly",
             "full_name": "Anomaly Arbitration",
@@ -214,6 +282,23 @@ class DashboardGenerator:
         for row in rows:
             row["has_sustain"] = bool(row.get("has_sustain") or False)
         return rows
+    
+    def fetch_cost_archetypes(self, cfg: dict, version: str) -> list[dict]:
+        dim_field = cfg["dim_field"]
+        placeholders = ", ".join(["?" for _ in cfg["dim_values"]])
+        sql = f"""
+            SELECT
+                Rank, version, estimated_min_cost, estimated_max_cost,
+                {dim_field}, max_eidolon, Archetype_Core, 
+                Sustain_Count, Sustain_Percentage_pct, Samples, Full_Star_Clears,
+                Full_Star_Rate_pct, Min_Score, Percentile_25, Median_Score,
+                Percentile_75, Average_Score, Std_Dev, Max_Score
+            FROM {cfg['cost_archetype_table']}
+            WHERE version = ? AND {dim_field} IN ({placeholders})
+            ORDER BY {dim_field}, estimated_min_cost, max_eidolon, Rank
+        """
+        params = [version] + cfg["dim_values"]
+        return self._clean_rows(self.conn.execute(sql, params))
 
     def fetch_duos(self, cfg: dict, version: str) -> list[dict]:
         dim_field = cfg["dim_field"]
@@ -279,6 +364,8 @@ class DashboardGenerator:
             safe = name[len(front):-len(back)]
             if not safe:
                 continue
+            if "by_cost" in safe:
+                continue
             label = safe.replace("_", ".")
             versions.append((label, safe))
 
@@ -310,6 +397,78 @@ class DashboardGenerator:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(html, encoding="utf-8")
         print(f"  [DONE] {out_path.name} ({out_path.stat().st_size / 1024:.0f} KB)")
+    
+    
+    def generate_jsons(self, mode_key: str, version: str):
+        cfg = self.MODE_CONFIG[mode_key]
+        print(f"\n[INFO] Generating JSONs for {cfg['full_name']} ({version})...")
+
+        safe_version = version.replace(".", "_")
+        mode_dir = self.output_base / cfg["folder"]
+
+        # 1. Characters
+        if self._has_data(self.CHAR_TABLE, version, "mode", cfg["char_db_mode"]):
+            data = self.fetch_characters(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_characters_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No character data found for {cfg['char_db_mode']}.")
+
+        # 2. Archetypes
+        if self._has_data(cfg["arch_table"], version):
+            data = self.fetch_archetypes(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_archetypes_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No archetype data found in {cfg['arch_table']}.")
+
+        # 3. Teams
+        if self._has_data(cfg["team_table"], version):
+            data = self.fetch_teams(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_teams_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No team data found in {cfg['team_table']}.")
+
+        # 4. Duos
+        duo_table = cfg.get("duo_table")
+        if duo_table and self._has_data(duo_table, version):
+            data = self.fetch_duos(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_duos_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No duo data found for {mode_key}.")
+        
+        # 5. By-Cost Teams
+        cost_table = cfg.get("cost_team_table")
+        if cost_table and self._has_data(cost_table, version):
+            data = self.fetch_cost_teams(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_teams_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data) 
+            
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No by-cost team data found for {mode_key}.")
+            
+        # 6. By-Cost Archetypes
+        cost_arch_table = cfg.get("cost_archetype_table")
+        if cost_arch_table and self._has_data(cost_arch_table, version):
+            data = self.fetch_cost_archetypes(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes_data.json.gz"
+            self._write_gz_json(mode_dir, filename, data) 
+            
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No by-cost archetype data found for {mode_key}.")
+
+    def orchestrate_json_generation(self):
+        for mode in self.MODE_CONFIG.keys():
+            for version in self.MODE_CONFIG[mode]["versions"]:
+                self.generate_jsons(mode, version)
 
     def generate_mode(self, mode_key: str, version: str):
         cfg = self.MODE_CONFIG[mode_key]
@@ -419,6 +578,28 @@ class DashboardGenerator:
             print(f"   [SKIP] No by-cost team data found for {mode_key}.")
         if cost_table:
             self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_teams")
+            
+        cost_arch_table = cfg.get("cost_archetype_table")
+        if cost_arch_table and self._has_data(cost_arch_table, version):
+            data = self.fetch_cost_archetypes(cfg, version)
+            out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes.html"
+            
+            # 1. Update extension to .json.gz
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes_data.json.gz"
+            
+            # 2. Write the file locally using gzip compression
+            self._write_gz_json(mode_dir, filename, data)
+                
+            # 3. Pass just the filename to your Jinja template context
+            self.render_file("by_cost_archetypes_template.html.j2", out_file, {
+                **base_context,
+                "data_filename": filename,  # Pass it as a clean template variable
+                "page_suffix": "by_cost_archetypes"
+            })
+        else:
+            print(f"   [SKIP] No by-cost archetype data found for {mode_key}.")
+        if cost_arch_table:
+            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_archetypes")
 
     def generate_index(self, version: str):
         print(f"\n[INFO] Generating Hub Index for {version}...")
@@ -520,9 +701,10 @@ def main():
     )
 
     try:
-        # Generate all modes iteratively
-        for mode in generator.MODE_CONFIG.keys():
-            generator.generate_mode(mode, args.version)
+        for mode in generator.MODE_CONFIG:
+            if not generator.MODE_CONFIG[mode]["is_legacy"]:
+                generator.generate_mode(mode, args.version)
+
         
         # Generate the root routing hub
         generator.generate_index(args.version)
@@ -536,3 +718,27 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # parser = argparse.ArgumentParser(description="Generate comprehensive HSR dashboards.")
+    # parser.add_argument("--db", default=os.getenv("DB_File", "hsr.duckdb"), help="Path to DuckDB file")
+    # parser.add_argument("--icons", default="character_icons.json", help="Path to character icons JSON")
+    # parser.add_argument("--template-dir", default=str(Path(__file__).parent), help="Dir containing .j2 templates")
+    # parser.add_argument("--output", "-o", default="./docs", help="Root output directory (docs/)")
+    
+    # args = parser.parse_args()
+
+    # generator = DashboardGenerator(
+    #     db_path=Path(args.db),
+    #     icons_path=Path(args.icons),
+    #     template_dir=Path(args.template_dir),
+    #     output_base=Path(args.output)
+    # )
+    # try:
+    #     # Generate all modes iteratively
+         
+    #     generator.orchestrate_json_generation()
+        
+        
+
+    #     print("\n[SUCCESS] Pipeline complete.")
+    # finally:
+    #     generator.close()

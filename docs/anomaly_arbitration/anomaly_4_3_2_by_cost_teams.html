@@ -266,6 +266,45 @@
   ::-webkit-scrollbar-track { background: var(--bg2); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── Version switcher ────────────────────────────────────────────────── */
+  .version-switch { position: relative; }
+  .version-switch-btn {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--panel); border: 1px solid var(--border);
+    color: var(--accent); font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700;
+    padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: border-color 0.15s; letter-spacing: 0.03em;
+    min-width: 90px; justify-content: space-between;
+  }
+  .version-switch-btn:hover { border-color: var(--accent); }
+  .version-switch-btn svg { transition: transform 0.15s; flex-shrink: 0; }
+  .version-switch-panel.open ~ .version-switch-btn svg,
+  .version-switch-btn.open svg { transform: rotate(180deg); }
+  .version-switch-panel {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+    background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.5); min-width: 170px; max-height: 360px; overflow-y: auto;
+  }
+  .version-switch-panel.open { display: block; }
+  .version-switch-panel-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; margin-bottom: 8px; white-space: nowrap; }
+  .version-switch-list { display: flex; flex-direction: column; gap: 3px; }
+  .version-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: transparent; border: 1px solid transparent; color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: 600;
+    padding: 6px 9px; border-radius: 5px; cursor: pointer; transition: all 0.12s; text-align: left; width: 100%;
+  }
+  .version-item:hover { background: rgba(56,189,248,0.08); color: var(--accent); }
+  .version-item.active { color: var(--accent); border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.06); }
+  .version-item-tag { font-size: 9px; color: var(--teal, #2dd4bf); text-transform: uppercase; letter-spacing: 0.06em; }
+  .version-switch-older-toggle {
+    width: 100%; margin-top: 6px; background: none; border: none; border-top: 1px dashed var(--border2);
+    color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 10.5px; padding: 8px 2px 2px;
+    cursor: pointer; text-align: center;
+  }
+  .version-switch-older-toggle:hover { color: var(--accent); }
+  .version-switch-older { display: none; margin-top: 4px; }
+  .version-switch-older.open { display: flex; }
+  .version-switch-loading { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 6px 2px; }
 </style>
 </head>
 <body>
@@ -275,14 +314,25 @@
   <div class="header">
     <div class="header-left">
       <div class="header-badge">Anomaly · By Cost</div>
-      <h1>Anomaly <span>4.3.2</span> By-Cost Teams</h1>
+      <h1>Anomaly <span id="versionHeaderLabel">4.3.2</span> By-Cost Teams</h1>
       <div class="header-sub">FLOORS 0–4 · ENDGAME ANALYTICS · COST BRACKET PERFORMANCE</div>
     </div>
     <div class="header-meta">
       <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Teams</div></div>
       <div class="meta-chip"><span class="val" id="visibleSamples">—</span><div class="lbl">Samples</div></div>
       <div class="meta-chip"><span class="val" id="costRangeDisplay">—</span><div class="lbl">Cost Range</div></div>
-      <div class="meta-chip"><span class="val">4.3.2</span><div class="lbl">Version</div></div>
+    <div class="version-switch" id="versionSwitch">
+      <button class="version-switch-btn" id="versionSwitchBtn" type="button" title="Switch game version">
+        <span id="versionSwitchBtnLabel">4.3.2</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="version-switch-panel" id="versionSwitchPanel">
+        <div class="version-switch-panel-title">Game Version</div>
+        <div class="version-switch-list" id="versionSwitchRecent"><div class="version-switch-loading">Loading versions…</div></div>
+        <button class="version-switch-older-toggle" id="versionSwitchOlderToggle" type="button" style="display:none;">Show older versions ▼</button>
+        <div class="version-switch-list version-switch-older" id="versionSwitchOlder"></div>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -424,79 +474,24 @@ const ICONS            = {"The Herta": "assets/icons/the_herta.webp", "Lightning
 const DIM_FIELD        = 'floor';
 const DIM_LABEL        = 'Floor';
 const DIM_GROUP_LABELS = {"0": "FLOOR 0", "1": "FLOOR 1", "2": "FLOOR 2", "3": "FLOOR 3", "4": "FLOOR 4"};
-let RAW_DATA = [];
-
-async function initializeApp() {
-    try {
-        const response = await fetch("anomaly_4_3_2_by_cost_teams_data.json.gz");
-        if (!response.ok) throw new Error('Failed to fetch data');
-        const buffer = await response.arrayBuffer();
-        const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
-        RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
-        runApp();
-    } catch (err) {
-        console.error('Data load error:', err);
-        const info = document.getElementById('resultsInfo');
-        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
-        const tbody = document.getElementById('tableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
-    }
-}
-
-function runApp() {
-
 const ROW_H      = 46;
 const OVERSCAN   = 6;
 const VIEWPORT_H = 600;
 
-// ── Pre-process ──────────────────────────────────────────────────────────
-RAW_DATA.forEach(r => {
-  r.dim_key   = r[DIM_FIELD];
-  r.cost_key  = r.estimated_min_cost + '_' + r.estimated_max_cost;
-  r.has_sustain = Boolean(r.has_sustain);
-  const members  = parseMembers(r.Team);
-  r._members     = members;
-  r._teamLower   = r.Team.toLowerCase();
-  // Base names stripped of eidolon tag — for plain name matching in slot filters
-  r._membersBase = members.map(m => m.replace(/\s*\(E\d\)/gi,'').trim().toLowerCase());
-  // Icon HTML uses base name to look up icons
-  r._iconsHtml   = members.map(m => iconEl(m.replace(/\s*\(E\d\)/gi,'').trim())).join('');
-});
-
-const MAX_RATE   = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
-const MIN_COST_G = Math.min(...RAW_DATA.map(r => r.estimated_min_cost));
-const MAX_COST_G = Math.max(...RAW_DATA.map(r => r.estimated_max_cost));
-
-// Build base-name -> set of eidolon tags seen, for the eidolon-picker row
-const BASE_NAME_EIDOLONS = new Map(); // baseLower -> Set('e0','e1',...)
-const BASE_NAME_DISPLAY  = new Map(); // baseLower -> display name (first-seen casing)
-RAW_DATA.forEach(r => r._members.forEach(m => {
-  const baseDisplay = m.replace(/\s*\(E\d\)/gi,'').trim();
-  const baseLower   = baseDisplay.toLowerCase();
-  if (!BASE_NAME_DISPLAY.has(baseLower)) BASE_NAME_DISPLAY.set(baseLower, baseDisplay);
-  const em = m.match(/\((e\d)\)/i);
-  if (em) {
-    if (!BASE_NAME_EIDOLONS.has(baseLower)) BASE_NAME_EIDOLONS.set(baseLower, new Set());
-    BASE_NAME_EIDOLONS.get(baseLower).add(em[1].toLowerCase());
-  }
-}));
-const ALL_CHAR_NAMES = [...BASE_NAME_DISPLAY.values()].sort();
+let RAW_DATA = [];
+let MAX_RATE   = 1;
+let MIN_COST_G = 0;
+let MAX_COST_G = 32;
+let BASE_NAME_EIDOLONS = new Map(); // baseLower -> Set('e0','e1',...)
+let BASE_NAME_DISPLAY  = new Map(); // baseLower -> display name (first-seen casing)
+let ALL_CHAR_NAMES = [];
+let TOKEN_INDEX = new Map();
 
 function lookupIconUrl(name) {
   let url = ICONS[name] || ICONS[name.replace(/\s+LV\.\d+$/,'').trim()];
   if (url && !url.startsWith('http')) url = "../" + url;
   return url || null;
 }
-
-// Token index for fast substring search (eidolon tags included)
-const TOKEN_INDEX = new Map();
-RAW_DATA.forEach((r, i) => {
-  const tokens = r._teamLower.split(/[\s\(\),\/\+•&]+/).filter(t => t.length >= 2);
-  new Set(tokens).forEach(tok => {
-    if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
-    TOKEN_INDEX.get(tok).push(i);
-  });
-});
 
 function searchIndex(query) {
   // Detect eidolon-specific query: "acheron(e2)" or "acheron e2"
@@ -526,8 +521,8 @@ function searchIndex(query) {
 }
 
 // ── Filter state ─────────────────────────────────────────────────────────
-const activeDims  = new Set(RAW_DATA.map(r => r.dim_key));
-const activeMeids = new Set([0,1,2,3,4,5,6]);
+let activeDims  = new Set();
+let activeMeids = new Set([0,1,2,3,4,5,6]);
 let showSustain   = true;
 let showNoSustain = true;
 let searchTerm    = '';
@@ -1008,10 +1003,223 @@ document.querySelectorAll('th[data-col]').forEach(th => {
   document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
 })();
 
-recompute();
+// ---- Data loading / version switching ----
+
+function prepareData() {
+  RAW_DATA.forEach(r => {
+    r.dim_key   = r[DIM_FIELD];
+    r.cost_key  = r.estimated_min_cost + '_' + r.estimated_max_cost;
+    r.has_sustain = Boolean(r.has_sustain);
+    const members  = parseMembers(r.Team);
+    r._members     = members;
+    r._teamLower   = r.Team.toLowerCase();
+    r._membersBase = members.map(m => m.replace(/\s*\(E\d\)/gi,'').trim().toLowerCase());
+    r._iconsHtml   = members.map(m => iconEl(m.replace(/\s*\(E\d\)/gi,'').trim())).join('');
+  });
+
+  MAX_RATE   = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
+  MIN_COST_G = Math.min(...RAW_DATA.map(r => r.estimated_min_cost));
+  MAX_COST_G = Math.max(...RAW_DATA.map(r => r.estimated_max_cost));
+
+  BASE_NAME_EIDOLONS = new Map();
+  BASE_NAME_DISPLAY  = new Map();
+  RAW_DATA.forEach(r => r._members.forEach(m => {
+    const baseDisplay = m.replace(/\s*\(E\d\)/gi,'').trim();
+    const baseLower   = baseDisplay.toLowerCase();
+    if (!BASE_NAME_DISPLAY.has(baseLower)) BASE_NAME_DISPLAY.set(baseLower, baseDisplay);
+    const em = m.match(/\((e\d)\)/i);
+    if (em) {
+      if (!BASE_NAME_EIDOLONS.has(baseLower)) BASE_NAME_EIDOLONS.set(baseLower, new Set());
+      BASE_NAME_EIDOLONS.get(baseLower).add(em[1].toLowerCase());
+    }
+  }));
+  ALL_CHAR_NAMES = [...BASE_NAME_DISPLAY.values()].sort();
+
+  TOKEN_INDEX = new Map();
+  RAW_DATA.forEach((r, i) => {
+    const tokens = r._teamLower.split(/[\s\(\),\/\+•&]+/).filter(t => t.length >= 2);
+    new Set(tokens).forEach(tok => {
+      if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
+      TOKEN_INDEX.get(tok).push(i);
+    });
+  });
+
+  // Reset filters to sensible defaults for the newly loaded dataset
+  activeDims  = new Set(RAW_DATA.map(r => r.dim_key));
+  activeMeids = new Set([0,1,2,3,4,5,6]);
+  showSustain   = true;
+  showNoSustain = true;
+  searchTerm    = '';
+  costMinFilter = MIN_COST_G;
+  costMaxFilter = MAX_COST_G;
+  sortCol       = 'Appearance_Rate_pct';
+  sortAsc       = false;
+  charFilters.clear();
+  openEidBase = null;
+
+  const searchInputEl = document.getElementById('searchInput');
+  if (searchInputEl) searchInputEl.value = '';
+
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.getElementById('btnSustainOn')?.classList.add('active');
+  document.getElementById('btnSustainOff')?.classList.add('active');
+  document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
+  document.querySelector('th[data-col="Appearance_Rate_pct"]')?.classList.add('sorted');
+
+  // Reconfigure cost sliders for the new dataset's range
+  minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4; minSlider.value = MIN_COST_G;
+  maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G; maxSlider.value = MAX_COST_G;
+  document.getElementById('minCostLabel').textContent = MIN_COST_G;
+  document.getElementById('maxCostLabel').textContent = MAX_COST_G;
+  sliderFill(minSlider); sliderFill(maxSlider);
+  clearPresets();
+  document.getElementById('costResetBtn')?.classList.add('active');
+
+  renderChips();
+  renderPickerGrid('');
+}
+
+async function loadDataset(filename) {
+  const response = await fetch(filename);
+  if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
+  const buffer = await response.arrayBuffer();
+  const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
+  RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
+  prepareData();
+  document.querySelector('.table-scroll').scrollTop = 0;
+  recompute();
+}
+
+function updateHeaderVersion(label) {
+  const h = document.getElementById('versionHeaderLabel');
+  if (h) h.textContent = label;
+}
+
+async function initializeApp() {
+    try {
+        await loadDataset("anomaly_4_3_2_by_cost_teams_data.json.gz");
+    } catch (err) {
+        console.error('Data load error:', err);
+        const info = document.getElementById('resultsInfo');
+        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
+        const tbody = document.getElementById('tableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+    }
 }
 
 initializeApp();
+</script>
+<script>
+// ── Version switcher ─────────────────────────────────────────────────────
+// Requires the page to define: async function loadDataset(filename) {...}
+// Optionally defines: function updateHeaderVersion(label) {...}
+(function() {
+  const VS_FILE_PREFIX   = 'anomaly';
+  const VS_PAGE_SUFFIX   = 'by_cost_teams';
+  const VS_CURRENT_SAFE  = '4_3_2';
+  const VS_CURRENT_LABEL = '4.3.2';
+  const VS_MANIFEST      = `${VS_FILE_PREFIX}_${VS_PAGE_SUFFIX}_versions.json`;
+  const VS_RECENT_COUNT  = 6;
+
+  let vsLiveSafe = VS_CURRENT_SAFE;
+
+  function vsFilenameFor(safe) {
+    return `${VS_FILE_PREFIX}_${safe}_${VS_PAGE_SUFFIX}_data.json.gz`;
+  }
+
+  function vsItemHtml(v) {
+    const isCurrent = v.safe === vsLiveSafe;
+    return `<button type="button" class="version-item${isCurrent ? ' active' : ''}" data-safe="${v.safe}" data-label="${v.label}">${v.label}${isCurrent ? ' <span class="version-item-tag">current</span>' : ''}</button>`;
+  }
+
+  async function vsInit() {
+    const btn         = document.getElementById('versionSwitchBtn');
+    const panel       = document.getElementById('versionSwitchPanel');
+    const recentWrap  = document.getElementById('versionSwitchRecent');
+    const olderWrap   = document.getElementById('versionSwitchOlder');
+    const olderToggle = document.getElementById('versionSwitchOlderToggle');
+    if (!btn || !panel) return;
+
+    let versions = [];
+    try {
+      const res = await fetch(VS_MANIFEST);
+      if (res.ok) versions = await res.json();
+    } catch (e) {
+      console.warn('Version manifest fetch failed:', e);
+    }
+    if (!Array.isArray(versions) || versions.length === 0) {
+      versions = [{ label: VS_CURRENT_LABEL, safe: VS_CURRENT_SAFE }];
+    }
+
+    const recent = versions.slice(0, VS_RECENT_COUNT);
+    const older  = versions.slice(VS_RECENT_COUNT);
+
+    recentWrap.innerHTML = recent.map(vsItemHtml).join('');
+    if (older.length) {
+      olderWrap.innerHTML = older.map(vsItemHtml).join('');
+      olderToggle.style.display = '';
+      olderToggle.textContent = `Show older versions (${older.length}) ▼`;
+    } else {
+      olderToggle.style.display = 'none';
+    }
+
+    function wireItems() {
+      panel.querySelectorAll('.version-item').forEach(el => {
+        el.addEventListener('click', () => vsSelectVersion(el.dataset.safe, el.dataset.label));
+      });
+    }
+    wireItems();
+
+    olderToggle.addEventListener('click', () => {
+      const open = olderWrap.classList.toggle('open');
+      olderToggle.textContent = open ? 'Hide older versions ▲' : `Show older versions (${older.length}) ▼`;
+    });
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#versionSwitch')) panel.classList.remove('open');
+    });
+  }
+
+  async function vsSelectVersion(safe, label) {
+    if (safe === vsLiveSafe) {
+      document.getElementById('versionSwitchPanel')?.classList.remove('open');
+      return;
+    }
+    const panel    = document.getElementById('versionSwitchPanel');
+    const btnLabel = document.getElementById('versionSwitchBtnLabel');
+    const prevLabel = btnLabel ? btnLabel.textContent : '';
+    if (btnLabel) btnLabel.textContent = '…';
+    panel?.classList.remove('open');
+    try {
+      await loadDataset(vsFilenameFor(safe));
+      vsLiveSafe = safe;
+      if (btnLabel) btnLabel.textContent = label;
+      document.querySelectorAll('.version-item').forEach(el => {
+        const tag = el.querySelector('.version-item-tag');
+        if (tag) tag.remove();
+        const isNow = el.dataset.safe === safe;
+        el.classList.toggle('active', isNow);
+        if (isNow) el.insertAdjacentHTML('beforeend', ' <span class="version-item-tag">current</span>');
+      });
+      if (typeof updateHeaderVersion === 'function') updateHeaderVersion(label);
+    } catch (err) {
+      console.error('Version switch failed:', err);
+      if (btnLabel) btnLabel.textContent = prevLabel;
+      alert('Failed to load version ' + label + '. Please check your connection and try again.');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', vsInit);
+  } else {
+    vsInit();
+  }
+})();
 </script>
 </body>
 </html>

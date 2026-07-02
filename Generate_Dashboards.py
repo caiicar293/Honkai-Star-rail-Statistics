@@ -258,6 +258,52 @@ class DashboardGenerator:
         with gzip.open(out_dir / filename, 'wb', compresslevel=6) as f:
             f.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
 
+    def _write_json(self, out_dir: Path, filename: str, data) -> None:
+        with open(out_dir / filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+
+    def _discover_versions(self, mode_dir: Path, prefix: str, page: str) -> list[dict]:
+        """Scans mode_dir for every already-generated {prefix}_{ver}_{page}_data.json.gz
+        file and returns [{"label": "4.3.2", "safe": "4_3_2"}, ...] sorted newest-first.
+        This lets the in-page version switcher discover every version ever generated,
+        not just the one being rendered in this run."""
+        if not mode_dir.exists():
+            return []
+        front = f"{prefix}_"
+        back = f"_{page}_data.json.gz"
+        versions = []
+        for f in mode_dir.glob(f"{prefix}_*{back}"):
+            name = f.name
+            if not name.startswith(front) or not name.endswith(back):
+                continue
+            safe = name[len(front):-len(back)]
+            if not safe:
+                continue
+            label = safe.replace("_", ".")
+            versions.append((label, safe))
+
+        def vkey(item):
+            parts = []
+            for p in item[0].split("."):
+                try:
+                    parts.append(int(p))
+                except ValueError:
+                    parts.append(0)
+            return tuple(parts)
+
+        uniq = sorted(set(versions), key=vkey, reverse=True)
+        return [{"label": label, "safe": safe} for label, safe in uniq]
+
+    def _write_versions_manifest(self, mode_dir: Path, prefix: str, page: str) -> None:
+        """Writes {prefix}_{page}_versions.json — a small uncompressed manifest the
+        in-browser version switcher fetches at runtime. Regenerated every run so that
+        even older, previously-generated pages pick up newly added versions."""
+        versions = self._discover_versions(mode_dir, prefix, page)
+        if not versions:
+            return
+        self._write_json(mode_dir, f"{prefix}_{page}_versions.json", versions)
+        print(f"  [DONE] {prefix}_{page}_versions.json ({len(versions)} version(s))")
+
     def render_file(self, template_name: str, out_path: Path, context: dict):
         template = self.env.get_template(template_name)
         html = template.render(**context)
@@ -282,6 +328,8 @@ class DashboardGenerator:
             "dim_values": cfg["dim_values"],
             "dim_group_labels_json": json.dumps(cfg["dim_group_labels"]),
             "icons_json": json.dumps(self.icons, ensure_ascii=False),
+            "safe_version": safe_version,
+            "file_prefix": cfg["file_prefix"],
         }
         
         # Register the lambda function for Jinja context dynamically
@@ -296,10 +344,12 @@ class DashboardGenerator:
             self.render_file("character_stats_template.html.j2", out_file, {
                 **base_context,
                 "is_legacy": cfg["is_legacy"],
-                "data_filename": filename
+                "data_filename": filename,
+                "page_suffix": "characters"
             })
         else:
             print(f"  [SKIP] No character data found for {cfg['char_db_mode']}.")
+        self._write_versions_manifest(mode_dir, cfg["file_prefix"], "characters")
 
         # 2. Archetypes
         if self._has_data(cfg["arch_table"], version):
@@ -309,10 +359,12 @@ class DashboardGenerator:
             self._write_gz_json(mode_dir, filename, data)
             self.render_file("archetypes_template.html.j2", out_file, {
                 **base_context,
-                "data_filename": filename
+                "data_filename": filename,
+                "page_suffix": "archetypes"
             })
         else:
             print(f"  [SKIP] No archetype data found in {cfg['arch_table']}.")
+        self._write_versions_manifest(mode_dir, cfg["file_prefix"], "archetypes")
 
         # 3. Teams
         if self._has_data(cfg["team_table"], version):
@@ -322,10 +374,12 @@ class DashboardGenerator:
             self._write_gz_json(mode_dir, filename, data)
             self.render_file("teams_template.html.j2", out_file, {
                 **base_context,
-                "data_filename": filename
+                "data_filename": filename,
+                "page_suffix": "teams"
             })
         else:
             print(f"  [SKIP] No team data found in {cfg['team_table']}.")
+        self._write_versions_manifest(mode_dir, cfg["file_prefix"], "teams")
 
         # 4. Duos
         duo_table = cfg.get("duo_table")
@@ -336,10 +390,13 @@ class DashboardGenerator:
             self._write_gz_json(mode_dir, filename, data)
             self.render_file("duos_template.html.j2", out_file, {
                 **base_context,
-                "data_filename": filename
+                "data_filename": filename,
+                "page_suffix": "duos"
             })
         else:
             print(f"  [SKIP] No duo data found for {mode_key}.")
+        if duo_table:
+            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "duos")
 
         cost_table = cfg.get("cost_team_table")
         if cost_table and self._has_data(cost_table, version):
@@ -355,10 +412,13 @@ class DashboardGenerator:
             # 3. Pass just the filename to your Jinja template context
             self.render_file("by_cost_teams_template.html.j2", out_file, {
                 **base_context,
-                "data_filename": filename  # Pass it as a clean template variable
+                "data_filename": filename,  # Pass it as a clean template variable
+                "page_suffix": "by_cost_teams"
             })
         else:
             print(f"   [SKIP] No by-cost team data found for {mode_key}.")
+        if cost_table:
+            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_teams")
 
     def generate_index(self, version: str):
         print(f"\n[INFO] Generating Hub Index for {version}...")

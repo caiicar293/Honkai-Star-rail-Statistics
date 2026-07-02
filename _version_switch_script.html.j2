@@ -1,0 +1,111 @@
+<script>
+// ── Version switcher ─────────────────────────────────────────────────────
+// Requires the page to define: async function loadDataset(filename) {...}
+// Optionally defines: function updateHeaderVersion(label) {...}
+(function() {
+  const VS_FILE_PREFIX   = '{{ file_prefix }}';
+  const VS_PAGE_SUFFIX   = '{{ page_suffix }}';
+  const VS_CURRENT_SAFE  = '{{ safe_version }}';
+  const VS_CURRENT_LABEL = '{{ version }}';
+  const VS_MANIFEST      = `${VS_FILE_PREFIX}_${VS_PAGE_SUFFIX}_versions.json`;
+  const VS_RECENT_COUNT  = 6;
+
+  let vsLiveSafe = VS_CURRENT_SAFE;
+
+  function vsFilenameFor(safe) {
+    return `${VS_FILE_PREFIX}_${safe}_${VS_PAGE_SUFFIX}_data.json.gz`;
+  }
+
+  function vsItemHtml(v) {
+    const isCurrent = v.safe === vsLiveSafe;
+    return `<button type="button" class="version-item${isCurrent ? ' active' : ''}" data-safe="${v.safe}" data-label="${v.label}">${v.label}${isCurrent ? ' <span class="version-item-tag">current</span>' : ''}</button>`;
+  }
+
+  async function vsInit() {
+    const btn         = document.getElementById('versionSwitchBtn');
+    const panel       = document.getElementById('versionSwitchPanel');
+    const recentWrap  = document.getElementById('versionSwitchRecent');
+    const olderWrap   = document.getElementById('versionSwitchOlder');
+    const olderToggle = document.getElementById('versionSwitchOlderToggle');
+    if (!btn || !panel) return;
+
+    let versions = [];
+    try {
+      const res = await fetch(VS_MANIFEST);
+      if (res.ok) versions = await res.json();
+    } catch (e) {
+      console.warn('Version manifest fetch failed:', e);
+    }
+    if (!Array.isArray(versions) || versions.length === 0) {
+      versions = [{ label: VS_CURRENT_LABEL, safe: VS_CURRENT_SAFE }];
+    }
+
+    const recent = versions.slice(0, VS_RECENT_COUNT);
+    const older  = versions.slice(VS_RECENT_COUNT);
+
+    recentWrap.innerHTML = recent.map(vsItemHtml).join('');
+    if (older.length) {
+      olderWrap.innerHTML = older.map(vsItemHtml).join('');
+      olderToggle.style.display = '';
+      olderToggle.textContent = `Show older versions (${older.length}) ▼`;
+    } else {
+      olderToggle.style.display = 'none';
+    }
+
+    function wireItems() {
+      panel.querySelectorAll('.version-item').forEach(el => {
+        el.addEventListener('click', () => vsSelectVersion(el.dataset.safe, el.dataset.label));
+      });
+    }
+    wireItems();
+
+    olderToggle.addEventListener('click', () => {
+      const open = olderWrap.classList.toggle('open');
+      olderToggle.textContent = open ? 'Hide older versions ▲' : `Show older versions (${older.length}) ▼`;
+    });
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#versionSwitch')) panel.classList.remove('open');
+    });
+  }
+
+  async function vsSelectVersion(safe, label) {
+    if (safe === vsLiveSafe) {
+      document.getElementById('versionSwitchPanel')?.classList.remove('open');
+      return;
+    }
+    const panel    = document.getElementById('versionSwitchPanel');
+    const btnLabel = document.getElementById('versionSwitchBtnLabel');
+    const prevLabel = btnLabel ? btnLabel.textContent : '';
+    if (btnLabel) btnLabel.textContent = '…';
+    panel?.classList.remove('open');
+    try {
+      await loadDataset(vsFilenameFor(safe));
+      vsLiveSafe = safe;
+      if (btnLabel) btnLabel.textContent = label;
+      document.querySelectorAll('.version-item').forEach(el => {
+        const tag = el.querySelector('.version-item-tag');
+        if (tag) tag.remove();
+        const isNow = el.dataset.safe === safe;
+        el.classList.toggle('active', isNow);
+        if (isNow) el.insertAdjacentHTML('beforeend', ' <span class="version-item-tag">current</span>');
+      });
+      if (typeof updateHeaderVersion === 'function') updateHeaderVersion(label);
+    } catch (err) {
+      console.error('Version switch failed:', err);
+      if (btnLabel) btnLabel.textContent = prevLabel;
+      alert('Failed to load version ' + label + '. Please check your connection and try again.');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', vsInit);
+  } else {
+    vsInit();
+  }
+})();
+</script>

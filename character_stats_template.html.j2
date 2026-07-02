@@ -197,6 +197,8 @@
   ::-webkit-scrollbar-track { background: var(--bg2); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+{% include "_version_switch_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -206,13 +208,13 @@
   <div class="header">
     <div class="header-left">
       <div class="header-badge">{{ mode_label }}</div>
-      <h1>{{ mode_label }} <span>{{ version }}</span> Characters</h1>
+      <h1>{{ mode_label }} <span id="versionHeaderLabel">{{ version }}</span> Characters</h1>
       <div class="header-sub">{{ subtitle }} · ENDGAME ANALYTICS · CHARACTER USAGE &amp; PERFORMANCE</div>
     </div>
     <div class="header-meta">
       <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Characters</div></div>
       <div class="meta-chip"><span class="val" id="visibleSamples">—</span><div class="lbl">Samples</div></div>
-      <div class="meta-chip"><span class="val">{{ version }}</span><div class="lbl">Version</div></div>
+{% include "_version_switch_html.html.j2" %}
     </div>
   </div>
 
@@ -299,50 +301,16 @@ const DIM_LABEL        = '{{ dim_label }}';
 const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
 const IS_LEGACY        = {{ 'true' if is_legacy else 'false' }};
 const COL_COUNT        = IS_LEGACY ? 15 : 18;
-let RAW_DATA = [];
-
-async function initializeApp() {
-    try {
-        const response = await fetch("{{ data_filename }}");
-        if (!response.ok) throw new Error('Failed to fetch data');
-        const buffer = await response.arrayBuffer();
-        const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
-        RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
-        runApp();
-    } catch (err) {
-        console.error('Data load error:', err);
-        const info = document.getElementById('resultsInfo');
-        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
-        const tbody = document.getElementById('tableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="${COL_COUNT}"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
-    }
-}
-
-function runApp() {
-
 const ROW_H    = 48;
 const OVERSCAN = 6;
 const VIEWPORT_H = 600;
 
-// ---- Pre-process at load ----
-RAW_DATA.forEach(r => {
-  r.dim_key       = r[DIM_FIELD];
-  r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
-  // Normalise _pct_pct column names → clean keys
-  for (let e = 0; e <= 6; e++) {
-    const raw = r[`Eidolon_${e}_pct_pct`];
-    r[`Eidolon_${e}_pct`] = (raw == null || isNaN(raw)) ? null : raw;
-  }
-  r._charLower = (r.Character + ' ' + (r.path||'') + ' ' + (r.element||'') + ' ' + (r.role||'')).toLowerCase();
-  r._iconHtml  = buildIconHtml(r.Character);
-});
-
-const MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
-
+let RAW_DATA = [];
+let MAX_RATE = 1;
 
 // ---- State ----
-const activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
-const activeRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
+let activeDims   = new Set();
+let activeRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
 let searchTerm = '';
 let sortCol    = 'Appearance_Rate_pct';
 let sortAsc    = false;
@@ -625,10 +593,68 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 })();
 
 
-recompute();
+// ---- Data loading / version switching ----
+
+function prepareData() {
+  RAW_DATA.forEach(r => {
+    r.dim_key       = r[DIM_FIELD];
+    r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
+    // Normalise _pct_pct column names → clean keys
+    for (let e = 0; e <= 6; e++) {
+      const raw = r[`Eidolon_${e}_pct_pct`];
+      r[`Eidolon_${e}_pct`] = (raw == null || isNaN(raw)) ? null : raw;
+    }
+    r._charLower = (r.Character + ' ' + (r.path||'') + ' ' + (r.element||'') + ' ' + (r.role||'')).toLowerCase();
+    r._iconHtml  = buildIconHtml(r.Character);
+  });
+
+  MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
+
+  // Reset filters to sensible defaults for the newly loaded dataset
+  activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
+  activeRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
+  searchTerm = '';
+  sortCol    = 'Appearance_Rate_pct';
+  sortAsc    = false;
+
+  const searchInputEl = document.getElementById('searchInput');
+  if (searchInputEl) searchInputEl.value = '';
+
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
+  document.querySelector('th[data-col="Appearance_Rate_pct"]')?.classList.add('sorted');
+}
+
+async function loadDataset(filename) {
+  const response = await fetch(filename);
+  if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
+  const buffer = await response.arrayBuffer();
+  const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
+  RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
+  prepareData();
+  recompute();
+}
+
+function updateHeaderVersion(label) {
+  const h = document.getElementById('versionHeaderLabel');
+  if (h) h.textContent = label;
+}
+
+async function initializeApp() {
+    try {
+        await loadDataset("{{ data_filename }}");
+    } catch (err) {
+        console.error('Data load error:', err);
+        const info = document.getElementById('resultsInfo');
+        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
+        const tbody = document.getElementById('tableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${COL_COUNT}"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+    }
 }
 
 initializeApp();
 </script>
+{% include "_version_switch_script.html.j2" %}
 </body>
 </html>

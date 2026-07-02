@@ -1,0 +1,12 @@
+    <div class="version-switch" id="versionSwitch">
+      <button class="version-switch-btn" id="versionSwitchBtn" type="button" title="Switch game version">
+        <span id="versionSwitchBtnLabel">{{ version }}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="version-switch-panel" id="versionSwitchPanel">
+        <div class="version-switch-panel-title">Game Version</div>
+        <div class="version-switch-list" id="versionSwitchRecent"><div class="version-switch-loading">Loading versions…</div></div>
+        <button class="version-switch-older-toggle" id="versionSwitchOlderToggle" type="button" style="display:none;">Show older versions ▼</button>
+        <div class="version-switch-list version-switch-older" id="versionSwitchOlder"></div>
+      </div>
+    </div>

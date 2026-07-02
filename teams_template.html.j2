@@ -237,6 +237,8 @@
   ::-webkit-scrollbar-track { background: var(--bg2); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+{% include "_version_switch_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -246,13 +248,13 @@
   <div class="header">
     <div class="header-left">
       <div class="header-badge">{{ mode_label }}</div>
-      <h1>{{ mode_label }} <span>{{ version }}</span> Teams</h1>
+      <h1>{{ mode_label }} <span id="versionHeaderLabel">{{ version }}</span> Teams</h1>
       <div class="header-sub">{{ subtitle }} · ENDGAME ANALYTICS · TEAM COMPOSITION &amp; PERFORMANCE</div>
     </div>
     <div class="header-meta">
       <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Teams</div></div>
       <div class="meta-chip"><span class="val" id="visibleSamples">—</span><div class="lbl">Samples</div></div>
-      <div class="meta-chip"><span class="val">{{ version }}</span><div class="lbl">Version</div></div>
+{% include "_version_switch_html.html.j2" %}
     </div>
   </div>
 
@@ -363,45 +365,15 @@ const ICONS           = {{ icons_json }};
 const DIM_FIELD       = '{{ dim_field }}';
 const DIM_LABEL       = '{{ dim_label }}';
 const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
-let RAW_DATA = [];
-
-async function initializeApp() {
-    try {
-        const response = await fetch("{{ data_filename }}");
-        if (!response.ok) throw new Error('Failed to fetch data');
-        const buffer = await response.arrayBuffer();
-        const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
-        RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
-        runApp();
-    } catch (err) {
-        console.error('Data load error:', err);
-        const info = document.getElementById('resultsInfo');
-        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
-        const tbody = document.getElementById('tableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="17"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
-    }
-}
-
-function runApp() {
 
 const ROW_H    = 46;
 const OVERSCAN = 6;
 const VIEWPORT_H = 600;
 
-RAW_DATA.forEach(r => {
-  r.dim_key       = r[DIM_FIELD];
-  r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
-  r.Sustain       = r['Sustain?'] ?? r['Sustain'] ?? false;
-  const members   = parseMembers(r.Team);
-  r._members      = members;
-  r._membersLower = members.map(m => m.toLowerCase());
-  r._iconsHtml    = members.map(iconEl).join('');
-  r._teamLower    = r.Team.toLowerCase();
-});
-
-const MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
-
-const ALL_CHAR_NAMES = [...new Set(RAW_DATA.flatMap(r => r._members))].sort();
+let RAW_DATA        = [];
+let MAX_RATE        = 1;
+let ALL_CHAR_NAMES  = [];
+let TOKEN_INDEX     = new Map();
 
 // Build a lookup of base name -> icon url for the picker grid
 function lookupIconUrl(name) {
@@ -410,15 +382,6 @@ function lookupIconUrl(name) {
   if (url && !url.startsWith('http')) url = "{{ path_prefix }}" + url;
   return url || null;
 }
-
-const TOKEN_INDEX = new Map();
-RAW_DATA.forEach((r, i) => {
-  const tokens = r._teamLower.split(/[\s\(\),\/\+•&]+/).filter(t => t.length >= 2);
-  new Set(tokens).forEach(tok => {
-    if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
-    TOKEN_INDEX.get(tok).push(i);
-  });
-});
 
 // Multi-word search: split query into words, AND across words.
 // "dan heng" -> needs a token containing "dan" AND a token containing "heng",
@@ -439,8 +402,8 @@ function searchIndex(query) {
   return resultSet;
 }
 
-const activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
-const activeRanges = new Set([
+let activeDims   = new Set();
+let activeRanges = new Set([
   '0_0','0_1','0_2','0_6',
   '1_1','1_2','1_6',
   '2_2','2_6','6_6'
@@ -835,10 +798,87 @@ document.querySelectorAll('th[data-col]').forEach(th => {
   document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
 })();
 
-recompute();
+// ---- Data loading / version switching ----
+
+function prepareData() {
+  RAW_DATA.forEach(r => {
+    r.dim_key       = r[DIM_FIELD];
+    r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
+    r.Sustain       = r['Sustain?'] ?? r['Sustain'] ?? false;
+    const members   = parseMembers(r.Team);
+    r._members      = members;
+    r._membersLower = members.map(m => m.toLowerCase());
+    r._iconsHtml    = members.map(iconEl).join('');
+    r._teamLower    = r.Team.toLowerCase();
+  });
+
+  MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
+  ALL_CHAR_NAMES = [...new Set(RAW_DATA.flatMap(r => r._members))].sort();
+
+  TOKEN_INDEX = new Map();
+  RAW_DATA.forEach((r, i) => {
+    const tokens = r._teamLower.split(/[\s\(\),\/\+•&]+/).filter(t => t.length >= 2);
+    new Set(tokens).forEach(tok => {
+      if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
+      TOKEN_INDEX.get(tok).push(i);
+    });
+  });
+
+  // Reset filters to sensible defaults for the newly loaded dataset
+  activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
+  activeRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
+  showSustain   = true;
+  showNoSustain = true;
+  charFilters.clear();
+  searchTerm = '';
+  sortCol    = 'Appearance_Rate_pct';
+  sortAsc    = false;
+
+  const searchInputEl = document.getElementById('searchInput');
+  if (searchInputEl) searchInputEl.value = '';
+
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.getElementById('btnSustainOn')?.classList.add('active');
+  document.getElementById('btnSustainOff')?.classList.add('active');
+  document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
+  document.querySelector('th[data-col="Appearance_Rate_pct"]')?.classList.add('sorted');
+
+  renderChips();
+  renderPickerGrid('');
+}
+
+async function loadDataset(filename) {
+  const response = await fetch(filename);
+  if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
+  const buffer = await response.arrayBuffer();
+  const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
+  RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
+  prepareData();
+  const ts = document.querySelector('.table-scroll');
+  if (ts) ts.scrollTop = 0;
+  recompute();
+}
+
+function updateHeaderVersion(label) {
+  const h = document.getElementById('versionHeaderLabel');
+  if (h) h.textContent = label;
+}
+
+async function initializeApp() {
+    try {
+        await loadDataset("{{ data_filename }}");
+    } catch (err) {
+        console.error('Data load error:', err);
+        const info = document.getElementById('resultsInfo');
+        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
+        const tbody = document.getElementById('tableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="17"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+    }
 }
 
 initializeApp();
 </script>
+{% include "_version_switch_script.html.j2" %}
 </body>
 </html>

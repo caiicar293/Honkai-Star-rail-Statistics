@@ -155,6 +155,8 @@
   ::-webkit-scrollbar-track { background: var(--bg2); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+{% include "_version_switch_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -164,13 +166,13 @@
   <div class="header">
     <div class="header-left">
       <div class="header-badge">{{ mode_label }}</div>
-      <h1>{{ mode_label }} <span>{{ version }}</span> Archetypes</h1>
+      <h1>{{ mode_label }} <span id="versionHeaderLabel">{{ version }}</span> Archetypes</h1>
       <div class="header-sub">{{ subtitle }} · ENDGAME ANALYTICS · ARCHETYPE USAGE &amp; PERFORMANCE</div>
     </div>
     <div class="header-meta">
       <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Archetypes</div></div>
       <div class="meta-chip"><span class="val" id="visibleSamples">—</span><div class="lbl">Samples</div></div>
-      <div class="meta-chip"><span class="val">{{ version }}</span><div class="lbl">Version</div></div>
+{% include "_version_switch_html.html.j2" %}
     </div>
   </div>
 
@@ -252,26 +254,6 @@ const DIM_FIELD        = '{{ dim_field }}';
 const DIM_LABEL        = '{{ dim_label }}';
 const MODE_LABEL       = '{{ mode_label }}';
 const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
-let RAW_DATA = [];
-
-async function initializeApp() {
-    try {
-        const response = await fetch("{{ data_filename }}");
-        if (!response.ok) throw new Error('Failed to fetch data');
-        const buffer = await response.arrayBuffer();
-        const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
-        RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
-        runApp();
-    } catch (err) {
-        console.error('Data load error:', err);
-        const info = document.getElementById('resultsInfo');
-        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
-        const tbody = document.getElementById('tableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="17"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
-    }
-}
-
-function runApp() {
 
 // ---- Virtual scroll config ----
 const ROW_H      = 44;   // px — matches td padding (9px×2 + ~26px content)
@@ -279,28 +261,9 @@ const OVERSCAN   = 6;
 const VIEWPORT_H = 600;
 const COL_COUNT  = 17;
 
-// ---- Pre-process all rows once at load ----
-// Cache icon HTML and lowercased search string so virtual scroll never recomputes them
-RAW_DATA.forEach(r => {
-  r.dim_key       = r[DIM_FIELD];
-  r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
-  const chars     = parseChars(r.Archetype_Core);
-  r._iconsHtml    = chars.map(iconEl).join('');
-  r._coreLower    = r.Archetype_Core.toLowerCase();
-});
-
-const MAX_USAGE = Math.max(...RAW_DATA.map(r => r.Usage_pct));
-
-// ---- Pre-index: token map for fast character/archetype search ----
-const TOKEN_INDEX = new Map();
-RAW_DATA.forEach((r, i) => {
-  // Added '&' to handle "Topaz & Numby". Dropped filter length to 1 to ensure no small tokens are lost.
-  const tokens = r._coreLower.split(/[\s\+\/\(\),•&]+/).filter(t => t.length >= 1);
-  new Set(tokens).forEach(tok => {
-    if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
-    TOKEN_INDEX.get(tok).push(i);
-  });
-});
+let RAW_DATA    = [];
+let MAX_USAGE   = 1;
+let TOKEN_INDEX = new Map();
 
 function searchIndex(q) {
   // 1. Tokenize the search string using the exact same rules as the index
@@ -332,8 +295,8 @@ function searchIndex(q) {
 }
 
 // ---- State ----
-const activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
-const activeRanges = new Set([
+let activeDims   = new Set();
+let activeRanges = new Set([
   '0_0','0_1','0_2','0_6',
   '1_1','1_2','1_6',
   '2_2','2_6','6_6'
@@ -574,10 +537,74 @@ document.querySelectorAll('th[data-col]').forEach(th => {
   document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
 })();
 
-recompute();
+// ---- Data loading / version switching ----
+
+function prepareData() {
+  RAW_DATA.forEach(r => {
+    r.dim_key       = r[DIM_FIELD];
+    r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
+    const chars     = parseChars(r.Archetype_Core);
+    r._iconsHtml    = chars.map(iconEl).join('');
+    r._coreLower    = r.Archetype_Core.toLowerCase();
+  });
+
+  MAX_USAGE = Math.max(...RAW_DATA.map(r => r.Usage_pct));
+
+  TOKEN_INDEX = new Map();
+  RAW_DATA.forEach((r, i) => {
+    const tokens = r._coreLower.split(/[\s\+\/\(\),•&]+/).filter(t => t.length >= 1);
+    new Set(tokens).forEach(tok => {
+      if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
+      TOKEN_INDEX.get(tok).push(i);
+    });
+  });
+
+  // Reset filters to sensible defaults for the newly loaded dataset
+  activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
+  activeRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
+  searchTerm = '';
+  sortCol    = 'Usage_pct';
+  sortAsc    = false;
+
+  const searchInputEl = document.getElementById('searchInput');
+  if (searchInputEl) searchInputEl.value = '';
+
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
+  document.querySelector('th[data-col="Usage_pct"]')?.classList.add('sorted');
+}
+
+async function loadDataset(filename) {
+  const response = await fetch(filename);
+  if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
+  const buffer = await response.arrayBuffer();
+  const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
+  RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
+  prepareData();
+  document.querySelector('.table-scroll').scrollTop = 0;
+  recompute();
+}
+
+function updateHeaderVersion(label) {
+  const h = document.getElementById('versionHeaderLabel');
+  if (h) h.textContent = label;
+}
+
+async function initializeApp() {
+    try {
+        await loadDataset("{{ data_filename }}");
+    } catch (err) {
+        console.error('Data load error:', err);
+        const info = document.getElementById('resultsInfo');
+        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
+        const tbody = document.getElementById('tableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="17"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+    }
 }
 
 initializeApp();
 </script>
+{% include "_version_switch_script.html.j2" %}
 </body>
 </html>

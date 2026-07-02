@@ -321,7 +321,7 @@ let TOKEN_INDEX = new Map();
 
 // Archetype_Core here is a member list like "Welt(E6) + Ashveil(E0)" — split like a team roster
 function parseMembers(core) {
-  return core.replace(/^\(|\)$/g,'').split(/\s*[,\/\+]\s*/).map(s => s.trim()).filter(Boolean);
+  return core.split(/\s*[,\/\+]\s*/).map(s => s.trim()).filter(Boolean);
 }
 
 function iconEl(name) {

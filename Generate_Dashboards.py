@@ -120,7 +120,7 @@ class DashboardGenerator:
             "folder": "pure_fiction",
             "file_prefix": "pure_fiction",
             "char_db_mode": "PURE_FICTION",
-            "versions": get_env_list("PURE_FICTION_VERSIONS"),
+            "versions": get_env_list("PF_VERSIONS"),
             "arch_table": "pure_fiction_stats_archetypes",
             "team_table": "pure_fiction_stats_teams",
             "cost_team_table": "pure_fiction_by_cost_teams",
@@ -140,7 +140,7 @@ class DashboardGenerator:
             "folder": "pure_fiction",
             "file_prefix": "pure_fiction",
             "char_db_mode": "PURE_FICTION_LEGACY",
-            "versions": get_env_list("PURE_FICTION_VERSIONS_LEGACY"),
+            "versions": get_env_list("PF_VERSIONS_LEGACY"),
             "arch_table": "pure_fiction_stats_archetypes",
             "team_table": "pure_fiction_stats_teams",
             "duo_table": "pure_fiction_stats_duos",
@@ -289,7 +289,7 @@ class DashboardGenerator:
         sql = f"""
             SELECT
                 Rank, version, estimated_min_cost, estimated_max_cost,
-                {dim_field}, max_eidolon, Archetype_Core, 
+                {dim_field}, max_eidolon, Archetype_Core, Appearance_Rate_pct,
                 Sustain_Count, Sustain_Percentage_pct, Samples, Full_Star_Clears,
                 Full_Star_Rate_pct, Min_Score, Percentile_25, Median_Score,
                 Percentile_75, Average_Score, Std_Dev, Max_Score

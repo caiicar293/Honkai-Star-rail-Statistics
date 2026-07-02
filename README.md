@@ -14,7 +14,7 @@ This project transforms raw community-sourced Honkai: Star Rail combat data into
 
 ### Database Files
 The repository includes multiple DuckDB database versions:
-- `honkai_star_rail_stats_polars_v15.duckdb` - Latest production database
+- `honkai_star_rail_stats_polars_v17.duckdb` - Latest production database
 - Previous versions (v1-v6) retained for schema evolution tracking
 
 All databases are also available on **[Hugging Face: caiicar293/Honkai-starrail-statistics](https://huggingface.co/datasets/caiicar293/Honkai-starrail-statistics)**

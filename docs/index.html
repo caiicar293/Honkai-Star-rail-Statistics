@@ -24,6 +24,7 @@
       line-height: 1.5;
       padding: 2rem 1.5rem 4rem;
       min-height: 100vh;
+      position: relative;
     }
 
     /* ── Background grid overlay ───────────────────────────── */
@@ -51,6 +52,17 @@
       border-radius: 50%;
       pointer-events: none;
       z-index: 0;
+    }
+
+    /* ── Particle Canvas ───────────────────────────────────── */
+    #particle-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1; /* Sits between the background and the container */
     }
 
     .container {
@@ -350,10 +362,13 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
       .card, .hero h1, .version-badge, .subhead { opacity: 1 !important; transform: none !important; }
+      #particle-canvas { display: none; }
     }
   </style>
 </head>
 <body>
+<canvas id="particle-canvas"></canvas>
+
 <div class="container">
 
   <header class="hero" role="banner">
@@ -591,6 +606,8 @@
   document.querySelectorAll('.card').forEach((card, i) => {
     animateIn(card, 280 + i * 55);
   });
+  
+  // Ripple effect on click
   document.querySelectorAll('.card').forEach(card => {
     card.addEventListener('click', function(e) {
       const rect   = this.getBoundingClientRect();
@@ -602,6 +619,70 @@
       ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
     });
   });
+  
+  // --- HTML5 Canvas Particle System ---
+  if (!prefersReduced) {
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let particles = [];
+    
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        // Small variation in sizes for depth
+        this.r = Math.random() * 1.5 + 0.5;
+        // Slow horizontal drift
+        this.dx = (Math.random() - 0.5) * 0.4;
+        // Slow vertical, slight upward drift to simulate floating energy
+        this.dy = (Math.random() - 0.5) * 0.4 - 0.2;
+        // Semi-transparent base opacity
+        this.alpha = Math.random() * 0.4 + 0.1;
+      }
+      
+      update() {
+        this.x += this.dx;
+        this.y += this.dy;
+        
+        // Wrap around screen edges
+        if (this.x < 0) this.x = width;
+        if (this.x > width) this.x = 0;
+        if (this.y < 0) this.y = height;
+        if (this.y > height) this.y = 0;
+      }
+      
+      draw() {
+        // Theme color: Cyan (#38bdf8) mixed with pure white
+        ctx.fillStyle = `rgba(56, 189, 248, ${this.alpha})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Initialize 80 particles
+    for (let i = 0; i < 80; i++) {
+      particles.push(new Particle());
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, width, height);
+      particles.forEach(p => { 
+        p.update(); 
+        p.draw(); 
+      });
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+  }
 </script>
 </body>
 </html>

@@ -100,6 +100,9 @@ class HonkaiDuosSummaryAnalyzer:
                 ROUND(AVG(Leverage), 4)                                                 AS Simple_Avg_Leverage,
                 ROUND(AVG(Conviction), 4)                                               AS Simple_Avg_Conviction,
                 ROUND(MEDIAN(Conviction), 4)                                            AS Median_Conviction,
+                ROUND(AVG(Zhang), 4)                                                    AS Simple_Avg_Zhang,
+                ROUND(AVG(Certainty), 4)                                                AS Simple_Avg_Certainty,
+                ROUND(AVG(Jaccard), 4)                                                  AS Simple_Avg_Jaccard,
 
                 -- Score metrics
                 ROUND(AVG(Average_Score), 2)                                            AS Simple_Avg_Score,

@@ -787,7 +787,23 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
         ]).with_columns([
             (pl.col("confidence") / pl.col("support_C")).alias("lift"),
             (pl.col("support") - (pl.col("support_A") * pl.col("support_C"))).alias("leverage"),
-            ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction")
+            ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction"),
+            (
+                (pl.col("support") - pl.col("support_A") * pl.col("support_C")) /
+                pl.max_horizontal(
+                    pl.col("support") * (1 - pl.col("support_A")),
+                    pl.col("support_A") * (pl.col("support_C") - pl.col("support")),
+                    1e-7
+                )
+            ).alias("zhang"),
+            (
+                pl.when(pl.col("confidence") >= pl.col("support_C"))
+                .then((pl.col("confidence") - pl.col("support_C")) / pl.max_horizontal(1 - pl.col("support_C"), 1e-7))
+                .otherwise((pl.col("confidence") - pl.col("support_C")) / pl.max_horizontal(pl.col("support_C"), 1e-7))
+            ).alias("certainty"),
+            (
+                pl.col("support") / (pl.col("support_A") + pl.col("support_C") - pl.col("support") + 1e-7)
+            ).alias("jaccard")
         ]).select([
             "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", "Samples",
             (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
@@ -795,6 +811,9 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             pl.col("lift").round(3).alias("Lift"),
             pl.col("leverage").round(4).alias("Leverage"),
             pl.col("conviction").round(3).alias("Conviction"),
+            pl.col("zhang").round(3).alias("Zhang"),
+            pl.col("certainty").round(3).alias("Certainty"),
+            pl.col("jaccard").round(3).alias("Jaccard"),
             pl.col("Total_Sustains"),
             (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
             pl.col("Total_Full_Clears"),

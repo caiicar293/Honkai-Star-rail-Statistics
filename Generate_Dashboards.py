@@ -308,6 +308,7 @@ class DashboardGenerator:
                 version, at_eidolon_level, up_to_eidolon_level,
                 {dim_field}, Antecedent, Consequent, Samples,
                 Appearance_Rate_pct, Confidence, Lift, Leverage, Conviction,
+                Zhang, Certainty, Jaccard,
                 Total_Sustains, Sustain_Percentage, Total_Full_Clears, Full_Clear_Rate_pct,
                 Percentile_25, Median_Score, Percentile_75, Std_Dev,
                 Min_Score, Average_Score, Max_Score

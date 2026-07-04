@@ -129,6 +129,20 @@
 
   .conv-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid; color: var(--purple); border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.07); white-space: nowrap; }
 
+  .zhang-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+  .zhang-high { color: var(--green); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.08); }
+  .zhang-mid  { color: var(--text2);  border-color: var(--border2);         background: transparent; }
+  .zhang-low  { color: var(--red);   border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.08); }
+
+  .cert-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+  .cert-high { color: var(--accent); border-color: rgba(56,189,248,0.35);  background: rgba(56,189,248,0.08); }
+  .cert-mid  { color: var(--text2);  border-color: var(--border2);         background: transparent; }
+  .cert-low  { color: var(--red);   border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.08); }
+
+  .jac-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+  .jac-high  { color: var(--teal);   border-color: rgba(45,212,191,0.35);  background: rgba(45,212,191,0.08); }
+  .jac-mid   { color: var(--text2);  border-color: var(--border2);         background: transparent; }
+
   /* Rate bar */
   .rate-bar-wrap { display: flex; align-items: center; gap: 7px; min-width: 120px; }
   .rate-bar-bg { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; min-width: 55px; }
@@ -301,6 +315,9 @@
             <th data-col="Lift" class="num">Lift</th>
             <th data-col="Conviction" class="num">Conviction</th>
             <th data-col="Leverage" class="num">Leverage</th>
+            <th data-col="Zhang" class="num">Zhang</th>
+            <th data-col="Certainty" class="num">Certainty</th>
+            <th data-col="Jaccard" class="num">Jaccard</th>
             <th data-col="Sustain_Percentage" class="num">Sustain %</th>
             <th data-col="Full_Clear_Rate_pct" class="num">Full Star %</th>
             <th data-col="Total_Full_Clears" class="num">FS N</th>
@@ -324,7 +341,7 @@ const ICONS            = {"The Herta": "assets/icons/the_herta.webp", "Lightning
 const DIM_FIELD        = 'floor';
 const DIM_LABEL        = 'Floor';
 const DIM_GROUP_LABELS = {"0": "FLOOR 0", "1": "FLOOR 1", "2": "FLOOR 2", "3": "FLOOR 3", "4": "FLOOR 4"};
-const COL_COUNT        = 20;
+const COL_COUNT        = 23;
 const ROW_H      = 48;
 const OVERSCAN   = 6;
 const VIEWPORT_H = 600;
@@ -424,6 +441,21 @@ function convBadge(v) {
     if (v == null) return '—';
     return `<span class="conv-badge">${v.toFixed(3)}</span>`;
 }
+function zhangBadge(v) {
+    if (v == null) return '—';
+    const cls = v >= 0.5 ? 'zhang-high' : (v <= -0.5 ? 'zhang-low' : 'zhang-mid');
+    return `<span class="zhang-badge ${cls}">${v.toFixed(3)}</span>`;
+}
+function certaintyBadge(v) {
+    if (v == null) return '—';
+    const cls = v >= 0.5 ? 'cert-high' : (v <= -0.5 ? 'cert-low' : 'cert-mid');
+    return `<span class="cert-badge ${cls}">${v.toFixed(3)}</span>`;
+}
+function jaccardBadge(v) {
+    if (v == null) return '—';
+    const cls = v >= 0.4 ? 'jac-high' : 'jac-mid';
+    return `<span class="jac-badge ${cls}">${v.toFixed(3)}</span>`;
+}
 
 function rowHTML(r, rank) {
     const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
@@ -439,6 +471,9 @@ function rowHTML(r, rank) {
     <td class="num">${liftBadge(r.Lift)}</td>
     <td class="num">${convBadge(r.Conviction)}</td>
     <td class="num"><span class="score-num std">${fmtNum(r.Leverage,4)}</span></td>
+    <td class="num">${zhangBadge(r.Zhang)}</td>
+    <td class="num">${certaintyBadge(r.Certainty)}</td>
+    <td class="num">${jaccardBadge(r.Jaccard)}</td>
     <td class="num"><span class="sustain-pct">${fmtPct(r.Sustain_Percentage)}</span></td>
     <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>
     <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>

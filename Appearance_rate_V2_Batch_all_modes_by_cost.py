@@ -652,6 +652,22 @@ class HonkaiStatistics_V2_eidolon_batch:
             (pl.col("confidence") / pl.col("support_C")).alias("lift"),
             (pl.col("support") - (pl.col("support_A") * pl.col("support_C"))).alias("leverage"),
             ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction"),
+            (
+                (pl.col("support") - pl.col("support_A") * pl.col("support_C")) /
+                pl.max_horizontal(
+                    pl.col("support") * (1 - pl.col("support_A")),
+                    pl.col("support_A") * (pl.col("support_C") - pl.col("support")),
+                    1e-7
+                )
+            ).alias("zhang"),
+            (
+                pl.when(pl.col("confidence") >= pl.col("support_C"))
+                .then((pl.col("confidence") - pl.col("support_C")) / pl.max_horizontal(1 - pl.col("support_C"), 1e-7))
+                .otherwise((pl.col("confidence") - pl.col("support_C")) / pl.max_horizontal(pl.col("support_C"), 1e-7))
+            ).alias("certainty"),
+            (
+                pl.col("support") / (pl.col("support_A") + pl.col("support_C") - pl.col("support") + 1e-7)
+            ).alias("jaccard"),
             (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
             pl.col("total_full_star_clears").alias("Full Star Clears"),
             (pl.col("total_full_star_clears") / pl.col("Samples") * 100).round(2).alias("Full Star Rate (%)"),
@@ -671,6 +687,9 @@ class HonkaiStatistics_V2_eidolon_batch:
             pl.col("lift").round(3).alias("Lift"),
             pl.col("leverage").round(4).alias("Leverage"),
             pl.col("conviction").round(3).alias("Conviction"),
+            pl.col("zhang").round(3).alias("Zhang"),
+            pl.col("certainty").round(3).alias("Certainty"),
+            pl.col("jaccard").round(3).alias("Jaccard"),
             f"Min {self.metric_name}", f"25th Percentile {self.metric_name}", f"Median {self.metric_name}",
             f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}"
         ]).sort(["version", self.node_or_floor_col, "Lift"], descending=[True, False, True]).collect()

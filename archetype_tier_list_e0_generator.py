@@ -80,15 +80,59 @@ def extract_and_build_html(icons_path, template_path, output_path, version, eido
     
     # Execute query and load into pandas DataFrame
     df = conn.execute(sql_query).df()
-    
+
+    # SQL query to extract amplifier performance metrics from the character-level
+    # meta summary table. "Character" is aliased to "Archetype_Core" so the
+    # resulting frame is shape-compatible with the archetype query above and
+    # can reuse the same downstream tiering / CSV / HTML-injection logic.
+    amplifier_query = """
+        SELECT
+            CASE 
+                WHEN Game_Mode = 'ANOMALY_ALL' THEN 'ANOMALY_F0' 
+                ELSE Game_Mode 
+            END AS Game_Mode,
+            Character AS Archetype_Core,
+            ROUND(Weighted_Avg_Score, 2) AS Weighted_Avg_Score
+        FROM character_recent_meta_summary
+        WHERE up_to_eidolon_level = 0
+        AND at_eidolon_level = 0
+        AND role = 'amplifier'
+        AND Simple_Avg_Appearance > 0.1
+        ORDER BY Game_Mode, Weighted_Avg_Score;
+        """
+
+    # Same as above, but for sustains
+    sustain_query = """
+        SELECT
+            CASE 
+                WHEN Game_Mode = 'ANOMALY_ALL' THEN 'ANOMALY_F0' 
+                ELSE Game_Mode 
+            END AS Game_Mode,
+            Character AS Archetype_Core,
+            ROUND(Weighted_Avg_Score, 2) AS Weighted_Avg_Score
+        FROM character_recent_meta_summary
+        WHERE up_to_eidolon_level = 0
+        AND at_eidolon_level = 0
+        AND role = 'sustain'
+        AND Simple_Avg_Appearance > 0.1
+        ORDER BY Game_Mode, Weighted_Avg_Score;
+        """
+
+    df_amplifiers = conn.execute(amplifier_query).df()
+    df_sustains = conn.execute(sustain_query).df()
+
     # Close connection
     conn.close()
     
     # Assign Tiers
     df['Tier'] = df.apply(assign_tier, axis=1)
+    df_amplifiers['Tier'] = df_amplifiers.apply(assign_tier, axis=1)
+    df_sustains['Tier'] = df_sustains.apply(assign_tier, axis=1)
     
-    # Convert DataFrame directly to a CSV-formatted string (no file writing)
+    # Convert DataFrames directly to CSV-formatted strings (no file writing)
     csv_data_string = df.to_csv(index=False)
+    csv_data_string_amplifiers = df_amplifiers.to_csv(index=False)
+    csv_data_string_sustains = df_sustains.to_csv(index=False)
     
     print("DuckDB extraction and tier assignment complete.")
     
@@ -119,6 +163,8 @@ def extract_and_build_html(icons_path, template_path, output_path, version, eido
     print("Injecting data into HTML template...")
     final_html = html_template.replace('$$ICON_DATA$$', icons_json_str)
     final_html = final_html.replace('$$RAW_CSV_DATA$$', csv_data_string)
+    final_html = final_html.replace('$$RAW_CSV_DATA_AMPLIFIERS$$', csv_data_string_amplifiers)
+    final_html = final_html.replace('$$RAW_CSV_DATA_SUSTAINS$$', csv_data_string_sustains)
     final_html = final_html.replace('$$VERSION$$', version)
     final_html = final_html.replace('$$EIDOLON$$', eidolon)
 

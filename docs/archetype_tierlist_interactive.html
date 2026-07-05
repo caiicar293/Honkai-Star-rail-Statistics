@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Archetype Tier List - E0 | v4.3.2</title>
+    <title>Interactive Tier List - E0 | v4.3.2</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -19,7 +19,19 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
+            margin-bottom: 5px; /* Reduced to pull subtitle closer */
         }
+        
+        /* New Header Subtitle Styling */
+        .list-subtitle {
+            text-align: center;
+            color: #aaa;
+            font-size: 14px;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-style: italic;
+        }
+
         .meta-badge {
             font-size: 0.45em;
             color: #38bdf8;
@@ -36,22 +48,62 @@
             color: #888;
             font-weight: normal;
         }
+        
+        /* New Tab Container Controls Layout */
         .controls {
             display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-            gap: 10px;
+            flex-direction: column;
             align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
         }
-        select {
-            padding: 8px 12px;
-            font-size: 16px;
-            background-color: #333;
-            color: white;
-            border: 1px solid #555;
+        .tab-row-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            justify-content: center;
+        }
+        .tab-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-width: 130px;
+            text-align: right;
+        }
+        .tabs {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            background-color: #2b2b2b;
+            color: #aaa;
+            border: 1px solid #444;
             border-radius: 4px;
             cursor: pointer;
+            transition: all 0.2s ease;
         }
+        .tab:hover {
+            background-color: #383838;
+            color: #fff;
+            border-color: #666;
+        }
+        .tab.active {
+            background-color: #38bdf8;
+            color: #000;
+            border-color: #38bdf8;
+            font-weight: bold;
+        }
+
         .tier-list {
             display: flex;
             flex-direction: column;
@@ -161,29 +213,55 @@
             font-weight: bold;
             margin-top: 15px; 
         }
+
+        /* New Footer Disclaimer Styling */
+        .list-footer {
+            max-width: 1100px;
+            margin: 15px auto 0 auto;
+            font-size: 12px;
+            color: #777;
+            text-align: left;
+            padding-left: 5px;
+        }
     </style>
 </head>
 <body>
 
     <h1>
-        Interactive Archetype Tier List 
+        Interactive Tier List 
         <span class="meta-badge">E0</span>
         <span class="version-text">v4.3.2</span>
     </h1>
     
+    <div class="list-subtitle">Data covers the past 3 phases across all game modes.</div>
+    
     <div class="controls">
-        <label for="modeSelect">Select Game Mode: </label>
-        <select id="modeSelect" onchange="renderTierList()">
-            <option value="ANOMALY_F0">Anomaly F0</option>
-            <option value="ANOMALY_F4">Anomaly F4</option>
-            <option value="APOC">Apocalyptic Shadow (APOC)</option>
-            <option value="MOC">Memory of Chaos (MOC)</option>
-            <option value="PURE_FICTION">Pure Fiction</option>
-        </select>
+        <div class="tab-row-container">
+            <div class="tab-label">Select Section:</div>
+            <div class="tabs" id="sectionTabs">
+                <div class="tab active" data-value="ARCHETYPES" onclick="selectTab('sectionTabs', this)">Archetypes</div>
+                <div class="tab" data-value="AMPLIFIERS" onclick="selectTab('sectionTabs', this)">Amplifiers</div>
+                <div class="tab" data-value="SUSTAINS" onclick="selectTab('sectionTabs', this)">Sustains</div>
+            </div>
+        </div>
+        
+        <div class="tab-row-container">
+            <div class="tab-label">Select Game Mode:</div>
+            <div class="tabs" id="modeTabs">
+                <div class="tab active" data-value="ANOMALY_F0" onclick="selectTab('modeTabs', this)">Anomaly F0</div>
+                <div class="tab" data-value="ANOMALY_F4" onclick="selectTab('modeTabs', this)">Anomaly F4</div>
+                <div class="tab" data-value="APOC" onclick="selectTab('modeTabs', this)">Apocalyptic Shadow (APOC)</div>
+                <div class="tab" data-value="MOC" onclick="selectTab('modeTabs', this)">Memory of Chaos (MOC)</div>
+                <div class="tab" data-value="PURE_FICTION" onclick="selectTab('modeTabs', this)">Pure Fiction</div>
+            </div>
+        </div>
     </div>
 
-    <div class="tier-list" id="tierListContainer">
-        </div>
+    <div class="tier-list" id="tierListContainer"></div>
+
+    <div class="list-footer">
+        * Indicates the character was not present in all 3 phases.
+    </div>
 
     <script>
         // Data Injected by Python Script
@@ -276,7 +354,7 @@
     "Mortenax Blade": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/ee669ca108fc20c7d05e03b45910ff72.png",
     "Ice March 7th": "https://act-webstatic.hoyoverse.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u0a0ae/4ae37b9a57755fcfcca58dce9af56eb4.png"
 };
-        const rawCsvData = `Game_Mode,Archetype_Core,Weighted_Avg_Score,Tier
+        const rawCsvDataArchetypes = `Game_Mode,Archetype_Core,Weighted_Avg_Score,Tier
 ANOMALY_F0,Welt + Sparxie + Silver Wolf LV.999,1.57,T0
 ANOMALY_F0,Acheron + Ashveil,2.34,T0.5
 ANOMALY_F0,Castorice + Evernight,2.51,T0.5
@@ -297,16 +375,16 @@ ANOMALY_F0,Feixiao + Ashveil,4.43,T1.5
 ANOMALY_F0,Mydei,4.46,T1.5
 ANOMALY_F0,Seele,4.6,T1.5
 ANOMALY_F0,Welt + Silver Wolf LV.999,4.79,T1.5
-ANOMALY_F0,Phainon,4.9,T1.5
 ANOMALY_F0,Anaxa,4.9,T1.5
+ANOMALY_F0,Phainon,4.9,T1.5
 ANOMALY_F0,Kafka + Hysilens,4.93,T1.5
 ANOMALY_F0,Archer,5.15,T2
 ANOMALY_F0,Feixiao,5.22,T2
 ANOMALY_F0,Aglaea,5.28,T2
 ANOMALY_F0,Rappa,5.42,T2
 ANOMALY_F0,Saber,5.45,T2
-ANOMALY_F0,Serval + The Herta,5.62,T2
 ANOMALY_F0,The Herta + Anaxa,5.62,T2
+ANOMALY_F0,Serval + The Herta,5.62,T2
 ANOMALY_F0,Jade + The Herta,5.64,T2
 ANOMALY_F0,Yunli,5.64,T2
 ANOMALY_F0,Herta + The Herta,5.66,T2
@@ -437,34 +515,206 @@ PURE_FICTION,Welt + Sparxie + Silver Wolf LV.999,35857.5,T0
 PURE_FICTION,Evernight,37168.54,T0
 PURE_FICTION,Castorice + Evernight,37742.62,T0
 `;
+        const rawCsvDataAmplifiers = `Game_Mode,Archetype_Core,Weighted_Avg_Score,Tier
+ANOMALY_F0,Cyrene,2.73,T0.5
+ANOMALY_F0,Yao Guang,2.78,T0.5
+ANOMALY_F0,Mortenax Blade,3.57,T1
+ANOMALY_F0,Lightning Trailblazer,3.64,T1
+ANOMALY_F0,Sparkle,3.65,T1
+ANOMALY_F0,Imaginary Trailblazer,3.69,T1
+ANOMALY_F0,Ice Trailblazer,3.81,T1
+ANOMALY_F0,Tribbie,3.82,T1
+ANOMALY_F0,Fugue,3.84,T1
+ANOMALY_F0,The Dahlia,3.97,T1
+ANOMALY_F0,Cipher,3.98,T1
+ANOMALY_F0,Ruan Mei,4.24,T1.5
+ANOMALY_F0,Tingyun,4.67,T1.5
+ANOMALY_F0,Sunday,4.77,T1.5
+ANOMALY_F0,Cerydra,4.79,T1.5
+ANOMALY_F0,Jiaoqiu,4.8,T1.5
+ANOMALY_F0,Silver Wolf,4.94,T1.5
+ANOMALY_F0,Asta,4.96,T1.5
+ANOMALY_F0,Robin,5.13,T2
+ANOMALY_F0,Bronya,5.18,T2
+ANOMALY_F4,Asta,2.92,T0
+ANOMALY_F4,Sparkle,3.65,T0.5
+ANOMALY_F4,Yao Guang,3.94,T0.5
+ANOMALY_F4,Lightning Trailblazer,4.39,T1
+ANOMALY_F4,Ice Trailblazer,4.54,T1.5
+ANOMALY_F4,Tribbie,4.62,T1.5
+ANOMALY_F4,Cyrene,4.62,T1.5
+ANOMALY_F4,Cipher,4.75,T1.5
+ANOMALY_F4,Sunday,4.86,T1.5
+ANOMALY_F4,Mortenax Blade,4.87,T1.5
+ANOMALY_F4,Robin,5.54,T2
+ANOMALY_F4,Imaginary Trailblazer,5.63,T2
+ANOMALY_F4,Fugue,5.65,T2
+ANOMALY_F4,The Dahlia,5.68,T2
+ANOMALY_F4,Cerydra,5.71,T2
+APOC,Pela,1833.45,T2
+APOC,Robin,2185.67,T2
+APOC,Bronya,2277.83,T2
+APOC,Jiaoqiu,2329.87,T2
+APOC,Sunday,2831.95,T1
+APOC,Ruan Mei,2854.37,T1
+APOC,Asta,2857.73,T1
+APOC,Tingyun,2858.31,T1
+APOC,Silver Wolf,3013.67,T1
+APOC,Cerydra,3049.79,T1
+APOC,Ice Trailblazer,3071.18,T1
+APOC,Tribbie,3073.82,T1
+APOC,Cipher,3105.12,T0.5
+APOC,Imaginary Trailblazer,3250.69,T0.5
+APOC,Mortenax Blade,3305.24,T0.5
+APOC,Sparkle,3311.51,T0.5
+APOC,Lightning Trailblazer,3329.01,T0.5
+APOC,Cyrene,3372.85,T0.5
+APOC,The Dahlia,3374.1,T0.5
+APOC,Fugue,3378.34,T0.5
+APOC,Yao Guang,3532.18,T0
+MOC,Cyrene,5.95,T0.5
+MOC,Yao Guang,6.1,T0.5
+MOC,Sparkle,6.31,T0.5
+MOC,Imaginary Trailblazer,6.94,T1
+MOC,Fugue,7.22,T1
+MOC,Tribbie,7.25,T1
+MOC,Lightning Trailblazer,7.3,T1
+MOC,Ice Trailblazer,7.33,T1
+MOC,Cipher,7.34,T1
+MOC,The Dahlia,7.39,T1
+MOC,Cerydra,8.07,T1.5
+MOC,Mortenax Blade,8.28,T1.5
+MOC,Sunday,8.36,T1.5
+MOC,Silver Wolf,8.48,T1.5
+MOC,Ruan Mei,8.51,T2
+MOC,Asta,8.6,T2
+MOC,Robin,9.0,T2
+MOC,Bronya,9.78,T2
+MOC,Jiaoqiu,9.94,T2
+PURE_FICTION,Pela,18839.15,T2
+PURE_FICTION,Tingyun,21723.85,T2
+PURE_FICTION,Silver Wolf,22186.23,T2
+PURE_FICTION,Bronya,22389.26,T2
+PURE_FICTION,Robin,22984.47,T2
+PURE_FICTION,Ruan Mei,24629.54,T1.5
+PURE_FICTION,Jiaoqiu,25086.38,T1.5
+PURE_FICTION,Sunday,25599.08,T1.5
+PURE_FICTION,Cerydra,25675.78,T1.5
+PURE_FICTION,Asta,27656.1,T1
+PURE_FICTION,Cipher,28244.48,T1
+PURE_FICTION,The Dahlia,28319.8,T1
+PURE_FICTION,Fugue,28549.71,T1
+PURE_FICTION,Imaginary Trailblazer,28635.27,T1
+PURE_FICTION,Sparkle,30540.37,T0.5
+PURE_FICTION,Mortenax Blade,31907.93,T0.5
+PURE_FICTION,Tribbie,32004.38,T0.5
+PURE_FICTION,Ice Trailblazer,32226.72,T0.5
+PURE_FICTION,Lightning Trailblazer,32646.47,T0.5
+PURE_FICTION,Yao Guang,34473.49,T0.5
+PURE_FICTION,Cyrene,36705.39,T0
+`;
+        const rawCsvDataSustains = `Game_Mode,Archetype_Core,Weighted_Avg_Score,Tier
+ANOMALY_F0,Hyacine,2.76,T0.5
+ANOMALY_F0,Fu Xuan,2.87,T0.5
+ANOMALY_F0,Huohuo,3.06,T1
+ANOMALY_F0,Aventurine,3.78,T1
+ANOMALY_F0,Lingsha,3.85,T1
+ANOMALY_F0,Dan Heng • Permansor Terrae,4.03,T1.5
+ANOMALY_F0,Bailu,4.38,T1.5
+ANOMALY_F0,Gallagher,4.41,T1.5
+ANOMALY_F0,Luocha,4.56,T1.5
+ANOMALY_F4,Fu Xuan,3.84,T0.5
+ANOMALY_F4,Huohuo,4.12,T1
+ANOMALY_F4,Dan Heng • Permansor Terrae,4.35,T1
+ANOMALY_F4,Aventurine,4.36,T1
+ANOMALY_F4,Luocha,4.5,T1.5
+ANOMALY_F4,Hyacine,4.6,T1.5
+ANOMALY_F4,Lingsha,5.46,T1.5
+ANOMALY_F4,Gallagher,5.66,T2
+APOC,Bailu,2443.73,T2
+APOC,Luocha,2673.75,T1.5
+APOC,Aventurine,2940.81,T1
+APOC,Fu Xuan,3038.4,T1
+APOC,Gallagher,3125.83,T0.5
+APOC,Lingsha,3288.01,T0.5
+APOC,Dan Heng • Permansor Terrae,3302.26,T0.5
+APOC,Hyacine,3365.59,T0.5
+APOC,Huohuo,3395.37,T0.5
+MOC,Hyacine,6.16,T0.5
+MOC,Fu Xuan,6.53,T1
+MOC,Huohuo,6.53,T1
+MOC,Dan Heng • Permansor Terrae,7.01,T1
+MOC,Lingsha,7.39,T1
+MOC,Aventurine,8.06,T1.5
+MOC,Gallagher,8.11,T1.5
+MOC,Luocha,9.05,T2
+PURE_FICTION,Bailu,24024.0,T1.5
+PURE_FICTION,Gallagher,26504.12,T1.5
+PURE_FICTION,Aventurine,26673.64,T1.5
+PURE_FICTION,Luocha,26905.29,T1.5
+PURE_FICTION,Lingsha,28575.98,T1
+PURE_FICTION,Fu Xuan,30212.1,T0.5
+PURE_FICTION,Dan Heng • Permansor Terrae,30474.6,T0.5
+PURE_FICTION,Huohuo,33441.54,T0.5
+PURE_FICTION,Hyacine,36545.68,T0
+`;
 
-        const parsedData = rawCsvData.trim().split('\n').slice(1).map(row => {
-            const [Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier] = row.split(',');
-            return { Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier };
-        });
+        function parseCsv(rawCsv) {
+            const trimmed = rawCsv.trim();
+            if (!trimmed) return [];
+            return trimmed.split('\n').slice(1).map(row => {
+                const [Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier] = row.split(',');
+                return { Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier };
+            });
+        }
+
+        const sectionData = {
+            ARCHETYPES: parseCsv(rawCsvDataArchetypes),
+            AMPLIFIERS: parseCsv(rawCsvDataAmplifiers),
+            SUSTAINS: parseCsv(rawCsvDataSustains)
+        };
 
         const tiers = ['T0', 'T0.5', 'T1', 'T1.5', 'T2'];
 
+        // Core tab switching helper
+        function selectTab(containerId, tabElement) {
+            const container = document.getElementById(containerId);
+            container.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            tabElement.classList.add('active');
+            renderTierList();
+        }
+
         function renderTierList() {
-            const selectedMode = document.getElementById('modeSelect').value;
+            const selectedSection = document.querySelector('#sectionTabs .tab.active').getAttribute('data-value');
+            const selectedMode = document.querySelector('#modeTabs .tab.active').getAttribute('data-value');
+            
             const container = document.getElementById('tierListContainer');
             container.innerHTML = ''; 
+
+            const parsedData = sectionData[selectedSection];
+
+            if (!parsedData || parsedData.length === 0 || !parsedData.some(d => d.Game_Mode === selectedMode)) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.style.textAlign = 'center';
+                emptyMsg.style.color = '#888';
+                emptyMsg.style.padding = '30px';
+                emptyMsg.innerText = 'No data available for this section and game mode.';
+                container.appendChild(emptyMsg);
+                return;
+            }
 
             tiers.forEach(tier => {
                 const matchingItems = parsedData.filter(d => d.Game_Mode === selectedMode && d.Tier === tier);
 
                 if (matchingItems.length === 0) return; 
 
-                // Dynamic Sorting Logic based on the game mode
                 matchingItems.sort((a, b) => {
                     const scoreA = parseFloat(a.Weighted_Avg_Score);
                     const scoreB = parseFloat(b.Weighted_Avg_Score);
                     
                     if (selectedMode === 'APOC' || selectedMode === 'PURE_FICTION') {
-                        // High score is better: sort descending
                         return scoreB - scoreA;
                     } else {
-                        // Low score (cycles/time) is better: sort ascending
                         return scoreA - scoreB;
                     }
                 });

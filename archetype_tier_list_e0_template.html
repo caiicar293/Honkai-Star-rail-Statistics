@@ -274,7 +274,13 @@
             const trimmed = rawCsv.trim();
             if (!trimmed) return [];
             return trimmed.split('\n').slice(1).map(row => {
-                const [Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier] = row.split(',');
+                const columns = row.split(',');
+                const Game_Mode = columns[0];
+                const Archetype_Core = columns[1];
+                const Weighted_Avg_Score = columns[2];
+                // Tier is always the last column, regardless of how many columns exist
+                const Tier = columns[columns.length - 1].trim(); 
+                
                 return { Game_Mode, Archetype_Core, Weighted_Avg_Score, Tier };
             });
         }
@@ -360,8 +366,11 @@
                     characters.forEach((char, index) => {
                         const charContainer = document.createElement('div');
                         charContainer.className = 'char-container';
+                        
+                        // FIX: Strip the asterisk ONLY for looking up the image asset
+                        const cleanCharName = char.replace(/\*/g, '').trim();
+                        const iconSrc = iconData[cleanCharName];
 
-                        const iconSrc = iconData[char];
                         if (iconSrc) {
                             const img = document.createElement('img');
                             img.src = iconSrc;

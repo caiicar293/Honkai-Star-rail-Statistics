@@ -91,8 +91,13 @@ def extract_and_build_html(icons_path, template_path, output_path, version, eido
                 WHEN Game_Mode = 'ANOMALY_ALL' THEN 'ANOMALY_F0' 
                 ELSE Game_Mode 
             END AS Game_Mode,
-            Character AS Archetype_Core,
-            ROUND(Weighted_Avg_Score, 2) AS Weighted_Avg_Score
+            -- Appends a star if they weren't in all 3 phases
+            CASE 
+                WHEN Versions_Count != 3 THEN CONCAT(Character, '*') 
+                ELSE Character 
+            END AS Archetype_Core,
+            ROUND(Weighted_Avg_Score, 2) AS Weighted_Avg_Score,
+            Versions_Count
         FROM character_recent_meta_summary
         WHERE up_to_eidolon_level = 0
         AND at_eidolon_level = 0
@@ -108,8 +113,12 @@ def extract_and_build_html(icons_path, template_path, output_path, version, eido
                 WHEN Game_Mode = 'ANOMALY_ALL' THEN 'ANOMALY_F0' 
                 ELSE Game_Mode 
             END AS Game_Mode,
-            Character AS Archetype_Core,
-            ROUND(Weighted_Avg_Score, 2) AS Weighted_Avg_Score
+            CASE 
+                WHEN Versions_Count != 3 THEN CONCAT(Character, '*') 
+                ELSE Character 
+            END AS Archetype_Core,
+            ROUND(Weighted_Avg_Score, 2) AS Weighted_Avg_Score,
+            Versions_Count
         FROM character_recent_meta_summary
         WHERE up_to_eidolon_level = 0
         AND at_eidolon_level = 0

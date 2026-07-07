@@ -449,7 +449,7 @@
             <th data-col="Samples" class="num">Samples</th>
             <th data-col="has_sustain">Sustain</th>
             <th data-col="Full_Star_Rate_pct" class="num">Full Star %</th>
-            <th data-col="Full_Star_Clears" class="num">FS N</th>
+            <th data-col="Total_Full_Clears" class="num">FS N</th>
             <th data-col="Min_Score" class="num">Min</th>
             <th data-col="Percentile_25" class="num">P25</th>
             <th data-col="Median_Score" class="num">Median</th>
@@ -631,8 +631,8 @@ function rowHTML(r) {
     <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct)}</span></div></td>
     <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
     <td>${sustHtml}</td>
-    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Star_Rate_pct)}">${fmtPct(r.Full_Star_Rate_pct)}</span></td>
-    <td class="num"><span class="score-num">${fmtInt(r.Full_Star_Clears)}</span></td>
+    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>
+    <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>
     <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
     <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
     <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>

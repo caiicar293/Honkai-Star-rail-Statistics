@@ -270,8 +270,8 @@ class DashboardGenerator:
             SELECT
                 Rank, version, estimated_min_cost, estimated_max_cost,
                 {dim_field}, max_eidolon, Team, Archetype_Core, has_sustain,
-                Sustain_Count, Appearance_Rate_pct, Samples, Full_Star_Clears,
-                Full_Star_Rate_pct, Min_Score, Percentile_25, Median_Score,
+                Appearance_Rate_pct, Samples, Total_Full_Clears,
+                Full_Clear_Rate_pct, Min_Score, Percentile_25, Median_Score,
                 Percentile_75, Average_Score, Std_Dev, Max_Score
             FROM {cfg['cost_team_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})
@@ -289,9 +289,9 @@ class DashboardGenerator:
         sql = f"""
             SELECT
                 Rank, version, estimated_min_cost, estimated_max_cost,
-                {dim_field}, max_eidolon, Archetype_Core, Appearance_Rate_pct,
-                Sustain_Count, Sustain_Percentage_pct, Samples, Full_Star_Clears,
-                Full_Star_Rate_pct, Min_Score, Percentile_25, Median_Score,
+                {dim_field}, max_eidolon, Archetype_Core, Usage_pct,
+                Sustain_Samples, Sustain_Percentage, Samples, Total_Full_Clears,
+                Full_Clear_Rate_pct, Min_Score, Percentile_25, Median_Score,
                 Percentile_75, Average_Score, Std_Dev, Max_Score
             FROM {cfg['cost_archetype_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})

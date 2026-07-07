@@ -13,7 +13,7 @@ class HonkaiCostTeamMetaAnalyzer:
         estimated_min_cost, estimated_max_cost, max_eidolon, Team
 
     Full_Star_Rate is intentionally RE-CALCULATED as:
-        SUM(Full_Star_Clears) / SUM(Samples)
+        SUM(Total_Full_Clears) / SUM(Samples)
     rather than averaging the pre-computed percentages.
     """
 
@@ -117,16 +117,13 @@ class HonkaiCostTeamMetaAnalyzer:
                 {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
 
                 -- Full-star rate: recalculate from raw counts, NOT avg of pct
-                SUM(Full_Star_Clears)                                                  AS Total_Full_Star_Clears,
+                SUM(Total_Full_Clears)                                                  AS Total_Total_Full_Clears,
                 SUM(Samples)                                                           AS Total_Samples,
                 ROUND(
-                    100.0 * SUM(Full_Star_Clears) / NULLIF(SUM(Samples), 0),
+                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
                     2
                 )                                                                      AS Full_Star_Rate_pct,
-                ROUND(
-                    100.0 * SUM(Sustain_Samples) / NULLIF(SUM(Samples), 0),      
-                    2
-                )                                                                       AS Sustain_Percentage,  
+                
 
                 -- Metadata
                 COUNT(DISTINCT version)                                                AS Version_Count,
@@ -215,12 +212,12 @@ class HonkaiCostArchetypeMetaAnalyzer:
 
     Unlike the team-level tables, the archetype-level tables have no `Team`
     or `has_sustain` column -- sustain presence is instead captured via a
-    raw `Sustain_Count`, which (like Full_Star_Rate) is RE-CALCULATED here as:
-        SUM(Sustain_Count) / SUM(Samples)
+    raw `Sustain_Samples`, which (like Full_Star_Rate) is RE-CALCULATED here as:
+        SUM(Sustain_Samples) / SUM(Samples)
     rather than averaging the pre-computed Sustain_Percentage_pct.
 
     Full_Star_Rate is likewise RE-CALCULATED as:
-        SUM(Full_Star_Clears) / SUM(Samples)
+        SUM(Total_Full_Clears) / SUM(Samples)
     rather than averaging the pre-computed percentages.
     """
 
@@ -313,7 +310,7 @@ class HonkaiCostArchetypeMetaAnalyzer:
                 max_eidolon,
 
                 -- Appearance (simple average across versions)
-                ROUND(AVG(Appearance_Rate_pct), 2)                                    AS Simple_Avg_Appearance,
+                ROUND(AVG(Usage_pct), 2)                                    AS Simple_Avg_Appearance,
 
                 -- Score aggregates
                 ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
@@ -322,17 +319,17 @@ class HonkaiCostArchetypeMetaAnalyzer:
                 {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
 
                 -- Full-star rate: recalculate from raw counts, NOT avg of pct
-                SUM(Full_Star_Clears)                                                  AS Total_Full_Star_Clears,
+                SUM(Total_Full_Clears)                                                  AS Total_Total_Full_Clears,
                 SUM(Samples)                                                           AS Total_Samples,
                 ROUND(
-                    100.0 * SUM(Full_Star_Clears) / NULLIF(SUM(Samples), 0),
+                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
                     2
                 )                                                                      AS Full_Star_Rate_pct,
 
                 -- Sustain rate: recalculate from raw counts, NOT avg of pct
-                SUM(Sustain_Count)                                                     AS Total_Sustain_Count,
+                SUM(Sustain_Samples)                                                     AS Total_Sustain_Samples,
                 ROUND(
-                    100.0 * SUM(Sustain_Count) / NULLIF(SUM(Samples), 0),
+                    100.0 * SUM(Sustain_Samples) / NULLIF(SUM(Samples), 0),
                     2
                 )                                                                      AS Sustain_Rate_pct,
 

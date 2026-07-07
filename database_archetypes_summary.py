@@ -91,9 +91,15 @@ class HonkaiMetaAnalyzer:
                 {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
 
                 -- Metadata
-                SUM(Samples)                                                          AS Total_Samples,
-                ROUND(SUM(Sustain_Samples) * 1.0 / NULLIF(SUM(Samples), 0), 2)        AS Sustain_Percentage,
-                STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC)              AS Versions_Used
+                SUM(Samples)                                                            AS Total_Samples,
+                ROUND(
+                    100.0 * SUM(Sustain_Samples) / NULLIF(SUM(Samples), 0),      
+                    2
+                )                                                                       AS Sustain_Percentage,                                   
+                ROUND(
+                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
+                    2
+                )                                                                      AS Full_Star_Rate_pct,
             FROM {task['table']}
             WHERE Samples > 0
               {floor_filter}

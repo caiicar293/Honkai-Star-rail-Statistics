@@ -80,6 +80,7 @@ class HonkaiTeamMetaAnalyzer:
                 at_eidolon_level,
                 up_to_eidolon_level,
                 Team,
+                Archetype_Core,
                 "Sustain?" AS Sustain,
 
                 -- Appearance
@@ -92,7 +93,11 @@ class HonkaiTeamMetaAnalyzer:
                 {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
 
                 -- Metadata
-                SUM(Samples)                                                          AS Total_Samples,
+                SUM(Samples)                                                            AS Total_Samples,                                 
+                ROUND(
+                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
+                    2
+                )                                                                      AS Full_Star_Rate_pct,
                 COUNT(DISTINCT version)                                               AS Version_Count,
                 STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC)              AS Versions_Used
             FROM {task['table']}
@@ -100,7 +105,7 @@ class HonkaiTeamMetaAnalyzer:
               {floor_filter}
               {node_filter}
               {recent_filter}
-            GROUP BY 1, 2, 3, 4,5
+            GROUP BY 1, 2, 3, 4,5,6
         """
 
     def run_analysis(self):

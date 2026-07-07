@@ -123,6 +123,10 @@ class HonkaiCostTeamMetaAnalyzer:
                     100.0 * SUM(Full_Star_Clears) / NULLIF(SUM(Samples), 0),
                     2
                 )                                                                      AS Full_Star_Rate_pct,
+                ROUND(
+                    100.0 * SUM(Sustain_Samples) / NULLIF(SUM(Samples), 0),      
+                    2
+                )                                                                       AS Sustain_Percentage,  
 
                 -- Metadata
                 COUNT(DISTINCT version)                                                AS Version_Count,

@@ -197,7 +197,9 @@ class HonkaiGearEidolonSummaryAnalyzer:
                     / NULLIF(SUM(CASE WHEN "Eidolon_{i}.0_{score_col}" IS NOT NULL THEN Total_Samples END), 0),
                     2
                 )                                                                       AS E{i}_Weighted_Avg_Score,
-                ROUND(AVG("Eidolon_{i}_Sustain_pct_pct"), 2)                           AS E{i}_Avg_Sustain_pct,"""
+                SUM("Eidolon_{i}.0_Samples")                                      AS E{i}_Total_Samples,
+                ROUND(AVG("Eidolon_{i}_Sustain_pct_pct"), 2)                           AS E{i}_Avg_Sustain_pct,
+                ROUND(AVG("Eidolon_{i}_Full_Clear_pct_pct"), 2)                         AS E{i}_Avg_Full_Star_pct,"""
             for i in range(7)
         ])
 

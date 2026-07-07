@@ -180,7 +180,15 @@ class CharacterMetaAnalyzer:
                 ROUND(
                     SUM(Appearance_Rate_pct * Samples) / NULLIF(SUM(Samples), 0), 4
                 )                                                                            AS Weighted_Avg_Appearance,
-                ROUND(SUM(Sustain_Samples) * 1.0 / NULLIF(SUM(Samples), 0), 2)              AS Sustain_Percentage,
+                -- Metadata
+                ROUND(
+                    100.0 * SUM(Sustain_Samples) / NULLIF(SUM(Samples), 0),      
+                    2
+                )                                                                       AS Sustain_Percentage,                                   
+                ROUND(
+                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
+                    2
+                )                                                                      AS Full_Star_Rate_pct,
 
                 -- Score / Cycles / Points
                 ROUND(AVG(Average_Score), 4)                                                AS Simple_Avg_Score,

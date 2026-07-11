@@ -465,7 +465,7 @@ class DashboardGenerator:
         if cost_arch_table and self._has_data(cost_arch_table, version):
             data = self.fetch_cost_archetypes(cfg, version)
             filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes_data.json.br"
-            self._write_gz_json(mode_dir, filename, data) 
+            self._write_brotli_json(mode_dir, filename, data) 
             
             print(f"  [DONE] {filename} ({len(data)} records)")
         else:

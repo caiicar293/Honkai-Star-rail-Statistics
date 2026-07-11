@@ -4,6 +4,7 @@ from database_distributions_summary import StarRailStatsProcessor
 from database_teams_summary import HonkaiTeamMetaAnalyzer
 from database_duos_summary import HonkaiDuosSummaryAnalyzer
 from Appearance_rate_builds import HonkaiStatistics_builds
+from database_by_cost_teams_summary import HonkaiCostArchetypeMetaAnalyzer, HonkaiCostCharacterMetaAnalyzer, HonkaiCostTeamMetaAnalyzer
 from database_character_summary import CharacterMetaAnalyzer
 from database_gear_eidolon_summary import HonkaiGearEidolonSummaryAnalyzer
 platform = HonkaiDataPlatform()
@@ -21,6 +22,16 @@ analyzer1.run_analysis()
 analyzer2 = HonkaiDuosSummaryAnalyzer()
 analyzer2.run_analysis()
 
+anazlzer3 = HonkaiCostTeamMetaAnalyzer()
+anazlzer3.run_analysis()
+
+
+analyzer4 = HonkaiCostArchetypeMetaAnalyzer()
+analyzer4.run_analysis()
+
+
+analyzer5 = HonkaiCostCharacterMetaAnalyzer()
+analyzer5.run_analysis()
 processor = StarRailStatsProcessor()
 
 try:

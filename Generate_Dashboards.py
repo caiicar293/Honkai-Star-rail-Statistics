@@ -27,6 +27,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import duckdb
 import gzip
+import brotli
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 load_dotenv()
@@ -344,19 +345,23 @@ class DashboardGenerator:
         with gzip.open(out_dir / filename, 'wb', compresslevel=9) as f:
             f.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
 
+    def _write_brotli_json(self, out_dir: Path, filename: str, data) -> None:
+        with open(out_dir / filename, 'wb') as f:
+            f.write(brotli.compress(json.dumps(data, ensure_ascii=False).encode('utf-8'),quality = 8))
+
     def _write_json(self, out_dir: Path, filename: str, data) -> None:
         with open(out_dir / filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False)
 
     def _discover_versions(self, mode_dir: Path, prefix: str, page: str) -> list[dict]:
-        """Scans mode_dir for every already-generated {prefix}_{ver}_{page}_data.json.gz
+        """Scans mode_dir for every already-generated {prefix}_{ver}_{page}_data.json.br
         file and returns [{"label": "4.3.2", "safe": "4_3_2"}, ...] sorted newest-first.
         This lets the in-page version switcher discover every version ever generated,
         not just the one being rendered in this run."""
         if not mode_dir.exists():
             return []
         front = f"{prefix}_"
-        back = f"_{page}_data.json.gz"
+        back = f"_{page}_data.json.br"
         versions = []
         for f in mode_dir.glob(f"{prefix}_*{back}"):
             name = f.name
@@ -410,8 +415,8 @@ class DashboardGenerator:
         # 1. Characters
         if self._has_data(self.CHAR_TABLE, version, "mode", cfg["char_db_mode"]):
             data = self.fetch_characters(cfg, version)
-            filename = f"{cfg['file_prefix']}_{safe_version}_characters_data.json.gz"
-            self._write_gz_json(mode_dir, filename, data)
+            filename = f"{cfg['file_prefix']}_{safe_version}_characters_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
             print(f"  [DONE] {filename} ({len(data)} records)")
         else:
             print(f"  [SKIP] No character data found for {cfg['char_db_mode']}.")
@@ -419,8 +424,8 @@ class DashboardGenerator:
         # 2. Archetypes
         if self._has_data(cfg["arch_table"], version):
             data = self.fetch_archetypes(cfg, version)
-            filename = f"{cfg['file_prefix']}_{safe_version}_archetypes_data.json.gz"
-            self._write_gz_json(mode_dir, filename, data)
+            filename = f"{cfg['file_prefix']}_{safe_version}_archetypes_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
             print(f"  [DONE] {filename} ({len(data)} records)")
         else:
             print(f"  [SKIP] No archetype data found in {cfg['arch_table']}.")
@@ -428,8 +433,8 @@ class DashboardGenerator:
         # 3. Teams
         if self._has_data(cfg["team_table"], version):
             data = self.fetch_teams(cfg, version)
-            filename = f"{cfg['file_prefix']}_{safe_version}_teams_data.json.gz"
-            self._write_gz_json(mode_dir, filename, data)
+            filename = f"{cfg['file_prefix']}_{safe_version}_teams_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
             print(f"  [DONE] {filename} ({len(data)} records)")
         else:
             print(f"  [SKIP] No team data found in {cfg['team_table']}.")
@@ -438,8 +443,8 @@ class DashboardGenerator:
         duo_table = cfg.get("duo_table")
         if duo_table and self._has_data(duo_table, version):
             data = self.fetch_duos(cfg, version)
-            filename = f"{cfg['file_prefix']}_{safe_version}_duos_data.json.gz"
-            self._write_gz_json(mode_dir, filename, data)
+            filename = f"{cfg['file_prefix']}_{safe_version}_duos_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
             print(f"  [DONE] {filename} ({len(data)} records)")
         else:
             print(f"  [SKIP] No duo data found for {mode_key}.")
@@ -448,8 +453,8 @@ class DashboardGenerator:
         cost_table = cfg.get("cost_team_table")
         if cost_table and self._has_data(cost_table, version):
             data = self.fetch_cost_teams(cfg, version)
-            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_teams_data.json.gz"
-            self._write_gz_json(mode_dir, filename, data) 
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_teams_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data) 
             
             print(f"  [DONE] {filename} ({len(data)} records)")
         else:
@@ -459,7 +464,7 @@ class DashboardGenerator:
         cost_arch_table = cfg.get("cost_archetype_table")
         if cost_arch_table and self._has_data(cost_arch_table, version):
             data = self.fetch_cost_archetypes(cfg, version)
-            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes_data.json.gz"
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes_data.json.br"
             self._write_gz_json(mode_dir, filename, data) 
             
             print(f"  [DONE] {filename} ({len(data)} records)")
@@ -499,8 +504,8 @@ class DashboardGenerator:
         if self._has_data(self.CHAR_TABLE, version, "mode", cfg["char_db_mode"]):
             data = self.fetch_characters(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_characters.html"
-            filename = f"{cfg['file_prefix']}_{safe_version}_characters_data.json.gz"
-            self._write_gz_json(mode_dir, filename, data)
+            filename = f"{cfg['file_prefix']}_{safe_version}_characters_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
             self.render_file("character_stats_template.html.j2", out_file, {
                 **base_context,
                 "is_legacy": cfg["is_legacy"],
@@ -515,8 +520,8 @@ class DashboardGenerator:
         if self._has_data(cfg["arch_table"], version):
             data = self.fetch_archetypes(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_archetypes.html"
-            filename = f"{cfg['file_prefix']}_{safe_version}_archetypes_data.json.gz"
-            self._write_gz_json(mode_dir, filename, data)
+            filename = f"{cfg['file_prefix']}_{safe_version}_archetypes_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
             self.render_file("archetypes_template.html.j2", out_file, {
                 **base_context,
                 "data_filename": filename,
@@ -530,8 +535,8 @@ class DashboardGenerator:
         if self._has_data(cfg["team_table"], version):
             data = self.fetch_teams(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_teams.html"
-            filename = f"{cfg['file_prefix']}_{safe_version}_teams_data.json.gz"
-            self._write_gz_json(mode_dir, filename, data)
+            filename = f"{cfg['file_prefix']}_{safe_version}_teams_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
             self.render_file("teams_template.html.j2", out_file, {
                 **base_context,
                 "data_filename": filename,
@@ -546,8 +551,8 @@ class DashboardGenerator:
         if duo_table and self._has_data(duo_table, version):
             data = self.fetch_duos(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_duos.html"
-            filename = f"{cfg['file_prefix']}_{safe_version}_duos_data.json.gz"
-            self._write_gz_json(mode_dir, filename, data)
+            filename = f"{cfg['file_prefix']}_{safe_version}_duos_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
             self.render_file("duos_template.html.j2", out_file, {
                 **base_context,
                 "data_filename": filename,
@@ -563,11 +568,11 @@ class DashboardGenerator:
             data = self.fetch_cost_teams(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_teams.html"
             
-            # 1. Update extension to .json.gz
-            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_teams_data.json.gz"
+            # 1. Update extension to .json.br
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_teams_data.json.br"
             
             # 2. Write the file locally using gzip compression
-            self._write_gz_json(mode_dir, filename, data)
+            self._write_brotli_json(mode_dir, filename, data)
                 
             # 3. Pass just the filename to your Jinja template context
             self.render_file("by_cost_teams_template.html.j2", out_file, {
@@ -585,11 +590,11 @@ class DashboardGenerator:
             data = self.fetch_cost_archetypes(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes.html"
             
-            # 1. Update extension to .json.gz
-            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes_data.json.gz"
+            # 1. Update extension to .json.br
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes_data.json.br"
             
             # 2. Write the file locally using gzip compression
-            self._write_gz_json(mode_dir, filename, data)
+            self._write_brotli_json(mode_dir, filename, data)
                 
             # 3. Pass just the filename to your Jinja template context
             self.render_file("by_cost_archetypes_template.html.j2", out_file, {

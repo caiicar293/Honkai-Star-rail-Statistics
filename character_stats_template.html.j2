@@ -7,7 +7,6 @@
 <link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
-<script src="https://unpkg.com/fflate"></script>
 <style>
   :root {
     --bg: #090c14; --bg2: #0d1220;
@@ -626,11 +625,20 @@ function prepareData() {
   document.querySelector('th[data-col="Appearance_Rate_pct"]')?.classList.add('sorted');
 }
 
+let _brotliPromise = null;
+function getBrotli() {
+  if (!_brotliPromise) {
+    _brotliPromise = import("https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module").then(m => m.default);
+  }
+  return _brotliPromise;
+}
+
 async function loadDataset(filename) {
   const response = await fetch(filename);
   if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
   const buffer = await response.arrayBuffer();
-  const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
+  const brotli = await getBrotli();
+  const decompressed = brotli.decompress(new Uint8Array(buffer));
   RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
   prepareData();
   recompute();

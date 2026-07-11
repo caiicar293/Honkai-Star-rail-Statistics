@@ -341,7 +341,7 @@ class DashboardGenerator:
     # -- Rendering ------------------------------------------------------------
 
     def _write_gz_json(self, out_dir: Path, filename: str, data) -> None:
-        with gzip.open(out_dir / filename, 'wb', compresslevel=6) as f:
+        with gzip.open(out_dir / filename, 'wb', compresslevel=9) as f:
             f.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
 
     def _write_json(self, out_dir: Path, filename: str, data) -> None:

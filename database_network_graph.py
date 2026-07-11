@@ -17,7 +17,7 @@ import os
 import json
 import duckdb
 import polars as pl
-import networkx as nx
+import rustworkx as rx
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,51 +31,84 @@ DB_FILE = os.getenv("DB_File")
 def _compute_centrality(slice_df: pl.DataFrame, weight_option: str = "Total_Samples"):
     """
     Given a filtered duo Polars DataFrame (one Game_Mode / eidolon slice),
-    build a weighted NetworkX graph and return:
+    build a weighted rustworkx graph and return:
       1. A centrality Polars DataFrame
       2. The raw JSON string of the graph's dictionary structure
     """
     slice_df = slice_df.fill_null(0)
 
-    G = nx.Graph()
+    # Initialize a rustworkx undirected graph
+    G = rx.PyGraph()
     weight_col = weight_option if weight_option in slice_df.columns else "Total_Samples"
+
+    # Track unique nodes using integer indices
+    node_map = {}
+    node_names = []
+
+    def get_or_add_node(name):
+        if name not in node_map:
+            idx = G.add_node(name)
+            node_map[name] = idx
+            node_names.append(name)
+            return idx
+        return node_map[name]
 
     # Fast iteration over Polars rows
     for row in slice_df.select(["Antecedent", "Consequent", weight_col]).iter_rows(named=True):
-        a = row["Antecedent"]
-        b = row["Consequent"]
+        a_name = row["Antecedent"]
+        b_name = row["Consequent"]
         w = float(row[weight_col])
         dist = 1.0 / w if w > 0 else 1e9
-        G.add_edge(a, b, weight=w, distance=dist)
+        
+        a_idx = get_or_add_node(a_name)
+        b_idx = get_or_add_node(b_name)
+        
+        # Store weights and distances as a dictionary payload inside the edge
+        G.add_edge(a_idx, b_idx, {"weight": w, "distance": dist})
 
-    if G.number_of_nodes() == 0:
+    if len(G) == 0:
         return pl.DataFrame(), "{}"
 
-    # Extract the nested dictionary representation and serialize to JSON
-    # Format: {"Char_A": {"Char_B": {"weight": 10.0, "distance": 0.1}}}
-    graph_dict = nx.to_dict_of_dicts(G)
+    # Reconstruct the exact dict-of-dicts representation for the JSON payload
+    graph_dict = {name: {} for name in node_names}
+    for u_idx, v_idx, edge_data in G.weighted_edge_list():
+        u_name = G[u_idx]
+        v_name = G[v_idx]
+        graph_dict[u_name][v_name] = edge_data
+        graph_dict[v_name][u_name] = edge_data  # Undirected network reciprocity
+
     graph_json = json.dumps(graph_dict)
 
-    # Graph structural properties
-    weighted_degree = dict(G.degree(weight="weight"))
-    degree          = dict(G.degree())
+    # Calculate structural metrics
+    degree_map = {idx: G.degree(idx) for idx in G.node_indices()}
+    
+    # Calculate weighted degree manually by scanning the edge payload
+    weighted_degree_map = {idx: 0.0 for idx in G.node_indices()}
+    for u_idx, v_idx, edge_data in G.weighted_edge_list():
+        w = edge_data["weight"]
+        weighted_degree_map[u_idx] += w
+        weighted_degree_map[v_idx] += w
 
+    # Eigenvector Centrality
     try:
-        eigen = nx.eigenvector_centrality(G, weight="weight", max_iter=1000)
-    except nx.PowerIterationFailedConvergence:
-        eigen = {n: 0.0 for n in G.nodes()}
+        eigen_map = dict(rx.eigenvector_centrality(G, weight_fn=lambda e: e["weight"], max_iter=1000))
+    except Exception:
+        eigen_map = {idx: 0.0 for idx in G.node_indices()}
 
-    betweenness = nx.betweenness_centrality(G, weight="distance")
-    closeness   = nx.closeness_centrality(G, distance="distance")
+    # Betweenness Centrality
+    betweenness_map = dict(rx.betweenness_centrality(G))
 
-    nodes = list(G.nodes())
+    # Closeness Centrality (Weighted)
+    closeness_map = dict(rx.graph_newman_weighted_closeness_centrality(G, weight_fn=lambda e: e["weight"]))
+
+    # Package results into a new Polars DataFrame mapped back by character string keys
     result = pl.DataFrame({
-        "Character":       nodes,
-        "Weighted_Degree": [weighted_degree[n] for n in nodes],
-        "Degree":          [degree[n]          for n in nodes],
-        "Eigenvector":     [eigen[n]           for n in nodes],
-        "Betweenness":     [betweenness[n]     for n in nodes],
-        "Closeness":       [closeness[n]       for n in nodes],
+        "Character":       node_names,
+        "Weighted_Degree": [weighted_degree_map[node_map[n]] for n in node_names],
+        "Degree":          [degree_map[node_map[n]]          for n in node_names],
+        "Eigenvector":     [eigen_map.get(node_map[n], 0.0)   for n in node_names],
+        "Betweenness":     [betweenness_map.get(node_map[n], 0.0) for n in node_names],
+        "Closeness":       [closeness_map.get(node_map[n], 0.0) for n in node_names],
     })
 
     return result.sort("Weighted_Degree", descending=True), graph_json
@@ -164,7 +197,7 @@ def build_network_tables(
     graphs_df = pl.DataFrame(all_graphs)
     
     conn.execute(f"DROP TABLE IF EXISTS {graphs_table}")
-    # We cast the string column to DuckDB's native JSON type here for blazing fast SQL querying later
+    # Cast the string column to DuckDB's native JSON type here for blazing fast SQL querying later
     conn.execute(f"""
         CREATE TABLE {graphs_table} AS 
         SELECT 

@@ -1,0 +1,361 @@
+{# ==========================================================================
+   network_dashboard_svg.html.j2
+   ---------------------------------------------------------------------
+   Pure SVG + CSS + vanilla JS network graph — no plotly.js dependency.
+   Same visual language as the Plotly version: dark background, Plasma-ish
+   color scale, gold ring on top-3 nodes, edge thickness by synergy band,
+   labels on top nodes only, tooltip on hover.
+
+   Same assumptions as before re: manifest shape / base_url / brotli-wasm
+   import path — adjust to your actual conventions.
+   ========================================================================== #}
+
+{% extends "base.html.j2" %}
+
+{% block title %}HSR Team Network — {{ game_mode | default("MOC") }}{% endblock %}
+
+{% block content %}
+<style>
+  .network-wrap {
+    position: relative;
+    background: #121212;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .network-title {
+    text-align: center;
+    color: #E0E0E0;
+    padding: 12px 0 4px;
+  }
+  .network-title .subtitle { color: #999; font-size: 0.85em; }
+
+  #network-svg { width: 100%; height: 78vh; display: block; cursor: grab; }
+  #network-svg:active { cursor: grabbing; }
+
+  .edge {
+    stroke-linecap: round;
+    fill: none;
+    pointer-events: none;
+  }
+  .edge.weak     { stroke: rgba(140,140,150,0.15); stroke-width: 0.6; }
+  .edge.light    { stroke: rgba(150,150,160,0.25); stroke-width: 1.0; }
+  .edge.moderate { stroke: rgba(160,170,200,0.40); stroke-width: 1.8; }
+  .edge.strong   { stroke: rgba(180,200,255,0.65); stroke-width: 3.0; }
+
+  .node-circle {
+    stroke: rgba(0,0,0,0.8);
+    stroke-width: 1.2;
+    cursor: pointer;
+    transition: r 0.25s ease, fill 0.25s ease;
+  }
+  .node-circle.top3 { stroke: #FFD700; stroke-width: 2.5; }
+
+  .node-label {
+    fill: #fff;
+    font: 700 11px Arial, sans-serif;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  .legend-caption {
+    text-align: center;
+    color: #888;
+    font-size: 0.78em;
+    padding: 4px 0 10px;
+  }
+
+  .colorbar-wrap {
+    position: absolute;
+    top: 90px;
+    right: 16px;
+    width: 18px;
+    height: 240px;
+  }
+  .colorbar-gradient {
+    width: 100%; height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(to top, #0d0887, #7e03a8, #cc4778, #f89441, #f0f921);
+  }
+  .colorbar-label {
+    color: #ccc; font-size: 0.75em;
+    position: absolute; right: 24px;
+  }
+  .colorbar-label.max { top: -4px; }
+  .colorbar-label.min { bottom: -4px; }
+
+  #network-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(20,20,20,0.95);
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #E0E0E0;
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 260px;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    z-index: 10;
+  }
+</style>
+
+<div class="dashboard-header">
+  <h1>HSR Team Network</h1>
+  {% include "partials/version_switcher.html.j2" %}
+
+  <div class="network-controls">
+    <label for="mode-select">Game Mode</label>
+    <select id="mode-select">
+      <option value="MOC">Memory of Chaos</option>
+      <option value="PF">Pure Fiction</option>
+      <option value="AS">Apocalyptic Shadow</option>
+      <option value="Anomaly">Anomaly Arbitration</option>
+    </select>
+
+    <label for="eidolon-select">Eidolon Range</label>
+    <select id="eidolon-select">
+      <option value="0-6">E0 – E6</option>
+      <option value="0-0">E0 only</option>
+      <option value="6-6">E6 only</option>
+    </select>
+
+    <label for="metric-select">Color By</label>
+    <select id="metric-select">
+      <option value="eigenvector">Meta Value (Eigenvector)</option>
+      <option value="weighted_degree">Synergy Volume (Weighted Degree)</option>
+      <option value="betweenness">Versatility (Betweenness)</option>
+    </select>
+  </div>
+</div>
+
+<div class="network-wrap">
+  <div class="network-title">
+    <div id="network-title-main"><b>HSR Team Network</b></div>
+    <div class="subtitle" id="network-title-sub"></div>
+  </div>
+
+  <svg id="network-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+    <g id="viewport">
+      <g id="edges-layer"></g>
+      <g id="nodes-layer"></g>
+    </g>
+  </svg>
+
+  <div class="colorbar-wrap">
+    <div class="colorbar-gradient"></div>
+    <div class="colorbar-label max" id="colorbar-max">1.0</div>
+    <div class="colorbar-label min" id="colorbar-min">0.0</div>
+  </div>
+
+  <div id="network-tooltip"></div>
+</div>
+<div class="legend-caption">
+  Node size &amp; color = selected metric · Gold ring = top 3 · Edge thickness = synergy strength
+</div>
+<div id="network-status" class="loading-indicator" aria-live="polite"></div>
+
+<script type="module">
+  import { decompress } from "{{ base_url | default('') }}/vendor/brotli-wasm/brotli_wasm.js";
+
+  const svg = document.getElementById("network-svg");
+  const viewport = document.getElementById("viewport");
+  const edgesLayer = document.getElementById("edges-layer");
+  const nodesLayer = document.getElementById("nodes-layer");
+  const tooltip = document.getElementById("network-tooltip");
+  const statusEl = document.getElementById("network-status");
+
+  const VB_W = 1000, VB_H = 700, PAD = 60;
+
+  const state = {
+    mode: document.getElementById("mode-select").value,
+    eidolonRange: document.getElementById("eidolon-select").value,
+    metric: document.getElementById("metric-select").value,
+  };
+
+  let manifest = null;
+  let currentSlice = null;
+
+  async function loadManifest() {
+    const res = await fetch("{{ base_url | default('') }}/data/network_manifest.json");
+    manifest = await res.json();
+  }
+
+  function resolveSlicePath() {
+    return manifest?.[state.mode]?.[state.eidolonRange];
+  }
+
+  async function fetchSlice(path) {
+    const res = await fetch(`{{ base_url | default('') }}/${path}`);
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const decompressed = decompress(buf);
+    return JSON.parse(new TextDecoder().decode(decompressed));
+  }
+
+  // Map normalized layout coords (assume roughly [-1, 1] from spring_layout)
+  // onto the SVG viewBox with padding.
+  function toScreen(x, y, bounds) {
+    const sx = PAD + ((x - bounds.minX) / (bounds.maxX - bounds.minX)) * (VB_W - 2 * PAD);
+    const sy = PAD + ((y - bounds.minY) / (bounds.maxY - bounds.minY)) * (VB_H - 2 * PAD);
+    return [sx, sy];
+  }
+
+  function computeBounds(nodes) {
+    const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+    return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+  }
+
+  // Plasma-ish 5-stop scale, matching the CSS colorbar gradient above.
+  function plasmaColor(t) {
+    const stops = [
+      [13, 8, 135], [126, 3, 168], [204, 71, 120], [248, 148, 65], [240, 249, 33],
+    ];
+    const scaled = t * (stops.length - 1);
+    const i = Math.floor(scaled);
+    const frac = scaled - i;
+    const a = stops[i], b = stops[Math.min(i + 1, stops.length - 1)];
+    const c = a.map((v, k) => Math.round(v + (b[k] - v) * frac));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+
+  function edgeBand(w, quartiles) {
+    if (w <= quartiles[0]) return "weak";
+    if (w <= quartiles[1]) return "light";
+    if (w <= quartiles[2]) return "moderate";
+    return "strong";
+  }
+
+  function render(slice, metric) {
+    edgesLayer.innerHTML = "";
+    nodesLayer.innerHTML = "";
+
+    const bounds = computeBounds(slice.nodes);
+    const screenPos = new Map(slice.nodes.map(n => [n.name, toScreen(n.x, n.y, bounds)]));
+
+    // --- edges ---
+    const weights = slice.edges.map(e => e.weight).sort((a, b) => a - b);
+    const q = p => weights[Math.floor(p * (weights.length - 1))] ?? 0;
+    const quartiles = [q(0.25), q(0.5), q(0.75)];
+
+    slice.edges.forEach(e => {
+      const [x1, y1] = screenPos.get(e.u);
+      const [x2, y2] = screenPos.get(e.v);
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", x1); line.setAttribute("y1", y1);
+      line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+      line.setAttribute("class", `edge ${edgeBand(e.weight, quartiles)}`);
+      edgesLayer.appendChild(line);
+    });
+
+    // --- nodes ---
+    const vals = slice.nodes.map(n => n[metric] ?? 0);
+    const maxVal = Math.max(...vals, 1e-9);
+    const minVal = Math.min(...vals, 0);
+    const sortedVals = [...vals].sort((a, b) => b - a);
+    const labelThreshold = sortedVals[Math.floor(sortedVals.length * 0.25)] ?? 0;
+    const top3 = new Set([...vals.keys()].sort((a, b) => vals[b] - vals[a]).slice(0, 3));
+
+    document.getElementById("colorbar-max").textContent = maxVal.toFixed(3);
+    document.getElementById("colorbar-min").textContent = minVal.toFixed(3);
+
+    slice.nodes.forEach((n, i) => {
+      const [cx, cy] = screenPos.get(n.name);
+      const v = vals[i];
+      const t = (v - minVal) / (maxVal - minVal || 1);
+      const r = 6 + t * 22;
+
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", cx);
+      circle.setAttribute("cy", cy);
+      circle.setAttribute("r", r);
+      circle.setAttribute("fill", plasmaColor(t));
+      circle.setAttribute("class", `node-circle${top3.has(i) ? " top3" : ""}`);
+
+      circle.addEventListener("mousemove", (ev) => showTooltip(ev, n, metric));
+      circle.addEventListener("mouseleave", hideTooltip);
+
+      g.appendChild(circle);
+
+      if (v >= labelThreshold) {
+        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        label.setAttribute("x", cx);
+        label.setAttribute("y", cy - r - 4);
+        label.setAttribute("class", "node-label");
+        label.textContent = n.name;
+        g.appendChild(label);
+      }
+
+      nodesLayer.appendChild(g);
+    });
+
+    document.getElementById("network-title-main").innerHTML = `<b>HSR Team Network — ${state.mode}</b>`;
+    document.getElementById("network-title-sub").textContent =
+      `E${state.eidolonRange} · ${slice.nodes.length} characters · ${slice.edges.length} synergy links`;
+  }
+
+  function showTooltip(ev, node, metric) {
+    tooltip.innerHTML =
+      `<b>${node.name}</b><br>` +
+      `Eigenvector: ${node.eigenvector.toFixed(4)}<br>` +
+      `Weighted Degree: ${node.weighted_degree.toFixed(1)}<br>` +
+      `Betweenness: ${node.betweenness.toFixed(4)}`;
+    const wrapRect = svg.parentElement.getBoundingClientRect();
+    tooltip.style.left = `${ev.clientX - wrapRect.left + 14}px`;
+    tooltip.style.top = `${ev.clientY - wrapRect.top + 14}px`;
+    tooltip.style.opacity = 1;
+  }
+  function hideTooltip() { tooltip.style.opacity = 0; }
+
+  // --- pan + zoom, since we no longer get it for free from Plotly ---
+  let scale = 1, panX = 0, panY = 0, isDragging = false, lastX = 0, lastY = 0;
+  function applyTransform() {
+    viewport.setAttribute("transform", `translate(${panX},${panY}) scale(${scale})`);
+  }
+  svg.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    const delta = ev.deltaY > 0 ? 0.9 : 1.1;
+    scale = Math.min(Math.max(scale * delta, 0.4), 4);
+    applyTransform();
+  }, { passive: false });
+  svg.addEventListener("mousedown", (ev) => { isDragging = true; lastX = ev.clientX; lastY = ev.clientY; });
+  window.addEventListener("mousemove", (ev) => {
+    if (!isDragging) return;
+    panX += ev.clientX - lastX;
+    panY += ev.clientY - lastY;
+    lastX = ev.clientX; lastY = ev.clientY;
+    applyTransform();
+  });
+  window.addEventListener("mouseup", () => { isDragging = false; });
+
+  async function loadAndRender() {
+    statusEl.textContent = "Loading network slice…";
+    const path = resolveSlicePath();
+    if (!path) {
+      statusEl.textContent = "No precomputed slice for this combination.";
+      return;
+    }
+    currentSlice = await fetchSlice(path);
+    render(currentSlice, state.metric);
+    statusEl.textContent = "";
+  }
+
+  document.getElementById("metric-select").addEventListener("change", (e) => {
+    state.metric = e.target.value;
+    if (currentSlice) render(currentSlice, state.metric);
+  });
+  ["mode-select", "eidolon-select"].forEach(id => {
+    document.getElementById(id).addEventListener("change", (e) => {
+      const key = id.replace("-select", "").replace("eidolon", "eidolonRange");
+      state[key] = e.target.value;
+      loadAndRender();
+    });
+  });
+
+  (async () => {
+    await loadManifest();
+    await loadAndRender();
+  })();
+</script>
+{% endblock %}

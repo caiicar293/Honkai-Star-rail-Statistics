@@ -200,40 +200,52 @@ def export_network_slice(
 
 
 def _update_manifest(manifest_path, game_mode, eidolon_range_key, recency_tag, relative_path):
-    """
-    Manifest shape (matches network_dashboard_svg.html.j2's resolveSlicePath):
-        { "<GAME_MODE>": { "<at>-<upto>": "path/to/slice.json.br", ... }, ... }
+        """
+        Updated Manifest shape:
+            { 
+            "<GAME_MODE>": { 
+                "<at>-<upto>": {
+                "recent": "path/to/slice_recent.json.br",
+                "all": "path/to/slice_all.json.br"
+                }
+            }
+            }
+        """
+        manifest = {}
+        if os.path.exists(manifest_path):
+            with open(manifest_path, "r") as f:
+                try:
+                    manifest = json.load(f)
+                except json.JSONDecodeError:
+                    manifest = {}
 
-    NOTE: the SVG template's current resolveSlicePath() doesn't key by
-    recency — if you need both recent-only and all-version slices
-    addressable from the dropdown, extend this to nest recency_tag under
-    eidolon_range_key (and update resolveSlicePath to match) rather than
-    letting one recency silently overwrite the other's manifest entry.
-    """
-    manifest = {}
-    if os.path.exists(manifest_path):
-        with open(manifest_path, "r") as f:
-            try:
-                manifest = json.load(f)
-            except json.JSONDecodeError:
-                manifest = {}
+        # 1. Ensure the game mode dictionary exists
+        manifest.setdefault(game_mode, {})
+        
+        # 2. Ensure the eidolon range dictionary exists under that game mode
+        manifest[game_mode].setdefault(eidolon_range_key, {})
+        
+        # 3. Save the path under the specific recency tag ("recent" or "all")
+        manifest[game_mode][eidolon_range_key][recency_tag] = relative_path
 
-    manifest.setdefault(game_mode, {})
-    manifest[game_mode][eidolon_range_key] = relative_path
-
-    os.makedirs(os.path.dirname(manifest_path) or ".", exist_ok=True)
-    with open(manifest_path, "w") as f:
-        json.dump(manifest, f, indent=2)
+        os.makedirs(os.path.dirname(manifest_path) or ".", exist_ok=True)
+        with open(manifest_path, "w") as f:
+            json.dump(manifest, f, indent=2)
 
 
 if __name__ == "__main__":
     for game_mode in ["PURE_FICTION", "ANOMALY_F0", "ANOMALY_F4", "APOC","MOC"]:
         for is_recent in [True, False]:
-            df = export_network_slice(
-                game_mode=game_mode,
-                at_eidolon=0,
-                up_to_eidolon=6,
-                is_recent=is_recent,
-                output_df=True,
-            )
-        
+            eidolons = [0,1,2,6]
+            for at_eidolon in range(len(eidolons)):
+                for up_to_eidolon in range(at_eidolon, len(eidolons)):
+                    print(f"\nExporting {game_mode} (E{eidolons[at_eidolon]}-E{eidolons[up_to_eidolon]}) "
+                          f"{'recent' if is_recent else 'all'} slice...")
+                    export_network_slice(
+                        game_mode=game_mode,
+                        at_eidolon=eidolons[at_eidolon],
+                        up_to_eidolon=eidolons[up_to_eidolon],
+                        is_recent=is_recent,
+                        output_df=False,
+                    )
+            

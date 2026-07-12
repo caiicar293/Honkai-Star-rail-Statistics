@@ -1,0 +1,212 @@
+{
+  "PURE_FICTION": {
+    "0-0": {
+      "recent": "docs/network/pure_fiction_recent_e0-0.json.br",
+      "all": "docs/network/pure_fiction_all_e0-0.json.br"
+    },
+    "0-1": {
+      "recent": "docs/network/pure_fiction_recent_e0-1.json.br",
+      "all": "docs/network/pure_fiction_all_e0-1.json.br"
+    },
+    "0-2": {
+      "recent": "docs/network/pure_fiction_recent_e0-2.json.br",
+      "all": "docs/network/pure_fiction_all_e0-2.json.br"
+    },
+    "0-6": {
+      "recent": "docs/network/pure_fiction_recent_e0-6.json.br",
+      "all": "docs/network/pure_fiction_all_e0-6.json.br"
+    },
+    "1-1": {
+      "recent": "docs/network/pure_fiction_recent_e1-1.json.br",
+      "all": "docs/network/pure_fiction_all_e1-1.json.br"
+    },
+    "1-2": {
+      "recent": "docs/network/pure_fiction_recent_e1-2.json.br",
+      "all": "docs/network/pure_fiction_all_e1-2.json.br"
+    },
+    "1-6": {
+      "recent": "docs/network/pure_fiction_recent_e1-6.json.br",
+      "all": "docs/network/pure_fiction_all_e1-6.json.br"
+    },
+    "2-2": {
+      "recent": "docs/network/pure_fiction_recent_e2-2.json.br",
+      "all": "docs/network/pure_fiction_all_e2-2.json.br"
+    },
+    "2-6": {
+      "recent": "docs/network/pure_fiction_recent_e2-6.json.br",
+      "all": "docs/network/pure_fiction_all_e2-6.json.br"
+    },
+    "6-6": {
+      "recent": "docs/network/pure_fiction_recent_e6-6.json.br",
+      "all": "docs/network/pure_fiction_all_e6-6.json.br"
+    }
+  },
+  "ANOMALY_F0": {
+    "0-0": {
+      "recent": "docs/network/anomaly_f0_recent_e0-0.json.br",
+      "all": "docs/network/anomaly_f0_all_e0-0.json.br"
+    },
+    "0-1": {
+      "recent": "docs/network/anomaly_f0_recent_e0-1.json.br",
+      "all": "docs/network/anomaly_f0_all_e0-1.json.br"
+    },
+    "0-2": {
+      "recent": "docs/network/anomaly_f0_recent_e0-2.json.br",
+      "all": "docs/network/anomaly_f0_all_e0-2.json.br"
+    },
+    "0-6": {
+      "recent": "docs/network/anomaly_f0_recent_e0-6.json.br",
+      "all": "docs/network/anomaly_f0_all_e0-6.json.br"
+    },
+    "1-1": {
+      "recent": "docs/network/anomaly_f0_recent_e1-1.json.br",
+      "all": "docs/network/anomaly_f0_all_e1-1.json.br"
+    },
+    "1-2": {
+      "recent": "docs/network/anomaly_f0_recent_e1-2.json.br",
+      "all": "docs/network/anomaly_f0_all_e1-2.json.br"
+    },
+    "1-6": {
+      "recent": "docs/network/anomaly_f0_recent_e1-6.json.br",
+      "all": "docs/network/anomaly_f0_all_e1-6.json.br"
+    },
+    "2-2": {
+      "recent": "docs/network/anomaly_f0_recent_e2-2.json.br",
+      "all": "docs/network/anomaly_f0_all_e2-2.json.br"
+    },
+    "2-6": {
+      "recent": "docs/network/anomaly_f0_recent_e2-6.json.br",
+      "all": "docs/network/anomaly_f0_all_e2-6.json.br"
+    },
+    "6-6": {
+      "recent": "docs/network/anomaly_f0_recent_e6-6.json.br",
+      "all": "docs/network/anomaly_f0_all_e6-6.json.br"
+    }
+  },
+  "ANOMALY_F4": {
+    "0-0": {
+      "recent": "docs/network/anomaly_f4_recent_e0-0.json.br",
+      "all": "docs/network/anomaly_f4_all_e0-0.json.br"
+    },
+    "0-1": {
+      "recent": "docs/network/anomaly_f4_recent_e0-1.json.br",
+      "all": "docs/network/anomaly_f4_all_e0-1.json.br"
+    },
+    "0-2": {
+      "recent": "docs/network/anomaly_f4_recent_e0-2.json.br",
+      "all": "docs/network/anomaly_f4_all_e0-2.json.br"
+    },
+    "0-6": {
+      "recent": "docs/network/anomaly_f4_recent_e0-6.json.br",
+      "all": "docs/network/anomaly_f4_all_e0-6.json.br"
+    },
+    "1-1": {
+      "recent": "docs/network/anomaly_f4_recent_e1-1.json.br",
+      "all": "docs/network/anomaly_f4_all_e1-1.json.br"
+    },
+    "1-2": {
+      "recent": "docs/network/anomaly_f4_recent_e1-2.json.br",
+      "all": "docs/network/anomaly_f4_all_e1-2.json.br"
+    },
+    "1-6": {
+      "recent": "docs/network/anomaly_f4_recent_e1-6.json.br",
+      "all": "docs/network/anomaly_f4_all_e1-6.json.br"
+    },
+    "2-2": {
+      "recent": "docs/network/anomaly_f4_recent_e2-2.json.br",
+      "all": "docs/network/anomaly_f4_all_e2-2.json.br"
+    },
+    "2-6": {
+      "recent": "docs/network/anomaly_f4_recent_e2-6.json.br",
+      "all": "docs/network/anomaly_f4_all_e2-6.json.br"
+    },
+    "6-6": {
+      "recent": "docs/network/anomaly_f4_recent_e6-6.json.br",
+      "all": "docs/network/anomaly_f4_all_e6-6.json.br"
+    }
+  },
+  "APOC": {
+    "0-0": {
+      "recent": "docs/network/apoc_recent_e0-0.json.br",
+      "all": "docs/network/apoc_all_e0-0.json.br"
+    },
+    "0-1": {
+      "recent": "docs/network/apoc_recent_e0-1.json.br",
+      "all": "docs/network/apoc_all_e0-1.json.br"
+    },
+    "0-2": {
+      "recent": "docs/network/apoc_recent_e0-2.json.br",
+      "all": "docs/network/apoc_all_e0-2.json.br"
+    },
+    "0-6": {
+      "recent": "docs/network/apoc_recent_e0-6.json.br",
+      "all": "docs/network/apoc_all_e0-6.json.br"
+    },
+    "1-1": {
+      "recent": "docs/network/apoc_recent_e1-1.json.br",
+      "all": "docs/network/apoc_all_e1-1.json.br"
+    },
+    "1-2": {
+      "recent": "docs/network/apoc_recent_e1-2.json.br",
+      "all": "docs/network/apoc_all_e1-2.json.br"
+    },
+    "1-6": {
+      "recent": "docs/network/apoc_recent_e1-6.json.br",
+      "all": "docs/network/apoc_all_e1-6.json.br"
+    },
+    "2-2": {
+      "recent": "docs/network/apoc_recent_e2-2.json.br",
+      "all": "docs/network/apoc_all_e2-2.json.br"
+    },
+    "2-6": {
+      "recent": "docs/network/apoc_recent_e2-6.json.br",
+      "all": "docs/network/apoc_all_e2-6.json.br"
+    },
+    "6-6": {
+      "recent": "docs/network/apoc_recent_e6-6.json.br",
+      "all": "docs/network/apoc_all_e6-6.json.br"
+    }
+  },
+  "MOC": {
+    "0-0": {
+      "recent": "docs/network/moc_recent_e0-0.json.br",
+      "all": "docs/network/moc_all_e0-0.json.br"
+    },
+    "0-1": {
+      "recent": "docs/network/moc_recent_e0-1.json.br",
+      "all": "docs/network/moc_all_e0-1.json.br"
+    },
+    "0-2": {
+      "recent": "docs/network/moc_recent_e0-2.json.br",
+      "all": "docs/network/moc_all_e0-2.json.br"
+    },
+    "0-6": {
+      "recent": "docs/network/moc_recent_e0-6.json.br",
+      "all": "docs/network/moc_all_e0-6.json.br"
+    },
+    "1-1": {
+      "recent": "docs/network/moc_recent_e1-1.json.br",
+      "all": "docs/network/moc_all_e1-1.json.br"
+    },
+    "1-2": {
+      "recent": "docs/network/moc_recent_e1-2.json.br",
+      "all": "docs/network/moc_all_e1-2.json.br"
+    },
+    "1-6": {
+      "recent": "docs/network/moc_recent_e1-6.json.br",
+      "all": "docs/network/moc_all_e1-6.json.br"
+    },
+    "2-2": {
+      "recent": "docs/network/moc_recent_e2-2.json.br",
+      "all": "docs/network/moc_all_e2-2.json.br"
+    },
+    "2-6": {
+      "recent": "docs/network/moc_recent_e2-6.json.br",
+      "all": "docs/network/moc_all_e2-6.json.br"
+    },
+    "6-6": {
+      "recent": "docs/network/moc_recent_e6-6.json.br",
+      "all": "docs/network/moc_all_e6-6.json.br"
+    }
+  }
+}

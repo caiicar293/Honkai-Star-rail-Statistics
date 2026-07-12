@@ -1,21 +1,4 @@
-{# ==========================================================================
-   network_dashboard_svg.html.j2
-   ---------------------------------------------------------------------
-   Pure SVG + CSS + vanilla JS network graph — no plotly.js dependency.
-   Standalone document (this project has no shared base.html.j2 — every
-   *_template.html.j2 is self-contained, matching teams_template.html.j2 etc.)
 
-   Data contract (written by export_network_slice() in network_export.py):
-     { "nodes": [{name, x, y, eigenvector, weighted_degree, betweenness}],
-       "edges": [{u, v, weight}] }
-
-   Manifest contract (docs/network/network_manifest.json):
-     { "<GAME_MODE>": { "<at>-<upto>": { "recent": "<path>", "all": "<path>" } } }
-
-   Rendered to: docs/network/index.html (same directory as the manifest and
-   every *.json.br slice), so brotli-wasm is imported via "../vendor/..."
-   matching docs/moc/*.html, docs/apoc/*.html, etc.
-   ========================================================================== #}
 <!DOCTYPE html>
 <html lang="en">
 <head>

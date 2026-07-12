@@ -123,7 +123,8 @@
       <div class="subtitle" id="network-title-sub">Loading manifest…</div>
     </div>
 
-    <svg id="network-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+    <!-- Increased viewBox to 1200x840 for more spacing; SVG scales automatically -->
+    <svg id="network-svg" viewBox="0 0 1200 840" preserveAspectRatio="xMidYMid meet">
       <g id="viewport">
         <g id="edges-layer"></g>
         <g id="nodes-layer"></g>
@@ -197,10 +198,15 @@
   const nodesLayer = document.getElementById("nodes-layer");
   const tooltip = document.getElementById("network-tooltip");
 
-  const VB_W = 1000, VB_H = 700, PAD = 60;
+  // ── Layout constants — match the new viewBox ──
+  const VB_W = 5000, VB_H = 5000, PAD = 70;
+  // Spread factor: >1 pushes nodes apart; adjust to taste (1.6 works well)
+  const SPREAD_FACTOR = 1.6;
 
   let manifest = null;
   let currentSlice = null;
+  // Store ranks for the current metric to show in tooltip
+  let currentRankMap = new Map(); // node name -> rank (1-indexed)
 
   // Manifest paths are written repo-relative (e.g. "docs/network/moc_recent_e0-6.json.br")
   // by network_export.py, but this page and every slice file live in the same
@@ -232,12 +238,19 @@
     recencySelect.innerHTML = order.map(r => `<option value="${r}">${labels[r]}</option>`).join("");
   }
 
-  // ── Layout mapping / color scale ──
+  // ── Layout mapping with spread factor ──
   function toScreen(x, y, bounds) {
-    const sx = PAD + ((x - bounds.minX) / (bounds.maxX - bounds.minX || 1)) * (VB_W - 2 * PAD);
-    const sy = PAD + ((y - bounds.minY) / (bounds.maxY - bounds.minY || 1)) * (VB_H - 2 * PAD);
-    return [sx, sy];
+    const nx = (x - bounds.minX) / (bounds.maxX - bounds.minX || 1);
+    const ny = (y - bounds.minY) / (bounds.maxY - bounds.minY || 1);
+    const sx = 0.5 + (nx - 0.5) * SPREAD_FACTOR;
+    const sy = 0.5 + (ny - 0.5) * SPREAD_FACTOR;
+    const cx = Math.max(0, Math.min(1, sx));
+    const cy = Math.max(0, Math.min(1, sy));
+    const screenX = PAD + cx * (VB_W - 2 * PAD);
+    const screenY = PAD + cy * (VB_H - 2 * PAD);
+    return [screenX, screenY];
   }
+
   function computeBounds(nodes) {
     const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
     return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
@@ -293,6 +306,15 @@
     const labelThreshold = sortedVals[Math.floor(sortedVals.length * 0.25)] ?? 0;
     const top3 = new Set([...vals.keys()].sort((a, b) => vals[b] - vals[a]).slice(0, 3));
 
+    // Compute ranks for the current metric (1 = highest)
+    const rankMap = new Map();
+    const sortedIndices = [...vals.keys()].sort((a, b) => vals[b] - vals[a]);
+    sortedIndices.forEach((idx, pos) => {
+      const name = slice.nodes[idx].name;
+      rankMap.set(name, pos + 1);
+    });
+    currentRankMap = rankMap; // store for tooltip
+
     document.getElementById("colorbar-title").textContent = METRIC_LABELS[metric];
     document.getElementById("colorbar-max").textContent = maxVal.toFixed(3);
     document.getElementById("colorbar-min").textContent = minVal.toFixed(3);
@@ -301,7 +323,7 @@
       const [cx, cy] = screenPos.get(n.name);
       const v = vals[i];
       const t = (v - minVal) / (maxVal - minVal || 1);
-      const r = 6 + t * 22;
+      const r = 20 + t * 80;
 
       const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
       const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -310,6 +332,8 @@
       circle.setAttribute("r", r);
       circle.setAttribute("fill", plasmaColor(t));
       circle.setAttribute("class", `node-circle${top3.has(i) ? " top3" : ""}`);
+      // Store node data for tooltip
+      circle.dataset.name = n.name;
       circle.addEventListener("mousemove", (ev) => showTooltip(ev, n));
       circle.addEventListener("mouseleave", hideTooltip);
       g.appendChild(circle);
@@ -335,8 +359,20 @@
   }
 
   function showTooltip(ev, node) {
+    const metric = metricSelect.value;
+    const rank = currentRankMap.get(node.name) || '?';
+    const metricLabel = METRIC_LABELS[metric];
+    const value = node[metric];
+    let valueDisplay;
+    if (metric === 'weighted_degree') {
+      valueDisplay = value.toFixed(1);
+    } else {
+      valueDisplay = value.toFixed(4);
+    }
     tooltip.innerHTML =
       `<b>${node.name}</b><br>` +
+      `Rank (${metricLabel}): #${rank}<br>` +
+      `―――――――――――――――<br>` +
       `Eigenvector: ${node.eigenvector.toFixed(4)}<br>` +
       `Weighted Degree: ${node.weighted_degree.toFixed(1)}<br>` +
       `Betweenness: ${node.betweenness.toFixed(4)}`;

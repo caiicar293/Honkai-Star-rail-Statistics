@@ -24,7 +24,7 @@ def export_network_slice(
     output_df: bool = True,
     output_dir: str = "docs/network",
     manifest_path: str = "docs/network/network_manifest.json",
-    min_edge_weight_pct: float = 0.0,   # drop the bottom X% of edges by weight to reduce clutter (0 = keep all)
+    min_edge_weight_pct: float = 0.1,   # drop the bottom X% of edges by weight to reduce clutter (0 = keep all)
     compress: bool = True,
 ):
     """
@@ -116,9 +116,9 @@ def export_network_slice(
     # ------------------------------------------------------------------
     pos = rx.spring_layout(
         G,
-        k=0.45,
-        num_iter=120,
-        weight_fn=lambda e: e.get("weight", 1.0),
+        k=1.4,
+        num_iter=400,
+        weight_fn=lambda e: np.sqrt(e.get("weight", 1.0)),
     )
 
     node_names = [G[idx] for idx in G.node_indices()]

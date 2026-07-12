@@ -680,7 +680,7 @@ function prepareData() {
 let _brotliPromise = null;
 function getBrotli() {
   if (!_brotliPromise) {
-    _brotliPromise = import("https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module").then(m => m.default);
+    _brotliPromise = import("../vendor/brotli-wasm/index.web.js").then(m => m.default);
   }
   return _brotliPromise;
 }

@@ -168,7 +168,7 @@
   </div>
 
   <div class="legend-caption">
-    Node size &amp; color = selected metric · Gold ring = top 3 · Edge thickness = synergy strength · Scroll or pinch to zoom, drag or swipe to pan · Click a character to isolate its synergies, click empty space to clear
+    Node size &amp; color = selected metric · Gold ring = top 3 · Edge thickness = synergy strength · Scroll or pinch to zoom, drag or swipe to pan · Click a character to isolate its synergies · while focused, hover any character to see its synergy rank vs the focused one, click empty space to clear
   </div>
   <div id="network-status" aria-live="polite"></div>
 </div>
@@ -252,6 +252,10 @@
   let currentRankMap = new Map(); // node name -> rank (1-indexed)
   // Click-to-focus state: character name currently isolated, or null
   let selectedNode = null;
+  // Map of neighborName -> {rank, total, weight} vs the currently selectedNode,
+  // ranked by synergy edge weight (1 = strongest link). Recomputed whenever
+  // selectedNode changes — see toggleFocus()/clearFocus().
+  let focusRankMap = new Map();
   // Tooltip perf state — see showTooltip()/scheduleTooltip() below
   let lastHoverName = null;
   let wrapRect = null;
@@ -470,14 +474,18 @@
   }
 
   // ── Click-to-focus: isolate a node's direct neighbors, hide everything else ──
-  function computeNeighbors(name) {
-    const neighbors = new Set();
-    if (!currentSlice) return neighbors;
+  function computeFocusRanks(name) {
+    // Ranks every direct neighbor of `name` by synergy edge weight (1 = strongest).
+    const map = new Map();
+    if (!currentSlice) return map;
+    const links = [];
     currentSlice.edges.forEach(e => {
-      if (e.u === name) neighbors.add(e.v);
-      else if (e.v === name) neighbors.add(e.u);
+      if (e.u === name) links.push({ neighbor: e.v, weight: e.weight });
+      else if (e.v === name) links.push({ neighbor: e.u, weight: e.weight });
     });
-    return neighbors;
+    links.sort((a, b) => b.weight - a.weight);
+    links.forEach((l, i) => map.set(l.neighbor, { rank: i + 1, total: links.length, weight: l.weight }));
+    return map;
   }
 
   function applyFocusStyles() {
@@ -490,8 +498,6 @@
       return;
     }
 
-    const neighbors = computeNeighbors(selectedNode);
-
     edgeEls.forEach(el => {
       const connected = el.dataset.u === selectedNode || el.dataset.v === selectedNode;
       el.classList.toggle("edge-highlight", connected);
@@ -501,7 +507,7 @@
     nodeEls.forEach(el => {
       const name = el.dataset.name;
       const isSelected = name === selectedNode;
-      const isNeighbor = neighbors.has(name);
+      const isNeighbor = focusRankMap.has(name);
       el.classList.toggle("node-selected", isSelected);
       el.classList.toggle("node-dim", !isSelected && !isNeighbor);
     });
@@ -509,12 +515,16 @@
 
   function toggleFocus(name) {
     selectedNode = (selectedNode === name) ? null : name;
+    focusRankMap = selectedNode ? computeFocusRanks(selectedNode) : new Map();
+    lastHoverName = null; // tooltip content now depends on focus state — force a rebuild on the next hover
     applyFocusStyles();
   }
 
   function clearFocus() {
     if (selectedNode !== null) {
       selectedNode = null;
+      focusRankMap = new Map();
+      lastHoverName = null;
       applyFocusStyles();
     }
   }
@@ -528,13 +538,32 @@
       const metric = metricSelect.value;
       const rank = currentRankMap.get(node.name) || '?';
       const metricLabel = METRIC_LABELS[metric];
+
+      // While a character is focused (click-to-isolate), show how this
+      // hovered character relates to it: its synergy rank if they're
+      // directly linked, or an explicit "no direct synergy" note otherwise.
+      let focusSection = "";
+      if (selectedNode) {
+        if (node.name === selectedNode) {
+          focusSection = `<br>―――――――――――――――<br><b>★ Focused character</b>`;
+        } else if (focusRankMap.has(node.name)) {
+          const info = focusRankMap.get(node.name);
+          focusSection = `<br>―――――――――――――――<br>` +
+            `Synergy vs ${selectedNode}: #${info.rank} of ${info.total}<br>` +
+            `Link weight: ${info.weight.toFixed(2)}`;
+        } else {
+          focusSection = `<br>―――――――――――――――<br>No direct synergy with ${selectedNode}`;
+        }
+      }
+
       tooltip.innerHTML =
         `<b>${node.name}</b><br>` +
         `Rank (${metricLabel}): #${rank}<br>` +
         `―――――――――――――――<br>` +
         `Eigenvector: ${node.eigenvector.toFixed(4)}<br>` +
         `Weighted Degree: ${node.weighted_degree.toFixed(1)}<br>` +
-        `Betweenness: ${node.betweenness.toFixed(4)}`;
+        `Betweenness: ${node.betweenness.toFixed(4)}` +
+        focusSection;
     }
     // wrapRect is cached (see updateWrapRect above) instead of read fresh on
     // every mousemove — getBoundingClientRect() forces a synchronous layout,
@@ -679,6 +708,7 @@
     try {
       currentSlice = await loadCompressedJson(resolveFetchPath(manifestPath));
       selectedNode = null; // a new slice may not contain the previously focused character
+      focusRankMap = new Map();
       render(currentSlice, metricSelect.value);
       statusEl.textContent = "";
     } catch (err) {

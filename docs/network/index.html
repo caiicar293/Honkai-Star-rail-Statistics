@@ -54,25 +54,24 @@
   #network-svg { width: 100%; height: 76vh; display: block; cursor: grab; touch-action: none; }
   #network-svg:active { cursor: grabbing; }
 
-  .edge { stroke-linecap: round; fill: none; pointer-events: none; }
+  .edge { stroke-linecap: round; fill: none; pointer-events: none; transition: opacity 0.15s ease; }
   .edge.weak     { stroke: rgba(140,140,150,0.15); stroke-width: 0.6; }
   .edge.light    { stroke: rgba(150,150,160,0.25); stroke-width: 1.0; }
   .edge.moderate { stroke: rgba(160,170,200,0.40); stroke-width: 1.8; }
   .edge.strong   { stroke: rgba(180,200,255,0.65); stroke-width: 3.0; }
+  /* Click-to-focus: unrelated edges disappear entirely rather than just fading/blurring */
+  .edge.edge-dim { opacity: 0; }
+  .edge.edge-highlight { opacity: 0.95; }
 
   .node-circle { stroke: rgba(0,0,0,0.8); stroke-width: 1.2; cursor: pointer; }
   .node-circle.top3 { stroke: var(--gold); stroke-width: 2.5; }
 
   .node-label { fill: #fff; font: 700 11px Arial, sans-serif; text-anchor: middle; pointer-events: none; }
 
-  /* Click-to-focus: fade everything except the selected node and its direct neighbors */
+  /* Click-to-focus: fade non-neighbor nodes, keep the selected node + neighbors sharp */
   .node-group { transition: opacity 0.2s ease, filter 0.2s ease; }
-  .node-group.node-dim { opacity: 0.15; filter: grayscale(70%)  }
+  .node-group.node-dim { opacity: 0.15; filter: grayscale(70%); }
   .node-group.node-selected .node-circle { stroke: var(--accent2); stroke-width: 3px; }
-
-  .edge { transition: opacity 0.2s ease, filter 0.2s ease; }
-  .edge.edge-dim { opacity: 0.04; filter: blur(1px); }
-  .edge.edge-highlight { opacity: 0.95; }
 
   .legend-caption { text-align: center; color: var(--text3); font-size: 11px; padding: 8px 0 4px; font-family: 'Share Tech Mono', monospace; }
 
@@ -152,7 +151,7 @@
   </div>
 
   <div class="legend-caption">
-    Node size &amp; color = selected metric · Gold ring = top 3 · Edge thickness = synergy strength · Scroll or pinch to zoom, drag or swipe to pan · Click a character to isolate its synergies, click empty space to clear
+    Node size &amp; color = selected metric · Gold ring = top 3 · Edge thickness = synergy strength · Scroll or pinch to zoom, drag or swipe to pan · Click a character to isolate its synergies · while focused, hover any character to see its synergy rank vs the focused one, click empty space to clear
   </div>
   <div id="network-status" aria-live="polite"></div>
 </div>
@@ -225,7 +224,7 @@
     return url;
   }
 
-  // ── Layout constants — match the new viewBox ──
+  // ── Layout constants ──
   const VB_W = 5000, VB_H = 5000, PAD = 70;
   // Spread factor: >1 pushes nodes apart; adjust to taste (1.6 works well)
   const SPREAD_FACTOR = 1.6;
@@ -236,6 +235,16 @@
   let currentRankMap = new Map(); // node name -> rank (1-indexed)
   // Click-to-focus state: character name currently isolated, or null
   let selectedNode = null;
+  // Map of neighborName -> {rank, total, weight} vs the currently selectedNode,
+  // ranked by synergy edge weight (1 = strongest link). Recomputed whenever
+  // selectedNode changes — see toggleFocus()/clearFocus().
+  let focusRankMap = new Map();
+  // Tooltip perf state — see showTooltip()/scheduleTooltip() below
+  let lastHoverName = null;
+  let wrapRect = null;
+  function updateWrapRect() { wrapRect = svg.parentElement.getBoundingClientRect(); }
+  updateWrapRect();
+  window.addEventListener("resize", updateWrapRect);
 
   // Manifest paths are written repo-relative (e.g. "docs/network/moc_recent_e0-6.json.br")
   // by network_export.py, but this page and every slice file live in the same
@@ -310,6 +319,7 @@
     edgesLayer.innerHTML = "";
     nodesLayer.innerHTML = "";
     defsLayer.innerHTML = "";
+    lastHoverName = null; // metric/rank data is about to change, don't let a stale tooltip persist across it
 
     const bounds = computeBounds(slice.nodes);
     const screenPos = new Map(slice.nodes.map(n => [n.name, toScreen(n.x, n.y, bounds)]));
@@ -373,7 +383,7 @@
       circle.setAttribute("fill", plasmaColor(t));
       circle.setAttribute("class", `node-circle${top3.has(i) ? " top3" : ""}`);
       circle.dataset.name = n.name;
-      circle.addEventListener("mousemove", (ev) => showTooltip(ev, n));
+      circle.addEventListener("mousemove", (ev) => scheduleTooltip(ev, n));
       circle.addEventListener("mouseleave", hideTooltip);
       circle.addEventListener("click", (ev) => {
         ev.stopPropagation();
@@ -446,15 +456,19 @@
     applyFocusStyles();
   }
 
-  // ── Click-to-focus: isolate a node's direct neighbors, dim everything else ──
-  function computeNeighbors(name) {
-    const neighbors = new Set();
-    if (!currentSlice) return neighbors;
+  // ── Click-to-focus: isolate a node's direct neighbors, hide everything else ──
+  function computeFocusRanks(name) {
+    // Ranks every direct neighbor of `name` by synergy edge weight (1 = strongest).
+    const map = new Map();
+    if (!currentSlice) return map;
+    const links = [];
     currentSlice.edges.forEach(e => {
-      if (e.u === name) neighbors.add(e.v);
-      else if (e.v === name) neighbors.add(e.u);
+      if (e.u === name) links.push({ neighbor: e.v, weight: e.weight });
+      else if (e.v === name) links.push({ neighbor: e.u, weight: e.weight });
     });
-    return neighbors;
+    links.sort((a, b) => b.weight - a.weight);
+    links.forEach((l, i) => map.set(l.neighbor, { rank: i + 1, total: links.length, weight: l.weight }));
+    return map;
   }
 
   function applyFocusStyles() {
@@ -467,18 +481,16 @@
       return;
     }
 
-    const neighbors = computeNeighbors(selectedNode);
-
     edgeEls.forEach(el => {
       const connected = el.dataset.u === selectedNode || el.dataset.v === selectedNode;
       el.classList.toggle("edge-highlight", connected);
-      el.classList.toggle("edge-dim", !connected);
+      el.classList.toggle("edge-dim", !connected); // unrelated edges vanish entirely (opacity: 0)
     });
 
     nodeEls.forEach(el => {
       const name = el.dataset.name;
       const isSelected = name === selectedNode;
-      const isNeighbor = neighbors.has(name);
+      const isNeighbor = focusRankMap.has(name);
       el.classList.toggle("node-selected", isSelected);
       el.classList.toggle("node-dim", !isSelected && !isNeighbor);
     });
@@ -486,40 +498,81 @@
 
   function toggleFocus(name) {
     selectedNode = (selectedNode === name) ? null : name;
+    focusRankMap = selectedNode ? computeFocusRanks(selectedNode) : new Map();
+    lastHoverName = null; // tooltip content now depends on focus state — force a rebuild on the next hover
     applyFocusStyles();
   }
 
   function clearFocus() {
     if (selectedNode !== null) {
       selectedNode = null;
+      focusRankMap = new Map();
+      lastHoverName = null;
       applyFocusStyles();
     }
   }
 
   function showTooltip(ev, node) {
-    const metric = metricSelect.value;
-    const rank = currentRankMap.get(node.name) || '?';
-    const metricLabel = METRIC_LABELS[metric];
-    const value = node[metric];
-    let valueDisplay;
-    if (metric === 'weighted_degree') {
-      valueDisplay = value.toFixed(1);
-    } else {
-      valueDisplay = value.toFixed(4);
+    // Only rebuild the tooltip's HTML when we've actually moved onto a
+    // different node — not on every pixel of mouse movement within the
+    // same one. Position still updates every call (cheap: no layout read).
+    if (node.name !== lastHoverName) {
+      lastHoverName = node.name;
+      const metric = metricSelect.value;
+      const rank = currentRankMap.get(node.name) || '?';
+      const metricLabel = METRIC_LABELS[metric];
+
+      // While a character is focused (click-to-isolate), show how this
+      // hovered character relates to it: its synergy rank if they're
+      // directly linked, or an explicit "no direct synergy" note otherwise.
+      let focusSection = "";
+      if (selectedNode) {
+        if (node.name === selectedNode) {
+          focusSection = `<br>―――――――――――――――<br><b>★ Focused character</b>`;
+        } else if (focusRankMap.has(node.name)) {
+          const info = focusRankMap.get(node.name);
+          focusSection = `<br>―――――――――――――――<br>` +
+            `Synergy vs ${selectedNode}: #${info.rank} of ${info.total}<br>` +
+            `Link weight: ${info.weight.toFixed(2)}`;
+        } else {
+          focusSection = `<br>―――――――――――――――<br>No direct synergy with ${selectedNode}`;
+        }
+      }
+
+      tooltip.innerHTML =
+        `<b>${node.name}</b><br>` +
+        `Rank (${metricLabel}): #${rank}<br>` +
+        `―――――――――――――――<br>` +
+        `Eigenvector: ${node.eigenvector.toFixed(4)}<br>` +
+        `Weighted Degree: ${node.weighted_degree.toFixed(1)}<br>` +
+        `Betweenness: ${node.betweenness.toFixed(4)}` +
+        focusSection;
     }
-    tooltip.innerHTML =
-      `<b>${node.name}</b><br>` +
-      `Rank (${metricLabel}): #${rank}<br>` +
-      `―――――――――――――――<br>` +
-      `Eigenvector: ${node.eigenvector.toFixed(4)}<br>` +
-      `Weighted Degree: ${node.weighted_degree.toFixed(1)}<br>` +
-      `Betweenness: ${node.betweenness.toFixed(4)}`;
-    const wrapRect = svg.parentElement.getBoundingClientRect();
+    // wrapRect is cached (see updateWrapRect above) instead of read fresh on
+    // every mousemove — getBoundingClientRect() forces a synchronous layout,
+    // and doing that dozens of times a second while hovering was the main
+    // reason clicking felt laggier on desktop than on mobile (touch has no
+    // hover state at all, so it never paid this cost).
+    if (!wrapRect) updateWrapRect();
     tooltip.style.left = `${ev.clientX - wrapRect.left + 14}px`;
     tooltip.style.top = `${ev.clientY - wrapRect.top + 14}px`;
     tooltip.style.opacity = 1;
   }
-  function hideTooltip() { tooltip.style.opacity = 0; }
+
+  // Coalesce rapid mousemove-driven tooltip updates to at most once per
+  // animation frame, so hover work never competes with (and delays) the
+  // paint that should be starting the click-to-focus transition.
+  let tooltipRAF = null;
+  function scheduleTooltip(ev, node) {
+    if (tooltipRAF) cancelAnimationFrame(tooltipRAF);
+    const clientX = ev.clientX, clientY = ev.clientY; // capture now — the event object may be recycled by the time rAF fires
+    tooltipRAF = requestAnimationFrame(() => showTooltip({ clientX, clientY }, node));
+  }
+
+  function hideTooltip() {
+    tooltip.style.opacity = 0;
+    lastHoverName = null;
+  }
 
   // ── Pan + zoom (mouse + touch) ──
   let scale = 1, panX = 0, panY = 0, isDragging = false, lastX = 0, lastY = 0;
@@ -638,6 +691,7 @@
     try {
       currentSlice = await loadCompressedJson(resolveFetchPath(manifestPath));
       selectedNode = null; // a new slice may not contain the previously focused character
+      focusRankMap = new Map();
       render(currentSlice, metricSelect.value);
       statusEl.textContent = "";
     } catch (err) {

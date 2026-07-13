@@ -143,6 +143,7 @@
     <!-- Increased viewBox to 1200x840 for more spacing; SVG scales automatically -->
     <svg id="network-svg" viewBox="0 0 1200 840" preserveAspectRatio="xMidYMid meet">
       <g id="viewport">
+        <defs id="node-defs"></defs>
         <g id="edges-layer"></g>
         <g id="nodes-layer"></g>
       </g>
@@ -211,9 +212,26 @@
 
   const svg = document.getElementById("network-svg");
   const viewport = document.getElementById("viewport");
+  const defsLayer = document.getElementById("node-defs");
   const edgesLayer = document.getElementById("edges-layer");
   const nodesLayer = document.getElementById("nodes-layer");
   const tooltip = document.getElementById("network-tooltip");
+
+  // ── Character icons — same injection pattern as Generate_Dashboards.py /
+  //    teams_template.html.j2: icons_json + path_prefix come from Jinja
+  //    context (see generate_network_dashboard.py). Falls back to an empty
+  //    map so the page still renders (as plain colored circles) if the
+  //    icons file wasn't wired up.
+  const ICONS = {{ icons_json | default('{}') }};
+  const ICON_PATH_PREFIX = "{{ path_prefix | default('../') }}";
+
+  function lookupIconUrl(name) {
+    let url = ICONS[name];
+    if (!url) url = ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
+    if (!url) return null;
+    if (!url.startsWith('http')) url = ICON_PATH_PREFIX + url;
+    return url;
+  }
 
   // ── Layout constants — match the new viewBox ──
   const VB_W = 5000, VB_H = 5000, PAD = 70;
@@ -297,6 +315,7 @@
   function render(slice, metric) {
     edgesLayer.innerHTML = "";
     nodesLayer.innerHTML = "";
+    defsLayer.innerHTML = "";
 
     const bounds = computeBounds(slice.nodes);
     const screenPos = new Map(slice.nodes.map(n => [n.name, toScreen(n.x, n.y, bounds)]));
@@ -336,27 +355,72 @@
     document.getElementById("colorbar-max").textContent = maxVal.toFixed(3);
     document.getElementById("colorbar-min").textContent = minVal.toFixed(3);
 
+    const SVGNS = "http://www.w3.org/2000/svg";
+
     slice.nodes.forEach((n, i) => {
       const [cx, cy] = screenPos.get(n.name);
       const v = vals[i];
       const t = (v - minVal) / (maxVal - minVal || 1);
       const r = 20 + t * 80;
 
-      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      const g = document.createElementNS(SVGNS, "g");
+
+      // Backing circle — colored by the active metric. Always drawn first:
+      // it's the fallback if the icon 404s, and it's what actually receives
+      // hover events (the icon image sits on top with pointer-events: none).
+      const circle = document.createElementNS(SVGNS, "circle");
       circle.setAttribute("cx", cx);
       circle.setAttribute("cy", cy);
       circle.setAttribute("r", r);
       circle.setAttribute("fill", plasmaColor(t));
       circle.setAttribute("class", `node-circle${top3.has(i) ? " top3" : ""}`);
-      // Store node data for tooltip
       circle.dataset.name = n.name;
       circle.addEventListener("mousemove", (ev) => showTooltip(ev, n));
       circle.addEventListener("mouseleave", hideTooltip);
       g.appendChild(circle);
 
+      const iconUrl = lookupIconUrl(n.name);
+      if (iconUrl) {
+        // Circular clip so the (usually square) icon art fills the node
+        // without spilling past its border.
+        const clipId = `nodeclip-${i}`;
+        const clipPath = document.createElementNS(SVGNS, "clipPath");
+        clipPath.setAttribute("id", clipId);
+        const clipCircle = document.createElementNS(SVGNS, "circle");
+        clipCircle.setAttribute("cx", cx);
+        clipCircle.setAttribute("cy", cy);
+        clipCircle.setAttribute("r", Math.max(0, r - 1.5));
+        clipPath.appendChild(clipCircle);
+        defsLayer.appendChild(clipPath);
+
+        const image = document.createElementNS(SVGNS, "image");
+        image.setAttribute("x", cx - r);
+        image.setAttribute("y", cy - r);
+        image.setAttribute("width", r * 2);
+        image.setAttribute("height", r * 2);
+        image.setAttribute("preserveAspectRatio", "xMidYMid slice");
+        image.setAttribute("clip-path", `url(#${clipId})`);
+        image.setAttribute("href", iconUrl);
+        image.setAttributeNS("http://www.w3.org/1999/xlink", "href", iconUrl); // older-browser fallback
+        image.style.pointerEvents = "none";
+        // If the icon 404s, hide it so the colored metric circle underneath shows through.
+        image.addEventListener("error", () => { image.style.display = "none"; });
+        g.appendChild(image);
+
+        // Ring drawn on top of the icon so the metric-color / gold-top3 border
+        // still reads clearly around the artwork.
+        const ring = document.createElementNS(SVGNS, "circle");
+        ring.setAttribute("cx", cx);
+        ring.setAttribute("cy", cy);
+        ring.setAttribute("r", r);
+        ring.setAttribute("fill", "none");
+        ring.setAttribute("class", `node-circle${top3.has(i) ? " top3" : ""}`);
+        ring.style.pointerEvents = "none";
+        g.appendChild(ring);
+      }
+
       if (v >= labelThreshold) {
-        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        const label = document.createElementNS(SVGNS, "text");
         label.setAttribute("x", cx);
         label.setAttribute("y", cy - r - 4);
         label.setAttribute("class", "node-label");

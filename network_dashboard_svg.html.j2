@@ -82,6 +82,15 @@
 
   .node-label { fill: #fff; font: 700 11px Arial, sans-serif; text-anchor: middle; pointer-events: none; }
 
+  /* Click-to-focus: fade everything except the selected node and its direct neighbors */
+  .node-group { transition: opacity 0.2s ease, filter 0.2s ease; }
+  .node-group.node-dim { opacity: 0.15; filter: grayscale(70%)  }
+  .node-group.node-selected .node-circle { stroke: var(--accent2); stroke-width: 3px; }
+
+  .edge { transition: opacity 0.2s ease, filter 0.2s ease; }
+  .edge.edge-dim { opacity: 0.04; filter: blur(1px); }
+  .edge.edge-highlight { opacity: 0.95; }
+
   .legend-caption { text-align: center; color: var(--text3); font-size: 11px; padding: 8px 0 4px; font-family: 'Share Tech Mono', monospace; }
 
   .colorbar-wrap { position: absolute; top: 70px; right: 16px; width: 18px; height: 220px; }
@@ -160,7 +169,7 @@
   </div>
 
   <div class="legend-caption">
-    Node size &amp; color = selected metric · Gold ring = top 3 · Edge thickness = synergy strength · Scroll or pinch to zoom, drag or swipe to pan
+    Node size &amp; color = selected metric · Gold ring = top 3 · Edge thickness = synergy strength · Scroll or pinch to zoom, drag or swipe to pan · Click a character to isolate its synergies, click empty space to clear
   </div>
   <div id="network-status" aria-live="polite"></div>
 </div>
@@ -242,6 +251,8 @@
   let currentSlice = null;
   // Store ranks for the current metric to show in tooltip
   let currentRankMap = new Map(); // node name -> rank (1-indexed)
+  // Click-to-focus state: character name currently isolated, or null
+  let selectedNode = null;
 
   // Manifest paths are written repo-relative (e.g. "docs/network/moc_recent_e0-6.json.br")
   // by network_export.py, but this page and every slice file live in the same
@@ -332,6 +343,8 @@
       line.setAttribute("x1", x1); line.setAttribute("y1", y1);
       line.setAttribute("x2", x2); line.setAttribute("y2", y2);
       line.setAttribute("class", `edge ${edgeBand(e.weight, quartiles)}`);
+      line.dataset.u = e.u;
+      line.dataset.v = e.v;
       edgesLayer.appendChild(line);
     });
 
@@ -364,10 +377,12 @@
       const r = 20 + t * 80;
 
       const g = document.createElementNS(SVGNS, "g");
+      g.classList.add("node-group");
+      g.dataset.name = n.name;
 
       // Backing circle — colored by the active metric. Always drawn first:
       // it's the fallback if the icon 404s, and it's what actually receives
-      // hover events (the icon image sits on top with pointer-events: none).
+      // hover/click events (the icon image sits on top with pointer-events: none).
       const circle = document.createElementNS(SVGNS, "circle");
       circle.setAttribute("cx", cx);
       circle.setAttribute("cy", cy);
@@ -377,6 +392,10 @@
       circle.dataset.name = n.name;
       circle.addEventListener("mousemove", (ev) => showTooltip(ev, n));
       circle.addEventListener("mouseleave", hideTooltip);
+      circle.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        toggleFocus(n.name);
+      });
       g.appendChild(circle);
 
       const iconUrl = lookupIconUrl(n.name);
@@ -437,6 +456,61 @@
       `HSR Team Network — ${MODE_LABELS[mode] || mode}`;
     document.getElementById("network-title-sub").textContent =
       `${eidolonLabel(eidolonKey)} · ${recencyLabel} · ${slice.nodes.length} characters · ${slice.edges.length} synergy links`;
+
+    // Re-apply any existing click-to-focus selection to the freshly built
+    // elements (render() rebuilds the whole DOM each call, so this state
+    // doesn't survive on its own).
+    applyFocusStyles();
+  }
+
+  // ── Click-to-focus: isolate a node's direct neighbors, dim everything else ──
+  function computeNeighbors(name) {
+    const neighbors = new Set();
+    if (!currentSlice) return neighbors;
+    currentSlice.edges.forEach(e => {
+      if (e.u === name) neighbors.add(e.v);
+      else if (e.v === name) neighbors.add(e.u);
+    });
+    return neighbors;
+  }
+
+  function applyFocusStyles() {
+    const edgeEls = edgesLayer.querySelectorAll("line");
+    const nodeEls = nodesLayer.querySelectorAll(".node-group");
+
+    if (!selectedNode) {
+      edgeEls.forEach(el => el.classList.remove("edge-dim", "edge-highlight"));
+      nodeEls.forEach(el => el.classList.remove("node-dim", "node-selected"));
+      return;
+    }
+
+    const neighbors = computeNeighbors(selectedNode);
+
+    edgeEls.forEach(el => {
+      const connected = el.dataset.u === selectedNode || el.dataset.v === selectedNode;
+      el.classList.toggle("edge-highlight", connected);
+      el.classList.toggle("edge-dim", !connected);
+    });
+
+    nodeEls.forEach(el => {
+      const name = el.dataset.name;
+      const isSelected = name === selectedNode;
+      const isNeighbor = neighbors.has(name);
+      el.classList.toggle("node-selected", isSelected);
+      el.classList.toggle("node-dim", !isSelected && !isNeighbor);
+    });
+  }
+
+  function toggleFocus(name) {
+    selectedNode = (selectedNode === name) ? null : name;
+    applyFocusStyles();
+  }
+
+  function clearFocus() {
+    if (selectedNode !== null) {
+      selectedNode = null;
+      applyFocusStyles();
+    }
   }
 
   function showTooltip(ev, node) {
@@ -466,6 +540,8 @@
 
   // ── Pan + zoom (mouse + touch) ──
   let scale = 1, panX = 0, panY = 0, isDragging = false, lastX = 0, lastY = 0;
+  let dragMoved = false, dragStartX = 0, dragStartY = 0;
+  const DRAG_CLICK_THRESHOLD = 4; // px — below this, mouseup/touchend counts as a tap, not a pan
   const MIN_SCALE = 0.4, MAX_SCALE = 4;
   function applyTransform() { viewport.setAttribute("transform", `translate(${panX},${panY}) scale(${scale})`); }
 
@@ -476,14 +552,29 @@
     scale = Math.min(Math.max(scale * delta, MIN_SCALE), MAX_SCALE);
     applyTransform();
   }, { passive: false });
-  svg.addEventListener("mousedown", (ev) => { isDragging = true; lastX = ev.clientX; lastY = ev.clientY; });
+  svg.addEventListener("mousedown", (ev) => {
+    isDragging = true;
+    dragMoved = false;
+    dragStartX = ev.clientX; dragStartY = ev.clientY;
+    lastX = ev.clientX; lastY = ev.clientY;
+  });
   window.addEventListener("mousemove", (ev) => {
     if (!isDragging) return;
+    if (Math.hypot(ev.clientX - dragStartX, ev.clientY - dragStartY) > DRAG_CLICK_THRESHOLD) dragMoved = true;
     panX += ev.clientX - lastX; panY += ev.clientY - lastY;
     lastX = ev.clientX; lastY = ev.clientY;
     applyTransform();
   });
   window.addEventListener("mouseup", () => { isDragging = false; });
+
+  // Click empty space (not a node, not the tail end of a drag) to clear the
+  // click-to-focus selection. Nodes call stopPropagation() on their own
+  // click handler, so this only fires for clicks that land on the SVG
+  // background itself.
+  svg.addEventListener("click", (ev) => {
+    if (dragMoved) { dragMoved = false; return; }
+    if (ev.target === svg) clearFocus();
+  });
 
   // Touch: one-finger pan, two-finger pinch-to-zoom.
   // touch-action: none (in CSS above) stops the browser's own scroll/zoom
@@ -503,6 +594,9 @@
   svg.addEventListener("touchstart", (ev) => {
     if (ev.touches.length === 1) {
       touchMode = "pan";
+      dragMoved = false;
+      dragStartX = ev.touches[0].clientX;
+      dragStartY = ev.touches[0].clientY;
       lastX = ev.touches[0].clientX;
       lastY = ev.touches[0].clientY;
     } else if (ev.touches.length === 2) {
@@ -519,10 +613,12 @@
     ev.preventDefault();
     if (touchMode === "pan" && ev.touches.length === 1) {
       const t = ev.touches[0];
+      if (Math.hypot(t.clientX - dragStartX, t.clientY - dragStartY) > DRAG_CLICK_THRESHOLD) dragMoved = true;
       panX += t.clientX - lastX; panY += t.clientY - lastY;
       lastX = t.clientX; lastY = t.clientY;
       applyTransform();
     } else if (touchMode === "pinch" && ev.touches.length === 2) {
+      dragMoved = true; // a pinch is never a tap
       const newDist = touchDist(ev.touches[0], ev.touches[1]);
       scale = Math.min(Math.max(pinchStartScale * (newDist / pinchStartDist), MIN_SCALE), MAX_SCALE);
       const mid = touchMid(ev.touches[0], ev.touches[1]);
@@ -558,6 +654,7 @@
     statusEl.textContent = "Loading network slice…";
     try {
       currentSlice = await loadCompressedJson(resolveFetchPath(manifestPath));
+      selectedNode = null; // a new slice may not contain the previously focused character
       render(currentSlice, metricSelect.value);
       statusEl.textContent = "";
     } catch (err) {

@@ -50,6 +50,9 @@
   .network-title { text-align: center; padding: 14px 0 4px; }
   .network-title .main { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; }
   .network-title .subtitle { color: var(--text2); font-size: 12px; font-family: 'Share Tech Mono', monospace; margin-top: 3px; }
+  .network-stats { color: var(--text2); font-size: 12px; font-family: 'Share Tech Mono', monospace; margin-top: 6px; }
+  .network-stats b { color: var(--accent2); }
+  .network-stats .stats-tag { display: inline-block; padding: 1px 9px; border-radius: 3px; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.3); color: var(--accent); font-size: 11px; margin-left: 6px; }
 
   #network-svg { width: 100%; height: 76vh; display: block; cursor: grab; touch-action: none; }
   #network-svg:active { cursor: grabbing; }
@@ -129,6 +132,7 @@
     <div class="network-title">
       <div class="main" id="network-title-main">HSR Team Network</div>
       <div class="subtitle" id="network-title-sub">Loading manifest…</div>
+      <div class="network-stats" id="network-stats"></div>
     </div>
 
     <!-- Increased viewBox to 1200x840 for more spacing; SVG scales automatically -->
@@ -450,10 +454,50 @@
     document.getElementById("network-title-sub").textContent =
       `${eidolonLabel(eidolonKey)} · ${recencyLabel} · ${slice.nodes.length} characters · ${slice.edges.length} synergy links`;
 
+    renderGraphStats(slice);
+
     // Re-apply any existing click-to-focus selection to the freshly built
     // elements (render() rebuilds the whole DOM each call, so this state
     // doesn't survive on its own).
     applyFocusStyles();
+  }
+
+  // ── Graph-level meta-diversity stats: density + average degree ──
+  // These describe the WHOLE graph, not any one character, so they're
+  // computed once per render rather than per-node like the coloring metrics.
+  //
+  //   Density     = 2E / (V(V-1))   — fraction of all possible character
+  //                                    pairings that actually see play
+  //                                    together, from 0 (no overlap at all)
+  //                                    to 1 (every character teams with
+  //                                    every other character).
+  //   Avg Degree  = 2E / V          — the typical number of distinct
+  //                                    synergy partners a character has.
+  //
+  // Read together: high density + high avg degree → a wide, interconnected
+  // meta where lots of characters see varied pairings (diverse). Low values
+  // on both → a small clique of characters get played with each other and
+  // little else (restricted/narrow meta).
+  function renderGraphStats(slice) {
+    const V = slice.nodes.length;
+    const E = slice.edges.length;
+    const density = V > 1 ? (2 * E) / (V * (V - 1)) : 0;
+    const avgDegree = V > 0 ? (2 * E) / V : 0;
+
+    // Rule-of-thumb bands, not a formal statistical threshold — tune these
+    // if they don't match how the numbers actually look across your slices.
+    let diversityTag;
+    if (density >= 0.70) diversityTag = "Diverse Meta";
+    else if (density >= 0.50) diversityTag = "Moderate Meta";
+    else diversityTag = "Restricted Meta";
+
+    const statsEl = document.getElementById("network-stats");
+    if (statsEl) {
+      statsEl.innerHTML =
+        `Density: <b>${density.toFixed(3)}</b> · ` +
+        `Avg Degree: <b>${avgDegree.toFixed(2)}</b>` +
+        `<span class="stats-tag">${diversityTag}</span>`;
+    }
   }
 
   // ── Click-to-focus: isolate a node's direct neighbors, hide everything else ──

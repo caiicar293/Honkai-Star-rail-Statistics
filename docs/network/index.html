@@ -93,6 +93,109 @@
   }
 
   #network-status { text-align: center; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px 0; }
+
+  /* ── Two-column dashboard: graph + sidebar ────────────────────────── */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 18px;
+    margin-bottom: 16px;
+    align-items: stretch;
+  }
+  .dashboard-grid .left-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+  /* ── Sidebar: search, threshold slider, sorted chart ─────────────── */
+  .sidebar {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 16px;
+    min-height: 0;
+  }
+  .sidebar-section { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  .sidebar-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--accent2);
+  }
+
+  /* Search input */
+  .search-input {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    font-family: 'Exo 2', sans-serif; font-size: 13px; font-weight: 400;
+    padding: 8px 10px; border-radius: 5px; width: 100%; outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .search-input::placeholder { color: var(--text3); }
+  .search-input:focus { border-color: var(--accent); }
+  .search-meta { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); }
+
+  /* Range slider */
+  .range-row { display: flex; justify-content: space-between; align-items: center; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text2); }
+  .range-row .range-current { color: var(--accent2); font-weight: 600; }
+  .range-slider {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+    background: var(--border); border-radius: 2px; outline: none; cursor: pointer;
+  }
+  .range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 14px; height: 14px;
+    background: var(--accent); border: 2px solid var(--bg);
+    border-radius: 50%; cursor: pointer; margin-top: -5px;
+    box-shadow: 0 0 8px rgba(56,189,248,0.4);
+  }
+  .range-slider::-moz-range-thumb {
+    width: 14px; height: 14px; background: var(--accent);
+    border: 2px solid var(--bg); border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 8px rgba(56,189,248,0.4);
+  }
+
+  /* Sorted total-synergy-weight chart */
+  .chart-container {
+    flex: 1; min-height: 0; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 3px;
+    padding-right: 4px;
+  }
+  .chart-row {
+    display: grid; grid-template-columns: 110px 1fr 46px;
+    gap: 8px; align-items: center; cursor: pointer;
+    padding: 5px 7px; border-radius: 4px; border: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  }
+  .chart-row:hover { background: rgba(56,189,248,0.07); border-color: rgba(56,189,248,0.25); }
+  .chart-row .chart-label {
+    font-family: 'Exo 2', sans-serif; font-size: 11px; font-weight: 600;
+    color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chart-row .chart-bar-track {
+    height: 8px; background: var(--panel); border-radius: 4px; overflow: hidden; position: relative;
+  }
+  .chart-row .chart-bar-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(to right, var(--purple) 0%, var(--accent) 100%);
+    transition: width 0.25s ease;
+  }
+  .chart-row .chart-value {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    color: var(--accent2); text-align: right;
+  }
+  .chart-row.focused { background: rgba(56,189,248,0.15); border-color: var(--accent); }
+  .chart-row.focused .chart-label { color: var(--accent2); }
+  .chart-row.search-dim, .chart-row.filtered-out { opacity: 0.20; filter: grayscale(80%); }
+
+  /* Filter states on the graph (commute with focus/dim classes) */
+  .node-group.filtered-out { display: none; }
+  .node-group.search-dim { opacity: 0.12; filter: grayscale(80%); }
+  .edge.edge-search-dim { opacity: 0.06; }
+  .edge.filtered-out { display: none; }
+
+  /* Responsive: stack columns on narrower viewports */
+  @media (max-width: 1024px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .sidebar { height: auto; }
+    .chart-container { max-height: 50vh; }
+  }
 </style>
 </head>
 <body>
@@ -128,35 +231,66 @@
     </div>
   </div>
 
-  <div class="network-wrap">
-    <div class="network-title">
-      <div class="main" id="network-title-main">HSR Team Network</div>
-      <div class="subtitle" id="network-title-sub">Loading manifest…</div>
-      <div class="network-stats" id="network-stats"></div>
+  <div class="dashboard-grid">
+    <div class="left-col">
+      <div class="network-wrap">
+        <div class="network-title">
+          <div class="main" id="network-title-main">HSR Team Network</div>
+          <div class="subtitle" id="network-title-sub">Loading manifest…</div>
+          <div class="network-stats" id="network-stats"></div>
+        </div>
+
+        <!-- Increased viewBox to 1200x840 for more spacing; SVG scales automatically -->
+        <svg id="network-svg" viewBox="0 0 1200 840" preserveAspectRatio="xMidYMid meet">
+          <g id="viewport">
+            <defs id="node-defs"></defs>
+            <g id="edges-layer"></g>
+            <g id="nodes-layer"></g>
+          </g>
+        </svg>
+
+        <div class="colorbar-wrap">
+          <div class="colorbar-title" id="colorbar-title">Eigenvector</div>
+          <div class="colorbar-gradient"></div>
+          <div class="colorbar-label max" id="colorbar-max">1.0</div>
+          <div class="colorbar-label min" id="colorbar-min">0.0</div>
+        </div>
+
+        <div id="network-tooltip"></div>
+      </div>
+
+      <div class="legend-caption">
+        Node size &amp; color = selected metric · Gold ring = top 3 · Edge thickness = synergy strength · Scroll or pinch to zoom, drag or swipe to pan · Click a character to isolate its synergies · while focused, hover any character to see its synergy rank vs the focused one, click empty space to clear
+      </div>
     </div>
 
-    <!-- Increased viewBox to 1200x840 for more spacing; SVG scales automatically -->
-    <svg id="network-svg" viewBox="0 0 1200 840" preserveAspectRatio="xMidYMid meet">
-      <g id="viewport">
-        <defs id="node-defs"></defs>
-        <g id="edges-layer"></g>
-        <g id="nodes-layer"></g>
-      </g>
-    </svg>
+    <aside class="sidebar" aria-label="Network filters and analysis">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Search Characters</div>
+        <input type="text" id="search-input" class="search-input" placeholder="Type a name…" autocomplete="off" spellcheck="false"/>
+        <div class="search-meta" id="search-meta"></div>
+      </div>
 
-    <div class="colorbar-wrap">
-      <div class="colorbar-title" id="colorbar-title">Eigenvector</div>
-      <div class="colorbar-gradient"></div>
-      <div class="colorbar-label max" id="colorbar-max">1.0</div>
-      <div class="colorbar-label min" id="colorbar-min">0.0</div>
-    </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Min Weighted Degree</div>
+        <div class="range-row">
+          <span>Threshold</span>
+          <span class="range-current" id="range-current">0</span>
+        </div>
+        <input type="range" id="threshold-slider" class="range-slider" min="0" max="100" step="1" value="0"/>
+        <div class="range-row">
+          <span>0</span>
+          <span id="range-max">100</span>
+        </div>
+      </div>
 
-    <div id="network-tooltip"></div>
+      <div class="sidebar-section" style="flex: 1; min-height: 0;">
+        <div class="sidebar-title">Top 25 — Total Synergy Weight</div>
+        <div id="chart-container" class="chart-container"></div>
+      </div>
+    </aside>
   </div>
 
-  <div class="legend-caption">
-    Node size &amp; color = selected metric · Gold ring = top 3 · Edge thickness = synergy strength · Scroll or pinch to zoom, drag or swipe to pan · Click a character to isolate its synergies · while focused, hover any character to see its synergy rank vs the focused one, click empty space to clear
-  </div>
   <div id="network-status" aria-live="polite"></div>
 </div>
 
@@ -243,6 +377,21 @@
   // ranked by synergy edge weight (1 = strongest link). Recomputed whenever
   // selectedNode changes — see toggleFocus()/clearFocus().
   let focusRankMap = new Map();
+
+  // ── Sidebar filter state (search + min weighted-degree threshold) ──
+  // searchFilter:    substring entered in the search box (case-insensitive)
+  // minWeightedDegree: numeric floor; nodes below this are hidden from the
+  //                    graph (and dimmed in the chart). 0 = show everything.
+  // The slider's max bound is recomputed per slice inside render() — see
+  // the `sliderMax` block there.
+  let searchFilter = "";
+  let minWeightedDegree = 0;
+  // Highest weighted_degree in the current slice — drives the threshold
+  // slider's max bound. Declared here (not just assigned in render()) so
+  // the assignment doesn't throw a ReferenceError in this module's strict
+  // mode, which was previously aborting render() before the chart/slider
+  // wiring below it ever ran.
+  let currentMaxDegree = 0;
   // Tooltip perf state — see showTooltip()/scheduleTooltip() below
   let lastHoverName = null;
   let wrapRect = null;
@@ -456,6 +605,28 @@
 
     renderGraphStats(slice);
 
+    // ── Sidebar sync: slider bounds, chart, then filters ──
+    // Slider max follows whoever has the highest weighted_degree in this
+    // slice so dragging always spans the full data range; reset the
+    // threshold to 0 if the previous value is now off-scale. Use a single
+    // ceiled value for both the UI bound and the reset comparison so the two
+    // can't disagree (e.g. wdMax=12.4 with a persisted threshold of 13 would
+    // otherwise falsely trip the reset because 13 > 12.4 but the slider
+    // still shows max=13).
+    const wdMax = slice.nodes.length ? Math.max(...slice.nodes.map(n => n.weighted_degree ?? 0)) : 0;
+    const sliderMax = Math.max(1, Math.ceil(wdMax)); // never 0 so <input range max=0> doesn't lock up
+    currentMaxDegree = sliderMax;
+    thresholdSlider.max = sliderMax;
+    rangeMax.textContent = String(sliderMax);
+    if (minWeightedDegree > sliderMax) {
+      minWeightedDegree = 0;
+      thresholdSlider.value = 0;
+      rangeCurrent.textContent = "0";
+    }
+
+    renderWeightChart(slice);
+    applyFilters();
+
     // Re-apply any existing click-to-focus selection to the freshly built
     // elements (render() rebuilds the whole DOM each call, so this state
     // doesn't survive on its own).
@@ -501,6 +672,123 @@
   }
 
   // ── Click-to-focus: isolate a node's direct neighbors, hide everything else ──
+  // Sidebar references — held once instead of re-querying on every keystroke.
+  const searchInput = document.getElementById("search-input");
+  const searchMeta = document.getElementById("search-meta");
+  const thresholdSlider = document.getElementById("threshold-slider");
+  const rangeCurrent = document.getElementById("range-current");
+  const rangeMax = document.getElementById("range-max");
+  const chartContainer = document.getElementById("chart-container");
+
+  // ── Sorted "total synergy weight per node" chart (sidebar) ──
+  // Reads weighted_degree straight off the slice (it IS the sum of edge
+  // weights touching each node on the server side — same field the tooltip
+  // and node sizing already use), so the chart and the graph can't disagree.
+  function renderWeightChart(slice) {
+    const entries = slice.nodes
+      .map(n => ({ name: n.name, total: n.weighted_degree ?? 0 }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 25);
+    const maxTotal = entries.length ? entries[0].total : 1;
+    chartContainer.innerHTML = entries.map(e => {
+      const pct = maxTotal > 0 ? (e.total / maxTotal) * 100 : 0;
+      const safeName = e.name.replace(/"/g, '&quot;');
+      return `<div class="chart-row" data-name="${safeName}">` +
+        `<span class="chart-label" title="${safeName}">${e.name}</span>` +
+        `<div class="chart-bar-track"><div class="chart-bar-fill" style="width: ${pct.toFixed(1)}%"></div></div>` +
+        `<span class="chart-value">${e.total.toFixed(1)}</span>` +
+        `</div>`;
+    }).join("");
+    // Wire each row to the same toggle used by the graph — keeps focus state
+    // in one place so clicks anywhere (graph node ↔ chart row) commute.
+    chartContainer.querySelectorAll(".chart-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const targetName = row.dataset.name;
+        if (targetName) toggleFocus(targetName);
+      });
+    });
+  }
+
+  // ── Apply search + threshold filters across graph AND chart ──
+  // Designed to commute cleanly with the existing applyFocusStyles() output:
+  //   - .filtered-out  -> display:none (graph) / dimmed (chart). Wins.
+  //   - .search-dim    -> very transparent. Skipped on focus-relevant nodes
+  //                       AND on edges connected to the focus character, so
+  //                       clicking a focus target mid-search doesn't make
+  //                       its ring go invisible.
+  function applyFilters() {
+    if (!currentSlice) return;
+    const term = searchFilter.trim().toLowerCase();
+    const queryActive = term.length > 0;
+
+    // Per-node status cache — one pass over currentSlice.nodes, then every
+    // DOM read below just looks up from this Map.
+    const status = new Map();
+    currentSlice.nodes.forEach(n => {
+      const isFocused = selectedNode === n.name;
+      const focusRelevant = isFocused || focusRankMap.has(n.name);
+      // Focused character is exempt from threshold filter so the focus state
+      // stays visible if the user drags the slider past themselves.
+      const below = !isFocused && (n.weighted_degree ?? 0) < minWeightedDegree;
+      const matchesSearch = !queryActive || n.name.toLowerCase().includes(term);
+      status.set(n.name, { below, matchesSearch, focusRelevant });
+    });
+
+    // SVG nodes: hide if below threshold; else dim on search miss UNLESS
+    // the node is focus-relevant.
+    nodesLayer.querySelectorAll(".node-group").forEach(el => {
+      const s = status.get(el.dataset.name);
+      if (!s) return;
+      if (s.below) {
+        el.classList.add("filtered-out");
+        el.classList.remove("search-dim");
+        return;
+      }
+      el.classList.remove("filtered-out");
+      el.classList.toggle("search-dim", !s.matchesSearch && !s.focusRelevant);
+    });
+
+    // SVG edges: hide if either endpoint is below threshold; otherwise
+    // dim when either endpoint is a search miss, except for edges touching
+    // the focused character (applyFocusStyles() already handles those).
+    edgesLayer.querySelectorAll(".edge").forEach(el => {
+      const u = status.get(el.dataset.u), v = status.get(el.dataset.v);
+      if (!u || !v) return;
+      if (u.below || v.below) {
+        el.classList.add("filtered-out");
+        el.classList.remove("edge-search-dim");
+        return;
+      }
+      el.classList.remove("filtered-out");
+      const isFocusEdge = selectedNode !== null &&
+        (el.dataset.u === selectedNode || el.dataset.v === selectedNode);
+      const searchDim = !u.matchesSearch || !v.matchesSearch;
+      el.classList.toggle("edge-search-dim", searchDim && !isFocusEdge);
+    });
+
+    // Chart rows: mirror graph visibility logic + flag currently-focused row.
+    chartContainer.querySelectorAll(".chart-row").forEach(el => {
+      const s = status.get(el.dataset.name);
+      if (!s) return;
+      el.classList.toggle("filtered-out", s.below);
+      if (s.below) {
+        el.classList.remove("search-dim");
+      } else {
+        el.classList.toggle("search-dim", !s.matchesSearch);
+      }
+      el.classList.toggle("focused", el.dataset.name === selectedNode);
+    });
+
+    // Live "N matches" readout under the search box.
+    if (searchMeta) {
+      if (!queryActive) { searchMeta.textContent = ""; }
+      else {
+        const count = [...status.values()].filter(s => !s.below && s.matchesSearch).length;
+        searchMeta.textContent = `${count} match${count === 1 ? "" : "es"}`;
+      }
+    }
+  }
+
   function computeFocusRanks(name) {
     // Ranks every direct neighbor of `name` by synergy edge weight (1 = strongest).
     const map = new Map();
@@ -545,6 +833,10 @@
     focusRankMap = selectedNode ? computeFocusRanks(selectedNode) : new Map();
     lastHoverName = null; // tooltip content now depends on focus state — force a rebuild on the next hover
     applyFocusStyles();
+    // applyFilters also re-checks focus-relevant exemptions: e.g. the chart
+    // row's .focused class, and keeps a search-dimmed focused character from
+    // hiding behind its own ring (search-dim wins over node-dim in source order).
+    applyFilters();
   }
 
   function clearFocus() {
@@ -553,6 +845,7 @@
       focusRankMap = new Map();
       lastHoverName = null;
       applyFocusStyles();
+      applyFilters();
     }
   }
 
@@ -757,6 +1050,32 @@
     loadCurrentSlice();
   });
   recencySelect.addEventListener("change", loadCurrentSlice);
+
+  // ── Sidebar: search box filters by character name as you type ──
+  searchInput.addEventListener("input", (ev) => {
+    searchFilter = ev.target.value;
+    // Force tooltip to rebuild on the next hover — the search-dim state
+    // changes which rank numbers are visually meaningful in the status block.
+    lastHoverName = null;
+    applyFilters();
+  });
+  searchInput.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && searchInput.value !== "") {
+      searchInput.value = "";
+      searchFilter = "";
+      lastHoverName = null;
+      applyFilters();
+    }
+  });
+
+  // ── Sidebar: threshold slider sets a floor on weighted_degree ──
+  // 'input' fires while dragging (live feedback); 'change' fires once on
+  // release. We only need the live one — applyFilters() is cheap at this size.
+  thresholdSlider.addEventListener("input", (ev) => {
+    minWeightedDegree = parseFloat(ev.target.value) || 0;
+    rangeCurrent.textContent = String(minWeightedDegree);
+    applyFilters();
+  });
 
   (async () => {
     try {

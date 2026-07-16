@@ -208,5 +208,35 @@
       "recent": "docs/network/moc_recent_e6-6.json.br",
       "all": "docs/network/moc_all_e6-6.json.br"
     }
+  },
+  "ANOMALY_F5": {
+    "0-2": {
+      "recent": "docs/network/anomaly_f5_recent_e0-2.json.br",
+      "all": "docs/network/anomaly_f5_all_e0-2.json.br"
+    },
+    "0-6": {
+      "recent": "docs/network/anomaly_f5_recent_e0-6.json.br",
+      "all": "docs/network/anomaly_f5_all_e0-6.json.br"
+    },
+    "1-2": {
+      "recent": "docs/network/anomaly_f5_recent_e1-2.json.br",
+      "all": "docs/network/anomaly_f5_all_e1-2.json.br"
+    },
+    "1-6": {
+      "recent": "docs/network/anomaly_f5_recent_e1-6.json.br",
+      "all": "docs/network/anomaly_f5_all_e1-6.json.br"
+    },
+    "2-2": {
+      "recent": "docs/network/anomaly_f5_recent_e2-2.json.br",
+      "all": "docs/network/anomaly_f5_all_e2-2.json.br"
+    },
+    "2-6": {
+      "recent": "docs/network/anomaly_f5_recent_e2-6.json.br",
+      "all": "docs/network/anomaly_f5_all_e2-6.json.br"
+    },
+    "6-6": {
+      "recent": "docs/network/anomaly_f5_recent_e6-6.json.br",
+      "all": "docs/network/anomaly_f5_all_e6-6.json.br"
+    }
   }
 }

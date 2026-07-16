@@ -57,6 +57,7 @@
   .btn-toggle.dim-2.active { background: rgba(244,114,182,0.12); border-color: var(--dim2); color: var(--dim2); }
   .btn-toggle.dim-3.active { background: rgba(251,146,60,0.12);  border-color: var(--dim3); color: var(--dim3); }
   .btn-toggle.dim-4.active { background: rgba(167,139,250,0.12); border-color: var(--dim4); color: var(--dim4); }
+  .btn-toggle.dim-5.active { background: rgba(248,113,113,0.12); border-color: var(--red); color: var(--red); }
 
   /* Eidolon range active states */
   .btn-toggle.range.at0.active { border-color: var(--e0); color: var(--e0); background: rgba(148,163,184,0.08); }
@@ -99,6 +100,7 @@
   .dim-badge.d2 { background: rgba(244,114,182,0.15); color: var(--dim2); border: 1px solid rgba(244,114,182,0.35); }
   .dim-badge.d3 { background: rgba(251,146,60,0.15);  color: var(--dim3); border: 1px solid rgba(251,146,60,0.35); }
   .dim-badge.d4 { background: rgba(167,139,250,0.15); color: var(--dim4); border: 1px solid rgba(167,139,250,0.35); }
+  .dim-badge.d5 { background: rgba(248,113,113,0.15); color: var(--red);  border: 1px solid rgba(248,113,113,0.35); }
 
   .eid-range-badge { display: inline-flex; align-items: center; gap: 2px; border-radius: 4px; padding: 2px 6px; font-family: 'Share Tech Mono', monospace; font-size: 10px; border: 1px solid; }
   .eid-range-badge.exact { font-weight: 700; font-size: 11px; }
@@ -145,6 +147,7 @@
   .group-label-2 { color: var(--dim2); }
   .group-label-3 { color: var(--dim3); }
   .group-label-4 { color: var(--dim4); }
+  .group-label-5 { color: var(--red); }
 
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
   .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
@@ -203,7 +206,7 @@
     <div class="header-left">
       <div class="header-badge">Anomaly</div>
       <h1>Anomaly <span id="versionHeaderLabel">4.3.2</span> Archetypes</h1>
-      <div class="header-sub">FLOORS 0–4 · ENDGAME ANALYTICS · ARCHETYPE USAGE &amp; PERFORMANCE</div>
+      <div class="header-sub">FLOORS 0–4 + HARD · ENDGAME ANALYTICS · ARCHETYPE USAGE &amp; PERFORMANCE</div>
     </div>
     <div class="header-meta">
       <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Archetypes</div></div>
@@ -239,6 +242,8 @@
         <button class="btn-toggle dim-3 active" data-dim="3">F3</button>
         
         <button class="btn-toggle dim-4 active" data-dim="4">F4</button>
+        
+        <button class="btn-toggle dim-5 active" data-dim="5">F5*</button>
         
       </div>
     </div>
@@ -308,7 +313,7 @@ const ICONS            = {"The Herta": "assets/icons/the_herta.webp", "Lightning
 const DIM_FIELD        = 'floor';
 const DIM_LABEL        = 'Floor';
 const MODE_LABEL       = 'Anomaly';
-const DIM_GROUP_LABELS = {"0": "FLOOR 0", "1": "FLOOR 1", "2": "FLOOR 2", "3": "FLOOR 3", "4": "FLOOR 4"};
+const DIM_GROUP_LABELS = {"0": "FLOOR 0", "1": "FLOOR 1", "2": "FLOOR 2", "3": "FLOOR 3", "4": "FLOOR 4", "5": "FLOOR 5 (HARD)"};
 
 // ---- Virtual scroll config ----
 const ROW_H      = 44;   // px — matches td padding (9px×2 + ~26px content)

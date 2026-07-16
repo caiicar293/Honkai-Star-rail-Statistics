@@ -167,12 +167,12 @@ class DashboardGenerator:
             "duo_table": "anomaly_stats_duos",
             "mode_label": "Anomaly",
             "full_name": "Anomaly Arbitration",
-            "subtitle": "FLOORS 0–4",
+            "subtitle": "FLOORS 0–4 + HARD",
             "dim_field": "floor",
             "dim_label": "Floor",
-            "dim_values": [0, 1, 2, 3, 4],
-            "dim_group_labels": {0: "FLOOR 0", 1: "FLOOR 1", 2: "FLOOR 2", 3: "FLOOR 3", 4: "FLOOR 4"},
-            "dim_btn_label": lambda d: f"F{d}",
+            "dim_values": [0, 1, 2, 3, 4, 5],
+            "dim_group_labels": {0: "FLOOR 0", 1: "FLOOR 1", 2: "FLOOR 2", 3: "FLOOR 3", 4: "FLOOR 4", 5: "FLOOR 5 (HARD)"},
+            "dim_btn_label": lambda d: f"F{d}" if d != 5 else "F5*",
             "is_legacy": False,
         }
     }

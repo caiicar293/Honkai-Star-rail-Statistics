@@ -81,6 +81,7 @@ class HonkaiDataPlatform:
                 "era":         "MODERN",
                 "hard_mode":   True,
                 "floor_label": 5,
+                "db_mode":     "ANOMALY_COST",
             },
         }
 
@@ -157,6 +158,7 @@ class HonkaiDataPlatform:
                 "era":         "MODERN",
                 "hard_mode":   True,
                 "floor_label": 5,
+                "db_mode":     "ANOMALY",
             },
         }
 
@@ -378,6 +380,10 @@ class HonkaiDataPlatform:
         # of leaving it as-is (which is what happens by default).
         force_floor = "floor_label" in cfg
         f_out = cfg.get("floor_label", f)
+        # db_mode lets a config's DB-written 'mode' literal differ from its own
+        # orchestration key — kept consistent with the modern-stats pass, though
+        # the by-cost tables aren't currently filtered on 'mode' downstream.
+        db_mode = cfg.get("db_mode", mode)
 
         print(f"  [COST] {mode} mode={m_arg} v=all nodes/floors=all hard_mode={hard_mode}")
         try:
@@ -395,28 +401,28 @@ class HonkaiDataPlatform:
 
         # Per-node/floor tables
         self._db_save(conn,
-            self._standardize(scraper.get_teams_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
+            self._standardize(scraper.get_teams_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_teams")
         self._db_save(conn,
-            self._standardize(scraper.get_archetypes_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
+            self._standardize(scraper.get_archetypes_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_archetypes")
         self._db_save(conn,
-            self._standardize(scraper.get_chars_by_cost_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
+            self._standardize(scraper.get_chars_by_cost_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_chars")
         self._db_save(conn,
-            self._standardize(scraper.get_chars_by_individual_eidolons_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
+            self._standardize(scraper.get_chars_by_individual_eidolons_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_chars_by_eidolon")
         self._db_save(conn,
-            self._standardize(scraper.get_duos_stats(), mode, v, e, f_out, n, era, force_floor=force_floor),
+            self._standardize(scraper.get_duos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_duos")
 
         # Combined (cross-node) tables
         print(f"  [COST] Combined tables for {mode}")
         self._db_save(conn,
-            self._standardize(scraper.get_combined_team_df(), mode, v, e, f_out, "Both", era, force_floor=force_floor),
+            self._standardize(scraper.get_combined_team_df(), db_mode, v, e, f_out, "Both", era, force_floor=force_floor),
             f"{prefix}_by_cost_dual_or_triple_teams")
         self._db_save(conn,
-            self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f_out, "Both", era, force_floor=force_floor),
+            self._standardize(scraper.get_combined_archetype_df(), db_mode, v, e, f_out, "Both", era, force_floor=force_floor),
             f"{prefix}_by_cost_dual_or_triple_archetypes")
 
     # ------------------------------------------------------------------
@@ -430,6 +436,11 @@ class HonkaiDataPlatform:
         # of leaving it as-is (which is what happens by default).
         force_floor = "floor_label" in cfg
         f_out = cfg.get("floor_label", f)
+        # db_mode lets a config's DB-written 'mode' literal differ from its own
+        # orchestration key — e.g. ANOMALY_HARD is a distinct config for scraper
+        # setup, but its rows still need mode="ANOMALY" so they show up alongside
+        # the rest of the anomaly section (distinguished only by floor=5).
+        db_mode = cfg.get("db_mode", mode)
         print(f"  [MODERN] {mode} v={v} e={e} floor={f} node={n}")
         try:
             scraper = self._build_modern_scraper(cfg, v, e, f, n)
@@ -440,24 +451,24 @@ class HonkaiDataPlatform:
         prefix = cfg["prefix"]
 
         self._db_save(conn,
-            self._standardize(scraper.get_char_df(), mode, v, e, f_out, n, era, is_char=True, force_floor=force_floor),
+            self._standardize(scraper.get_char_df(), db_mode, v, e, f_out, n, era, is_char=True, force_floor=force_floor),
             "character_stats")
         self._db_save(conn,
-            self._standardize(scraper.get_archetype_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
+            self._standardize(scraper.get_archetype_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_archetypes")
         self._db_save(conn,
-            self._standardize(scraper.get_eidolon_performance_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
+            self._standardize(scraper.get_eidolon_performance_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_eidolon_performance")
         self._db_save(conn,
-            self._standardize(scraper.get_team_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
+            self._standardize(scraper.get_team_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_teams")
         self._db_save(conn,
-            self._standardize(scraper.get_duos_stats(), mode, v, e, f_out, n, era, force_floor=force_floor),
+            self._standardize(scraper.get_duos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_duos")
         self._db_save(conn,
             self._standardize(
                 scraper.plot_statistics_all(cumulative=True, output=False),
-                mode, v, e, f_out, n, era, force_floor=force_floor),
+                db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_distributions")
 
         # For non-ANOMALY: combined triggers on node=0/"all"
@@ -476,21 +487,21 @@ class HonkaiDataPlatform:
             suffix = "dual_or_triple" if not is_anomaly_family else "triple"
             print(f"  [MODERN] Combined {suffix.upper()} for {mode} v={v} e={e}")
             self._db_save(conn,
-                self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f_out, label, era, force_floor=force_floor),
+                self._standardize(scraper.get_combined_archetype_df(), db_mode, v, e, f_out, label, era, force_floor=force_floor),
                 f"{prefix}_stats_{suffix}_archetypes")
             self._db_save(conn,
-                self._standardize(scraper.get_combined_team_df(), mode, v, e, f_out, label, era, force_floor=force_floor),
+                self._standardize(scraper.get_combined_team_df(), db_mode, v, e, f_out, label, era, force_floor=force_floor),
                 f"{prefix}_stats_{suffix}_teams")
             self._db_save(conn,
                 self._standardize(
                     scraper.plot_statistics_all_combined(cumulative=True, output=False),
-                    mode, v, e, f_out, label, era, force_floor=force_floor),
+                    db_mode, v, e, f_out, label, era, force_floor=force_floor),
                 f"{prefix}_stats_{suffix}_distributions")
 
         if gear_trigger:
             print(f"  [MODERN] Gear for {mode} v={v} e={e}")
             self._db_save(conn,
-                self._standardize(scraper.display_top_gear(), mode, v, e, f_out, n, era, force_floor=force_floor),
+                self._standardize(scraper.display_top_gear(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
                 f"{prefix}_stats_gear_usage")
 
     # ------------------------------------------------------------------
@@ -721,6 +732,6 @@ class HonkaiDataPlatform:
 if __name__ == "__main__":
     platform = HonkaiDataPlatform()
     # Default — both use all_at_once
-    platform.orchestrate_update(target_mode="ANOMALY_HARD",modern_strategy="all_at_once")
+    platform.orchestrate_update(target_mode="ANOMALY",modern_strategy="all_at_once")
 
     

@@ -234,7 +234,7 @@ def _update_manifest(manifest_path, game_mode, eidolon_range_key, recency_tag, r
 
 
 if __name__ == "__main__":
-    for game_mode in ["PURE_FICTION", "ANOMALY_F0", "ANOMALY_F4", "APOC","MOC"]:
+    for game_mode in ["PURE_FICTION", "ANOMALY_F0", "ANOMALY_F4","ANOMALY_F5", "APOC","MOC"]:
         for is_recent in [True, False]:
             eidolons = [0,1,2,6]
             for at_eidolon in range(len(eidolons)):

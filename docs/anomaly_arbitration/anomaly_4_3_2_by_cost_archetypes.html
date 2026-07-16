@@ -57,6 +57,7 @@
   .btn-toggle.dim-2.active { background: rgba(244,114,182,0.12); border-color: var(--dim2); color: var(--dim2); }
   .btn-toggle.dim-3.active { background: rgba(251,146,60,0.12);  border-color: var(--dim3); color: var(--dim3); }
   .btn-toggle.dim-4.active { background: rgba(167,139,250,0.12); border-color: var(--dim4); color: var(--dim4); }
+  .btn-toggle.dim-5.active { background: rgba(248,113,113,0.12); border-color: var(--red); color: var(--red); }
 
   .btn-toggle.meid.e0.active { border-color: var(--e0);    color: var(--e0);    background: rgba(148,163,184,0.08); }
   .btn-toggle.meid.e1.active { border-color: var(--e1);    color: var(--e1);    background: rgba(74,222,128,0.07); }
@@ -132,6 +133,7 @@
   .dim-badge.d2 { background: rgba(244,114,182,0.15); color: var(--dim2); border: 1px solid rgba(244,114,182,0.35); }
   .dim-badge.d3 { background: rgba(251,146,60,0.15);  color: var(--dim3); border: 1px solid rgba(251,146,60,0.35); }
   .dim-badge.d4 { background: rgba(167,139,250,0.15); color: var(--dim4); border: 1px solid rgba(167,139,250,0.35); }
+  .dim-badge.d5 { background: rgba(248,113,113,0.15); color: var(--red);  border: 1px solid rgba(248,113,113,0.35); }
 
   .cost-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 5px; padding: 3px 8px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid rgba(45,212,191,0.35); background: rgba(45,212,191,0.07); color: var(--teal); white-space: nowrap; }
   .cost-badge .cost-sep { color: var(--text3); font-size: 9px; }
@@ -180,6 +182,7 @@
   .group-label-2 { color: var(--dim2); }
   .group-label-3 { color: var(--dim3); }
   .group-label-4 { color: var(--dim4); }
+  .group-label-5 { color: var(--red); }
 
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
   .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
@@ -238,7 +241,7 @@
     <div class="header-left">
       <div class="header-badge">Anomaly · By Cost</div>
       <h1>Anomaly <span id="versionHeaderLabel">4.3.2</span> By-Cost Archetypes</h1>
-      <div class="header-sub">FLOORS 0–4 · ENDGAME ANALYTICS · COST BRACKET ARCHETYPE PERFORMANCE</div>
+      <div class="header-sub">FLOORS 0–4 + HARD · ENDGAME ANALYTICS · COST BRACKET ARCHETYPE PERFORMANCE</div>
     </div>
     <div class="header-meta">
       <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Archetypes</div></div>
@@ -274,6 +277,8 @@
         <button class="btn-toggle dim-3 active" data-dim="3">F3</button>
         
         <button class="btn-toggle dim-4 active" data-dim="4">F4</button>
+        
+        <button class="btn-toggle dim-5 active" data-dim="5">F5*</button>
         
       </div>
     </div>
@@ -362,7 +367,7 @@
 const ICONS            = {"The Herta": "assets/icons/the_herta.webp", "Lightning Trailblazer": "assets/icons/lightning_trailblazer.webp", "Ice Trailblazer": "assets/icons/ice_trailblazer.webp", "Imaginary Trailblazer": "assets/icons/imaginary_trailblazer.webp", "Physical Trailblazer": "assets/icons/physical_trailblazer.webp", "Fire Trailblazer": "assets/icons/fire_trailblazer.webp", "Hyacine": "assets/icons/hyacine.webp", "Phainon": "assets/icons/phainon.webp", "Castorice": "assets/icons/castorice.webp", "Cipher": "assets/icons/cipher.webp", "Anaxa": "assets/icons/anaxa.webp", "Mydei": "assets/icons/mydei.webp", "Tribbie": "assets/icons/tribbie.webp", "Hysilens": "assets/icons/hysilens.webp", "The Dahlia": "assets/icons/the_dahlia.webp", "Ruan Mei": "assets/icons/ruan_mei.webp", "Sunday": "assets/icons/sunday.webp", "Robin": "assets/icons/robin.webp", "Acheron": "assets/icons/acheron.webp", "Black Swan": "assets/icons/black_swan.webp", "Sparkle": "assets/icons/sparkle.webp", "Aglaea": "assets/icons/aglaea.webp", "Boothill": "assets/icons/boothill.webp", "Jade": "assets/icons/jade.webp", "Firefly": "assets/icons/firefly.webp", "Rappa": "assets/icons/rappa.webp", "Jingliu": "assets/icons/jingliu.webp", "Yunli": "assets/icons/yunli.webp", "Kafka": "assets/icons/kafka.webp", "Dan Heng • Permansor Terrae": "assets/icons/dan_heng_permansor_terrae.webp", "Cerydra": "assets/icons/cerydra.webp", "Guinaifen": "assets/icons/guinaifen.webp", "Feixiao": "assets/icons/feixiao.webp", "Dr. Ratio": "assets/icons/dr_ratio.webp", "Aventurine": "assets/icons/aventurine.webp", "Fu Xuan": "assets/icons/fu_xuan.webp", "Luocha": "assets/icons/luocha.webp", "Topaz & Numby": "assets/icons/topaz_numby.webp", "Seele": "assets/icons/seele.webp", "Bronya": "assets/icons/bronya.webp", "Silver Wolf": "assets/icons/silver_wolf.webp", "Jing Yuan": "assets/icons/jing_yuan.webp", "Gepard": "assets/icons/gepard.webp", "Yanqing": "assets/icons/yanqing.webp", "Cyrene": "assets/icons/cyrene.webp", "Evernight": "assets/icons/evernight.webp", "Huohuo": "assets/icons/huohuo.webp", "Blade": "assets/icons/blade.webp", "Dan Heng • Imbibitor Lunae": "assets/icons/dan_heng_imbibitor_lunae.webp", "Argenti": "assets/icons/argenti.webp", "Lingsha": "assets/icons/lingsha.webp", "Fugue": "assets/icons/fugue.webp", "Clara": "assets/icons/clara.webp", "Dan Heng": "assets/icons/dan_heng.webp", "Sparxie": "assets/icons/sparxie.webp", "Himeko": "assets/icons/himeko.webp", "Jiaoqiu": "assets/icons/jiaoqiu.webp", "Sampo": "assets/icons/sampo.webp", "Luka": "assets/icons/luka.webp", "Imaginary March 7th": "assets/icons/imaginary_march_7th.webp", "Tingyun": "assets/icons/tingyun.webp", "Xueyi": "assets/icons/xueyi.webp", "Welt": "assets/icons/welt.webp", "Bailu": "assets/icons/bailu.webp", "Herta": "assets/icons/herta.webp", "Pela": "assets/icons/pela.webp", "Yukong": "assets/icons/yukong.webp", "Asta": "assets/icons/asta.webp", "Hook": "assets/icons/hook.webp", "Gallagher": "assets/icons/gallagher.webp", "Saber": "assets/icons/saber.webp", "Archer": "assets/icons/archer.webp", "Yao Guang": "assets/icons/yao_guang.webp", "Ashveil": "assets/icons/ashveil.webp", "Qingque": "assets/icons/qingque.webp", "Lynx": "assets/icons/lynx.webp", "Silver Wolf LV.999": "assets/icons/silver_wolf_lv999.webp", "Natasha": "assets/icons/natasha.webp", "Evanescia": "assets/icons/evanescia.webp", "Arlan": "assets/icons/arlan.webp", "Serval": "assets/icons/serval.webp", "Moze": "assets/icons/moze.webp", "Misha": "assets/icons/misha.webp", "Sushang": "assets/icons/sushang.webp", "Hanya": "assets/icons/hanya.webp", "Mortenax Blade": "assets/icons/mortenax_blade.webp", "Ice March 7th": "assets/icons/ice_march_7th.webp"};
 const DIM_FIELD        = 'floor';
 const DIM_LABEL        = 'Floor';
-const DIM_GROUP_LABELS = {"0": "FLOOR 0", "1": "FLOOR 1", "2": "FLOOR 2", "3": "FLOOR 3", "4": "FLOOR 4"};
+const DIM_GROUP_LABELS = {"0": "FLOOR 0", "1": "FLOOR 1", "2": "FLOOR 2", "3": "FLOOR 3", "4": "FLOOR 4", "5": "FLOOR 5 (HARD)"};
 const ROW_H      = 46;
 const OVERSCAN   = 6;
 const VIEWPORT_H = 600;

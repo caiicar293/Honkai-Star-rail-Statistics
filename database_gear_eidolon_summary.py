@@ -59,6 +59,15 @@ class HonkaiGearEidolonSummaryAnalyzer:
                 "median_col": "Median_Score",
                 "min_col":    "Min_Score",
             },
+            {
+                "mode":       "ANOMALY_F5",
+                "table":      "anomaly_stats_gear_usage",
+                "floors":     [5],
+                "node_col":   None,
+                "node_val":   None,
+                "median_col": "Median_Score",
+                "min_col":    "Min_Score",
+            },
         ]
 
         # ── Eidolon-performance tasks ────────────────────────────────────────────
@@ -103,6 +112,14 @@ class HonkaiGearEidolonSummaryAnalyzer:
                 "mode":      "ANOMALY_F4",
                 "table":     "anomaly_stats_eidolon_performance",
                 "floors":    [4],
+                "node_col":  None,
+                "node_val":  None,
+                "score_col": "Avg_Cycles",
+            },
+            {
+                "mode":      "ANOMALY_F5",
+                "table":     "anomaly_stats_eidolon_performance",
+                "floors":    [5],
                 "node_col":  None,
                 "node_val":  None,
                 "score_col": "Avg_Cycles",

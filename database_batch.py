@@ -70,6 +70,18 @@ class HonkaiDataPlatform:
                 "has_node": False,
                 "era":      "MODERN",
             },
+            # ---- Hard-mode anomaly, floor 4 (stored as floor=5 to avoid colliding
+            #      with the normal, non-hard floor=4 rows) ---------------------
+            "ANOMALY_HARD_COST": {
+                "mode_arg":    "anomaly",
+                "prefix":      "anomaly",
+                "versions":    get_env_list("ANOMALY_VERSIONS"),
+                "floor":       4,
+                "has_node":    False,
+                "era":         "MODERN",
+                "hard_mode":   True,
+                "floor_label": 5,
+            },
         }
 
         self.config = {
@@ -133,6 +145,18 @@ class HonkaiDataPlatform:
                 "floor":    0,
                 "has_node": False,
                 "era":      "MODERN",
+            },
+            # ---- Hard-mode anomaly, floor 4 (stored as floor=5 to avoid colliding
+            #      with the normal, non-hard floor=4 rows) ---------------------
+            "ANOMALY_HARD": {
+                "class":       HonkaiStatistics_V2_Anomaly_Batch,
+                "prefix":      "anomaly",
+                "versions":    get_env_list("ANOMALY_VERSIONS"),
+                "floor":       4,
+                "has_node":    False,
+                "era":         "MODERN",
+                "hard_mode":   True,
+                "floor_label": 5,
             },
         }
 
@@ -215,7 +239,7 @@ class HonkaiDataPlatform:
             return None
 
     # ------------------------------------------------------------------
-    def _standardize(self, df, mode, v, e, f, n, era, is_char=False):
+    def _standardize(self, df, mode, v, e, f, n, era, is_char=False, force_floor=False):
         if df is None or not isinstance(df, pl.DataFrame) or df.is_empty():
             return None
 
@@ -235,7 +259,7 @@ class HonkaiDataPlatform:
         rename_dict = {k: v2 for k, v2 in self.rename_map.items() if k in df.columns}
         df = df.rename(rename_dict)
 
-        node_val = None if (n is None or mode == "ANOMALY") else str(n)
+        node_val = None if (n is None or mode in ("ANOMALY", "ANOMALY_HARD")) else str(n)
 
         # 1. Map out all the potential literal columns you want to add
         potential_cols = {
@@ -248,12 +272,15 @@ class HonkaiDataPlatform:
             'node': pl.lit(node_val, dtype=pl.Utf8),
         }
 
-        # 2. Filter the dictionary to only include keys NOT already in df.columns
-        # (This works perfectly for both pl.DataFrame and pl.LazyFrame)
+        # 2. Filter the dictionary to only include keys NOT already in df.columns.
+        # EXCEPTION: 'floor' is force-overwritten when force_floor=True — the scraper
+        # already returns a real 'floor' column (e.g. the actual queried floor=4 for
+        # hard-mode anomaly), but we want to relabel it (e.g. to floor=5) so it
+        # doesn't collide with the normal, non-hard rows for that same real floor.
         missing_cols = [
             expr.alias(col_name) 
             for col_name, expr in potential_cols.items() 
-            if col_name not in df.columns
+            if col_name not in df.columns or (col_name == 'floor' and force_floor)
         ]
 
         # 3. Only apply with_columns if there's actually something missing
@@ -310,10 +337,13 @@ class HonkaiDataPlatform:
     # ------------------------------------------------------------------
     def _build_modern_scraper(self, cfg, v, e, f, n):
         cls = cfg["class"]
+        kwargs = {}
+        if "hard_mode" in cfg:
+            kwargs["hard_mode"] = cfg["hard_mode"]
         if cfg["has_node"]:
-            return cls(version=v, floor=f, by_ed=e, node=n)
+            return cls(version=v, floor=f, by_ed=e, node=n, **kwargs)
         else:
-            return cls(version=v, floor=f, by_ed=e)
+            return cls(version=v, floor=f, by_ed=e, **kwargs)
 
     def _build_legacy_scraper(self, cfg, v, f, n):
         cls      = cfg["class"]
@@ -326,17 +356,30 @@ class HonkaiDataPlatform:
     # ------------------------------------------------------------------
     def _process_cost(self, conn, mode, cfg):
         """Run the cost-stratified batch for one mode (all versions, all nodes/floors)."""
-        era    = "MODERN"
-        prefix = cfg["prefix"]
-        m_arg  = cfg["mode_arg"]
-        f      = cfg["floor"]
+        era       = "MODERN"
+        prefix    = cfg["prefix"]
+        m_arg     = cfg["mode_arg"]
+        f         = cfg["floor"]
+        hard_mode = cfg.get("hard_mode", False)
         # Always all versions, all nodes/floors
         v = "all"
         n = "all" if cfg["has_node"] else None
-        floor_arg = "all" if m_arg == "anomaly" else f
+        # Hard-mode anomaly pass targets one specific floor (e.g. 4), so it
+        # should NOT be widened to "all" the way the normal anomaly pass is.
+        if hard_mode:
+            floor_arg = f
+        else:
+            floor_arg = "all" if m_arg == "anomaly" else f
         e = "all"   # eidolon sentinel — cost scraper handles eidolon internally
+        # floor_label lets us write a different floor value into the DB than the
+        # one used to query the data (e.g. hard-mode floor 4 stored as floor 5,
+        # so it doesn't collide with the normal, non-hard floor=4 rows). force_floor
+        # tells _standardize to overwrite the scraper's own 'floor' column instead
+        # of leaving it as-is (which is what happens by default).
+        force_floor = "floor_label" in cfg
+        f_out = cfg.get("floor_label", f)
 
-        print(f"  [COST] {mode} mode={m_arg} v=all nodes/floors=all")
+        print(f"  [COST] {mode} mode={m_arg} v=all nodes/floors=all hard_mode={hard_mode}")
         try:
             scraper = HonkaiStatistics_V2_eidolon_batch(
                 version=v,
@@ -344,6 +387,7 @@ class HonkaiDataPlatform:
                 node=n if n is not None else 0,
                 by_ed=None,
                 mode=m_arg,
+                hard_mode=hard_mode,
             )
         except Exception as ex:
             print(f"  !!! Cost scraper init failed for {mode}: {ex}")
@@ -351,33 +395,41 @@ class HonkaiDataPlatform:
 
         # Per-node/floor tables
         self._db_save(conn,
-            self._standardize(scraper.get_teams_df(), mode, v, e, f, n, era),
+            self._standardize(scraper.get_teams_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_teams")
         self._db_save(conn,
-            self._standardize(scraper.get_archetypes_df(), mode, v, e, f, n, era),
+            self._standardize(scraper.get_archetypes_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_archetypes")
         self._db_save(conn,
-            self._standardize(scraper.get_chars_by_cost_df(), mode, v, e, f, n, era),
+            self._standardize(scraper.get_chars_by_cost_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_chars")
         self._db_save(conn,
-            self._standardize(scraper.get_chars_by_individual_eidolons_df(), mode, v, e, f, n, era),
+            self._standardize(scraper.get_chars_by_individual_eidolons_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_chars_by_eidolon")
         self._db_save(conn,
-            self._standardize(scraper.get_duos_stats(), mode, v, e, f, n, era),
+            self._standardize(scraper.get_duos_stats(), mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_duos")
 
         # Combined (cross-node) tables
         print(f"  [COST] Combined tables for {mode}")
         self._db_save(conn,
-            self._standardize(scraper.get_combined_team_df(), mode, v, e, f, "Both", era),
+            self._standardize(scraper.get_combined_team_df(), mode, v, e, f_out, "Both", era, force_floor=force_floor),
             f"{prefix}_by_cost_dual_or_triple_teams")
         self._db_save(conn,
-            self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, "Both", era),
+            self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f_out, "Both", era, force_floor=force_floor),
             f"{prefix}_by_cost_dual_or_triple_archetypes")
 
     # ------------------------------------------------------------------
     def _process_modern(self, conn, mode, cfg, v, e, f, n, eidolons):
         era = "MODERN"
+        is_anomaly_family = mode in ("ANOMALY", "ANOMALY_HARD")
+        # floor_label lets us write a different floor value into the DB than the
+        # one used to query the data (e.g. hard-mode floor 4 stored as floor 5,
+        # so it doesn't collide with the normal, non-hard floor=4 rows). force_floor
+        # tells _standardize to overwrite the scraper's own 'floor' column instead
+        # of leaving it as-is (which is what happens by default).
+        force_floor = "floor_label" in cfg
+        f_out = cfg.get("floor_label", f)
         print(f"  [MODERN] {mode} v={v} e={e} floor={f} node={n}")
         try:
             scraper = self._build_modern_scraper(cfg, v, e, f, n)
@@ -388,29 +440,31 @@ class HonkaiDataPlatform:
         prefix = cfg["prefix"]
 
         self._db_save(conn,
-            self._standardize(scraper.get_char_df(), mode, v, e, f, n, era, is_char=True),
+            self._standardize(scraper.get_char_df(), mode, v, e, f_out, n, era, is_char=True, force_floor=force_floor),
             "character_stats")
         self._db_save(conn,
-            self._standardize(scraper.get_archetype_df(), mode, v, e, f, n, era),
+            self._standardize(scraper.get_archetype_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_archetypes")
         self._db_save(conn,
-            self._standardize(scraper.get_eidolon_performance_df(), mode, v, e, f, n, era),
+            self._standardize(scraper.get_eidolon_performance_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_eidolon_performance")
         self._db_save(conn,
-            self._standardize(scraper.get_team_df(), mode, v, e, f, n, era),
+            self._standardize(scraper.get_team_df(), mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_teams")
         self._db_save(conn,
-            self._standardize(scraper.get_duos_stats(), mode, v, e, f, n, era),
+            self._standardize(scraper.get_duos_stats(), mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_duos")
         self._db_save(conn,
             self._standardize(
                 scraper.plot_statistics_all(cumulative=True, output=False),
-                mode, v, e, f, n, era),
+                mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_distributions")
 
         # For non-ANOMALY: combined triggers on node=0/"all"
-        # For ANOMALY:     combined triggers on floor=0/"all" (floor is the equivalent axis)
-        if mode == "ANOMALY":
+        # For ANOMALY family: combined triggers on floor=0/"all" (floor is the equivalent axis).
+        # Hard-mode anomaly (floor=4, hard_mode=True) is a single fixed floor, so it
+        # never triggers the triple-floor combined pass, only the gear pass.
+        if is_anomaly_family:
             combined_trigger = f in (0, "all")
             gear_trigger     = f in (0, 4, "all")
         else:
@@ -418,25 +472,25 @@ class HonkaiDataPlatform:
             gear_trigger     = n in (0, "all")
 
         if combined_trigger:
-            label  = "Both" if mode != "ANOMALY" else None
-            suffix = "dual_or_triple" if mode != "ANOMALY" else "triple"
+            label  = "Both" if not is_anomaly_family else None
+            suffix = "dual_or_triple" if not is_anomaly_family else "triple"
             print(f"  [MODERN] Combined {suffix.upper()} for {mode} v={v} e={e}")
             self._db_save(conn,
-                self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, label, era),
+                self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f_out, label, era, force_floor=force_floor),
                 f"{prefix}_stats_{suffix}_archetypes")
             self._db_save(conn,
-                self._standardize(scraper.get_combined_team_df(), mode, v, e, f, label, era),
+                self._standardize(scraper.get_combined_team_df(), mode, v, e, f_out, label, era, force_floor=force_floor),
                 f"{prefix}_stats_{suffix}_teams")
             self._db_save(conn,
                 self._standardize(
                     scraper.plot_statistics_all_combined(cumulative=True, output=False),
-                    mode, v, e, f, label, era),
+                    mode, v, e, f_out, label, era, force_floor=force_floor),
                 f"{prefix}_stats_{suffix}_distributions")
 
         if gear_trigger:
             print(f"  [MODERN] Gear for {mode} v={v} e={e}")
             self._db_save(conn,
-                self._standardize(scraper.display_top_gear(), mode, v, e, f, n, era),
+                self._standardize(scraper.display_top_gear(), mode, v, e, f_out, n, era, force_floor=force_floor),
                 f"{prefix}_stats_gear_usage")
 
     # ------------------------------------------------------------------
@@ -667,6 +721,6 @@ class HonkaiDataPlatform:
 if __name__ == "__main__":
     platform = HonkaiDataPlatform()
     # Default — both use all_at_once
-    platform.orchestrate_update()
+    platform.orchestrate_update(target_mode="ANOMALY_HARD",modern_strategy="all_at_once")
 
     

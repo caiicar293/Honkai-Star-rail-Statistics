@@ -50,6 +50,14 @@ class HonkaiTeamMetaAnalyzer:
                 "node_col":  None,
                 "node_val":  None,
             },
+            {
+                "mode":      "ANOMALY_F5",
+                "table":     "anomaly_stats_teams",
+                "floors":    [5],
+                "perf":      "MIN",
+                "node_col":  None,
+                "node_val":  None,
+            },
         ]
 
     @staticmethod

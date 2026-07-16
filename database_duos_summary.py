@@ -50,6 +50,14 @@ class HonkaiDuosSummaryAnalyzer:
                 "node_col":  None,
                 "node_val":  None,
             },
+            {
+                "mode":      "ANOMALY_F5",
+                "table":     "anomaly_stats_duos",
+                "floors":    [5],
+                "perf":      "MIN",
+                "node_col":  None,
+                "node_val":  None,
+            },
         ]
 
     @staticmethod

@@ -60,6 +60,14 @@ class HonkaiCostTeamMetaAnalyzer:
                 "node_col": None,
                 "node_val": None,
             },
+            {
+                "mode":     "ANOMALY_F5",
+                "table":    "anomaly_by_cost_teams",
+                "floors":   [5],
+                "perf":     "MIN",
+                "node_col": None,
+                "node_val": None,
+            },
         ]
 
     # ------------------------------------------------------------------
@@ -260,6 +268,14 @@ class HonkaiCostArchetypeMetaAnalyzer:
                 "mode":     "ANOMALY_F4",
                 "table":    "anomaly_by_cost_archetypes",
                 "floors":   [4],
+                "perf":     "MIN",
+                "node_col": None,
+                "node_val": None,
+            },
+            {
+                "mode":     "ANOMALY_F5",
+                "table":    "anomaly_by_cost_archetypes",
+                "floors":   [5],
                 "perf":     "MIN",
                 "node_col": None,
                 "node_val": None,
@@ -467,6 +483,14 @@ class HonkaiCostCharacterMetaAnalyzer:
                 "mode":     "ANOMALY_F4",
                 "table":    "anomaly_by_cost_chars",
                 "floors":   [4],
+                "perf":     "MIN",
+                "node_col": None,
+                "node_val": None,
+            },
+            {
+                "mode":     "ANOMALY_F5",
+                "table":    "anomaly_by_cost_chars",
+                "floors":   [5],
                 "perf":     "MIN",
                 "node_col": None,
                 "node_val": None,

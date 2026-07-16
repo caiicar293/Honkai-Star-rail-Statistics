@@ -90,7 +90,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
                 for v in versions:
                     stage_lf, char_lf = self._load_data(v)
                     self.lazy_frames.append(stage_lf)
-                    self.char_lazy_frames.append(char_lf)
+                    self.char_lazy_frames.append(char_lf.drop(["phase"] if "phase" in char_lf.collect_schema() else []))
         else:
             stage_lf, char_lf = self._load_data(self.version)
             self.lazy_frames.append(stage_lf)
@@ -122,6 +122,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
                 .str.replace_all(r"\band\b", "&")
                 .str.replace_all(r"^March 7th$", "Ice March 7th"),  # Strict full-string match
             )
+            
         
         # 2. LOAD CHARACTER METADATA
         with open('characters.json', 'rb') as f:

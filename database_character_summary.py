@@ -108,6 +108,13 @@ class CharacterMetaAnalyzer:
                 "node_vals":   [None],
                 "perf":        "MIN",
             },
+            {
+                "mode":        "ANOMALY_HARD_MODE",
+                "display":     "ANOMALY_F5",
+                "floors":      [5],
+                "node_vals":   [None],
+                "perf":        "MIN",
+            },
         ]
 
     # ------------------------------------------------------------------

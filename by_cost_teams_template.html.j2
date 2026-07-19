@@ -264,6 +264,60 @@
   .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
   .empty-state p { font-family: 'Share Tech Mono', monospace; font-size: 13px; }
 
+  /* ROSTER IMPORT */
+  .roster-btn {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--border);
+    color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 8px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .roster-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .roster-btn.has-roster { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.08); }
+
+  .owned-toggle.active { background: rgba(74,222,128,0.10); border-color: var(--green); color: var(--green); }
+
+  .roster-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100; background: rgba(5,8,15,0.75);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .roster-modal-overlay.open { display: flex; }
+  .roster-modal {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px;
+    max-width: 620px; width: 100%; max-height: 90vh; overflow-y: auto;
+    padding: 26px 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); position: relative;
+  }
+  .roster-modal-close {
+    position: absolute; top: 18px; right: 18px; background: none; border: none; color: var(--text3);
+    font-size: 20px; cursor: pointer; line-height: 1; padding: 4px; transition: color 0.15s;
+  }
+  .roster-modal-close:hover { color: var(--text); }
+  .roster-modal h2 { font-family: 'Rajdhani', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .roster-modal-sub { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
+  .roster-modal-sub code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent2); }
+  .roster-modal-sub a { color: var(--accent); text-decoration: none; }
+  .roster-modal-sub a:hover { text-decoration: underline; }
+
+  .roster-step { display: flex; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .roster-step-num { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.4); color: var(--orange); display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 13px; }
+  .roster-step-body { font-size: 13.5px; color: var(--text); line-height: 1.4; }
+  .roster-step-body .roster-step-hint { font-size: 11.5px; color: var(--text3); margin-top: 3px; }
+
+  .roster-dropzone {
+    margin-top: 18px; border: 1.5px dashed var(--border2); border-radius: 8px; padding: 24px;
+    text-align: center; cursor: pointer; transition: all 0.15s; background: var(--panel);
+  }
+  .roster-dropzone:hover, .roster-dropzone.drag-over { border-color: var(--accent); background: rgba(56,189,248,0.05); }
+  .roster-dropzone-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); margin-bottom: 4px; }
+  .roster-dropzone-sub { font-size: 12px; color: var(--text3); }
+  .roster-dropzone-sub code { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'Share Tech Mono', monospace; color: var(--accent2); }
+
+  .roster-status { margin-top: 14px; font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px 12px; border-radius: 6px; display: none; }
+  .roster-status.ok   { display: block; color: var(--green); background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.3); }
+  .roster-status.err  { display: block; color: var(--red);   background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3); }
+
+  .roster-modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 10px; flex-wrap: wrap; }
+  .roster-clear-btn { background: var(--panel); border: 1px solid var(--border); color: var(--red); font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 12.5px; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
+  .roster-clear-btn:hover { border-color: var(--red); background: rgba(248,113,113,0.08); }
+
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg2); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -286,6 +340,10 @@
       <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Teams</div></div>
       <div class="meta-chip"><span class="val" id="visibleSamples">—</span><div class="lbl">Samples</div></div>
       <div class="meta-chip"><span class="val" id="costRangeDisplay">—</span><div class="lbl">Cost Range</div></div>
+      <button class="roster-btn" id="rosterBtn" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span id="rosterBtnLabel">Import Roster</span>
+      </button>
 {% include "_version_switch_html.html.j2" %}
     </div>
   </div>
@@ -319,6 +377,13 @@
       <div class="btn-group">
         <button class="btn-toggle sustain-on active"  id="btnSustainOn">✦ Sustain</button>
         <button class="btn-toggle sustain-off active" id="btnSustainOff">✕ No Sustain</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Roster</div>
+      <div class="btn-group">
+        <button class="btn-toggle owned-toggle" id="btnOwnedOnly" type="button" title="Show only teams where you own every character at a high-enough eidolon">My Characters Only</button>
       </div>
     </div>
 
@@ -414,6 +479,51 @@
     </div>
   </div>
 
+  <div class="roster-modal-overlay" id="rosterModalOverlay">
+    <div class="roster-modal">
+      <button class="roster-modal-close" id="rosterModalClose" aria-label="Close">×</button>
+      <h2>Import Your Roster</h2>
+      <div class="roster-modal-sub">
+        <a href="https://github.com/IceDynamix/reliquary-archiver" target="_blank" rel="noopener">Reliquary Archiver</a> is a free, open-source tool that reads your account data directly from the game. It captures your characters and eidolons — enough for this page to filter down to teams you can actually build. Only the <code>characters</code> section of the export is read; relics, light cones, materials, and gacha history are ignored and never leave your browser.
+      </div>
+
+      <div class="roster-step">
+        <div class="roster-step-num">1</div>
+        <div class="roster-step-body">
+          Download <code>reliquary-archiver-pktmon-x64.exe</code> from the <a href="https://github.com/IceDynamix/reliquary-archiver/releases" target="_blank" rel="noopener">Reliquary Archiver releases page</a>.
+          <div class="roster-step-hint">(the pcap version requires extra software — pktmon works out of the box on Windows 10+)</div>
+        </div>
+      </div>
+      <div class="roster-step">
+        <div class="roster-step-num">2</div>
+        <div class="roster-step-body">
+          Run the <code>.exe</code> and wait until it says "Waiting for login…"
+          <div class="roster-step-hint">Windows or your antivirus may flag it — this is a false positive. Click "More info" → "Run anyway" or add an exception.</div>
+        </div>
+      </div>
+      <div class="roster-step">
+        <div class="roster-step-num">3</div>
+        <div class="roster-step-body">Open Honkai: Star Rail, log in, and enter the game — the archiver captures your data automatically.</div>
+      </div>
+      <div class="roster-step">
+        <div class="roster-step-num">4</div>
+        <div class="roster-step-body">Find the <code>archive_output-*.json</code> file it creates, then upload it below.</div>
+      </div>
+
+      <div class="roster-dropzone" id="rosterDropzone">
+        <div class="roster-dropzone-title">Upload scanner file</div>
+        <div class="roster-dropzone-sub">Click to browse or drag in your <code>archive_output</code> file</div>
+        <input type="file" id="rosterFileInput" accept="application/json,.json" style="display:none;"/>
+      </div>
+
+      <div class="roster-status" id="rosterStatus"></div>
+
+      <div class="roster-modal-footer">
+        <button class="roster-clear-btn" id="rosterClearBtn" style="display:none;">Clear saved roster</button>
+        <div class="picker-panel-hint" style="margin:0;">Stored only in your browser (localStorage) — never uploaded anywhere.</div>
+      </div>
+    </div>
+  </div>
 </div>
 <script>
 const ICONS            = {{ icons_json }};
@@ -480,6 +590,8 @@ let sortAsc       = false;
 // eids === null means "any eidolon" (no narrowing). A non-null Set means only those exact eidolons count.
 let charFilters  = new Map();
 let filteredData = [];
+let OWNED_ROSTER = new Map(); // baseNameLower -> highest owned eidolon (0-6)
+let ownedOnlyActive = false;
 
 function recompute() {
   let candidate;
@@ -520,6 +632,19 @@ function recompute() {
       }
       return true;
     });
+  }
+
+  if (ownedOnlyActive && OWNED_ROSTER.size) {
+    candidate = candidate.filter(r =>
+      r._members.every(m => {
+        const ml = m.toLowerCase();
+        const base = ml.replace(/\s*\(e\d\)/gi,'').trim();
+        const em = ml.match(/\((e\d)\)/i);
+        const required = em ? parseInt(em[1].slice(1)) : 0;
+        const owned = OWNED_ROSTER.get(base);
+        return owned !== undefined && owned >= required;
+      })
+    );
   }
 
   filteredData = candidate;
@@ -888,6 +1013,157 @@ document.getElementById('pickerClearAll').addEventListener('click', () => {
   renderPickerGrid(pickerInput.value.trim());
   recompute();
 });
+
+// ---- Owned roster import (Reliquary Archiver export) ----
+
+const ROSTER_STORAGE_KEY = 'hsr_owned_roster_v1';
+
+function ownedRosterToObj() {
+  const obj = {};
+  OWNED_ROSTER.forEach((eid, base) => { obj[base] = eid; });
+  return obj;
+}
+
+function saveOwnedRoster() {
+  try { localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(ownedRosterToObj())); }
+  catch (e) { console.warn('Could not save roster to localStorage:', e); }
+}
+
+function loadOwnedRoster() {
+  try {
+    const raw = localStorage.getItem(ROSTER_STORAGE_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    OWNED_ROSTER = new Map(Object.entries(obj));
+  } catch (e) { console.warn('Could not load saved roster:', e); }
+}
+
+function updateRosterButtonState() {
+  const btn      = document.getElementById('rosterBtn');
+  const label    = document.getElementById('rosterBtnLabel');
+  const clearBtn = document.getElementById('rosterClearBtn');
+  const count = OWNED_ROSTER.size;
+  if (count > 0) {
+    btn.classList.add('has-roster');
+    label.textContent = count + ' Characters Loaded';
+    clearBtn.style.display = 'inline-block';
+  } else {
+    btn.classList.remove('has-roster');
+    label.textContent = 'Import Roster';
+    clearBtn.style.display = 'none';
+  }
+}
+
+function setRosterStatus(msg, ok) {
+  const el = document.getElementById('rosterStatus');
+  el.textContent = msg;
+  el.className = 'roster-status ' + (ok ? 'ok' : 'err');
+}
+
+function parseRosterFile(text) {
+  const data = JSON.parse(text);
+  if (!data || !Array.isArray(data.characters)) {
+    throw new Error('No "characters" array found — is this a Reliquary Archiver export?');
+  }
+  const map = new Map();
+  data.characters.forEach(c => {
+    if (!c.name) return;
+    // HoYo rich-text markup (e.g. "Silver Wolf LV.<unbreak>999</unbreak>") can leak into
+    // exported strings — strip any <tag>...</tag> wrapper before using the name.
+    const cleanName = String(c.name).replace(/<[^>]+>/g, '').trim();
+    if (!cleanName) return;
+    const base = cleanName.toLowerCase();
+    const eid  = Number.isFinite(c.eidolon) ? c.eidolon : 0;
+    // Keep the highest eidolon seen for a name, just in case of duplicates
+    if (!map.has(base) || map.get(base) < eid) map.set(base, eid);
+  });
+  return expandAmbiguousNames(map);
+}
+
+// Some characters share eidolon investment across multiple dashboard entries but the
+// archiver export only reports one bare name for them (e.g. "March 7th", "Trailblazer").
+// Expand those into every dashboard variant that contains the alias as a substring —
+// e.g. "march 7th" -> "march 7th (preservation)", "march 7th (hunt)", etc.
+const AMBIGUOUS_BASE_NAMES = ['march 7th', 'trailblazer'];
+
+function expandAmbiguousNames(map) {
+  const expanded = new Map(map);
+  AMBIGUOUS_BASE_NAMES.forEach(alias => {
+    if (!map.has(alias)) return;
+    const eid = map.get(alias);
+    BASE_NAME_DISPLAY.forEach((display, base) => {
+      if (base.includes(alias) && (!expanded.has(base) || expanded.get(base) < eid)) {
+        expanded.set(base, eid);
+      }
+    });
+  });
+  return expanded;
+}
+
+function handleRosterFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const map = parseRosterFile(e.target.result);
+      if (map.size === 0) throw new Error('No characters found in that file.');
+      OWNED_ROSTER = map;
+      saveOwnedRoster();
+      updateRosterButtonState();
+      setRosterStatus(`Loaded ${map.size} characters. "My Characters Only" is now active.`, true);
+      ownedOnlyActive = true;
+      document.getElementById('btnOwnedOnly').classList.add('active');
+      recompute();
+    } catch (err) {
+      setRosterStatus('Could not read that file: ' + err.message, false);
+    }
+  };
+  reader.onerror = () => setRosterStatus('Could not read that file.', false);
+  reader.readAsText(file);
+}
+
+const rosterBtn      = document.getElementById('rosterBtn');
+const rosterOverlay  = document.getElementById('rosterModalOverlay');
+const rosterDropzone = document.getElementById('rosterDropzone');
+const rosterFileInput = document.getElementById('rosterFileInput');
+
+rosterBtn.addEventListener('click', () => rosterOverlay.classList.add('open'));
+document.getElementById('rosterModalClose').addEventListener('click', () => rosterOverlay.classList.remove('open'));
+rosterOverlay.addEventListener('click', (e) => { if (e.target === rosterOverlay) rosterOverlay.classList.remove('open'); });
+
+rosterDropzone.addEventListener('click', () => rosterFileInput.click());
+rosterFileInput.addEventListener('change', (e) => handleRosterFile(e.target.files[0]));
+
+rosterDropzone.addEventListener('dragover', (e) => { e.preventDefault(); rosterDropzone.classList.add('drag-over'); });
+rosterDropzone.addEventListener('dragleave', () => rosterDropzone.classList.remove('drag-over'));
+rosterDropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  rosterDropzone.classList.remove('drag-over');
+  handleRosterFile(e.dataTransfer.files[0]);
+});
+
+document.getElementById('rosterClearBtn').addEventListener('click', () => {
+  OWNED_ROSTER = new Map();
+  ownedOnlyActive = false;
+  try { localStorage.removeItem(ROSTER_STORAGE_KEY); } catch (e) {}
+  document.getElementById('btnOwnedOnly').classList.remove('active');
+  updateRosterButtonState();
+  setRosterStatus('Saved roster cleared.', true);
+  recompute();
+});
+
+document.getElementById('btnOwnedOnly').addEventListener('click', () => {
+  if (OWNED_ROSTER.size === 0) {
+    document.getElementById('rosterModalOverlay').classList.add('open');
+    return;
+  }
+  ownedOnlyActive = !ownedOnlyActive;
+  document.getElementById('btnOwnedOnly').classList.toggle('active', ownedOnlyActive);
+  recompute();
+});
+
+loadOwnedRoster();
+updateRosterButtonState();
 
 renderChips();
 

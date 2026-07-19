@@ -1118,51 +1118,85 @@ function setRosterStatus(msg, ok) {
   el.className = 'roster-status ' + (ok ? 'ok' : 'err');
 }
 
+// Ground-truth variant map for characters that share one bare export name across
+// multiple playable forms. Mirrors the Polars mapping used by the DuckDB pipeline.
+// Keys are lowercased (export character name -> export path value -> dashboard name).
+// Path values are matched case-insensitively and accept either the actual HSR Path
+// name (e.g. "Preservation") or the elemental type (e.g. "Ice"), since the archiver
+// and the warehouse don't always agree on which one gets reported.
+//
+// TO ADD A NEW VARIANT (e.g. a future Trailblazer path): add one line to the inner
+// object below, keyed by whatever value the archiver reports in `character.path` for
+// that variant, mapped to the exact display name your dashboard uses. No other code
+// needs to change.
+const VARIANT_PATH_MAP = {
+  'march 7th': {
+    'preservation': 'Ice March 7th',
+    'ice':          'Ice March 7th',
+    'hunt':         'Imaginary March 7th', // archiver reports the raw Path ("Hunt") here, not the element — verify this still matches your Polars pipeline
+    'imaginary':    'Imaginary March 7th',
+  },
+  'trailblazer': {
+    'physical':     'Physical Trailblazer',
+    'destruction':  'Physical Trailblazer',
+    'fire':         'Fire Trailblazer',
+    'preservation': 'Fire Trailblazer',
+    'imaginary':    'Imaginary Trailblazer',
+    'harmony':      'Imaginary Trailblazer',
+    'ice':          'Ice Trailblazer',
+    'remembrance':  'Ice Trailblazer',
+    'lightning':    'Lightning Trailblazer',
+    'erudition':    'Lightning Trailblazer',
+    'elation':      'Lightning Trailblazer', // UNCONFIRMED: archiver reports "Elation" (not a real HSR Path) for this variant — verify against a known Lightning Trailblazer owner before trusting this
+  },
+};
+
+function resolveVariantName(rawName, rawPath) {
+  const table = VARIANT_PATH_MAP[rawName.toLowerCase()];
+  if (!table) return undefined; // not an ambiguous character at all — caller should use rawName as-is
+  return table[String(rawPath || '').toLowerCase()]; // undefined = ambiguous character, but this path isn't mapped yet
+}
+
 function parseRosterFile(text) {
   const data = JSON.parse(text);
   if (!data || !Array.isArray(data.characters)) {
     throw new Error('No "characters" array found — is this a Reliquary Archiver export?');
   }
   const map = new Map();
+  const unresolved = [];
   data.characters.forEach(c => {
     if (!c.name) return;
     // HoYo rich-text markup (e.g. "Silver Wolf LV.<unbreak>999</unbreak>") can leak into
     // exported strings — strip any <tag>...</tag> wrapper before using the name.
     const cleanName = String(c.name).replace(/<[^>]+>/g, '').trim();
     if (!cleanName) return;
-    const base = cleanName.toLowerCase();
-    const eid  = Number.isFinite(c.eidolon) ? c.eidolon : 0;
+    const eid = Number.isFinite(c.eidolon) ? c.eidolon : 0;
+
+    let displayName = cleanName;
+    if (VARIANT_PATH_MAP[cleanName.toLowerCase()]) {
+      const resolved = resolveVariantName(cleanName, c.path);
+      if (resolved) {
+        displayName = resolved;
+      } else {
+        // Known ambiguous character (March 7th / Trailblazer), but this path value
+        // isn't in VARIANT_PATH_MAP yet — likely a new variant the game added.
+        // Don't silently drop or merge it with another variant; keep it under a
+        // clearly-fallback name and surface it so it gets added to the table above.
+        unresolved.push(`${cleanName} (path: ${c.path || 'unknown'})`);
+        displayName = `${c.path || 'Unknown'} ${cleanName}`;
+      }
+    }
+
+    const base = displayName.toLowerCase();
     // Keep the highest eidolon seen for a name, just in case of duplicates
     if (!map.has(base) || map.get(base) < eid) map.set(base, eid);
   });
-  return expandAmbiguousNames(map);
-}
 
-// Some characters share eidolon investment across multiple dashboard entries but the
-// archiver export only reports one bare name for them (e.g. "March 7th", "Trailblazer").
-// Expand those into every dashboard variant that contains the alias as a substring —
-// e.g. "march 7th" -> "march 7th (preservation)", "march 7th (hunt)", etc.
-const AMBIGUOUS_BASE_NAMES = ['march 7th', 'trailblazer'];
+  if (unresolved.length) {
+    console.warn('Unmapped character variant(s) — add these to VARIANT_PATH_MAP:', unresolved);
+  }
 
-function expandAmbiguousNames(map) {
-  const expanded = new Map(map);
-  AMBIGUOUS_BASE_NAMES.forEach(alias => {
-    if (!map.has(alias)) return;
-    const eid = map.get(alias);
-    let foundAny = false;
-    BASE_NAME_DISPLAY.forEach((display, base) => {
-      if (base.includes(alias)) {
-        foundAny = true;
-        if (!expanded.has(base) || expanded.get(base) < eid) expanded.set(base, eid);
-      }
-    });
-    // Drop the bare placeholder now that it's been expanded into real, qualified
-    // dashboard variants — leaving it in double-counts a "character" that was
-    // never actually a filterable entry on its own (the dashboard always tags
-    // element/path, e.g. "Ice March 7th", never a bare "March 7th").
-    if (foundAny) expanded.delete(alias);
-  });
-  return expanded;
+  return { map, unresolved };
 }
 
 function handleRosterFile(file) {
@@ -1170,12 +1204,16 @@ function handleRosterFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
-      const map = parseRosterFile(e.target.result);
+      const { map, unresolved } = parseRosterFile(e.target.result);
       if (map.size === 0) throw new Error('No characters found in that file.');
       OWNED_ROSTER = map;
       saveOwnedRoster();
       updateRosterButtonState();
-      setRosterStatus(`Loaded ${map.size} characters. "My Characters Only" is now active.`, true);
+      let msg = `Loaded ${map.size} characters. "My Characters Only" is now active.`;
+      if (unresolved.length) {
+        msg += ` Heads up: ${unresolved.length} variant(s) weren't recognized (${unresolved.join(', ')}) — they were kept under a fallback name so filtering still works, but flag this for a VARIANT_PATH_MAP update.`;
+      }
+      setRosterStatus(msg, unresolved.length === 0);
       ownedOnlyActive = true;
       document.getElementById('btnOwnedOnly').classList.add('active');
       recompute();

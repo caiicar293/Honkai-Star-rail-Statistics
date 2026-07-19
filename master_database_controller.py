@@ -6,6 +6,7 @@ from database_duos_summary import HonkaiDuosSummaryAnalyzer
 from Appearance_rate_builds import HonkaiStatistics_builds
 from database_by_cost_teams_summary import HonkaiCostArchetypeMetaAnalyzer, HonkaiCostCharacterMetaAnalyzer, HonkaiCostTeamMetaAnalyzer
 from database_character_summary import CharacterMetaAnalyzer
+from database_network_graph import build_network_tables ,build_raw_duo_network_tables
 from database_gear_eidolon_summary import HonkaiGearEidolonSummaryAnalyzer
 platform = HonkaiDataPlatform()
 platform.orchestrate_update(modern_strategy="per_version", legacy_strategy="all_at_once")
@@ -30,10 +31,39 @@ analyzer4 = HonkaiCostArchetypeMetaAnalyzer()
 analyzer4.run_analysis()
 
 
+
 analyzer5 = HonkaiCostCharacterMetaAnalyzer()
 analyzer5.run_analysis()
 processor = StarRailStatsProcessor()
 
+# --- Historical meta ---
+df_meta, meta_graphs = build_network_tables(
+    source_table="duos_meta_summary",
+    dest_table="network_centrality",
+)
+
+# --- Recent meta ---
+df_recent, recent_graphs = build_network_tables(
+    source_table="duos_recent_meta_summary",
+    dest_table="network_centrality_recent",
+)
+
+# --- Raw per-mode _duos tables (version + node granularity) ---
+df_raw, raw_graphs = build_raw_duo_network_tables(
+    dest_table="duos_raw_network_centrality",
+)
+
+print("\n=== network_centrality (head) ===")
+print(df_meta.head(10))
+
+print("\n=== network_centrality_graphs (head) ===")
+print(meta_graphs.head(5))
+
+print("\n=== duos_raw_network_centrality (head) ===")
+print(df_raw.head(10))
+
+print("\n=== duos_raw_network_centrality_graphs (head) ===")
+print(raw_graphs.head(5))
 try:
     # 1. Standard Modes
         processor.process_mode("moc_stats_distributions", "Scores", "node", "DESC", "moc_stats_distributions_summaries")

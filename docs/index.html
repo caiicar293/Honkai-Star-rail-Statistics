@@ -404,6 +404,17 @@
       </a>
     </section>
 
+    <section class="section" aria-label="Dynamic By-Cost Archetype Tier List" style="margin-top: 1.5rem;">
+      <a class="feature-card" id="byCostTierListCard" href="tier_list/by_cost_archetype_tier_list.html" aria-label="Dynamic By-Cost Archetype Tier List">
+        <div class="feature-icon" aria-hidden="true">🎛️</div>
+        <div class="feature-text">
+          <div class="feature-title">Dynamic By-Cost Tier List <span class="new-badge">NEW</span></div>
+          <div class="feature-sub">Cost-bracketed archetype tiers with live-adjustable performance thresholds</div>
+        </div>
+        <div class="feature-arrow" aria-hidden="true">→</div>
+      </a>
+    </section>
+
     <!-- NEW SECTION: Network Graphs -->
     <section class="section" aria-label="Network Graphs" style="margin-top: 1.5rem;">
       <a class="feature-card" id="networkGraphsCard" href="network/index.html" aria-label="Network Graphs Visualizations">
@@ -614,6 +625,7 @@
   animateIn(document.getElementById('techStack'), 270);
   animateIn(document.getElementById('charDbCard'), 280);
   animateIn(document.getElementById('tierListCard'), 280); 
+  animateIn(document.getElementById('byCostTierListCard'), 280);
   animateIn(document.getElementById('networkGraphsCard'), 280); // Added new animation trigger
 
   document.querySelectorAll('.card').forEach((card, i) => {

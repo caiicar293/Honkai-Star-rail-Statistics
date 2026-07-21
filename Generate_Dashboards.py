@@ -50,6 +50,8 @@ class DashboardGenerator:
             "team_table": "moc_stats_teams",
             "cost_archetype_table": "moc_by_cost_archetypes",
             "cost_team_table": "moc_by_cost_teams",
+            "cost_char_table": "moc_by_cost_chars",
+            "cost_char_eidolon_table": "moc_by_cost_chars_by_eidolon",
             "duo_table": "moc_stats_duos",
             "mode_label": "MOC",
             "full_name": "Memory of Chaos",
@@ -106,6 +108,8 @@ class DashboardGenerator:
             "team_table": "apoc_stats_teams",
             "cost_team_table": "apoc_by_cost_teams",
             "cost_archetype_table": "apoc_by_cost_archetypes",
+            "cost_char_table": "apoc_by_cost_chars",
+            "cost_char_eidolon_table": "apoc_by_cost_chars_by_eidolon",
             "duo_table": "apoc_stats_duos",
             "mode_label": "APOC",
             "full_name": "Apocalyptic Shadow",
@@ -126,6 +130,8 @@ class DashboardGenerator:
             "team_table": "pure_fiction_stats_teams",
             "cost_team_table": "pure_fiction_by_cost_teams",
             "cost_archetype_table": "pure_fiction_by_cost_archetypes",
+            "cost_char_table": "pure_fiction_by_cost_chars",
+            "cost_char_eidolon_table": "pure_fiction_by_cost_chars_by_eidolon",
             "duo_table": "pure_fiction_stats_duos",
             "mode_label": "Pure Fiction",
             "full_name": "Pure Fiction",
@@ -164,6 +170,8 @@ class DashboardGenerator:
             "team_table": "anomaly_stats_teams",
             "cost_team_table": "anomaly_by_cost_teams",
             "cost_archetype_table": "anomaly_by_cost_archetypes",
+            "cost_char_table": "anomaly_by_cost_chars",
+            "cost_char_eidolon_table": "anomaly_by_cost_chars_by_eidolon",
             "duo_table": "anomaly_stats_duos",
             "mode_label": "Anomaly",
             "full_name": "Anomaly Arbitration",
@@ -297,6 +305,46 @@ class DashboardGenerator:
             FROM {cfg['cost_archetype_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})
             ORDER BY {dim_field}, estimated_min_cost, max_eidolon, Rank
+        """
+        params = [version] + cfg["dim_values"]
+        return self._clean_rows(self.conn.execute(sql, params))
+
+    def fetch_cost_chars(self, cfg: dict, version: str) -> list[dict]:
+        """By-cost characters: one row per (Character, cost bracket, max_eidolon)
+        combo. Character already encodes its own eidolon, e.g. 'Acheron(E2)'."""
+        dim_field = cfg["dim_field"]
+        placeholders = ", ".join(["?" for _ in cfg["dim_values"]])
+        sql = f"""
+            SELECT
+                Rank, version, estimated_min_cost, estimated_max_cost,
+                {dim_field}, max_eidolon, Character,
+                Appearance_Rate_pct, Samples, Total_Full_Clears,
+                Full_Clear_Rate_pct, Sustain_Samples, Sustain_Percentage,
+                Min_Score, Percentile_25, Median_Score,
+                Percentile_75, Average_Score, Std_Dev, Max_Score
+            FROM {cfg['cost_char_table']}
+            WHERE version = ? AND {dim_field} IN ({placeholders}) AND Character IS NOT NULL
+            ORDER BY {dim_field}, estimated_min_cost, max_eidolon, Rank
+        """
+        params = [version] + cfg["dim_values"]
+        return self._clean_rows(self.conn.execute(sql, params))
+
+    def fetch_cost_chars_by_eidolon(self, cfg: dict, version: str) -> list[dict]:
+        """By-cost characters aggregated purely by (Character, Eidolon) — ignores
+        estimated_min_cost/estimated_max_cost and max_eidolon entirely, and ignores
+        at_eidolon_level/up_to_eidolon_level (constant/irrelevant for this table)."""
+        dim_field = cfg["dim_field"]
+        placeholders = ", ".join(["?" for _ in cfg["dim_values"]])
+        sql = f"""
+            SELECT
+                Rank, version, {dim_field}, Character_Eidolon,
+                Appearance_Rate_pct, Samples, Total_Full_Clears,
+                Full_Clear_Rate_pct, Sustain_Samples, Sustain_Percentage,
+                Min_Score, Percentile_25, Median_Score,
+                Percentile_75, Average_Score, Std_Dev, Max_Score
+            FROM {cfg['cost_char_eidolon_table']}
+            WHERE version = ? AND {dim_field} IN ({placeholders}) AND Character_Eidolon IS NOT NULL
+            ORDER BY {dim_field}, Rank
         """
         params = [version] + cfg["dim_values"]
         return self._clean_rows(self.conn.execute(sql, params))
@@ -471,6 +519,26 @@ class DashboardGenerator:
         else:
             print(f"  [SKIP] No by-cost archetype data found for {mode_key}.")
 
+        # 7. By-Cost Characters
+        cost_char_table = cfg.get("cost_char_table")
+        if cost_char_table and self._has_data(cost_char_table, version):
+            data = self.fetch_cost_chars(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No by-cost character data found for {mode_key}.")
+
+        # 8. By-Cost Characters by Eidolon (cost/max_eidolon-agnostic aggregation)
+        cost_char_eid_table = cfg.get("cost_char_eidolon_table")
+        if cost_char_eid_table and self._has_data(cost_char_eid_table, version):
+            data = self.fetch_cost_chars_by_eidolon(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_by_eidolon_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No by-cost character (by eidolon) data found for {mode_key}.")
+
     def orchestrate_json_generation(self):
         for mode in self.MODE_CONFIG.keys():
             for version in self.MODE_CONFIG[mode]["versions"]:
@@ -606,6 +674,36 @@ class DashboardGenerator:
             print(f"   [SKIP] No by-cost archetype data found for {mode_key}.")
         if cost_arch_table:
             self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_archetypes")
+
+        # 7/8. By-Cost Characters — single page, tab-switchable between the
+        # cost-bracketed view (cost_char_table) and the cost/max-eidolon-agnostic
+        # per-(Character, Eidolon) view (cost_char_eidolon_table).
+        cost_char_table = cfg.get("cost_char_table")
+        cost_char_eid_table = cfg.get("cost_char_eidolon_table")
+        if (
+            cost_char_table and cost_char_eid_table
+            and self._has_data(cost_char_table, version)
+            and self._has_data(cost_char_eid_table, version)
+        ):
+            cost_data = self.fetch_cost_chars(cfg, version)
+            eid_data = self.fetch_cost_chars_by_eidolon(cfg, version)
+            out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_characters.html"
+
+            cost_filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_data.json.br"
+            eid_filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_by_eidolon_data.json.br"
+            self._write_brotli_json(mode_dir, cost_filename, cost_data)
+            self._write_brotli_json(mode_dir, eid_filename, eid_data)
+
+            self.render_file("by_cost_characters_template.html.j2", out_file, {
+                **base_context,
+                "data_filename_cost": cost_filename,
+                "data_filename_eidolon": eid_filename,
+                "page_suffix": "by_cost_characters",
+            })
+        else:
+            print(f"   [SKIP] No by-cost character data found for {mode_key}.")
+        if cost_char_table:
+            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_characters")
 
     def generate_index(self, version: str):
         print(f"\n[INFO] Generating Hub Index for {version}...")

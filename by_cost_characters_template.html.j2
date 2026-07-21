@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{{ mode_label }} {{ version }} — By-Cost Characters</title>
+<link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #090c14; --bg2: #0d1220;
+    --panel: #141c2e; --panel2: #1a2338;
+    --border: #1e2d47; --border2: #243552;
+    --accent: #38bdf8; --accent2: #7dd3fc;
+    --gold: #fbbf24; --teal: #2dd4bf;
+    --purple: #a78bfa; --red: #f87171; --green: #4ade80;
+    --orange: #fb923c;
+    --muted: #4a5d7a;
+    --text: #e2eaf6; --text2: #8fa3c0; --text3: #506070;
+    --dim0: #6366f1; --dim1: #38bdf8; --dim2: #f472b6;
+    --dim3: #fb923c; --dim4: #a78bfa;
+    --e0: #94a3b8; --e1: #4ade80; --e2: #38bdf8; --e6: #fbbf24;
+    --el-fire: #f87171; --el-ice: #93c5fd; --el-lightning: #c084fc;
+    --el-wind: #6ee7b7; --el-quantum: #818cf8; --el-imaginary: #fde68a;
+    --el-physical: #cbd5e1;
+    --emerald: #34d399;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Exo 2', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  .container { position: relative; z-index: 1; max-width: 1800px; margin: 0 auto; padding: 24px; }
+
+  /* HEADER */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); gap: 20px; flex-wrap: wrap; }
+  .header-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.25); border-radius: 4px; padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+  .header-badge::before { content: '●'; font-size: 7px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .header h1 { font-family: 'Rajdhani', sans-serif; font-size: 36px; font-weight: 700; letter-spacing: 0.06em; line-height: 1; }
+  .header h1 span { color: var(--accent); }
+  .header-sub { font-size: 13px; color: var(--text2); margin-top: 5px; font-family: 'Share Tech Mono', monospace; letter-spacing: 0.05em; }
+  .header-meta { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .meta-chip { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; text-align: center; min-width: 90px; }
+  .meta-chip .val { font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700; color: var(--accent); display: block; line-height: 1; }
+  .meta-chip .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; }
+
+  /* TABS */
+  .tab-bar { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .tab-btn {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 0.04em;
+    padding: 10px 18px; border-radius: 8px 8px 0 0; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 8px; border-bottom: 3px solid transparent;
+  }
+  .tab-btn .tab-icon { font-size: 15px; }
+  .tab-btn:hover { color: var(--accent); }
+  .tab-btn.active { color: var(--accent); background: var(--panel2); border-color: var(--border2); border-bottom-color: var(--accent); }
+  .tab-btn.active.eid-tab { border-bottom-color: var(--emerald); color: var(--emerald); }
+  .tab-desc { font-size: 11px; color: var(--text3); font-family: 'Share Tech Mono', monospace; padding: 2px 0 14px; letter-spacing: 0.03em; }
+
+  /* CONTROLS */
+  .controls { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; }
+  .btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
+  .btn-toggle { background: var(--panel); border: 1px solid var(--border); color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 5px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; white-space: nowrap; }
+  .btn-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-toggle.dim-0.active { background: rgba(99,102,241,0.12);  border-color: var(--dim0); color: var(--dim0); }
+  .btn-toggle.dim-1.active { background: rgba(56,189,248,0.12);  border-color: var(--dim1); color: var(--dim1); }
+  .btn-toggle.dim-2.active { background: rgba(244,114,182,0.12); border-color: var(--dim2); color: var(--dim2); }
+  .btn-toggle.dim-3.active { background: rgba(251,146,60,0.12);  border-color: var(--dim3); color: var(--dim3); }
+  .btn-toggle.dim-4.active { background: rgba(167,139,250,0.12); border-color: var(--dim4); color: var(--dim4); }
+  .btn-toggle.dim-5.active { background: rgba(248,113,113,0.12); border-color: var(--red); color: var(--red); }
+
+  .btn-toggle.meid.e0.active { border-color: var(--e0);    color: var(--e0);    background: rgba(148,163,184,0.08); }
+  .btn-toggle.meid.e1.active { border-color: var(--e1);    color: var(--e1);    background: rgba(74,222,128,0.07); }
+  .btn-toggle.meid.e2.active { border-color: var(--e2);    color: var(--e2);    background: rgba(56,189,248,0.08); }
+  .btn-toggle.meid.e3.active { border-color: var(--purple); color: var(--purple); background: rgba(167,139,250,0.08); }
+  .btn-toggle.meid.e4.active { border-color: var(--orange); color: var(--orange); background: rgba(251,146,60,0.08); }
+  .btn-toggle.meid.e5.active { border-color: var(--red);   color: var(--red);   background: rgba(248,113,113,0.08); }
+  .btn-toggle.meid.e6.active { border-color: var(--e6);    color: var(--e6);    background: rgba(251,191,36,0.09); }
+
+  /* Cost panel (cost tab only) */
+  .cost-panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;
+  }
+  .cost-panel-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; width: 100%; margin-bottom: 2px; }
+  .cost-range-group { display: flex; flex-direction: column; gap: 6px; min-width: 200px; flex: 1; }
+  .cost-range-label { font-size: 11px; color: var(--text2); font-family: 'Share Tech Mono', monospace; display: flex; justify-content: space-between; }
+  .cost-range-label span { color: var(--accent); font-weight: 700; }
+  input[type="range"] {
+    -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent) var(--fill, 0%), var(--border2) var(--fill, 0%));
+    outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--bg); cursor: pointer;
+    box-shadow: 0 0 6px rgba(56,189,248,0.5);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%; background: var(--accent);
+    border: 2px solid var(--bg); cursor: pointer; box-shadow: 0 0 6px rgba(56,189,248,0.5);
+  }
+  .cost-presets { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; }
+  .cost-preset-btn {
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text3);
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700;
+    border-radius: 4px; padding: 4px 9px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .cost-preset-btn:hover, .cost-preset-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.07); }
+
+  .search-wrap { position: relative; min-width: 240px; max-width: 400px; flex: 1; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
+  #searchInput { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
+  #searchInput:focus { border-color: var(--accent); }
+  #searchInput::placeholder { color: var(--text3); }
+
+  .results-info { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0 8px; letter-spacing: 0.06em; }
+  .results-info span { color: var(--accent); }
+
+  /* TABLE */
+  .table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); box-shadow: 0 4px 40px rgba(0,0,0,0.4); }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--panel2); border-bottom: 2px solid var(--border2); }
+  th { padding: 11px 12px; text-align: left; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
+  th:hover { color: var(--accent); }
+  th.sorted { color: var(--accent); }
+  th.sorted::after { content: ' ↓'; }
+  th.sorted.asc::after { content: ' ↑'; }
+  th.num { text-align: right; }
+  tbody tr { border-bottom: 1px solid rgba(30,45,71,0.6); transition: background 0.1s; }
+  tbody tr:hover { background: rgba(56,189,248,0.04); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; }
+  td.num { text-align: right; }
+
+  .rank-cell { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); text-align: center; min-width: 36px; }
+  .rank-cell.top3 { color: var(--gold); font-weight: bold; }
+
+  .dim-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; }
+  .dim-badge.d0 { background: rgba(99,102,241,0.2);  color: var(--dim0); border: 1px solid rgba(99,102,241,0.4); }
+  .dim-badge.d1 { background: rgba(56,189,248,0.15);  color: var(--dim1); border: 1px solid rgba(56,189,248,0.35); }
+  .dim-badge.d2 { background: rgba(244,114,182,0.15); color: var(--dim2); border: 1px solid rgba(244,114,182,0.35); }
+  .dim-badge.d3 { background: rgba(251,146,60,0.15);  color: var(--dim3); border: 1px solid rgba(251,146,60,0.35); }
+  .dim-badge.d4 { background: rgba(167,139,250,0.15); color: var(--dim4); border: 1px solid rgba(167,139,250,0.35); }
+  .dim-badge.d5 { background: rgba(248,113,113,0.15); color: var(--red);  border: 1px solid rgba(248,113,113,0.35); }
+
+  .cost-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 5px; padding: 3px 8px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid rgba(45,212,191,0.35); background: rgba(45,212,191,0.07); color: var(--teal); white-space: nowrap; }
+  .cost-badge .cost-sep { color: var(--text3); font-size: 9px; }
+
+  .meid-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+  .meid-badge.e0 { color: var(--e0);    border-color: rgba(148,163,184,0.3); background: rgba(148,163,184,0.07); }
+  .meid-badge.e1 { color: var(--e1);    border-color: rgba(74,222,128,0.3);  background: rgba(74,222,128,0.07); }
+  .meid-badge.e2 { color: var(--e2);    border-color: rgba(56,189,248,0.3);  background: rgba(56,189,248,0.07); }
+  .meid-badge.e3 { color: var(--purple); border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.07); }
+  .meid-badge.e4 { color: var(--orange); border-color: rgba(251,146,60,0.3);  background: rgba(251,146,60,0.07); }
+  .meid-badge.e5 { color: var(--red);   border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.07); }
+  .meid-badge.e6 { color: var(--e6);    border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }
+
+  #particleCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.8; }
+
+  /* Character cell */
+  .char-cell { display: flex; align-items: center; gap: 8px; min-width: 200px; }
+  .char-icon { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border2); object-fit: cover; background: var(--bg2); flex-shrink: 0; }
+  .char-icon-placeholder { width: 30px; height: 30px; border-radius: 50%; background: var(--panel2); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text3); flex-shrink: 0; }
+  .char-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
+  .char-eid-tag { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--gold); margin-left: 4px; }
+
+  .rate-bar-wrap { display: flex; align-items: center; gap: 7px; min-width: 110px; }
+  .rate-bar-bg { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; min-width: 50px; }
+  .rate-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--accent)); }
+  .rate-val { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent2); min-width: 42px; text-align: right; }
+
+  .sustain-txt { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); }
+
+  .fullstar-pct  { font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .fullstar-high { color: var(--green); }
+  .fullstar-mid  { color: var(--gold); }
+  .fullstar-low  { color: var(--red); }
+
+  .score-num { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); }
+  .score-num.median { color: var(--accent); font-weight: 600; font-size: 13px; }
+  .score-num.avg    { color: var(--gold); font-size: 13px; }
+  .score-num.maxv   { color: var(--purple); }
+  .score-num.std    { color: var(--text3); font-size: 11px; }
+  .score-num.samp   { color: var(--text2); }
+
+  .group-sep td { background: var(--bg2); padding: 5px 12px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; border-bottom: 1px solid var(--border2); }
+  .group-label-0 { color: var(--dim0); }
+  .group-label-1 { color: var(--dim1); }
+  .group-label-2 { color: var(--dim2); }
+  .group-label-3 { color: var(--dim3); }
+  .group-label-4 { color: var(--dim4); }
+  .group-label-5 { color: var(--red); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-state p { font-family: 'Share Tech Mono', monospace; font-size: 13px; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+{% include "_version_switch_style.html.j2" %}
+</style>
+</head>
+<body>
+<canvas id="particleCanvas" aria-hidden="true"></canvas>
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-badge">{{ mode_label }} · By Cost</div>
+      <h1>{{ mode_label }} <span id="versionHeaderLabel">{{ version }}</span> By-Cost Characters</h1>
+      <div class="header-sub">{{ subtitle }} · ENDGAME ANALYTICS · COST BRACKET &amp; EIDOLON CHARACTER PERFORMANCE</div>
+    </div>
+    <div class="header-meta">
+      <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Rows</div></div>
+      <div class="meta-chip"><span class="val" id="visibleSamples">—</span><div class="lbl">Samples</div></div>
+      <div class="meta-chip" id="costRangeChip"><span class="val" id="costRangeDisplay">—</span><div class="lbl">Cost Range</div></div>
+{% include "_version_switch_html.html.j2" %}
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabCostBtn" type="button" data-tab="cost">
+      <span class="tab-icon">💎</span> By Cost Bracket
+    </button>
+    <button class="tab-btn eid-tab" id="tabEidBtn" type="button" data-tab="eid">
+      <span class="tab-icon">🧬</span> By Max Eidolon (All Costs)
+    </button>
+  </div>
+  <div class="tab-desc" id="tabDesc">Cost bracket view — one row per (Character, cost bracket, max eidolon in team). Filter by cost range and max team eidolon below.</div>
+
+  <div class="controls">
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">{{ dim_label }}</div>
+      <div class="btn-group" id="dimFilters">
+        {% for d in dim_values %}
+        <button class="btn-toggle dim-{{ d }} active" data-dim="{{ d }}">{{ dim_btn_label(d) }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="ctrl-group" id="meidCtrlGroup">
+      <div class="ctrl-label">Max Eidolon in Team (cost tab only)</div>
+      <div class="btn-group" id="meidFilters">
+        <button class="btn-toggle meid e0 active" data-meid="0">E0</button>
+        <button class="btn-toggle meid e1 active" data-meid="1">E1</button>
+        <button class="btn-toggle meid e2 active" data-meid="2">E2</button>
+        <button class="btn-toggle meid e3 active" data-meid="3">E3</button>
+        <button class="btn-toggle meid e4 active" data-meid="4">E4</button>
+        <button class="btn-toggle meid e5 active" data-meid="5">E5</button>
+        <button class="btn-toggle meid e6 active" data-meid="6">E6</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group" style="flex:1; min-width:240px; max-width:420px;">
+      <div class="ctrl-label">Search (name or Acheron(E2) for exact eid)</div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="searchInput" type="text" placeholder="Acheron · Acheron(E2) · Robin(E0)…"/>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Cost range filter (cost tab only) -->
+  <div class="cost-panel" id="costPanel">
+    <div class="cost-panel-title">Cost Range — filter by estimated_min_cost and estimated_max_cost (sliding window buckets)</div>
+    <div class="cost-range-group">
+      <div class="cost-range-label">Min Cost ≥ <span id="minCostLabel">0</span></div>
+      <input type="range" id="minCostSlider" min="0" max="28" step="1" value="0"/>
+    </div>
+    <div class="cost-range-group">
+      <div class="cost-range-label">Max Cost ≤ <span id="maxCostLabel">32</span></div>
+      <input type="range" id="maxCostSlider" min="4" max="32" step="1" value="32"/>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;">
+      <div class="ctrl-label">Quick Presets</div>
+      <div class="cost-presets">
+        <button class="cost-preset-btn" data-min="0" data-max="4">F2P (0–4)</button>
+        <button class="cost-preset-btn" data-min="0" data-max="8">Budget (0–8)</button>
+        <button class="cost-preset-btn" data-min="8" data-max="16">Mid (8–16)</button>
+        <button class="cost-preset-btn" data-min="16" data-max="24">High (16–24)</button>
+        <button class="cost-preset-btn" data-min="24" data-max="32">Whale (24–32)</button>
+        <button class="cost-preset-btn active" id="costResetBtn">All</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="results-info" id="resultsInfo">Loading…</div>
+
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table id="mainTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<script>
+const ICONS      = {{ icons_json }};
+const DIM_FIELD  = '{{ dim_field }}';
+const DIM_LABEL  = '{{ dim_label }}';
+const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
+const ROW_H      = 46;
+const OVERSCAN   = 6;
+const VIEWPORT_H = 600;
+
+// Column definitions per tab: [key, label, class, numeric]
+const COLS_COST = [
+  ['Rank','#','num',false],
+  ['dim_key', DIM_LABEL, '', false],
+  ['cost_key','Cost Range','', false],
+  ['max_eidolon','Max Eid.','num', true],
+  ['__name','Character','', false],
+  ['Appearance_Rate_pct','App. Rate %','num', true],
+  ['Samples','Samples','num', true],
+  ['Sustain_Percentage','Sustain %','num', true],
+  ['Sustain_Samples','Sus. N','num', true],
+  ['Full_Clear_Rate_pct','Full Star %','num', true],
+  ['Total_Full_Clears','FS N','num', true],
+  ['Min_Score','Min','num', true],
+  ['Percentile_25','P25','num', true],
+  ['Median_Score','Median','num', true],
+  ['Percentile_75','P75','num', true],
+  ['Average_Score','Avg','num', true],
+  ['Max_Score','Max','num', true],
+  ['Std_Dev','σ','num', true],
+];
+const COLS_EID = [
+  ['Rank','#','num',false],
+  ['dim_key', DIM_LABEL, '', false],
+  ['__name','Character (Eidolon)','', false],
+  ['Appearance_Rate_pct','App. Rate %','num', true],
+  ['Samples','Samples','num', true],
+  ['Sustain_Percentage','Sustain %','num', true],
+  ['Sustain_Samples','Sus. N','num', true],
+  ['Full_Clear_Rate_pct','Full Star %','num', true],
+  ['Total_Full_Clears','FS N','num', true],
+  ['Min_Score','Min','num', true],
+  ['Percentile_25','P25','num', true],
+  ['Median_Score','Median','num', true],
+  ['Percentile_75','P75','num', true],
+  ['Average_Score','Avg','num', true],
+  ['Max_Score','Max','num', true],
+  ['Std_Dev','σ','num', true],
+];
+
+let RAW      = { cost: [], eid: [] };
+let MAX_RATE = { cost: 1, eid: 1 };
+let MIN_COST_G = 0, MAX_COST_G = 32;
+
+let activeTab   = 'cost';
+let activeDims  = new Set();
+let activeMeids = new Set([0,1,2,3,4,5,6]);
+let searchTerm    = '';
+let costMinFilter = MIN_COST_G;
+let costMaxFilter = MAX_COST_G;
+let sortCol       = 'Appearance_Rate_pct';
+let sortAsc       = false;
+let filteredData  = [];
+
+function cols() { return activeTab === 'cost' ? COLS_COST : COLS_EID; }
+
+function iconEl(name) {
+  let url = ICONS[name] || ICONS[name.replace(/\s+LV\.\d+$/,'').trim()];
+  if (url) {
+    if (!url.startsWith('http')) url = "{{ path_prefix }}" + url;
+    return `<img class="char-icon" src="${url}" alt="${name}" title="${name}" onerror="this.style.display='none'"/>`;
+  }
+  return `<div class="char-icon-placeholder" title="${name}">${name.slice(0,2).toUpperCase()}</div>`;
+}
+
+function baseNameOf(full) {
+  return full.replace(/\s*\(E\d\)\s*$/i, '').trim();
+}
+function eidOf(full) {
+  const m = full.match(/\(E(\d)\)\s*$/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function prepareDataset(key, nameField) {
+  const rows = RAW[key];
+  rows.forEach(r => {
+    r.dim_key  = r[DIM_FIELD];
+    r.__full   = r[nameField];
+    r.__base   = baseNameOf(r.__full);
+    r.__eid    = (key === 'eid') ? eidOf(r.__full) : Math.round(r.max_eidolon);
+    r.__lower  = r.__full.toLowerCase();
+    r.__iconHtml = iconEl(r.__base);
+    if (key === 'cost') r.cost_key = r.estimated_min_cost + '_' + r.estimated_max_cost;
+  });
+  MAX_RATE[key] = Math.max(1, ...rows.map(r => r.Appearance_Rate_pct || 0));
+  if (key === 'cost' && rows.length) {
+    MIN_COST_G = Math.min(...rows.map(r => r.estimated_min_cost));
+    MAX_COST_G = Math.max(...rows.map(r => r.estimated_max_cost));
+  }
+}
+
+function searchMatch(r, tokens, eidTag) {
+  if (!tokens.every(t => r.__lower.includes(t))) return false;
+  if (eidTag != null && r.__eid !== eidTag) return false;
+  return true;
+}
+
+function recompute() {
+  const key  = activeTab;
+  const rows = RAW[key];
+
+  let candidate = rows;
+  if (searchTerm.length) {
+    const eidMatch = searchTerm.match(/^(.+?)\s*\(?(e\d)\)?$/i);
+    let tokens, eidTag = null;
+    if (eidMatch) {
+      tokens = eidMatch[1].trim().toLowerCase().split(/\s+/).filter(Boolean);
+      eidTag = parseInt(eidMatch[2].slice(1), 10);
+    } else {
+      tokens = searchTerm.split(/\s+/).filter(Boolean);
+    }
+    candidate = rows.filter(r => searchMatch(r, tokens, eidTag));
+  }
+
+  candidate = candidate.filter(r => activeDims.has(r.dim_key));
+  if (key === 'cost') {
+    candidate = candidate.filter(r =>
+      activeMeids.has(Math.round(r.max_eidolon)) &&
+      r.estimated_min_cost >= costMinFilter &&
+      r.estimated_max_cost <= costMaxFilter
+    );
+  }
+
+  filteredData = candidate.slice();
+  filteredData.sort((a, b) => {
+    let av = a[sortCol], bv = b[sortCol];
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    if (av == null) return 1; if (bv == null) return -1;
+    return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+  });
+
+  updateMeta();
+  document.querySelector('.table-scroll').scrollTop = 0;
+  renderHeader();
+  renderViewport();
+}
+
+function updateMeta() {
+  document.getElementById('visibleCount').textContent = filteredData.length.toLocaleString();
+  const ssum = filteredData.reduce((s,r) => s + (r.Samples||0), 0);
+  document.getElementById('visibleSamples').textContent = ssum > 9999 ? (ssum/1000).toFixed(0)+'K' : ssum.toLocaleString();
+  const costChip = document.getElementById('costRangeChip');
+  if (activeTab === 'cost') {
+    costChip.style.display = '';
+    document.getElementById('costRangeDisplay').textContent = costMinFilter + '–' + costMaxFilter;
+    document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> rows · cost bracket <span>${costMinFilter}→${costMaxFilter}</span>`;
+  } else {
+    costChip.style.display = 'none';
+    document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> characters (all costs &amp; team eidolons pooled)`;
+  }
+}
+
+function fmtPct(v)      { return v == null ? '—' : v.toFixed(2) + '%'; }
+function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
+function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
+function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
+
+function cellHtml(r, key) {
+  switch (key) {
+    case 'Rank': return `<td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>`;
+    case 'dim_key': return `<td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>`;
+    case 'cost_key': return `<td><span class="cost-badge">${r.estimated_min_cost}<span class="cost-sep">→</span>${r.estimated_max_cost}</span></td>`;
+    case 'max_eidolon': return `<td class="num"><span class="meid-badge e${Math.round(r.max_eidolon)}">E${Math.round(r.max_eidolon)}</span></td>`;
+    case '__name': return `<td><div class="char-cell">${r.__iconHtml}<span class="char-name">${r.__base}</span>${r.__eid != null ? `<span class="char-eid-tag">E${r.__eid}</span>` : ''}</div></td>`;
+    case 'Appearance_Rate_pct': {
+      const pct = MAX_RATE[activeTab] > 0 ? Math.min(100, (r.Appearance_Rate_pct / MAX_RATE[activeTab]) * 100) : 0;
+      return `<td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${pct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct)}</span></div></td>`;
+    }
+    case 'Samples': return `<td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>`;
+    case 'Sustain_Percentage': return `<td class="num"><span class="sustain-txt">${fmtPct(r.Sustain_Percentage)}</span></td>`;
+    case 'Sustain_Samples': return `<td class="num"><span class="score-num samp">${fmtInt(r.Sustain_Samples)}</span></td>`;
+    case 'Full_Clear_Rate_pct': return `<td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>`;
+    case 'Total_Full_Clears': return `<td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>`;
+    case 'Min_Score': return `<td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>`;
+    case 'Percentile_25': return `<td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>`;
+    case 'Median_Score': return `<td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>`;
+    case 'Percentile_75': return `<td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span></td>`;
+    case 'Average_Score': return `<td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>`;
+    case 'Max_Score': return `<td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>`;
+    case 'Std_Dev': return `<td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>`;
+    default: return '<td>—</td>';
+  }
+}
+
+function rowHTML(r) {
+  return `<tr>${cols().map(([key]) => cellHtml(r, key)).join('')}</tr>`;
+}
+
+function renderHeader() {
+  const thead = document.getElementById('tableHead');
+  thead.innerHTML = `<tr>${cols().map(([key, label, cls]) => {
+    const activeCls = key === sortCol ? ` sorted${sortAsc ? ' asc' : ''}` : '';
+    return `<th data-col="${key}" class="${cls}${activeCls}">${label}</th>`;
+  }).join('')}</tr>`;
+  thead.querySelectorAll('th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (sortCol === col) sortAsc = !sortAsc;
+      else { sortCol = col; sortAsc = false; }
+      recompute();
+    });
+  });
+}
+
+(function setupVirtualScroll() {
+  const ts = document.querySelector('.table-scroll');
+  ts.style.maxHeight = VIEWPORT_H + 'px';
+  ts.style.overflowY = 'auto';
+  ts.addEventListener('scroll', renderViewport, { passive: true });
+})();
+
+function renderViewport() {
+  const tbody = document.getElementById('tableBody');
+  const ts    = document.querySelector('.table-scroll');
+  const colCount = cols().length;
+
+  if (!filteredData.length) {
+    tbody.innerHTML = `<tr><td colspan="${colCount}"><div class="empty-state"><div class="icon">⚡</div><p>No rows match current filters</p></div></td></tr>`;
+    return;
+  }
+
+  const scrollTop = ts.scrollTop;
+  const startIdx  = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+  const endIdx    = Math.min(filteredData.length, Math.ceil((scrollTop + VIEWPORT_H) / ROW_H) + OVERSCAN);
+  const padTop    = startIdx * ROW_H;
+  const padBot    = (filteredData.length - endIdx) * ROW_H;
+
+  let html = '';
+  if (padTop > 0) html += `<tr style="height:${padTop}px"><td colspan="${colCount}" style="padding:0;border:none"></td></tr>`;
+
+  let lastDim = startIdx > 0 ? filteredData[startIdx - 1].dim_key : null;
+  for (let i = startIdx; i < endIdx; i++) {
+    const r = filteredData[i];
+    if (r.dim_key !== lastDim) {
+      const lbl = DIM_GROUP_LABELS[r.dim_key] || `${DIM_LABEL} ${r.dim_key}`;
+      html += `<tr class="group-sep"><td colspan="${colCount}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
+      lastDim = r.dim_key;
+    }
+    html += rowHTML(r);
+  }
+
+  if (padBot > 0) html += `<tr style="height:${padBot}px"><td colspan="${colCount}" style="padding:0;border:none"></td></tr>`;
+  tbody.innerHTML = html;
+}
+
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ---- Tab switching ----
+function setTab(tab) {
+  if (activeTab === tab) return;
+  activeTab = tab;
+  document.getElementById('tabCostBtn').classList.toggle('active', tab === 'cost');
+  document.getElementById('tabEidBtn').classList.toggle('active', tab === 'eid');
+  document.getElementById('costPanel').style.display = tab === 'cost' ? '' : 'none';
+  document.getElementById('meidCtrlGroup').style.display = tab === 'cost' ? '' : 'none';
+  document.getElementById('tabDesc').textContent = tab === 'cost'
+    ? 'Cost bracket view — one row per (Character, cost bracket, max eidolon in team). Filter by cost range and max team eidolon below.'
+    : 'Max eidolon view — pooled across ALL cost brackets and team eidolon combos, one row per (Character, Character\u2019s own eidolon). Cost/team-eidolon filters do not apply here.';
+  sortCol = 'Appearance_Rate_pct';
+  sortAsc = false;
+  activeDims = new Set(RAW[tab].map(r => r.dim_key));
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  recompute();
+}
+document.getElementById('tabCostBtn').addEventListener('click', () => setTab('cost'));
+document.getElementById('tabEidBtn').addEventListener('click', () => setTab('eid'));
+
+// ---- Listeners ----
+document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const d = parseInt(btn.dataset.dim);
+    if (activeDims.has(d)) { if (activeDims.size > 1) { activeDims.delete(d); btn.classList.remove('active'); } }
+    else { activeDims.add(d); btn.classList.add('active'); }
+    recompute();
+  });
+});
+
+document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const e = parseFloat(btn.dataset.meid);
+    if (activeMeids.has(e)) { if (activeMeids.size > 1) { activeMeids.delete(e); btn.classList.remove('active'); } }
+    else { activeMeids.add(e); btn.classList.add('active'); }
+    recompute();
+  });
+});
+
+document.getElementById('searchInput').addEventListener('input', debounce(e => {
+  searchTerm = e.target.value.trim().toLowerCase();
+  recompute();
+}, 200));
+
+// Cost sliders
+function sliderFill(s) {
+  const pct = ((parseFloat(s.value) - parseFloat(s.min)) / (parseFloat(s.max) - parseFloat(s.min)) * 100).toFixed(1);
+  s.style.setProperty('--fill', pct + '%');
+}
+const minSlider = document.getElementById('minCostSlider');
+const maxSlider = document.getElementById('maxCostSlider');
+
+minSlider.addEventListener('input', () => {
+  if (parseFloat(minSlider.value) >= parseFloat(maxSlider.value) - 4)
+    minSlider.value = parseFloat(maxSlider.value) - 4;
+  costMinFilter = parseFloat(minSlider.value);
+  document.getElementById('minCostLabel').textContent = costMinFilter;
+  sliderFill(minSlider); clearPresets(); recompute();
+});
+maxSlider.addEventListener('input', () => {
+  if (parseFloat(maxSlider.value) <= parseFloat(minSlider.value) + 4)
+    maxSlider.value = parseFloat(minSlider.value) + 4;
+  costMaxFilter = parseFloat(maxSlider.value);
+  document.getElementById('maxCostLabel').textContent = costMaxFilter;
+  sliderFill(maxSlider); clearPresets(); recompute();
+});
+
+function clearPresets() { document.querySelectorAll('.cost-preset-btn').forEach(b => b.classList.remove('active')); }
+function applyPreset(mn, mx) {
+  costMinFilter = mn; costMaxFilter = mx;
+  minSlider.value = mn; maxSlider.value = mx;
+  document.getElementById('minCostLabel').textContent = mn;
+  document.getElementById('maxCostLabel').textContent = mx;
+  sliderFill(minSlider); sliderFill(maxSlider); recompute();
+}
+document.querySelectorAll('.cost-preset-btn[data-min]').forEach(btn => {
+  btn.addEventListener('click', () => { clearPresets(); btn.classList.add('active'); applyPreset(+btn.dataset.min, +btn.dataset.max); });
+});
+document.getElementById('costResetBtn').addEventListener('click', () => {
+  clearPresets();
+  document.getElementById('costResetBtn').classList.add('active');
+  applyPreset(MIN_COST_G, MAX_COST_G);
+});
+
+// ---- Particle background ----
+(function setupParticles() {
+  const canvas = document.getElementById('particleCanvas');
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext('2d');
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const PALETTE = ['56,189,248','45,212,191','167,139,250','251,191,36'];
+  const LINK = 105;
+  let w, h, dpr, motes = [], raf, running = false, t = 0;
+  function mkMote(fb) {
+    return { x:Math.random()*w, y:fb?h+8:Math.random()*h, vx:(Math.random()-.5)*.18, vy:-(Math.random()*.22+.06),
+      r:Math.random()*1.5+.55, tp:Math.random()*Math.PI*2, ts:Math.random()*.016+.005,
+      sw:Math.random()*.4+.12, sp:Math.random()*Math.PI*2, c:PALETTE[Math.floor(Math.random()*PALETTE.length)] };
+  }
+  function resize() {
+    dpr=Math.min(devicePixelRatio||1,2); w=innerWidth; h=innerHeight;
+    canvas.width=w*dpr; canvas.height=h*dpr;
+    canvas.style.cssText=`position:fixed;inset:0;width:${w}px;height:${h}px;`;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    motes=Array.from({length:Math.max(22,Math.min(55,Math.floor(w*h/34000)))},()=>mkMote(false));
+  }
+  function paint() {
+    t++; ctx.clearRect(0,0,w,h);
+    for(let i=0;i<motes.length;i++){
+      const a=motes[i]; a.x+=a.vx; a.y+=a.vy; a.x+=Math.sin(t*.01+a.sp)*a.sw*.05;
+      if(a.y<-10) Object.assign(a,mkMote(true));
+      for(let j=i+1;j<motes.length;j++){
+        const b=motes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+        if(d<LINK){ctx.strokeStyle=`rgba(${a.c},${(1-d/LINK)*.09})`;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+      }
+    }
+    motes.forEach(m=>{
+      const al=Math.max(.06,.28+Math.sin(t*m.ts+m.tp)*.22);
+      const gr=ctx.createRadialGradient(m.x,m.y,0,m.x,m.y,m.r*5);
+      gr.addColorStop(0,`rgba(${m.c},${al*.5})`); gr.addColorStop(1,`rgba(${m.c},0)`);
+      ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(m.x,m.y,m.r*5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=`rgba(${m.c},${Math.min(.85,al+.18)})`; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fill();
+    });
+    if(running) raf=requestAnimationFrame(paint);
+  }
+  function start(){if(!running){running=true;raf=requestAnimationFrame(paint);}}
+  function stop(){running=false;if(raf)cancelAnimationFrame(raf);}
+  resize(); start();
+  let rt; window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(resize,200);});
+  document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
+})();
+
+// ---- Data loading ----
+let _brotliPromise = null;
+function getBrotli() {
+  if (!_brotliPromise) {
+    _brotliPromise = import("../vendor/brotli-wasm/index.web.js").then(m => m.default);
+  }
+  return _brotliPromise;
+}
+
+async function fetchBrotliJson(filename) {
+  const response = await fetch(filename);
+  if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
+  const buffer = await response.arrayBuffer();
+  const brotli = await getBrotli();
+  const decompressed = brotli.decompress(new Uint8Array(buffer));
+  return JSON.parse(new TextDecoder().decode(decompressed));
+}
+
+async function loadDatasets(costFilename, eidFilename) {
+  const [costData, eidData] = await Promise.all([
+    fetchBrotliJson(costFilename),
+    fetchBrotliJson(eidFilename),
+  ]);
+  RAW.cost = costData;
+  RAW.eid  = eidData;
+  prepareDataset('cost', 'Character');
+  prepareDataset('eid', 'Character_Eidolon');
+
+  // Reset filter state for the freshly-loaded dataset
+  activeDims  = new Set(RAW[activeTab].map(r => r.dim_key));
+  activeMeids = new Set([0,1,2,3,4,5,6]);
+  searchTerm  = '';
+  sortCol     = 'Appearance_Rate_pct';
+  sortAsc     = false;
+  const searchInputEl = document.getElementById('searchInput');
+  if (searchInputEl) searchInputEl.value = '';
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+
+  minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4; minSlider.value = MIN_COST_G;
+  maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G; maxSlider.value = MAX_COST_G;
+  costMinFilter = MIN_COST_G; costMaxFilter = MAX_COST_G;
+  document.getElementById('minCostLabel').textContent = MIN_COST_G;
+  document.getElementById('maxCostLabel').textContent = MAX_COST_G;
+  sliderFill(minSlider); sliderFill(maxSlider);
+  clearPresets();
+  document.getElementById('costResetBtn')?.classList.add('active');
+
+  recompute();
+}
+
+function updateHeaderVersion(label) {
+  const h = document.getElementById('versionHeaderLabel');
+  if (h) h.textContent = label;
+}
+
+async function initializeApp() {
+  try {
+    await loadDatasets("{{ data_filename_cost }}", "{{ data_filename_eidolon }}");
+  } catch (err) {
+    console.error('Data load error:', err);
+    const info = document.getElementById('resultsInfo');
+    if (info) info.textContent = '⚠️ Failed to load data. Check console.';
+    const tbody = document.getElementById('tableBody');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+  }
+}
+
+initializeApp();
+
+// ---- Custom version switcher (drives BOTH cost + eidolon datasets together) ----
+(function() {
+  const VS_FILE_PREFIX  = '{{ file_prefix }}';
+  const VS_PAGE_SUFFIX  = 'by_cost_characters';
+  const VS_CURRENT_SAFE = '{{ safe_version }}';
+  const VS_CURRENT_LABEL = '{{ version }}';
+  const VS_MANIFEST = `${VS_FILE_PREFIX}_${VS_PAGE_SUFFIX}_versions.json`;
+  const VS_RECENT_COUNT = 6;
+
+  let vsLiveSafe = VS_CURRENT_SAFE;
+
+  function costFilenameFor(safe)  { return `${VS_FILE_PREFIX}_${safe}_by_cost_characters_data.json.br`; }
+  function eidFilenameFor(safe)   { return `${VS_FILE_PREFIX}_${safe}_by_cost_characters_by_eidolon_data.json.br`; }
+
+  function vsItemHtml(v) {
+    const isCurrent = v.safe === vsLiveSafe;
+    return `<button type="button" class="version-item${isCurrent ? ' active' : ''}" data-safe="${v.safe}" data-label="${v.label}">${v.label}${isCurrent ? ' <span class="version-item-tag">current</span>' : ''}</button>`;
+  }
+
+  async function vsInit() {
+    const btn         = document.getElementById('versionSwitchBtn');
+    const panel       = document.getElementById('versionSwitchPanel');
+    const recentWrap  = document.getElementById('versionSwitchRecent');
+    const olderWrap   = document.getElementById('versionSwitchOlder');
+    const olderToggle = document.getElementById('versionSwitchOlderToggle');
+    if (!btn || !panel) return;
+
+    let versions = [];
+    try {
+      const res = await fetch(VS_MANIFEST);
+      if (res.ok) versions = await res.json();
+    } catch (e) {
+      console.warn('Version manifest fetch failed:', e);
+    }
+    if (!Array.isArray(versions) || versions.length === 0) {
+      versions = [{ label: VS_CURRENT_LABEL, safe: VS_CURRENT_SAFE }];
+    }
+
+    const recent = versions.slice(0, VS_RECENT_COUNT);
+    const older  = versions.slice(VS_RECENT_COUNT);
+
+    recentWrap.innerHTML = recent.map(vsItemHtml).join('');
+    if (older.length) {
+      olderWrap.innerHTML = older.map(vsItemHtml).join('');
+      olderToggle.style.display = '';
+      olderToggle.textContent = `Show older versions (${older.length}) ▼`;
+    } else {
+      olderToggle.style.display = 'none';
+    }
+
+    function wireItems() {
+      panel.querySelectorAll('.version-item').forEach(el => {
+        el.addEventListener('click', () => vsSelectVersion(el.dataset.safe, el.dataset.label));
+      });
+    }
+    wireItems();
+
+    olderToggle.addEventListener('click', () => {
+      const open = olderWrap.classList.toggle('open');
+      olderToggle.textContent = open ? 'Hide older versions ▲' : `Show older versions (${older.length}) ▼`;
+    });
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#versionSwitch')) panel.classList.remove('open');
+    });
+  }
+
+  async function vsSelectVersion(safe, label) {
+    if (safe === vsLiveSafe) {
+      document.getElementById('versionSwitchPanel')?.classList.remove('open');
+      return;
+    }
+    const panel    = document.getElementById('versionSwitchPanel');
+    const btnLabel = document.getElementById('versionSwitchBtnLabel');
+    const prevLabel = btnLabel ? btnLabel.textContent : '';
+    if (btnLabel) btnLabel.textContent = '…';
+    panel?.classList.remove('open');
+    try {
+      await loadDatasets(costFilenameFor(safe), eidFilenameFor(safe));
+      vsLiveSafe = safe;
+      if (btnLabel) btnLabel.textContent = label;
+      document.querySelectorAll('.version-item').forEach(el => {
+        const tag = el.querySelector('.version-item-tag');
+        if (tag) tag.remove();
+        const isNow = el.dataset.safe === safe;
+        el.classList.toggle('active', isNow);
+        if (isNow) el.insertAdjacentHTML('beforeend', ' <span class="version-item-tag">current</span>');
+      });
+      updateHeaderVersion(label);
+    } catch (err) {
+      console.error('Version switch failed:', err);
+      if (btnLabel) btnLabel.textContent = prevLabel;
+      alert('Failed to load version ' + label + '. Please check your connection and try again.');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', vsInit);
+  } else {
+    vsInit();
+  }
+})();
+</script>
+</body>
+</html>

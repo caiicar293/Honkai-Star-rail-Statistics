@@ -273,15 +273,12 @@ class HonkaiStatistics_V2_APOC_Batch:
 
             # Collapse standard nodes into node=0 for the per-node aggregation.
             # Same condition: only include node 3 in the collapse when it actually exists for this query.
-            standard_nodes = [1, 2, 3] if (self._has_starward_col and self.is_starward) else [1, 2]
             df = self.lf.with_columns(
-                pl.when(pl.col("node").is_in(standard_nodes))
-                .then(0)
-                .otherwise(pl.col("node"))
-                .alias('node')
-            )
-            if self.node == "all":
-                self.lf = pl.concat([df, self.lf], how="diagonal")
+                                pl.lit(0,dtype=pl.Int64).alias("node")
+                            )
+            if self.node=="all":
+                self.lf = pl.concat([df, self.lf], how="vertical")
+                                
             else:
                 self.lf = df
 
@@ -291,25 +288,28 @@ class HonkaiStatistics_V2_APOC_Batch:
     # Per-node aggregation
     # ------------------------------------------------------------------
     def _process_data(self, lf, char_lf, char_cols, cons_cols, dps_names, char_to_index):
+        # 5. AGGREGATE CHARACTERS (The "Unpivot" trick optimized)
         base_data = (
             self.lf.select([
-                "uid", "round_num", "has_sustain", "version","is_full_clear",
+                "uid", "round_num", "has_sustain", "version", "is_full_clear", 
                 "at_eidolon_level", "up_to_eidolon_level", "node",
                 pl.concat_list(char_cols).alias("Character"),
                 pl.concat_list(cons_cols).alias("cons")
             ])
             .explode(["Character", "cons"])
+            # OPTIMIZATION: Drop empty slots immediately so we don't join or aggregate them
+            .filter(pl.col("Character").is_not_null()) 
             .with_columns([
-                pl.col("Character").fill_null("Empty Slot"),
-                pl.col("cons").replace(-1, 0)
+                pl.col("cons").fill_null(0).replace(-1, 0)
             ])
         )
 
+        # Join gear data and CHECKPOINT the execution graph
         base_data = (
             base_data.join(
-                char_lf,
-                left_on=["uid", 'Character', "version"],
-                right_on=["uid", 'name', "version"],
+                char_lf, 
+                left_on=["uid", 'Character', "version"], 
+                right_on=["uid", 'name', "version"], 
                 how="left"
             )
             .drop([c for c in ['phase', 'cons_right', 'level'] if c in base_data.collect_schema().names()])
@@ -318,6 +318,8 @@ class HonkaiStatistics_V2_APOC_Batch:
                 pl.col("artifacts").fill_null("Info_not_found"),
                 pl.col("relics").fill_null("Info_not_found")
             ])
+            .collect()  # <--- OPTIMIZATION: Materialize here so totals and per_eidolon don't recompute the join
+            .lazy()     # Convert back to lazy for the downstream multi-branch aggregations
         )
 
         def get_performance_stats(df, group_keys):
@@ -327,26 +329,27 @@ class HonkaiStatistics_V2_APOC_Batch:
                 return (
                     df.group_by(keys + [gear_col])
                     .agg([
-                        pl.count("uid").alias("count"),
-                        pl.col("round_num").alias("Scores")
+                        pl.len().alias("count"),  # OPTIMIZATION: pl.len() is faster than pl.count("uid")
+                        pl.col("round_num").alias("Scores") 
                     ])
                     .group_by(keys)
                     .agg(
                         pl.struct([
-                            pl.col(gear_col).alias("name"),
-                            "count",
+                            pl.col(gear_col).alias("name"), 
+                            "count", 
                             "Scores"
                         ]).alias(alias)
                     )
                 )
 
+            # Because df is lazy and cached, Polars CSE will execute these 4 branches highly concurrently
             w_df = rollup_gear(df, "weapon", "Lightcones")
             a_df = rollup_gear(df, "artifacts", "Relics")
             r_df = rollup_gear(df, "relics", "Planar_Set")
 
             is_eidolon = "cons" in keys
             base_stats = df.group_by(keys).agg([
-                pl.count("uid").alias("Samples" if is_eidolon else "Total_Samples"),
+                pl.len().alias("Samples" if is_eidolon else "Total_Samples"),
                 pl.col("round_num").alias("Scores" if is_eidolon else "Total_Scores"),
                 pl.col("has_sustain").sum().alias("Sustains" if is_eidolon else "Total_Sustains"),
                 pl.col("is_full_clear").sum().alias("Full_Clears" if is_eidolon else "Total_Full_Clears"),
@@ -364,15 +367,16 @@ class HonkaiStatistics_V2_APOC_Batch:
 
         per_eidolon = (
             get_performance_stats(base_data, ["Character", "cons"])
-            .with_columns(("Eidolon " + pl.col("cons").cast(pl.String)).alias("Eidolon_Level"))
+            # OPTIMIZATION: pl.format is vastly faster than cast + concat
+            .with_columns(pl.format("Eidolon {}", pl.col("cons")).alias("Eidolon_Level"))
             .collect()
         )
 
         pivoted = per_eidolon.pivot(
             on="Eidolon_Level",
             index=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"],
-            values=["Samples", "Scores", "Sustains","Full_Clears", "Lightcones", "Relics", "Planar_Set"],
-            aggregate_function="first"
+            values=["Samples", "Scores", "Sustains", "Full_Clears", "Lightcones", "Relics", "Planar_Set"],
+            aggregate_function="first" 
         )
 
         final_df = (
@@ -382,8 +386,8 @@ class HonkaiStatistics_V2_APOC_Batch:
 
         eidolon_cols = sorted([c for c in final_df.columns if "Eidolon" in c])
         header_cols = [
-            "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character",
-            "Total_Samples", "Total_Scores", "Total_Sustains","Total_Full_Clears",
+            "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", 
+            "Total_Samples", "Total_Scores", "Total_Sustains", "Total_Full_Clears",
             "uids", "Lightcones", "Relics", "Planar_Set"
         ]
         self.char_stats = final_df.select(header_cols + eidolon_cols)

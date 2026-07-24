@@ -6,15 +6,22 @@ Builds the Dynamic By-Cost Archetype Tier List page.
 Unlike the older static archetype_tier_list_e0_generator.py (which bakes a
 fixed 'Tier' column per-row in Python via assign_tier()), this generator
 ships the RAW performance numbers straight from
-`by_cost_archetype_recent_meta_summary` to the browser and lets the Jinja
+`by_cost_archetype_rolling_meta_summary` to the browser and lets the Jinja
 template's JS compute T0 / T0.5 / T1 / T1.5 / T2 live, against thresholds
 that live in the template (DEFAULT_TIER_CONFIG) and are editable on-page
 via the "Tier Settings" panel. That's what makes it "dynamic" -- tiers can
 be re-tuned without touching the database or re-running this script.
 
-Source table: by_cost_archetype_recent_meta_summary
-  (built by HonkaiCostArchetypeMetaAnalyzer in database_by_cost_teams_summary.py,
-   a rolling last-3-versions aggregate across all by-cost archetype tables)
+Source table: by_cost_archetype_rolling_meta_summary
+  (built by HonkaiCostArchetypeMetaAnalyzer in database_by_cost_teams_summary.py)
+
+The "Latest" view (and the default page load) is Version_Group_Num == 1 --
+the rolling table already carries the most recent trailing-3-version window
+per game mode, so there's no need for a separate _recent_meta_summary table
+anymore. Version_Group_Num is a PER-MODE rank (1 = each mode's own most
+recent As_Of_Version snapshot, 2 = its second most recent, etc), which is
+also what history browsing groups by -- see the module docstring further
+down for why that matters.
 
 Usage:
     python by_cost_archetype_tier_list_generator.py
@@ -39,7 +46,25 @@ except ImportError:
 
 load_dotenv()
 
-SOURCE_TABLE = "by_cost_archetype_recent_meta_summary"
+ROLLING_TABLE = "by_cost_archetype_rolling_meta_summary"
+
+# Columns pulled from the rolling table. Version_Group_Num is a PER-MODE
+# rank (1 = that mode's own most recent As_Of_Version snapshot, 2 = its
+# second most recent, etc). Grouping history by this instead of the raw
+# As_Of_Version string is what keeps every game mode's tab present at a
+# given "snapshot position": different modes can land on different
+# calendar versions for the same rank (e.g. MOC's rank-2 might be 4.2.2
+# while Pure Fiction's rank-2 is 4.3.1), so filtering on a literal version
+# string silently dropped whichever modes didn't happen to share it.
+_COMMON_COLUMNS = """
+    Game_Mode, at_eidolon_level, up_to_eidolon_level, Archetype_Core,
+    estimated_min_cost, estimated_max_cost, max_eidolon,
+    Simple_Avg_Appearance, Simple_Avg_Score, Weighted_Avg_Score,
+    Weighted_Avg_Median, Best_Version_Avg, Total_Full_Clears,
+    Total_Samples, Full_Star_Rate_pct, Total_Sustain_Samples,
+    Sustain_Rate_pct, Version_Count, Versions_Used,
+    As_Of_Version, Version_Group_Num
+"""
 
 # ---------------------------------------------------------------------
 # Default tier thresholds, mirrored into the template's DEFAULT_TIER_CONFIG.
@@ -109,21 +134,35 @@ def clean_rows(cursor) -> list[dict]:
     return rows
 
 
-def fetch_data(db_path: str) -> list[dict]:
+def fetch_rolling_group_nums(db_path: str) -> list[int]:
+    """All distinct Version_Group_Num snapshots, 1 (newest) first, ascending."""
+    conn = duckdb.connect(db_path, read_only=True)
+    try:
+        rows = conn.execute(f"""
+            SELECT DISTINCT Version_Group_Num
+            FROM {ROLLING_TABLE}
+            ORDER BY Version_Group_Num
+        """).fetchall()
+        return [r[0] for r in rows]
+    finally:
+        conn.close()
+
+
+def fetch_rolling_data_by_group(db_path: str, group_num: int) -> list[dict]:
+    """
+    Rows for a single Version_Group_Num snapshot, across ALL game modes.
+    Because Version_Group_Num is ranked per-mode, this is what guarantees
+    every mode that HAS a snapshot at this rank shows up together, even
+    though their underlying As_Of_Version strings can differ.
+    """
     conn = duckdb.connect(db_path, read_only=True)
     try:
         cur = conn.execute(f"""
-            SELECT
-                Game_Mode, at_eidolon_level, up_to_eidolon_level, Archetype_Core,
-                estimated_min_cost, estimated_max_cost, max_eidolon,
-                Simple_Avg_Appearance, Simple_Avg_Score, Weighted_Avg_Score,
-                Weighted_Avg_Median, Best_Version_Avg, Total_Total_Full_Clears,
-                Total_Samples, Full_Star_Rate_pct, Total_Sustain_Samples,
-                Sustain_Rate_pct, Version_Count, Versions_Used
-            FROM {SOURCE_TABLE}
-            WHERE Total_Samples > 0
+            SELECT {_COMMON_COLUMNS}
+            FROM {ROLLING_TABLE}
+            WHERE Version_Group_Num = ? AND Total_Samples > 0
             ORDER BY Game_Mode, Weighted_Avg_Score
-        """)
+        """, [group_num])
         return clean_rows(cur)
     finally:
         conn.close()
@@ -149,11 +188,14 @@ def build(args):
     if not db_path:
         raise ValueError("No DB path provided and DB_File is not set in .env")
 
-    print(f"[INFO] Reading {SOURCE_TABLE} from {db_path} ...")
-    data = fetch_data(db_path)
+    print(f"[INFO] Reading {ROLLING_TABLE} (Version_Group_Num = 1, i.e. Latest) from {db_path} ...")
+    data = fetch_rolling_data_by_group(db_path, 1)
     print(f"[INFO] Fetched {len(data):,} rows across {len({r['Game_Mode'] for r in data})} game modes.")
 
-    versions_seen = sorted({v.strip() for r in data for v in (r.get("Versions_Used") or "").split(",") if v.strip()}, reverse=True)
+    mode_versions_latest = {}
+    for r in data:
+        mode_versions_latest.setdefault(r["Game_Mode"], r["As_Of_Version"])
+    versions_seen = sorted(set(mode_versions_latest.values()), reverse=True)
     version_label = ", ".join(versions_seen[:4]) + ("…" if len(versions_seen) > 4 else "") if versions_seen else "recent"
 
     out_html = Path(args.output)
@@ -163,6 +205,42 @@ def build(args):
     data_filename = args.data_filename
     write_brotli_json(out_dir / data_filename, data)
     print(f"  [DONE] {data_filename} ({(out_dir / data_filename).stat().st_size / 1024:.1f} KB)")
+
+    # -------------------------------------------------------------
+    # Rolling-history snapshots: one Brotli file per Version_Group_Num,
+    # so the tier list page can let the person browse past rankings
+    # with every game mode's tab present at each snapshot position.
+    # -------------------------------------------------------------
+    history_manifest = []
+    if not args.skip_history:
+        history_dir = out_dir / "history"
+        history_dir.mkdir(parents=True, exist_ok=True)
+
+        group_nums = fetch_rolling_group_nums(db_path)
+        print(f"[INFO] Found {len(group_nums):,} rolling Version_Group_Num snapshots.")
+
+        for g in group_nums:
+            rows = fetch_rolling_data_by_group(db_path, g)
+            if not rows:
+                continue
+            fname = f"by_cost_archetype_history_g{g}.json.br"
+            write_brotli_json(history_dir / fname, rows)
+
+            mode_versions = {}
+            for r in rows:
+                mode_versions.setdefault(r["Game_Mode"], r["As_Of_Version"])
+            versions_used = sorted({
+                u.strip() for r in rows for u in (r.get("Versions_Used") or "").split(",") if u.strip()
+            })
+            history_manifest.append({
+                "group_num": g,
+                "file": f"history/{fname}",
+                "mode_versions": mode_versions,
+                "versions_used": versions_used,
+                "row_count": len(rows),
+                "is_latest": (g == 1),
+            })
+            print(f"  [DONE] history/{fname} ({(history_dir / fname).stat().st_size / 1024:.1f} KB, {len(rows):,} rows, modes={sorted(mode_versions.keys())})")
 
     icons = load_icons(Path(args.icons))
 
@@ -181,6 +259,7 @@ def build(args):
         "tier_config_json": json.dumps(DEFAULT_TIER_CONFIG, ensure_ascii=False),
         "mode_meta_json": json.dumps(MODE_META, ensure_ascii=False),
         "default_min_appearance": DEFAULT_MIN_APPEARANCE,
+        "history_manifest_json": json.dumps(history_manifest, ensure_ascii=False),
     }
 
     html = template.render(**context)
@@ -196,6 +275,7 @@ def main():
     parser.add_argument("--template", default="by_cost_archetype_tier_list_template.html.j2", help="Template filename")
     parser.add_argument("--output", default="docs/tier_list/by_cost_archetype_tier_list.html", help="Output HTML path")
     parser.add_argument("--data-filename", default="by_cost_archetype_tier_list_data.json.br", help="Output data filename (written alongside --output)")
+    parser.add_argument("--skip-history", action="store_true", help="Skip generating per-version rolling history snapshots (faster iteration)")
     args = parser.parse_args()
     build(args)
 

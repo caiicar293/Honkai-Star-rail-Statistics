@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Dynamic By-Cost Archetype Tier List — 4.3.2, 4.3.1, 4.2.3, 4.2.2…</title>
+<title>Dynamic By-Cost Archetype Tier List — 4.3.2</title>
 <link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
@@ -110,6 +110,32 @@
   .cost-preset-btn:hover, .cost-preset-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.07); }
 
   /* TIER SETTINGS PANEL */
+  /* VERSION HISTORY NAV */
+  .version-panel {
+    background: var(--panel); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .version-panel-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; width: 100%; margin-bottom: 2px; }
+  .version-nav-controls { display: flex; align-items: center; gap: 6px; }
+  .version-nav-btn {
+    background: var(--bg2); border: 1px solid var(--border2); color: var(--text2);
+    font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700; width: 30px; height: 30px;
+    border-radius: 5px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+  }
+  .version-nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .version-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  select#versionSelect {
+    background: var(--bg2); border: 1px solid var(--border2); color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; padding: 7px 10px; border-radius: 5px; outline: none; min-width: 260px; cursor: pointer;
+  }
+  select#versionSelect:focus { border-color: var(--accent); }
+  .version-window-note { font-size: 11px; color: var(--text3); font-family: 'Share Tech Mono', monospace; }
+  .version-window-note .live-tag { color: var(--teal); font-weight: 700; }
+  .version-loading-tag { display: none; font-size: 11px; color: var(--accent); font-family: 'Share Tech Mono', monospace; letter-spacing: 0.06em; }
+  .version-loading-tag.active { display: inline-flex; align-items: center; gap: 6px; }
+  .version-loading-tag .spin { width: 10px; height: 10px; border: 2px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   .settings-toggle {
     display: inline-flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border2);
     color: var(--text2); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 0.08em;
@@ -182,6 +208,7 @@
   .stat-pill.sustain-lo { color: var(--red); border-color: rgba(248,113,113,0.3); }
   .stat-pill.cost { color: var(--teal); border-color: rgba(45,212,191,0.3); }
   .stat-pill.eid { color: var(--purple); border-color: rgba(167,139,250,0.3); }
+  .stat-pill.full-star { color: var(--gold); border-color: rgba(251,191,36,0.3); }
 
   .unranked-note { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); text-align: center; padding: 14px; border: 1px dashed var(--border2); border-radius: 8px; margin-top: 4px; }
 
@@ -211,11 +238,22 @@
       <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Ranked</div></div>
       <div class="meta-chip"><span class="val" id="hiddenCount">—</span><div class="lbl">Below Min App.</div></div>
       <div class="meta-chip"><span class="val" id="costRangeDisplay">—</span><div class="lbl">Cost Range</div></div>
-      <div class="meta-chip"><span class="val" id="versionsChip">4.3.2, 4.3.1, 4.2.3, 4.2.2…</span><div class="lbl">Versions</div></div>
+      <div class="meta-chip"><span class="val" id="versionsChip">4.3.2</span><div class="lbl">Versions</div></div>
     </div>
   </div>
 
   <div class="mode-tabs" id="modeTabs"></div>
+
+  <div class="version-panel" id="versionPanel">
+    <div class="version-panel-title">Past Rankings — browse rolling 3-version-window snapshots</div>
+    <div class="version-nav-controls">
+      <button class="version-nav-btn" id="verPrevBtn" title="Older snapshot">◀</button>
+      <select id="versionSelect"></select>
+      <button class="version-nav-btn" id="verNextBtn" title="Newer snapshot">▶</button>
+    </div>
+    <div class="version-window-note" id="versionWindowNote"></div>
+    <div class="version-loading-tag" id="versionLoadingTag"><span class="spin"></span> Loading snapshot…</div>
+  </div>
 
   <div class="controls">
     <div class="ctrl-group">
@@ -323,10 +361,20 @@ const DEFAULT_TIER_CONFIG = {"MOC": {"direction": "asc", "thresholds": {"T0": 2.
 
 const MODE_META = {"MOC": {"label": "MOC", "full": "Memory of Chaos"}, "APOC": {"label": "APOC", "full": "Apocalyptic Shadow"}, "PURE_FICTION": {"label": "Pure Fiction", "full": "Pure Fiction"}, "ANOMALY_F0": {"label": "Anomaly F0", "full": "Anomaly Arbitration — Floor 0"}, "ANOMALY_F4": {"label": "Anomaly F4", "full": "Anomaly Arbitration — Floor 4"}, "ANOMALY_F5": {"label": "Anomaly F5*", "full": "Anomaly Arbitration — Floor 5 (Hard)"}};
 
+// Manifest of rolling 3-version-window snapshots, one entry per
+// As_Of_Version, oldest first. Each entry's `file` is a Brotli-compressed
+// JSON dataset (same row shape as the main dataset) generated by
+// by_cost_archetype_tier_list_generator.py alongside this page.
+const HISTORY_MANIFEST = [{"group_num": 1, "file": "history/by_cost_archetype_history_g1.json.br", "mode_versions": {"ANOMALY_F0": "4.3.2", "ANOMALY_F4": "4.3.2", "ANOMALY_F5": "4.3.2", "APOC": "4.3.2", "MOC": "4.3.2", "PURE_FICTION": "4.3.2"}, "versions_used": ["4.1.1", "4.1.2", "4.2.1", "4.2.2", "4.2.3", "4.3.1", "4.3.2"], "row_count": 24928, "is_latest": true}, {"group_num": 2, "file": "history/by_cost_archetype_history_g2.json.br", "mode_versions": {"ANOMALY_F0": "4.2.3", "ANOMALY_F4": "4.2.3", "ANOMALY_F5": "4.2.3", "APOC": "4.2.3", "MOC": "4.2.2", "PURE_FICTION": "4.3.1"}, "versions_used": ["4.0.1", "4.0.2", "4.1.1", "4.1.2", "4.2.1", "4.2.2", "4.2.3", "4.3.1"], "row_count": 22490, "is_latest": false}, {"group_num": 3, "file": "history/by_cost_archetype_history_g3.json.br", "mode_versions": {"ANOMALY_F0": "4.1.2", "ANOMALY_F4": "4.1.2", "ANOMALY_F5": "4.1.2", "APOC": "4.1.2", "MOC": "4.1.1", "PURE_FICTION": "4.2.1"}, "versions_used": ["3.8.2", "3.8.3", "3.8.4", "4.0.1", "4.0.2", "4.1.1", "4.1.2", "4.2.1"], "row_count": 19785, "is_latest": false}, {"group_num": 4, "file": "history/by_cost_archetype_history_g4.json.br", "mode_versions": {"ANOMALY_F0": "4.0.2", "ANOMALY_F4": "4.0.2", "ANOMALY_F5": "4.0.2", "APOC": "4.0.2", "MOC": "4.0.1", "PURE_FICTION": "4.0.2"}, "versions_used": ["3.7.2", "3.7.3", "3.8.1", "3.8.2", "3.8.3", "3.8.4", "4.0.1", "4.0.2"], "row_count": 20574, "is_latest": false}, {"group_num": 5, "file": "history/by_cost_archetype_history_g5.json.br", "mode_versions": {"ANOMALY_F0": "3.8.4", "ANOMALY_F4": "3.8.4", "ANOMALY_F5": "3.8.4", "APOC": "3.8.3", "MOC": "3.8.2", "PURE_FICTION": "3.8.4"}, "versions_used": ["3.6.2", "3.6.3", "3.7.1", "3.7.2", "3.7.3", "3.8.1", "3.8.2", "3.8.3", "3.8.4"], "row_count": 22486, "is_latest": false}, {"group_num": 6, "file": "history/by_cost_archetype_history_g6.json.br", "mode_versions": {"ANOMALY_F0": "3.7.3", "ANOMALY_F4": "3.7.3", "ANOMALY_F5": "3.7.3", "APOC": "3.7.3", "MOC": "3.7.2", "PURE_FICTION": "3.8.1"}, "versions_used": ["3.5.2", "3.5.3", "3.6.1", "3.6.2", "3.6.3", "3.7.1", "3.7.2", "3.7.3", "3.8.1"], "row_count": 22618, "is_latest": false}, {"group_num": 7, "file": "history/by_cost_archetype_history_g7.json.br", "mode_versions": {"ANOMALY_F0": "3.6.3", "ANOMALY_F4": "3.6.3", "ANOMALY_F5": "3.6.3", "APOC": "3.6.3", "MOC": "3.6.2", "PURE_FICTION": "3.7.1"}, "versions_used": ["3.4.2", "3.4.3", "3.5.1", "3.5.2", "3.5.3", "3.6.1", "3.6.2", "3.6.3", "3.7.1"], "row_count": 21652, "is_latest": false}, {"group_num": 8, "file": "history/by_cost_archetype_history_g8.json.br", "mode_versions": {"APOC": "3.5.3", "MOC": "3.5.2", "PURE_FICTION": "3.6.1"}, "versions_used": ["3.3.2", "3.3.3", "3.4.1", "3.4.2", "3.4.3", "3.5.1", "3.5.2", "3.5.3", "3.6.1"], "row_count": 17298, "is_latest": false}, {"group_num": 9, "file": "history/by_cost_archetype_history_g9.json.br", "mode_versions": {"APOC": "3.4.3", "MOC": "3.4.2", "PURE_FICTION": "3.5.1"}, "versions_used": ["3.2.2", "3.2.3", "3.3.1", "3.3.2", "3.3.3", "3.4.1", "3.4.2", "3.4.3", "3.5.1"], "row_count": 16949, "is_latest": false}, {"group_num": 10, "file": "history/by_cost_archetype_history_g10.json.br", "mode_versions": {"APOC": "3.3.3", "MOC": "3.3.2", "PURE_FICTION": "3.4.1"}, "versions_used": ["3.1.2", "3.1.3", "3.2.1", "3.2.2", "3.2.3", "3.3.1", "3.3.2", "3.3.3", "3.4.1"], "row_count": 16655, "is_latest": false}, {"group_num": 11, "file": "history/by_cost_archetype_history_g11.json.br", "mode_versions": {"APOC": "3.2.3", "MOC": "3.2.2", "PURE_FICTION": "3.3.1"}, "versions_used": ["2.7.3", "3.0.3", "3.1.1", "3.1.2", "3.1.3", "3.2.1", "3.2.2", "3.2.3", "3.3.1"], "row_count": 17041, "is_latest": false}, {"group_num": 12, "file": "history/by_cost_archetype_history_g12.json.br", "mode_versions": {"APOC": "3.1.3", "MOC": "3.1.2", "PURE_FICTION": "3.2.1"}, "versions_used": ["2.6.3", "2.7.1", "2.7.2", "2.7.3", "3.0.3", "3.1.1", "3.1.2", "3.1.3", "3.2.1"], "row_count": 16118, "is_latest": false}, {"group_num": 13, "file": "history/by_cost_archetype_history_g13.json.br", "mode_versions": {"APOC": "3.0.3", "MOC": "2.7.3", "PURE_FICTION": "3.1.1"}, "versions_used": ["2.5.3", "2.6.1", "2.6.2", "2.6.3", "2.7.1", "2.7.2", "2.7.3", "3.0.3", "3.1.1"], "row_count": 16323, "is_latest": false}, {"group_num": 14, "file": "history/by_cost_archetype_history_g14.json.br", "mode_versions": {"APOC": "2.7.1", "MOC": "2.6.3", "PURE_FICTION": "2.7.2"}, "versions_used": ["2.4.3", "2.5.1", "2.5.2", "2.5.3", "2.6.1", "2.6.2", "2.6.3", "2.7.1", "2.7.2"], "row_count": 16213, "is_latest": false}, {"group_num": 15, "file": "history/by_cost_archetype_history_g15.json.br", "mode_versions": {"APOC": "2.6.1", "MOC": "2.5.3", "PURE_FICTION": "2.6.2"}, "versions_used": ["2.3.3", "2.4.1", "2.4.2", "2.4.3", "2.5.1", "2.5.2", "2.5.3", "2.6.1", "2.6.2"], "row_count": 17684, "is_latest": false}, {"group_num": 16, "file": "history/by_cost_archetype_history_g16.json.br", "mode_versions": {"APOC": "2.5.1", "MOC": "2.4.3", "PURE_FICTION": "2.5.2"}, "versions_used": ["2.2.2", "2.3.1", "2.3.2", "2.3.3", "2.4.1", "2.4.2", "2.4.3", "2.5.1", "2.5.2"], "row_count": 17704, "is_latest": false}, {"group_num": 17, "file": "history/by_cost_archetype_history_g17.json.br", "mode_versions": {"APOC": "2.4.1", "MOC": "2.3.3", "PURE_FICTION": "2.4.2"}, "versions_used": ["2.2.2", "2.3.1", "2.3.2", "2.3.3", "2.4.1", "2.4.2"], "row_count": 12333, "is_latest": false}, {"group_num": 18, "file": "history/by_cost_archetype_history_g18.json.br", "mode_versions": {"APOC": "2.3.1", "MOC": "2.2.2", "PURE_FICTION": "2.3.2"}, "versions_used": ["2.2.2", "2.3.1", "2.3.2"], "row_count": 7728, "is_latest": false}];
+
 let TIER_CONFIG = JSON.parse(JSON.stringify(DEFAULT_TIER_CONFIG));
 const DEFAULT_MIN_APPEARANCE = 0.1;
 
 let RAW_DATA = [];
+let LATEST_DATA = null;           // the initially-loaded "Latest" dataset, cached for instant switch-back
+const HISTORY_CACHE = new Map();  // version string -> parsed row array, filled in lazily on first visit
+let currentVersionKey = '__latest__';
+let _firstDataLoad = true;
 let TOKEN_INDEX = new Map();
 let MIN_COST_G = 0, MAX_COST_G = 32;
 
@@ -591,6 +639,7 @@ function cardHTML(r) {
       <span class="stat-pill cost">${r.estimated_min_cost}→${r.estimated_max_cost}</span>
       <span class="stat-pill eid">E${eid}</span>
       <span class="stat-pill ${sustainCls}">${fmtPct(r.Sustain_Rate_pct)} sus.</span>
+      <span class="stat-pill full-star">${fmtPct(r.Full_Star_Rate_pct)} 3★</span>
       <span class="stat-pill">n=${fmtInt(r.Total_Samples)}</span>
     </div>
   </div>`;
@@ -640,11 +689,22 @@ function prepareData() {
 
   MIN_COST_G = Math.min(...RAW_DATA.map(r => r.estimated_min_cost));
   MAX_COST_G = Math.max(...RAW_DATA.map(r => r.estimated_max_cost));
-  costMinFilter = MIN_COST_G; costMaxFilter = MAX_COST_G;
-  minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4; minSlider.value = MIN_COST_G;
-  maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G; maxSlider.value = MAX_COST_G;
-  document.getElementById('minCostLabel').textContent = MIN_COST_G;
-  document.getElementById('maxCostLabel').textContent = MAX_COST_G;
+  minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4;
+  maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G;
+
+  if (_firstDataLoad) {
+    // First page load: snap the cost range to this dataset's full bounds.
+    costMinFilter = MIN_COST_G; costMaxFilter = MAX_COST_G;
+    _firstDataLoad = false;
+  } else {
+    // Switching between Latest/History snapshots: keep the person's chosen
+    // cost range, just clamp it into whatever bounds this snapshot has.
+    costMinFilter = Math.min(Math.max(costMinFilter, MIN_COST_G), MAX_COST_G - 4);
+    costMaxFilter = Math.max(Math.min(costMaxFilter, MAX_COST_G), MIN_COST_G + 4);
+  }
+  minSlider.value = costMinFilter; maxSlider.value = costMaxFilter;
+  document.getElementById('minCostLabel').textContent = costMinFilter;
+  document.getElementById('maxCostLabel').textContent = costMaxFilter;
   sliderFill(minSlider); sliderFill(maxSlider);
 
   TOKEN_INDEX = new Map();
@@ -656,7 +716,12 @@ function prepareData() {
     });
   });
 
-  currentMode = Object.keys(MODE_META).find(m => RAW_DATA.some(r => r.Game_Mode === m)) || null;
+  // Keep the person's current mode selection if this snapshot still has
+  // data for it; otherwise fall back to the first available mode.
+  const modesPresent = Object.keys(MODE_META).filter(m => RAW_DATA.some(r => r.Game_Mode === m));
+  if (!currentMode || !modesPresent.includes(currentMode)) {
+    currentMode = modesPresent[0] || null;
+  }
   buildModeTabs();
   syncThresholdInputs();
 }
@@ -667,13 +732,18 @@ function getBrotli() {
   return _brotliPromise;
 }
 
-async function loadDataset(filename) {
+async function fetchAndDecompress(filename) {
   const response = await fetch(filename);
   if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
   const buffer = await response.arrayBuffer();
   const brotli = await getBrotli();
   const decompressed = brotli.decompress(new Uint8Array(buffer));
-  RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
+  return JSON.parse(new TextDecoder().decode(decompressed));
+}
+
+async function loadDataset(filename) {
+  RAW_DATA = await fetchAndDecompress(filename);
+  LATEST_DATA = RAW_DATA;
   prepareData();
   recompute();
 }
@@ -681,11 +751,122 @@ async function loadDataset(filename) {
 async function initializeApp() {
   try {
     await loadDataset("by_cost_archetype_tier_list_data.json.br");
+    buildVersionSelect();
   } catch (err) {
     console.error('Data load error:', err);
     document.getElementById('resultsInfo').textContent = '⚠️ Failed to load data. Check console.';
     document.getElementById('tierListContainer').innerHTML =
       `<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div>`;
+  }
+}
+
+// ---------------------------------------------------------------------
+// PAST RANKINGS -- version history navigation
+//
+// HISTORY_MANIFEST holds one entry per Version_Group_Num snapshot (1 =
+// newest, ascending from there). Version_Group_Num is ranked PER GAME
+// MODE, so group_num N pulls each mode's own Nth-most-recent rolling
+// window together -- this is what keeps every mode's tab present at a
+// given snapshot instead of silently dropping modes whose calendar
+// version string didn't match. The newest entry (group_num 1) is flagged
+// is_latest=true because it's the same dataset as the default page load,
+// so it's excluded from the dropdown/arrow order and mapped straight back
+// to '__latest__' instead of being re-fetched.
+// ---------------------------------------------------------------------
+const HISTORY_ENTRIES = HISTORY_MANIFEST.filter(e => !e.is_latest); // ascending group_num, i.e. newest-of-the-rest first
+const VERSION_ORDER = ['__latest__', ...HISTORY_ENTRIES.map(e => e.group_num)];
+
+function findHistoryEntry(groupNum) {
+  return HISTORY_ENTRIES.find(e => e.group_num === groupNum) || null;
+}
+
+function modeVersionSummary(entry) {
+  if (!entry) return '';
+  return Object.entries(entry.mode_versions)
+    .map(([mode, ver]) => (MODE_META[mode]?.label || mode) + ' ' + ver)
+    .join(' · ');
+}
+
+function buildVersionSelect() {
+  const panel = document.getElementById('versionPanel');
+  if (!HISTORY_ENTRIES.length) { panel.style.display = 'none'; return; }
+
+  const sel = document.getElementById('versionSelect');
+  sel.innerHTML = '';
+  const latestEntry = HISTORY_MANIFEST.find(e => e.is_latest);
+  const latestOpt = document.createElement('option');
+  latestOpt.value = '__latest__';
+  latestOpt.textContent = 'Latest' + (latestEntry ? (' — ' + modeVersionSummary(latestEntry)) : '') + ' (live)';
+  sel.appendChild(latestOpt);
+
+  HISTORY_ENTRIES.forEach(entry => {
+    const opt = document.createElement('option');
+    opt.value = String(entry.group_num);
+    opt.textContent = 'Snapshot #' + entry.group_num + ' · ' + entry.row_count.toLocaleString() + ' rows';
+    sel.appendChild(opt);
+  });
+
+  sel.value = currentVersionKey === '__latest__' ? '__latest__' : String(currentVersionKey);
+  sel.addEventListener('change', () => {
+    switchToVersion(sel.value === '__latest__' ? '__latest__' : parseInt(sel.value, 10));
+  });
+  document.getElementById('verPrevBtn').addEventListener('click', () => stepVersion(1));
+  document.getElementById('verNextBtn').addEventListener('click', () => stepVersion(-1));
+
+  updateVersionNav();
+}
+
+function stepVersion(direction) {
+  // direction +1 = older (Prev button), -1 = newer (Next button)
+  const idx = VERSION_ORDER.indexOf(currentVersionKey);
+  const nextIdx = idx + direction;
+  if (nextIdx < 0 || nextIdx >= VERSION_ORDER.length) return;
+  switchToVersion(VERSION_ORDER[nextIdx]);
+}
+
+async function switchToVersion(versionKey) {
+  if (versionKey === currentVersionKey) return;
+  const loadingTag = document.getElementById('versionLoadingTag');
+
+  try {
+    if (versionKey === '__latest__') {
+      RAW_DATA = LATEST_DATA;
+    } else if (HISTORY_CACHE.has(versionKey)) {
+      RAW_DATA = HISTORY_CACHE.get(versionKey);
+    } else {
+      const entry = findHistoryEntry(versionKey);
+      if (!entry) return;
+      loadingTag.classList.add('active');
+      const data = await fetchAndDecompress(entry.file); // e.g. "history/by_cost_archetype_history_g5.json.br", relative to this page
+      HISTORY_CACHE.set(versionKey, data);
+      RAW_DATA = data;
+    }
+    currentVersionKey = versionKey;
+    prepareData();
+    recompute();
+    updateVersionNav();
+  } catch (err) {
+    console.error('History snapshot load error:', err);
+    document.getElementById('resultsInfo').textContent = '⚠️ Failed to load that snapshot. Check console.';
+  } finally {
+    loadingTag.classList.remove('active');
+  }
+}
+
+function updateVersionNav() {
+  const sel = document.getElementById('versionSelect');
+  if (sel) sel.value = currentVersionKey === '__latest__' ? '__latest__' : String(currentVersionKey);
+
+  const idx = VERSION_ORDER.indexOf(currentVersionKey);
+  document.getElementById('verPrevBtn').disabled = (idx >= VERSION_ORDER.length - 1);
+  document.getElementById('verNextBtn').disabled = (idx <= 0);
+
+  const note = document.getElementById('versionWindowNote');
+  if (currentVersionKey === '__latest__') {
+    note.innerHTML = '<span class="live-tag">● LIVE</span> — ' + modeVersionSummary(HISTORY_MANIFEST.find(e => e.is_latest));
+  } else {
+    const entry = findHistoryEntry(currentVersionKey);
+    note.textContent = entry ? modeVersionSummary(entry) : ('Snapshot #' + currentVersionKey);
   }
 }
 

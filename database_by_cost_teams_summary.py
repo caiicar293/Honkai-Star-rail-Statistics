@@ -125,7 +125,7 @@ class HonkaiCostTeamMetaAnalyzer:
                 {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
 
                 -- Full-star rate: recalculate from raw counts, NOT avg of pct
-                SUM(Total_Full_Clears)                                                  AS Total_Total_Full_Clears,
+                SUM(Total_Full_Clears)                                                  AS Total_Full_Clears,
                 SUM(Samples)                                                           AS Total_Samples,
                 ROUND(
                     100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
@@ -153,6 +153,75 @@ class HonkaiCostTeamMetaAnalyzer:
                 9   -- has_sustain
         """
 
+    def _generate_rolling_query(self, task: dict, window: int = 3) -> str:
+        """
+        Unlike `_recent_filter` (a single static clip to the latest N
+        versions -> one row per group), this produces a TRAILING rolling
+        average: one row per group PER As_Of_Version, aggregated over that
+        version and the (window - 1) versions immediately before it.
+        """
+        floor_f = self._floor_filter(task["floors"])
+        node_f  = self._node_filter(task)
+        table   = task["table"]
+
+        return f"""
+            WITH version_ranks AS (
+                SELECT DISTINCT version,
+                       DENSE_RANK() OVER (ORDER BY version) AS vrank
+                FROM {table}
+            ),
+            base AS (
+                SELECT t.*, vr.vrank
+                FROM {table} t
+                JOIN version_ranks vr USING (version)
+                WHERE Samples > 0
+                  {floor_f}
+                  {node_f}
+            )
+            SELECT
+                vr_asof.version                                                        AS As_Of_Version,
+                '{task['mode']}'                                                       AS Game_Mode,
+                b.at_eidolon_level,
+                b.up_to_eidolon_level,
+                b.Team,
+                b.Archetype_Core,
+                b.estimated_min_cost,
+                b.estimated_max_cost,
+                b.max_eidolon,
+                b.has_sustain,
+
+                ROUND(AVG(b.Appearance_Rate_pct), 2)                                   AS Simple_Avg_Appearance,
+                DENSE_RANK() OVER (ORDER BY vr_asof.version DESC)                      AS Version_Group_Num,    
+                ROUND(AVG(b.Average_Score), 2)                                         AS Simple_Avg_Score,
+                ROUND(SUM(b.Average_Score * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Score,
+                ROUND(SUM(b.Median_Score  * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Median,
+                {task['perf']}(b.Average_Score)                                        AS Best_Version_Avg,
+
+                SUM(b.Total_Full_Clears)                                                AS Total_Full_Clears,
+                SUM(b.Samples)                                                         AS Total_Samples,
+                ROUND(
+                    100.0 * SUM(b.Total_Full_Clears) / NULLIF(SUM(b.Samples), 0),
+                    2
+                )                                                                      AS Full_Star_Rate_pct,
+
+                COUNT(DISTINCT b.version)                                              AS Version_Count,
+                STRING_AGG(DISTINCT b.version, ', ' ORDER BY b.version DESC)           AS Versions_Used
+            FROM base b
+            JOIN version_ranks vr_asof
+              ON b.vrank BETWEEN vr_asof.vrank - {window - 1} AND vr_asof.vrank
+            GROUP BY
+                1,  -- As_Of_Version
+                2,  -- Game_Mode
+                3,  -- at_eidolon_level
+                4,  -- up_to_eidolon_level
+                5,  -- Team
+                6,  -- Archetype_Core
+                7,  -- estimated_min_cost
+                8,  -- estimated_max_cost
+                9,  -- max_eidolon
+                10  -- has_sustain
+        """
+
     # ------------------------------------------------------------------
     # Main runner
     # ------------------------------------------------------------------
@@ -161,6 +230,7 @@ class HonkaiCostTeamMetaAnalyzer:
         con = duckdb.connect(self.db_path)
         all_history: list[pd.DataFrame] = []
         all_recent:  list[pd.DataFrame] = []
+        all_rolling: list[pd.DataFrame] = []
 
         print(f"Starting By-Cost Team Meta Analysis on {self.db_path}...")
 
@@ -174,11 +244,15 @@ class HonkaiCostTeamMetaAnalyzer:
                 if not df_r.empty:
                     all_recent.append(df_r)
 
-                print(f"  + {task['mode']:15s}  history={len(df_h):,}  recent={len(df_r):,}")
+                df_roll = con.execute(self._generate_rolling_query(task, window=3)).df()
+                if not df_roll.empty:
+                    all_rolling.append(df_roll)
+
+                print(f"  + {task['mode']:15s}  history={len(df_h):,}  recent={len(df_r):,}  rolling={len(df_roll):,}")
             except Exception as e:
                 print(f"  ! Error on {task['mode']}: {e}")
 
-        if not all_history and not all_recent:
+        if not all_history and not all_recent and not all_rolling:
             print("No data found. Exiting.")
             con.close()
             return
@@ -199,11 +273,20 @@ class HonkaiCostTeamMetaAnalyzer:
                 )
                 print(f"  Wrote by_cost_team_recent_meta_summary ({len(recent_df):,} rows)")
 
+            if all_rolling:
+                rolling_df = pd.concat(all_rolling, ignore_index=True)
+                con.execute("DROP TABLE IF EXISTS by_cost_team_rolling_meta_summary")
+                con.execute(
+                    "CREATE TABLE by_cost_team_rolling_meta_summary AS SELECT * FROM rolling_df"
+                )
+                print(f"  Wrote by_cost_team_rolling_meta_summary ({len(rolling_df):,} rows)")
+
             con.execute("COMMIT")
             print(
                 "\n>>> Analysis complete. "
-                "Tables 'by_cost_team_meta_summary' and "
-                "'by_cost_team_recent_meta_summary' are now live."
+                "Tables 'by_cost_team_meta_summary', "
+                "'by_cost_team_recent_meta_summary', and "
+                "'by_cost_team_rolling_meta_summary' are now live."
             )
         except Exception as e:
             con.execute("ROLLBACK")
@@ -335,7 +418,7 @@ class HonkaiCostArchetypeMetaAnalyzer:
                 {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
 
                 -- Full-star rate: recalculate from raw counts, NOT avg of pct
-                SUM(Total_Full_Clears)                                                  AS Total_Total_Full_Clears,
+                SUM(Total_Full_Clears)                                                  AS Total_Full_Clears,
                 SUM(Samples)                                                           AS Total_Samples,
                 ROUND(
                     100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
@@ -367,6 +450,76 @@ class HonkaiCostArchetypeMetaAnalyzer:
                 7   -- max_eidolon
         """
 
+    def _generate_rolling_query(self, task: dict, window: int = 3) -> str:
+        """
+        Trailing rolling average: one row per group PER As_Of_Version,
+        aggregated over that version and the (window - 1) versions
+        immediately before it (rather than one static clip to the latest N).
+        """
+        floor_f = self._floor_filter(task["floors"])
+        node_f  = self._node_filter(task)
+        table   = task["table"]
+
+        return f"""
+            WITH version_ranks AS (
+                SELECT DISTINCT version,
+                       DENSE_RANK() OVER (ORDER BY version) AS vrank
+                FROM {table}
+            ),
+            base AS (
+                SELECT t.*, vr.vrank
+                FROM {table} t
+                JOIN version_ranks vr USING (version)
+                WHERE Samples > 0
+                  {floor_f}
+                  {node_f}
+            )
+            SELECT
+                vr_asof.version                                                        AS As_Of_Version,
+                '{task['mode']}'                                                       AS Game_Mode,
+                b.at_eidolon_level,
+                b.up_to_eidolon_level,
+                b.Archetype_Core,
+                b.estimated_min_cost,
+                b.estimated_max_cost,
+                b.max_eidolon,
+
+                ROUND(AVG(b.Usage_pct), 2)                                             AS Simple_Avg_Appearance,
+                DENSE_RANK() OVER (ORDER BY vr_asof.version DESC)                      AS Version_Group_Num,
+                ROUND(AVG(b.Average_Score), 2)                                         AS Simple_Avg_Score,
+                ROUND(SUM(b.Average_Score * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Score,
+                ROUND(SUM(b.Median_Score  * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Median,
+                {task['perf']}(b.Average_Score)                                        AS Best_Version_Avg,
+
+                SUM(b.Total_Full_Clears)                                                AS Total_Full_Clears,
+                SUM(b.Samples)                                                         AS Total_Samples,
+                ROUND(
+                    100.0 * SUM(b.Total_Full_Clears) / NULLIF(SUM(b.Samples), 0),
+                    2
+                )                                                                      AS Full_Star_Rate_pct,
+
+                SUM(b.Sustain_Samples)                                                  AS Total_Sustain_Samples,
+                ROUND(
+                    100.0 * SUM(b.Sustain_Samples) / NULLIF(SUM(b.Samples), 0),
+                    2
+                )                                                                      AS Sustain_Rate_pct,
+
+                COUNT(DISTINCT b.version)                                              AS Version_Count,
+                STRING_AGG(DISTINCT b.version, ', ' ORDER BY b.version DESC)           AS Versions_Used
+            FROM base b
+            JOIN version_ranks vr_asof
+              ON b.vrank BETWEEN vr_asof.vrank - {window - 1} AND vr_asof.vrank
+            GROUP BY
+                1,  -- As_Of_Version
+                2,  -- Game_Mode
+                3,  -- at_eidolon_level
+                4,  -- up_to_eidolon_level
+                5,  -- Archetype_Core
+                6,  -- estimated_min_cost
+                7,  -- estimated_max_cost
+                8   -- max_eidolon
+        """
+
     # ------------------------------------------------------------------
     # Main runner
     # ------------------------------------------------------------------
@@ -375,6 +528,7 @@ class HonkaiCostArchetypeMetaAnalyzer:
         con = duckdb.connect(self.db_path)
         all_history: list[pd.DataFrame] = []
         all_recent:  list[pd.DataFrame] = []
+        all_rolling: list[pd.DataFrame] = []
 
         print(f"Starting By-Cost Archetype Meta Analysis on {self.db_path}...")
 
@@ -388,11 +542,15 @@ class HonkaiCostArchetypeMetaAnalyzer:
                 if not df_r.empty:
                     all_recent.append(df_r)
 
-                print(f"  + {task['mode']:15s}  history={len(df_h):,}  recent={len(df_r):,}")
+                df_roll = con.execute(self._generate_rolling_query(task, window=3)).df()
+                if not df_roll.empty:
+                    all_rolling.append(df_roll)
+
+                print(f"  + {task['mode']:15s}  history={len(df_h):,}  recent={len(df_r):,}  rolling={len(df_roll):,}")
             except Exception as e:
                 print(f"  ! Error on {task['mode']}: {e}")
 
-        if not all_history and not all_recent:
+        if not all_history and not all_recent and not all_rolling:
             print("No data found. Exiting.")
             con.close()
             return
@@ -413,11 +571,20 @@ class HonkaiCostArchetypeMetaAnalyzer:
                 )
                 print(f"  Wrote by_cost_archetype_recent_meta_summary ({len(recent_df):,} rows)")
 
+            if all_rolling:
+                rolling_df = pd.concat(all_rolling, ignore_index=True)
+                con.execute("DROP TABLE IF EXISTS by_cost_archetype_rolling_meta_summary")
+                con.execute(
+                    "CREATE TABLE by_cost_archetype_rolling_meta_summary AS SELECT * FROM rolling_df"
+                )
+                print(f"  Wrote by_cost_archetype_rolling_meta_summary ({len(rolling_df):,} rows)")
+
             con.execute("COMMIT")
             print(
                 "\n>>> Analysis complete. "
-                "Tables 'by_cost_archetype_meta_summary' and "
-                "'by_cost_archetype_recent_meta_summary' are now live."
+                "Tables 'by_cost_archetype_meta_summary', "
+                "'by_cost_archetype_recent_meta_summary', and "
+                "'by_cost_archetype_rolling_meta_summary' are now live."
             )
         except Exception as e:
             con.execute("ROLLBACK")
@@ -582,6 +749,76 @@ class HonkaiCostCharacterMetaAnalyzer:
                 7   -- max_eidolon
         """
 
+    def _generate_rolling_query(self, task: dict, window: int = 3) -> str:
+        """
+        Trailing rolling average: one row per group PER As_Of_Version,
+        aggregated over that version and the (window - 1) versions
+        immediately before it (rather than one static clip to the latest N).
+        """
+        floor_f = self._floor_filter(task["floors"])
+        node_f  = self._node_filter(task)
+        table   = task["table"]
+
+        return f"""
+            WITH version_ranks AS (
+                SELECT DISTINCT version,
+                       DENSE_RANK() OVER (ORDER BY version) AS vrank
+                FROM {table}
+            ),
+            base AS (
+                SELECT t.*, vr.vrank
+                FROM {table} t
+                JOIN version_ranks vr USING (version)
+                WHERE Samples > 0
+                  {floor_f}
+                  {node_f}
+            )
+            SELECT
+                vr_asof.version                                                        AS As_Of_Version,
+                '{task['mode']}'                                                       AS Game_Mode,
+                b.at_eidolon_level,
+                b.up_to_eidolon_level,
+                b.Character,
+                b.estimated_min_cost,
+                b.estimated_max_cost,
+                b.max_eidolon,
+
+                ROUND(AVG(b.Appearance_Rate_pct), 2)                                   AS Simple_Avg_Appearance,
+                DENSE_RANK() OVER (ORDER BY vr_asof.version DESC)                      AS Version_Group_Num,
+                ROUND(AVG(b.Average_Score), 2)                                         AS Simple_Avg_Score,
+                ROUND(SUM(b.Average_Score * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Score,
+                ROUND(SUM(b.Median_Score  * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Median,
+                {task['perf']}(b.Average_Score)                                        AS Best_Version_Avg,
+
+                SUM(b.Total_Full_Clears)                                                AS Total_Full_Star_Clears,
+                SUM(b.Samples)                                                         AS Total_Samples,
+                ROUND(
+                    100.0 * SUM(b.Total_Full_Clears) / NULLIF(SUM(b.Samples), 0),
+                    2
+                )                                                                      AS Full_Star_Rate_pct,
+
+                SUM(b.Sustain_Samples)                                                  AS Total_Sustain_Samples,
+                ROUND(
+                    100.0 * SUM(b.Sustain_Samples) / NULLIF(SUM(b.Samples), 0),
+                    2
+                )                                                                      AS Sustain_Rate_pct,
+
+                COUNT(DISTINCT b.version)                                              AS Version_Count,
+                STRING_AGG(DISTINCT b.version, ', ' ORDER BY b.version DESC)           AS Versions_Used
+            FROM base b
+            JOIN version_ranks vr_asof
+              ON b.vrank BETWEEN vr_asof.vrank - {window - 1} AND vr_asof.vrank
+            GROUP BY
+                1,  -- As_Of_Version
+                2,  -- Game_Mode
+                3,  -- at_eidolon_level
+                4,  -- up_to_eidolon_level
+                5,  -- Character
+                6,  -- estimated_min_cost
+                7,  -- estimated_max_cost
+                8   -- max_eidolon
+        """
+
     # ------------------------------------------------------------------
     # Main runner
     # ------------------------------------------------------------------
@@ -590,6 +827,7 @@ class HonkaiCostCharacterMetaAnalyzer:
         con = duckdb.connect(self.db_path)
         all_history: list[pd.DataFrame] = []
         all_recent:  list[pd.DataFrame] = []
+        all_rolling: list[pd.DataFrame] = []
 
         print(f"Starting By-Cost Character Meta Analysis on {self.db_path}...")
 
@@ -603,11 +841,15 @@ class HonkaiCostCharacterMetaAnalyzer:
                 if not df_r.empty:
                     all_recent.append(df_r)
 
-                print(f"  + {task['mode']:15s}  history={len(df_h):,}  recent={len(df_r):,}")
+                df_roll = con.execute(self._generate_rolling_query(task, window=3)).df()
+                if not df_roll.empty:
+                    all_rolling.append(df_roll)
+
+                print(f"  + {task['mode']:15s}  history={len(df_h):,}  recent={len(df_r):,}  rolling={len(df_roll):,}")
             except Exception as e:
                 print(f"  ! Error on {task['mode']}: {e}")
 
-        if not all_history and not all_recent:
+        if not all_history and not all_recent and not all_rolling:
             print("No data found. Exiting.")
             con.close()
             return
@@ -628,11 +870,20 @@ class HonkaiCostCharacterMetaAnalyzer:
                 )
                 print(f"  Wrote by_cost_character_recent_meta_summary ({len(recent_df):,} rows)")
 
+            if all_rolling:
+                rolling_df = pd.concat(all_rolling, ignore_index=True)
+                con.execute("DROP TABLE IF EXISTS by_cost_character_rolling_meta_summary")
+                con.execute(
+                    "CREATE TABLE by_cost_character_rolling_meta_summary AS SELECT * FROM rolling_df"
+                )
+                print(f"  Wrote by_cost_character_rolling_meta_summary ({len(rolling_df):,} rows)")
+
             con.execute("COMMIT")
             print(
                 "\n>>> Analysis complete. "
-                "Tables 'by_cost_character_meta_summary' and "
-                "'by_cost_character_recent_meta_summary' are now live."
+                "Tables 'by_cost_character_meta_summary', "
+                "'by_cost_character_recent_meta_summary', and "
+                "'by_cost_character_rolling_meta_summary' are now live."
             )
         except Exception as e:
             con.execute("ROLLBACK")

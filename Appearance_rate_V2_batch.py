@@ -94,7 +94,7 @@ class HonkaiStatistics_V2_Batch:
                 for v in versions:
                     stage_lf, char_lf = self._load_data(v)
                     self.lazy_frames.append(stage_lf)
-                    self.char_lazy_frames.append(char_lf)
+                    self.char_lazy_frames.append(char_lf.drop(["phase"] if "phase" in char_lf.collect_schema() else []))
         else:
             stage_lf, char_lf = self._load_data(self.version)
             self.lazy_frames.append(stage_lf)

@@ -47,6 +47,14 @@ except ImportError:
 load_dotenv()
 
 ROLLING_TABLE = "by_cost_archetype_rolling_meta_summary"
+CHARACTER_ROLLING_TABLE = "by_cost_character_rolling_meta_summary"
+CHARACTERS_JSON_PATH = "characters.json"
+
+# Roles pulled from characters.json and included as their own tier-list
+# sections alongside archetypes. 'dps' and 'specialist' are intentionally
+# excluded -- this page is about team-building pieces (who to slot in
+# alongside your DPS), not the DPS itself.
+CHARACTER_ROLES_INCLUDED = ("sustain", "amplifier")
 
 # Columns pulled from the rolling table. Version_Group_Num is a PER-MODE
 # rank (1 = that mode's own most recent As_Of_Version snapshot, 2 = its
@@ -163,9 +171,93 @@ def fetch_rolling_data_by_group(db_path: str, group_num: int) -> list[dict]:
             WHERE Version_Group_Num = ? AND Total_Samples > 0
             ORDER BY Game_Mode, Weighted_Avg_Score
         """, [group_num])
-        return clean_rows(cur)
+        rows = clean_rows(cur)
+        for r in rows:
+            r["Category"] = "archetype"
+        return rows
     finally:
         conn.close()
+
+
+def load_character_roles(path: str) -> dict:
+    """name -> list of roles, e.g. {'Aventurine': ['sustain'], 'Robin': ['amplifier']}."""
+    p = Path(path)
+    if not p.exists():
+        print(f"[WARN] {path} not found; the Sustains/Amplifiers sections will be empty.")
+        return {}
+    with open(p, encoding="utf-8") as f:
+        raw = json.load(f)
+    return {name: info.get("role", []) for name, info in raw.items()}
+
+
+def fetch_character_rolling_data_by_group(db_path: str, group_num: int, character_roles: dict) -> list[dict]:
+    """
+    Sustain/Amplifier character rows for a single Version_Group_Num snapshot,
+    normalized to the same shape as fetch_rolling_data_by_group() so both
+    can be concatenated into one dataset. 
+    
+    This is executed purely via DuckDB SQL which handles stripping Eidolon
+    strings e.g., 'Robin(E1)' or 'Tribbie (e5)' -> 'Robin'/'Tribbie'
+    matching the base name against our characters.json list.
+    """
+    # Build a VALUES list to load character roles into DuckDB as an inline CTE
+    values_clauses = []
+    for name, roles in character_roles.items():
+        for role in roles:
+            if role in CHARACTER_ROLES_INCLUDED:
+                safe_name = name.replace("'", "''")  # escape quotes just in case
+                values_clauses.append(f"('{safe_name}', '{role}')")
+                
+    if not values_clauses:
+        return []
+
+    values_sql = ",\n".join(values_clauses)
+    
+    # regex \s*\([Ee]\d+\)$ strips eidolon suffixes efficiently prior to join matching
+    query = rf"""
+        WITH char_roles(Base_Character, Category) AS (
+            SELECT * FROM (VALUES
+                {values_sql}
+            )
+        )
+        SELECT 
+            Game_Mode, 
+            at_eidolon_level, 
+            up_to_eidolon_level, 
+            db.Character AS Archetype_Core,
+            estimated_min_cost, 
+            estimated_max_cost, 
+            max_eidolon,
+            Simple_Avg_Appearance, 
+            Simple_Avg_Score, 
+            Weighted_Avg_Score,
+            Weighted_Avg_Median, 
+            Best_Version_Avg, 
+            Total_Full_Star_Clears AS Total_Full_Clears,
+            Total_Samples, 
+            Full_Star_Rate_pct, 
+            Total_Sustain_Samples,
+            Sustain_Rate_pct, 
+            Version_Count, 
+            Versions_Used,
+            As_Of_Version, 
+            Version_Group_Num,
+            cr.Category
+        FROM {CHARACTER_ROLLING_TABLE} db
+        JOIN char_roles cr 
+          ON regexp_replace(db.Character, '\s*\([Ee]\d+\)$', '') = cr.Base_Character
+        WHERE Version_Group_Num = ? AND Total_Samples > 0
+        ORDER BY Game_Mode, Weighted_Avg_Score
+    """
+
+    conn = duckdb.connect(db_path, read_only=True)
+    try:
+        cur = conn.execute(query, [group_num])
+        rows = clean_rows(cur)
+    finally:
+        conn.close()
+
+    return rows
 
 
 def write_brotli_json(out_path: Path, data) -> None:
@@ -188,9 +280,14 @@ def build(args):
     if not db_path:
         raise ValueError("No DB path provided and DB_File is not set in .env")
 
-    print(f"[INFO] Reading {ROLLING_TABLE} (Version_Group_Num = 1, i.e. Latest) from {db_path} ...")
-    data = fetch_rolling_data_by_group(db_path, 1)
-    print(f"[INFO] Fetched {len(data):,} rows across {len({r['Game_Mode'] for r in data})} game modes.")
+    character_roles = load_character_roles(args.characters)
+
+    print(f"[INFO] Reading {ROLLING_TABLE} + {CHARACTER_ROLLING_TABLE} (Version_Group_Num = 1, i.e. Latest) from {db_path} ...")
+    data = fetch_rolling_data_by_group(db_path, 1) + fetch_character_rolling_data_by_group(db_path, 1, character_roles)
+    cat_counts = {}
+    for r in data:
+        cat_counts[r["Category"]] = cat_counts.get(r["Category"], 0) + 1
+    print(f"[INFO] Fetched {len(data):,} rows across {len({r['Game_Mode'] for r in data})} game modes. By category: {cat_counts}")
 
     mode_versions_latest = {}
     for r in data:
@@ -208,8 +305,9 @@ def build(args):
 
     # -------------------------------------------------------------
     # Rolling-history snapshots: one Brotli file per Version_Group_Num,
-    # so the tier list page can let the person browse past rankings
-    # with every game mode's tab present at each snapshot position.
+    # combining archetype + sustain/amplifier character rows, so the tier
+    # list page can let the person browse past rankings across all three
+    # sections with every game mode's tab present at each snapshot position.
     # -------------------------------------------------------------
     history_manifest = []
     if not args.skip_history:
@@ -220,7 +318,7 @@ def build(args):
         print(f"[INFO] Found {len(group_nums):,} rolling Version_Group_Num snapshots.")
 
         for g in group_nums:
-            rows = fetch_rolling_data_by_group(db_path, g)
+            rows = fetch_rolling_data_by_group(db_path, g) + fetch_character_rolling_data_by_group(db_path, g, character_roles)
             if not rows:
                 continue
             fname = f"by_cost_archetype_history_g{g}.json.br"
@@ -252,7 +350,7 @@ def build(args):
 
     context = {
         "version_label": version_label,
-        "subtitle": "ROLLING LAST-3-VERSION WINDOW · ALL GAME MODES",
+        "subtitle": "ROLLING LAST-3-VERSION WINDOW · ARCHETYPES, SUSTAINS & AMPLIFIERS · ALL GAME MODES",
         "path_prefix": "../",
         "data_filename": data_filename,
         "icons_json": json.dumps(icons, ensure_ascii=False),
@@ -271,6 +369,7 @@ def main():
     parser = argparse.ArgumentParser(description="Generate the Dynamic By-Cost Archetype Tier List.")
     parser.add_argument("--db", default=None, help="Path to DuckDB file (defaults to DB_File in .env)")
     parser.add_argument("--icons", default="character_icons.json", help="Path to character icons JSON")
+    parser.add_argument("--characters", default=CHARACTERS_JSON_PATH, help="Path to characters.json (name -> role mapping, for the Sustains/Amplifiers sections)")
     parser.add_argument("--template-dir", default=str(Path(__file__).parent), help="Dir containing .j2 templates")
     parser.add_argument("--template", default="by_cost_archetype_tier_list_template.html.j2", help="Template filename")
     parser.add_argument("--output", default="docs/tier_list/by_cost_archetype_tier_list.html", help="Output HTML path")

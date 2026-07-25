@@ -43,6 +43,16 @@
   .meta-chip .val { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; color: var(--accent); display: block; line-height: 1; }
   .meta-chip .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; }
 
+  /* CATEGORY TABS (Archetypes / Sustains / Amplifiers) */
+  .category-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .category-tab {
+    background: var(--panel2); border: 1.5px solid var(--border2); color: var(--text2);
+    font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+  }
+  .category-tab:hover { border-color: var(--accent2); color: var(--accent2); }
+  .category-tab.active { background: rgba(56,189,248,0.14); border-color: var(--accent); color: var(--accent); box-shadow: 0 0 14px rgba(56,189,248,0.2); }
+
   /* MODE TABS */
   .mode-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
   .mode-tab {
@@ -187,7 +197,7 @@
   .tier-T2     .tier-label-wrap { background: var(--t2); }
 
   .tier-content { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px; flex-grow: 1; align-items: stretch; align-content: flex-start; }
-  .tier-content:empty::after { content: 'No archetypes in this tier under current filters'; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px; }
+  .tier-content:empty::after { content: 'No entries in this tier under current filters'; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px; }
 
   .arch-card {
     display: flex; flex-direction: column; gap: 7px; background: var(--panel2); border: 1px solid var(--border2);
@@ -222,6 +232,29 @@
   ::-webkit-scrollbar-track { background: var(--bg2); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* MOBILE OVERFLOW FIXES -- the version-window-note and versions meta-chip
+     are single long strings (per-mode version breakdown) that otherwise
+     force horizontal overflow on narrow screens instead of wrapping. */
+  @media (max-width: 640px) {
+    .container { padding: 16px 12px; }
+    .header { gap: 12px; }
+    .header h1 { font-size: 26px; }
+    .header-meta { width: 100%; gap: 8px; }
+    .meta-chip { flex: 1 1 calc(50% - 8px); min-width: 0; max-width: none; }
+    .meta-chip .val { font-size: 13px; white-space: normal; word-break: break-word; overflow-wrap: break-word; }
+
+    .category-tab { padding: 7px 12px; font-size: 12px; }
+    .mode-tab { padding: 6px 11px; font-size: 12px; }
+
+    .version-panel { flex-direction: column; align-items: stretch; gap: 8px; }
+    .version-nav-controls { width: 100%; }
+    select#versionSelect { flex: 1 1 auto; min-width: 0; max-width: none; }
+    .version-window-note, .version-panel-title { width: 100%; white-space: normal; word-break: break-word; overflow-wrap: break-word; }
+
+    .controls { gap: 10px; }
+    .cost-panel { padding: 12px; gap: 12px; }
+  }
 </style>
 </head>
 <body>
@@ -240,6 +273,12 @@
       <div class="meta-chip"><span class="val" id="costRangeDisplay">—</span><div class="lbl">Cost Range</div></div>
       <div class="meta-chip"><span class="val" id="versionsChip">{{ version_label }}</span><div class="lbl">Versions</div></div>
     </div>
+  </div>
+
+  <div class="category-tabs" id="categoryTabs">
+    <button class="category-tab active" data-category="archetype">🧩 Archetypes</button>
+    <button class="category-tab" data-category="sustain">🛡️ Sustains</button>
+    <button class="category-tab" data-category="amplifier">⚡ Amplifiers</button>
   </div>
 
   <div class="mode-tabs" id="modeTabs"></div>
@@ -379,6 +418,12 @@ let TOKEN_INDEX = new Map();
 let MIN_COST_G = 0, MAX_COST_G = 32;
 
 let currentMode   = null;
+let currentCategory = 'archetype'; // 'archetype' | 'sustain' | 'amplifier'
+const CATEGORY_META = {
+  archetype: { label: 'Archetypes', noun: 'archetypes' },
+  sustain:   { label: 'Sustains',   noun: 'sustain characters' },
+  amplifier: { label: 'Amplifiers', noun: 'amplifier characters' },
+};
 let activeMeids   = new Set([0,1,2,3,4,5,6]);
 let sustainYes    = true;
 let sustainNo     = true;
@@ -447,7 +492,7 @@ function buildModeTabs() {
   const wrap = document.getElementById('modeTabs');
   wrap.innerHTML = '';
   Object.keys(MODE_META).forEach(mode => {
-    const present = RAW_DATA.some(r => r.Game_Mode === mode);
+    const present = RAW_DATA.some(r => r.Game_Mode === mode && r.Category === currentCategory);
     if (!present) return;
     const btn = document.createElement('button');
     btn.className = 'mode-tab' + (mode === currentMode ? ' active' : '');
@@ -463,6 +508,23 @@ function buildModeTabs() {
     wrap.appendChild(btn);
   });
 }
+
+document.querySelectorAll('.category-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.category === currentCategory) return;
+    currentCategory = btn.dataset.category;
+    document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+
+    const modesPresent = Object.keys(MODE_META).filter(m => RAW_DATA.some(r => r.Game_Mode === m && r.Category === currentCategory));
+    if (!currentMode || !modesPresent.includes(currentMode)) {
+      currentMode = modesPresent[0] || null;
+    }
+    buildModeTabs();
+    syncThresholdInputs();
+    recompute();
+  });
+});
 
 function syncThresholdInputs() {
   if (!currentMode) return;
@@ -581,7 +643,7 @@ document.getElementById('costResetBtn').addEventListener('click', () => {
 
 function recompute() {
   if (!currentMode) return;
-  let candidate = RAW_DATA.filter(r => r.Game_Mode === currentMode);
+  let candidate = RAW_DATA.filter(r => r.Game_Mode === currentMode && r.Category === currentCategory);
 
   if (searchTerm.length >= 2) {
     const hits = searchIndex(searchTerm);
@@ -622,7 +684,7 @@ function updateMeta(ranked, hidden) {
   document.getElementById('hiddenCount').textContent  = hidden.toLocaleString();
   document.getElementById('costRangeDisplay').textContent = costMinFilter + '–' + costMaxFilter;
   document.getElementById('resultsInfo').innerHTML =
-    `Showing <span>${ranked.length}</span> ranked archetypes for <span>${MODE_META[currentMode]?.label || currentMode}</span> · ` +
+    `Showing <span>${ranked.length}</span> ranked ${CATEGORY_META[currentCategory].noun} for <span>${MODE_META[currentMode]?.label || currentMode}</span> · ` +
     `metric <span>${scoreMetric}</span> · min appearance <span>${minAppearance}%</span> · ` +
     `<span>${hidden}</span> hidden below threshold`;
 }
@@ -650,7 +712,7 @@ function renderTierList(ranked, cfg) {
   container.innerHTML = '';
 
   if (!ranked.length) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">⚡</div><p>No archetypes match current filters for this mode</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="icon">⚡</div><p>No ${CATEGORY_META[currentCategory].noun} match current filters for this mode</p></div>`;
     return;
   }
 
@@ -717,8 +779,9 @@ function prepareData() {
   });
 
   // Keep the person's current mode selection if this snapshot still has
-  // data for it; otherwise fall back to the first available mode.
-  const modesPresent = Object.keys(MODE_META).filter(m => RAW_DATA.some(r => r.Game_Mode === m));
+  // data for it (within the currently-selected category); otherwise fall
+  // back to the first available mode.
+  const modesPresent = Object.keys(MODE_META).filter(m => RAW_DATA.some(r => r.Game_Mode === m && r.Category === currentCategory));
   if (!currentMode || !modesPresent.includes(currentMode)) {
     currentMode = modesPresent[0] || null;
   }

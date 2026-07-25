@@ -1076,7 +1076,42 @@
     "role": [
       "amplifier"
     ]
-}
-
+},
+    "Himeko • Nova": {
+    "id": "1510",
+    "rarity": 5,
+    "path": "Erudition",
+    "element": "Fire",
+    "availability": "Limited 5*",
+    "slug": "himeko-nova",
+    "release_phase": "4.3.3",
+    "role": [
+      "dps"
+    ]
+},
+    "Rin Tohsaka": {
+    "id": "1508",
+    "rarity": 5,
+    "path": "Erudition",
+    "element": "Quantum",
+    "availability": "Limited 5*",
+    "slug": "rin-tohsaka",
+    "release_phase": "4.4.1",
+    "role": [
+      "dps","specialist"
+    ]
+  },
+    "Gilgamesh": {
+    "id": "1509",
+    "rarity": 5,
+    "path": "Destruction",
+    "element": "Thunder",
+    "availability": "Limited 5*",
+    "slug": "gilgamesh",
+    "release_phase": "4.4.1",
+    "role": [
+      "dps","specialist"
+    ]
+  }
 
 }

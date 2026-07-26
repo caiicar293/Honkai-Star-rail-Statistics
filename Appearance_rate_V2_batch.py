@@ -5,6 +5,7 @@ from itertools import chain, combinations_with_replacement
 import matplotlib.pyplot as plt
 import polars.selectors as cs
 from dotenv import load_dotenv
+import duckdb
 
 load_dotenv()
 
@@ -221,28 +222,41 @@ class HonkaiStatistics_V2_Batch:
                     pl.col("is_full_clear")
                 ])
 
+            # Assign node frames to local variables so DuckDB can resolve them
             n1 = _node_lf(1, "n1_cycles", "n1_max_ed")
             n2 = _node_lf(2, "n2_cycles", "n2_max_ed")
 
-            join_keys = ["uid", "version","is_full_clear"]
-            combined = n1.join(n2, on=join_keys, how="inner")
+            join_keys = ["uid", "version", "is_full_clear"]
+            join_on_sql = " AND ".join([f"n1.{k} = n2.{k}" for k in join_keys])
 
-            # Only join n3 if the column exists AND this is actually a Starward Mode query.
-            # is_starward=False players in a Starward-era file only have nodes 1 & 2;
-            # inner-joining against an empty n3 would wipe the entire combined frame.
             if self._has_starward_col and self.is_starward:
-                n3 = _node_lf(3, "n3_cycles", "n3_max_ed")
-                combined = combined.join(n3, on=join_keys, how="inner")
-                combined = combined.with_columns([
-                    (pl.col("n1_cycles")).alias("total_cycles"),
-                    pl.max_horizontal(["n1_max_ed", "n2_max_ed", "n3_max_ed"]).alias("combined_max_ed")
-                ])
+                n3 = _node_lf(3, "n3_total_cycles", "n3_max_ed")
+                join_on_n3_sql = " AND ".join([f"n1.{k} = n3.{k}" for k in join_keys])
+
+                query = f"""
+                SELECT 
+                    n1.*,
+                    n2.*,
+                    n3.*,
+                    (n1.n1_cycles) AS total_cycles,
+                    GREATEST(n1.n1_max_ed, n2.n2_max_ed, n3.n3_max_ed) AS combined_max_ed
+                FROM n1
+                INNER JOIN n2 ON {join_on_sql}
+                INNER JOIN n3 ON {join_on_n3_sql}
+                """
             else:
-                # Pre-Starward files, or is_starward=False players in a Starward-era file
-                combined = combined.with_columns([
-                    (pl.col("n1_cycles")).alias("total_cycles"),
-                    pl.max_horizontal(["n1_max_ed", "n2_max_ed"]).alias("combined_max_ed")
-                ])
+                query = f"""
+                SELECT 
+                    n1.*,
+                    n2.*,
+                    (n1.n1_cycles) AS total_cycles,
+                    GREATEST(n1.n1_max_ed, n2.n2_max_ed) AS combined_max_ed
+                FROM n1
+                INNER JOIN n2 ON {join_on_sql}
+                """
+
+            # .pl().lazy() converts DuckDB output back to a Polars LazyFrame zero-copy
+            combined = duckdb.sql(query).pl().lazy()
 
             if self.by_ed_inclusive_combined:
                 combined = combined.filter(pl.col("combined_max_ed") == self.by_ed)

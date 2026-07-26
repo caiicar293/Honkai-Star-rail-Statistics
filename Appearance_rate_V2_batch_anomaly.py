@@ -5,6 +5,7 @@ from itertools import chain, combinations_with_replacement
 import matplotlib.pyplot as plt
 import polars.selectors as cs
 from dotenv import load_dotenv
+import duckdb
 
 load_dotenv()
 
@@ -211,25 +212,41 @@ class HonkaiStatistics_V2_Anomaly_Batch:
                 pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))
             )
 
-            # 2. Extract floors dynamically into a dictionary using a loop
-            floors = {}
-            for i in [1, 2, 3]:
-                floors[f"f{i}"] = lf_base_for_combined.filter(pl.col("floor") == i).select([
+            # 2. Helper to extract per-floor lazy frame (DuckDB needs explicit local names)
+            def _floor_lf(floor_num):
+                return lf_base_for_combined.filter(pl.col("floor") == floor_num).select([
                     "uid", "version",
-                    sorted_chars_expr.alias(f"f{i}_chars"),
-                    pl.col("round_num").alias(f"f{i}_cycles"),
-                    pl.col("max_eidolon").alias(f"f{i}_max_ed"),
-                    pl.col("has_sustain").alias(f"f{i}_has_sustain"),
-                    pl.col("is_full_clear").alias(f"f{i}_is_full_clear")
+                    sorted_chars_expr.alias(f"f{floor_num}_chars"),
+                    pl.col("round_num").alias(f"f{floor_num}_cycles"),
+                    pl.col("max_eidolon").alias(f"f{floor_num}_max_ed"),
+                    pl.col("has_sustain").alias(f"f{floor_num}_has_sustain"),
+                    pl.col("is_full_clear").alias(f"f{floor_num}_is_full_clear")
                 ])
 
-            # 3. Join them together in one sequence and compute calculations
-            combined = floors["f1"].join(floors["f2"], on=["uid", "version"], how="inner") \
-                                .join(floors["f3"], on=["uid", "version"], how="inner") \
-                                .with_columns([
-                                    (pl.col("f1_cycles") + pl.col("f2_cycles") + pl.col("f3_cycles")).alias("total_cycles"),
-                                    pl.max_horizontal(["f1_max_ed", "f2_max_ed", "f3_max_ed"]).alias("combined_max_ed")
-                                ])
+            # Assign floor frames to local variables so DuckDB can resolve them
+            n1 = _floor_lf(1)
+            n2 = _floor_lf(2)
+            n3 = _floor_lf(3)
+
+            join_keys = ["uid", "version"]
+            join_on_sql = " AND ".join([f"n1.{k} = n2.{k}" for k in join_keys])
+            join_on_n3_sql = " AND ".join([f"n1.{k} = n3.{k}" for k in join_keys])
+
+            # Anomaly uses 3 floors (no starward toggle).
+            query = f"""
+            SELECT
+                n1.*,
+                n2.*,
+                n3.*,
+                (n1.f1_cycles + n2.f2_cycles + n3.f3_cycles) AS total_cycles,
+                GREATEST(n1.f1_max_ed, n2.f2_max_ed, n3.f3_max_ed) AS combined_max_ed
+            FROM n1
+            INNER JOIN n2 ON {join_on_sql}
+            INNER JOIN n3 ON {join_on_n3_sql}
+            """
+
+            # .pl().lazy() converts DuckDB output back to a Polars LazyFrame zero-copy
+            combined = duckdb.sql(query).pl().lazy()
 
             if self.by_ed_inclusive_combined:
                 combined = combined.filter(pl.col("combined_max_ed") == self.by_ed)

@@ -5,6 +5,7 @@ from itertools import chain, combinations_with_replacement
 import matplotlib.pyplot as plt
 import polars.selectors as cs
 from dotenv import load_dotenv
+import duckdb
 
 load_dotenv()
 
@@ -319,44 +320,81 @@ class HonkaiStatistics_V2_eidolon_batch:
                     pl.col("estimated_max_cost").alias(max_cost_alias)
                 ])
 
-            join_keys = ["uid", "version","is_full_clear"]
-
             if self.mode == "anomaly":
+                # Assign node frames to local variables so DuckDB can resolve them
                 n1 = _node_lf(1, "n1_metric", "n1_max_ed", "n1_min_estimated_cost", "n1_max_estimated_cost")
                 n2 = _node_lf(2, "n2_metric", "n2_max_ed", "n2_min_estimated_cost", "n2_max_estimated_cost")
                 n3 = _node_lf(3, "n3_metric", "n3_max_ed", "n3_min_estimated_cost", "n3_max_estimated_cost")
                 join_keys = ["uid", "version"]
-                combined = n1.join(n2, on=join_keys, how="inner")
-                combined = combined.join(n3, on=join_keys, how="inner")
 
-                combined = combined.with_columns([
-                    (pl.col("n1_metric") + pl.col("n2_metric") + pl.col("n3_metric")).alias("total_metric"),
-                    pl.max_horizontal(["n1_max_ed", "n2_max_ed", "n3_max_ed"]).alias("combined_max_ed"),
-                    (pl.col("n1_min_estimated_cost") + pl.col("n2_min_estimated_cost") + pl.col("n3_min_estimated_cost")).alias("total_min_estimated_cost"),
-                    (pl.col("n1_max_estimated_cost") + pl.col("n2_max_estimated_cost") + pl.col("n3_max_estimated_cost")).alias("total_max_estimated_cost"),
-                ])
+                join_on_sql = " AND ".join([f"n1.{k} = n2.{k}" for k in join_keys])
+                join_on_n3_sql = " AND ".join([f"n1.{k} = n3.{k}" for k in join_keys])
+
+                # Anomaly uses 3 floors — no starward toggle, no LEFT JOIN.
+                query = f"""
+                SELECT
+                    n1.*,
+                    n2.*,
+                    n3.*,
+                    (n1.n1_metric + n2.n2_metric + n3.n3_metric) AS total_metric,
+                    GREATEST(n1.n1_max_ed, n2.n2_max_ed, n3.n3_max_ed) AS combined_max_ed,
+                    (n1.n1_min_estimated_cost + n2.n2_min_estimated_cost + n3.n3_min_estimated_cost) AS total_min_estimated_cost,
+                    (n1.n1_max_estimated_cost + n2.n2_max_estimated_cost + n3.n3_max_estimated_cost) AS total_max_estimated_cost
+                FROM n1
+                INNER JOIN n2 ON {join_on_sql}
+                INNER JOIN n3 ON {join_on_n3_sql}
+                """
             else:
+                # Assign node frames to local variables so DuckDB can resolve them
                 n1 = _node_lf(1, "n1_metric", "n1_max_ed", "n1_min_estimated_cost", "n1_max_estimated_cost")
                 n2 = _node_lf(2, "n2_metric", "n2_max_ed", "n2_min_estimated_cost", "n2_max_estimated_cost")
 
-                combined = n1.join(n2, on=join_keys, how="inner")
+                join_keys = ["uid", "version", "is_full_clear"]
+                join_on_sql = " AND ".join([f"n1.{k} = n2.{k}" for k in join_keys])
 
                 if self._has_starward_col and self.is_starward:
+                    # Only join n3 if the column exists AND this is actually a Starward Mode query.
+                    # is_starward=False players in a Starward-era file only have nodes 1 & 2; a LEFT JOIN
+                    # preserves their rows (with NULL n3 values) matching the original Polars semantics.
                     n3 = _node_lf(3, "n3_metric", "n3_max_ed", "n3_min_estimated_cost", "n3_max_estimated_cost")
-                    combined = combined.join(n3, on=join_keys, how="left")
-                    combined = combined.with_columns([
-                        pl.sum_horizontal(["n1_metric", "n2_metric", "n3_metric"]).alias("total_metric"),
-                        pl.sum_horizontal(["n1_min_estimated_cost", "n2_min_estimated_cost", "n3_min_estimated_cost"]).alias("total_min_estimated_cost"),
-                        pl.sum_horizontal(["n1_max_estimated_cost", "n2_max_estimated_cost", "n3_max_estimated_cost"]).alias("total_max_estimated_cost"),
-                        pl.max_horizontal(["n1_max_ed", "n2_max_ed", "n3_max_ed"]).alias("combined_max_ed")
-                    ])
+                    join_on_n3_sql = " AND ".join([f"n1.{k} = n3.{k}" for k in join_keys])
+
+                    query = f"""
+                    SELECT
+                        n1.*,
+                        n2.*,
+                        n3.*,
+                        (n1.n1_metric + n2.n2_metric + COALESCE(n3.n3_metric, 0)) AS total_metric,
+                        GREATEST(n1.n1_max_ed, n2.n2_max_ed, COALESCE(n3.n3_max_ed, 0)) AS combined_max_ed,
+                        (n1.n1_min_estimated_cost + n2.n2_min_estimated_cost + COALESCE(n3.n3_min_estimated_cost, 0)) AS total_min_estimated_cost,
+                        (n1.n1_max_estimated_cost + n2.n2_max_estimated_cost + COALESCE(n3.n3_max_estimated_cost, 0)) AS total_max_estimated_cost
+                    FROM n1
+                    INNER JOIN n2 ON {join_on_sql}
+                    LEFT JOIN n3 ON {join_on_n3_sql}
+                    """
                 else:
-                    combined = combined.with_columns([
-                        (pl.col("n1_metric") if self.mode == "moc" else (pl.col("n1_metric") + pl.col("n2_metric"))).alias("total_metric"),
-                        pl.max_horizontal(["n1_max_ed", "n2_max_ed"]).alias("combined_max_ed"),
-                        (pl.col("n1_min_estimated_cost") + pl.col("n2_min_estimated_cost")).alias("total_min_estimated_cost"),
-                        (pl.col("n1_max_estimated_cost") + pl.col("n2_max_estimated_cost")).alias("total_max_estimated_cost"),
-                    ])
+                    # MOC: total_metric = just n1_metric (single-node scoring per cycle budget).
+                    # APOC / PF non-Starward: total_metric = n1_metric + n2_metric.
+                    total_metric_sql = (
+                        "n1.n1_metric AS total_metric"
+                        if self.mode == "moc"
+                        else "(n1.n1_metric + n2.n2_metric) AS total_metric"
+                    )
+
+                    query = f"""
+                    SELECT
+                        n1.*,
+                        n2.*,
+                        {total_metric_sql},
+                        GREATEST(n1.n1_max_ed, n2.n2_max_ed) AS combined_max_ed,
+                        (n1.n1_min_estimated_cost + n2.n2_min_estimated_cost) AS total_min_estimated_cost,
+                        (n1.n1_max_estimated_cost + n2.n2_max_estimated_cost) AS total_max_estimated_cost
+                    FROM n1
+                    INNER JOIN n2 ON {join_on_sql}
+                    """
+
+            # .pl().lazy() converts DuckDB output back to a Polars LazyFrame zero-copy
+            combined = duckdb.sql(query).pl().lazy()
 
             if self.is_lower_better:
                 self.combined = combined.filter(pl.col("total_metric") <= self.threshold_combined)

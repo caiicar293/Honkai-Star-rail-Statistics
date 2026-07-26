@@ -26,6 +26,7 @@ import os
 import orjson
 import matplotlib.pyplot as plt
 import polars.selectors as cs
+import duckdb
 
 pl.Config.set_tbl_rows(100)
 pl.Config.set_tbl_cols(-1)
@@ -230,12 +231,25 @@ class HonkaiStatistics_Legacy:
                 pl.col(self.score_col).alias("n2_score"),
             ])
 
-            combined = (
-                n1.join(n2, on="uid", how="inner")
-                  .with_columns(
-                      ((pl.col("n1_score") + pl.col("n2_score")) if mode == "pf" else pl.col("n1_score")).alias("total_score")
-                  )
+            # Assign node frames to local variables so DuckDB can resolve them.
+            # PF (pf) sums both node scores; MOC (moc) treats node 1 score as total.
+            total_score_sql = (
+                "(n1.n1_score + n2.n2_score) AS total_score"
+                if mode == "pf"
+                else "n1.n1_score AS total_score"
             )
+
+            query = f"""
+            SELECT
+                n1.*,
+                n2.*,
+                {total_score_sql}
+            FROM n1
+            INNER JOIN n2 ON n1.uid = n2.uid
+            """
+
+            # .pl().lazy() converts DuckDB output back to a Polars LazyFrame zero-copy
+            combined = duckdb.sql(query).pl().lazy()
 
             if self.mode == "moc":
                 self.combined = combined.filter(
@@ -1162,13 +1176,33 @@ class HonkaiStatistics_Legacy_Batch:
             pl.col("is_full_clear")
         ])
 
-        combined = n1.join(n2, on=["uid", "version", "floor","is_full_clear"], how="inner")
+        # Assign node frames to local variables so DuckDB can resolve them.
+        # MOC: total_score = just n1_score (single-node scoring per cycle budget).
+        # PF: total_score = n1_score + n2_score.
+        total_score_sql = (
+            "n1.n1_score AS total_score"
+            if self.mode == "moc"
+            else "(n1.n1_score + n2.n2_score) AS total_score"
+        )
+        join_on_sql = " AND ".join([
+            f"n1.{k} = n2.{k}" for k in ["uid", "version", "floor", "is_full_clear"]
+        ])
+
+        query = f"""
+        SELECT
+            n1.*,
+            n2.*,
+            {total_score_sql}
+        FROM n1
+        INNER JOIN n2 ON {join_on_sql}
+        """
+
+        # .pl().lazy() converts DuckDB output back to a Polars LazyFrame zero-copy
+        combined = duckdb.sql(query).pl().lazy()
 
         if self.mode == "moc":
-            combined = combined.with_columns(pl.col("n1_score").alias("total_score"))
             self.combined = combined.filter(pl.col("total_score") <= self.by_cycle_combined)
         else:
-            combined = combined.with_columns((pl.col("n1_score") + pl.col("n2_score")).alias("total_score"))
             self.combined = combined.filter(pl.col("total_score") >= self.by_points_combined)
 
         self._process_combined_data(self.combined, dps_names, char_to_index)

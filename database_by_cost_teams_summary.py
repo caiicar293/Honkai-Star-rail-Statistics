@@ -119,10 +119,12 @@ class HonkaiCostTeamMetaAnalyzer:
                 ROUND(AVG(Appearance_Rate_pct), 2)                                    AS Simple_Avg_Appearance,
 
                 -- Score aggregates
+                ROUND(MIN(Min_Score), 2)                                              AS Min_Score,
                 ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
                 ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Score,
                 ROUND(SUM(Median_Score  * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Median,
                 {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
+                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
 
                 -- Full-star rate: recalculate from raw counts, NOT avg of pct
                 SUM(Total_Full_Clears)                                                  AS Total_Full_Clears,
@@ -192,10 +194,12 @@ class HonkaiCostTeamMetaAnalyzer:
 
                 ROUND(AVG(b.Appearance_Rate_pct), 2)                                   AS Simple_Avg_Appearance,
                 DENSE_RANK() OVER (ORDER BY vr_asof.version DESC)                      AS Version_Group_Num,    
+                ROUND(MIN(Min_Score), 2)                                               AS Min_Score,
                 ROUND(AVG(b.Average_Score), 2)                                         AS Simple_Avg_Score,
                 ROUND(SUM(b.Average_Score * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Score,
                 ROUND(SUM(b.Median_Score  * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Median,
                 {task['perf']}(b.Average_Score)                                        AS Best_Version_Avg,
+                ROUND(MAX(Max_Score),2)                                                AS Max_Score,
 
                 SUM(b.Total_Full_Clears)                                                AS Total_Full_Clears,
                 SUM(b.Samples)                                                         AS Total_Samples,
@@ -412,10 +416,12 @@ class HonkaiCostArchetypeMetaAnalyzer:
                 ROUND(AVG(Usage_pct), 2)                                    AS Simple_Avg_Appearance,
 
                 -- Score aggregates
+                ROUND(MIN(Min_Score), 2)                                              AS Min_Score,
                 ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
                 ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Score,
                 ROUND(SUM(Median_Score  * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Median,
-                {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
+                {task['perf']}(Average_Score)                                         AS Best_Version_Avg,
+                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
 
                 -- Full-star rate: recalculate from raw counts, NOT avg of pct
                 SUM(Total_Full_Clears)                                                  AS Total_Full_Clears,
@@ -486,10 +492,12 @@ class HonkaiCostArchetypeMetaAnalyzer:
 
                 ROUND(AVG(b.Usage_pct), 2)                                             AS Simple_Avg_Appearance,
                 DENSE_RANK() OVER (ORDER BY vr_asof.version DESC)                      AS Version_Group_Num,
+                ROUND(MIN(Min_Score), 2)                                                AS Min_Score,
                 ROUND(AVG(b.Average_Score), 2)                                         AS Simple_Avg_Score,
                 ROUND(SUM(b.Average_Score * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Score,
                 ROUND(SUM(b.Median_Score  * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Median,
                 {task['perf']}(b.Average_Score)                                        AS Best_Version_Avg,
+                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
 
                 SUM(b.Total_Full_Clears)                                                AS Total_Full_Clears,
                 SUM(b.Samples)                                                         AS Total_Samples,
@@ -711,10 +719,12 @@ class HonkaiCostCharacterMetaAnalyzer:
                 ROUND(AVG(Appearance_Rate_pct), 2)                                    AS Simple_Avg_Appearance,
 
                 -- Score aggregates
+                ROUND(MIN(Min_Score), 2)                                              AS Min_Score,
                 ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
                 ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Score,
                 ROUND(SUM(Median_Score  * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Median,
                 {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
+                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
 
                 -- Full-star rate: recalculate from raw counts, NOT avg of pct
                 SUM(Total_Full_Clears)                                                  AS Total_Full_Star_Clears,
@@ -785,10 +795,12 @@ class HonkaiCostCharacterMetaAnalyzer:
 
                 ROUND(AVG(b.Appearance_Rate_pct), 2)                                   AS Simple_Avg_Appearance,
                 DENSE_RANK() OVER (ORDER BY vr_asof.version DESC)                      AS Version_Group_Num,
+                ROUND(MIN(Min_Score), 2)                                               AS Min_Score,
                 ROUND(AVG(b.Average_Score), 2)                                         AS Simple_Avg_Score,
                 ROUND(SUM(b.Average_Score * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Score,
                 ROUND(SUM(b.Median_Score  * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Median,
                 {task['perf']}(b.Average_Score)                                        AS Best_Version_Avg,
+                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
 
                 SUM(b.Total_Full_Clears)                                                AS Total_Full_Star_Clears,
                 SUM(b.Samples)                                                         AS Total_Samples,

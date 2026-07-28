@@ -68,7 +68,7 @@ _COMMON_COLUMNS = """
     Game_Mode, at_eidolon_level, up_to_eidolon_level, Archetype_Core,
     estimated_min_cost, estimated_max_cost, max_eidolon,
     Simple_Avg_Appearance, Simple_Avg_Score, Weighted_Avg_Score,
-    Weighted_Avg_Median, Best_Version_Avg, Total_Full_Clears,
+    Weighted_Avg_Median, Best_Version_Avg, Min_Score, Max_Score, Total_Full_Clears,
     Total_Samples, Full_Star_Rate_pct, Total_Sustain_Samples,
     Sustain_Rate_pct, Version_Count, Versions_Used,
     As_Of_Version, Version_Group_Num
@@ -233,6 +233,8 @@ def fetch_character_rolling_data_by_group(db_path: str, group_num: int, characte
             Weighted_Avg_Score,
             Weighted_Avg_Median, 
             Best_Version_Avg, 
+            Min_Score,
+            Max_Score,
             Total_Full_Star_Clears AS Total_Full_Clears,
             Total_Samples, 
             Full_Star_Rate_pct, 

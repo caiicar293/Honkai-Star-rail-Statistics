@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import polars.selectors as cs
 from dotenv import load_dotenv
 import duckdb
-
+import time
 load_dotenv()
 
 pl.Config.set_tbl_rows(100)
@@ -298,7 +298,7 @@ class HonkaiStatistics_V2_Batch:
                 self.lf = df
                     
                 
-            self._process_data(self.lf, char_lf, char_cols, cons_cols, dps_names, char_to_index)
+        self._process_data(self.lf, char_lf, char_cols, cons_cols, dps_names, char_to_index)
             
     def _process_data(self, lf, char_lf, char_cols, cons_cols, dps_names, char_to_index):
         # 5. AGGREGATE CHARACTERS (The "Unpivot" trick optimized)
@@ -311,12 +311,11 @@ class HonkaiStatistics_V2_Batch:
             ])
             .explode(["Character", "cons"])
             # OPTIMIZATION: Drop empty slots immediately so we don't join or aggregate them
-            .filter(pl.col("Character").is_not_null()) 
             .with_columns([
-                pl.col("cons").fill_null(0).replace(-1, 0)
+                pl.col("cons").fill_null(0).replace(-1, 0),
+                pl.col("Character").fill_null("Empty Slot")
             ])
         )
-
         # Join gear data and CHECKPOINT the execution graph
         base_data = (
             base_data.join(
@@ -340,7 +339,8 @@ class HonkaiStatistics_V2_Batch:
 
             def rollup_gear(df, gear_col, alias):
                 return (
-                    df.group_by(keys + [gear_col])
+                    df
+                    .group_by(keys + [gear_col])
                     .agg([
                         pl.len().alias("count"),  # OPTIMIZATION: pl.len() is faster than pl.count("uid")
                         pl.col("round_num").alias("cycles") 
@@ -382,28 +382,48 @@ class HonkaiStatistics_V2_Batch:
             get_performance_stats(base_data, ["Character", "cons"])
             # OPTIMIZATION: pl.format is vastly faster than cast + concat
             .with_columns(pl.format("Eidolon {}", pl.col("cons")).alias("Eidolon_Level"))
-            .collect()
+            
         )
+   
+        # 1. Define the exact string representations in your Eidolon_Level column
+        # (Or get them dynamically via: per_eidolon["Eidolon_Level"].unique().to_list())
+        eidolon_levels = [f"Eidolon {float(i)}" for i in range(7)]  
+        # Generates: ['Eidolon 0.0', 'Eidolon 1.0', ..., 'Eidolon 6.0']
 
-        pivoted = per_eidolon.pivot(
-            on="Eidolon_Level",
-            index=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"],
-            values=["Samples", "Cycles", "Sustains", "Full_Clears", "Lightcones", "Relics", "Planar_Set"],
-            aggregate_function="first" 
-        )
+        # 2. Target columns (handles primitive, list, and list[struct] types seamlessly)
+        values_to_pivot = [
+            "Samples", "Cycles", "Sustains", 
+            "Full_Clears", "Lightcones", "Relics", "Planar_Set"
+        ]
 
+        index_cols = [
+            "version", "at_eidolon_level", 
+            "up_to_eidolon_level", "node", "Character"
+        ]
+
+        # 3. Perform group_by aggregation
+        pivoted = per_eidolon.group_by(index_cols).agg([
+            pl.col(val)
+            .filter(pl.col("Eidolon_Level") == lvl)
+            .first()
+            .alias(f"{val}_{lvl}") # Clean alias: e.g., 'Cycles_Eidolon 1.0' or customize as needed
+            for lvl in eidolon_levels
+            for val in values_to_pivot
+        ])
+        
+     
         final_df = (
-            totals.collect()
+            totals
             .join(pivoted, on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"], how="left")
         )
 
-        eidolon_cols = sorted([c for c in final_df.columns if "Eidolon" in c])
+        eidolon_cols = sorted([c for c in final_df.collect_schema() if "Eidolon" in c])
         header_cols = [
             "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", 
             "Total_Samples", "Total_Cycles", "Total_Sustains", "Total_Full_Clears",
             "uids", "Lightcones", "Relics", "Planar_Set"
         ]
-        self.char_stats = final_df.select(header_cols + eidolon_cols)
+        self.char_stats = final_df.select(header_cols + eidolon_cols).collect()
 
         self.team_stats = (
             lf.with_columns(pl.concat_list(char_cols).alias("temp_team"))
@@ -489,7 +509,7 @@ class HonkaiStatistics_V2_Batch:
         )
         
         self.combined_archetypes_stats = (
-            self.combined_team_stats.with_columns(archetype_exprs)
+            self.combined_team_stats
             .group_by(["version", "at_eidolon_level", "up_to_eidolon_level"] + archetype_keys)
             .agg([
                 pl.col("Samples").sum(),
@@ -501,9 +521,8 @@ class HonkaiStatistics_V2_Batch:
             ])
         )
 
-        char_pair_base = combined.select(
-            ["uid", "version", "at_eidolon_level", "up_to_eidolon_level", "total_cycles"] + node_char_cols
-        )
+        
+        char_pair_base = combined
         for col in node_char_cols:
             char_pair_base = char_pair_base.explode(col)
 
@@ -512,7 +531,10 @@ class HonkaiStatistics_V2_Batch:
             .group_by(["version", "at_eidolon_level", "up_to_eidolon_level"] + node_char_cols)
             .agg([
                 pl.count("uid").alias("Samples"),
-                pl.col("total_cycles").alias("Cycles")
+                pl.col("total_cycles").alias("Cycles"),
+                # pl.col("uid").unique().alias("uids"),
+                # pl.col("is_full_clear").sum().alias("Total_Full_Clears"),
+                # cs.ends_with("_has_sustain").sum()
             ])
             .collect()
         )

@@ -72,7 +72,8 @@ def extract_and_build_html(icons_path, template_path, output_path, version, eido
             'Kafka + Hysilens', 'The Herta + Anaxa', 'Boothill', 'Phainon', 'Herta + The Herta',
             'Saber', 'Rappa', 'Acheron', 'Seele', 'Silver Wolf LV.999 + Evanescia',
             'Sparxie + Evanescia', 'Welt + Silver Wolf LV.999', 'Welt + Sparxie + Silver Wolf LV.999',
-            'Feixiao', 'Serval + The Herta', 'Yunli', 'Acheron + Ashveil', 'Welt + Ashveil', 'Sparxie + Evanescia'
+            'Feixiao', 'Serval + The Herta', 'Yunli', 'Acheron + Ashveil', 'Welt + Ashveil', 'Sparxie + Evanescia','Himeko • Nova',
+            'Welt + Himeko • Nova','Archer + Rin Tohsaka' , 'Rin Tohsaka' , 'Saber + Gilgamesh' ,'Gilgamesh'
         )
     )
     ORDER BY Game_Mode, Weighted_Avg_Score;
@@ -185,10 +186,10 @@ def extract_and_build_html(icons_path, template_path, output_path, version, eido
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract from DuckDB and inject directly into Tier List HTML template.")
-    parser.add_argument('--icons', default='Other Dashboards/character_icons.json', help='Path to the character icons JSON file')
+    parser.add_argument('--icons', default='character_icons.json', help='Path to the character icons JSON file')
     parser.add_argument('--template', default='archetype_tier_list_e0_template.html', help='Path to the HTML template')
     parser.add_argument('--output', default='docs/archetype_tierlist_interactive.html', help='Path for the final generated HTML file')
-    parser.add_argument('--version', default='4.3.2', help='Game version (e.g., 4.3.2)')
+    parser.add_argument('--version', default='4.4.1', help='Game version (e.g., 4.3.2)')
     parser.add_argument('--eidolon', default='E0', help='Eidolon level (e.g., E0)')
     
     args = parser.parse_args()

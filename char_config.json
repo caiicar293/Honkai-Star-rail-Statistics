@@ -2955,5 +2955,109 @@
       "Dataset Versions",
       "Latest Version"
     ]
+  }, 
+
+  {
+    "character_name": "Himeko • Nova",
+    "element": "Fire",
+    "path": "Erudition",
+    "subtitle": "Astral Express",
+    "theme_c1": "#e05a30",
+    "theme_c2": "#f5a060",
+    "theme_c3": "#b03010",
+    "theme_p1": "#e05a30",
+    "theme_p2": "#f5a060",
+    "theme_glow": "rgba(224,90,48,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  } , 
+
+  {
+    "character_name": "Rin Tohsaka",
+    "element": "Quantum",
+    "path": "Erudition",
+    "subtitle": "Fate",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  }, 
+  {
+    "character_name": "Gilgamesh",
+    "element": "Lightning",
+    "path": "Destruction",
+    "subtitle": "Fate",
+    "theme_c1": "#e8d44d",
+    "theme_c2": "#c080ff",
+    "theme_c3": "#f0e880",
+    "theme_p1": "#e8d44d",
+    "theme_p2": "#c080ff",
+    "theme_glow": "rgba(232,212,77,0.4)",
+    "defining_stats": [
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "supporting_stats": [
+      "ATK",
+      "HP",
+      "DEF",
+      "SPD",
+      "Effect Hit Rate",
+      "Effect RES"
+    ],
+    "sidebar_spread_stats": [
+      "CRIT Rate",
+      "CRIT DMG",
+      "ATK"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
   }
 ]

@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pure Fiction 4.4.1 — By-Cost Teams</title>
+<link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #090c14; --bg2: #0d1220;
+    --panel: #141c2e; --panel2: #1a2338;
+    --border: #1e2d47; --border2: #243552;
+    --accent: #38bdf8; --accent2: #7dd3fc;
+    --gold: #fbbf24; --teal: #2dd4bf;
+    --purple: #a78bfa; --red: #f87171; --green: #4ade80;
+    --orange: #fb923c;
+    --muted: #4a5d7a;
+    --text: #e2eaf6; --text2: #8fa3c0; --text3: #506070;
+    --dim0: #6366f1; --dim1: #38bdf8; --dim2: #f472b6;
+    --dim3: #fb923c; --dim4: #a78bfa;
+    --e0: #94a3b8; --e1: #4ade80; --e2: #38bdf8; --e6: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Exo 2', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  .container { position: relative; z-index: 1; max-width: 1800px; margin: 0 auto; padding: 24px; }
+
+  /* HEADER */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); gap: 20px; flex-wrap: wrap; }
+  .header-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.25); border-radius: 4px; padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+  .header-badge::before { content: '●'; font-size: 7px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .header h1 { font-family: 'Rajdhani', sans-serif; font-size: 36px; font-weight: 700; letter-spacing: 0.06em; line-height: 1; }
+  .header h1 span { color: var(--accent); }
+  .header-sub { font-size: 13px; color: var(--text2); margin-top: 5px; font-family: 'Share Tech Mono', monospace; letter-spacing: 0.05em; }
+  .header-meta { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .meta-chip { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; text-align: center; min-width: 90px; }
+  .meta-chip .val { font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700; color: var(--accent); display: block; line-height: 1; }
+  .meta-chip .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; }
+
+  /* CONTROLS */
+  .controls { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; }
+  .btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
+  .btn-toggle { background: var(--panel); border: 1px solid var(--border); color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 5px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; white-space: nowrap; }
+  .btn-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-toggle.dim-0.active { background: rgba(99,102,241,0.12);  border-color: var(--dim0); color: var(--dim0); }
+  .btn-toggle.dim-1.active { background: rgba(56,189,248,0.12);  border-color: var(--dim1); color: var(--dim1); }
+  .btn-toggle.dim-2.active { background: rgba(244,114,182,0.12); border-color: var(--dim2); color: var(--dim2); }
+  .btn-toggle.dim-3.active { background: rgba(251,146,60,0.12);  border-color: var(--dim3); color: var(--dim3); }
+  .btn-toggle.dim-4.active { background: rgba(167,139,250,0.12); border-color: var(--dim4); color: var(--dim4); }
+  .btn-toggle.dim-5.active { background: rgba(248,113,113,0.12); border-color: var(--red); color: var(--red); }
+
+  .btn-toggle.meid.e0.active { border-color: var(--e0);    color: var(--e0);    background: rgba(148,163,184,0.08); }
+  .btn-toggle.meid.e1.active { border-color: var(--e1);    color: var(--e1);    background: rgba(74,222,128,0.07); }
+  .btn-toggle.meid.e2.active { border-color: var(--e2);    color: var(--e2);    background: rgba(56,189,248,0.08); }
+  .btn-toggle.meid.e3.active { border-color: var(--purple); color: var(--purple); background: rgba(167,139,250,0.08); }
+  .btn-toggle.meid.e4.active { border-color: var(--orange); color: var(--orange); background: rgba(251,146,60,0.08); }
+  .btn-toggle.meid.e5.active { border-color: var(--red);   color: var(--red);   background: rgba(248,113,113,0.08); }
+  .btn-toggle.meid.e6.active { border-color: var(--e6);    color: var(--e6);    background: rgba(251,191,36,0.09); }
+
+  .btn-toggle.sustain-on.active  { background: rgba(74,222,128,0.10); border-color: var(--green); color: var(--green); }
+  .btn-toggle.sustain-off.active { background: rgba(248,113,113,0.10); border-color: var(--red);  color: var(--red); }
+
+  /* Cost panel */
+  .cost-panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;
+  }
+  .cost-panel-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; width: 100%; margin-bottom: 2px; }
+  .cost-range-group { display: flex; flex-direction: column; gap: 6px; min-width: 200px; flex: 1; }
+  .cost-range-label { font-size: 11px; color: var(--text2); font-family: 'Share Tech Mono', monospace; display: flex; justify-content: space-between; }
+  .cost-range-label span { color: var(--accent); font-weight: 700; }
+  input[type="range"] {
+    -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent) var(--fill, 0%), var(--border2) var(--fill, 0%));
+    outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--bg); cursor: pointer;
+    box-shadow: 0 0 6px rgba(56,189,248,0.5);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%; background: var(--accent);
+    border: 2px solid var(--bg); cursor: pointer; box-shadow: 0 0 6px rgba(56,189,248,0.5);
+  }
+  .cost-presets { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; }
+  .cost-preset-btn {
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text3);
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700;
+    border-radius: 4px; padding: 4px 9px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .cost-preset-btn:hover, .cost-preset-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.07); }
+
+  /* Unified character picker — replaces fixed slots with unlimited include/exclude chips */
+  .picker-panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 16px;
+  }
+  .picker-panel-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; margin-bottom: 2px; }
+  .picker-panel-hint { font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; margin-bottom: 10px; }
+  .picker-panel-hint kbd { background: var(--bg2); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 5px; font-size: 10px; color: var(--accent2); }
+
+  .picker-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .picker-chip {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 16px; padding: 3px 6px 3px 4px;
+    font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 700; border: 1px solid; cursor: default;
+    user-select: none; transition: transform 0.1s;
+  }
+  .picker-chip:hover { transform: translateY(-1px); }
+  .picker-chip.include { color: var(--green); border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
+  .picker-chip.exclude { color: var(--red);   border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
+  .picker-chip img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.15); }
+  .picker-chip .chip-icon-ph { width: 20px; height: 20px; border-radius: 50%; background: var(--panel2); display:flex; align-items:center; justify-content:center; font-size: 8px; color: var(--text3); }
+  .picker-chip .chip-mode { font-size: 10px; opacity: 0.8; }
+  .picker-chip .chip-eid { font-size: 10px; opacity: 0.75; font-family: 'Share Tech Mono', monospace; }
+  .picker-chip .chip-remove { background: none; border: none; color: inherit; cursor: pointer; font-size: 13px; line-height: 1; padding: 1px 3px; border-radius: 50%; opacity: 0.7; transition: opacity 0.15s, background 0.15s; }
+  .picker-chip .chip-remove:hover { opacity: 1; background: rgba(255,255,255,0.12); }
+  .picker-chips-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0; }
+
+  .picker-search-wrap { position: relative; }
+  .picker-search-row { display: flex; gap: 8px; align-items: center; }
+  .picker-search-input-wrap { position: relative; flex: 1; min-width: 200px; max-width: 420px; }
+  .picker-search-input-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
+  #charPickerInput { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
+  #charPickerInput:focus { border-color: var(--accent); }
+  #charPickerInput::placeholder { color: var(--text3); }
+  .picker-clear-all { background: var(--bg2); border: 1px solid var(--border); color: var(--text3); font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600; border-radius: 5px; padding: 7px 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .picker-clear-all:hover { border-color: var(--red); color: var(--red); }
+
+  .picker-grid-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+    background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    width: min(560px, 90vw); max-height: 360px; overflow-y: auto;
+  }
+  .picker-grid-dropdown.open { display: block; }
+  .picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; }
+  .picker-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 2px; border-radius: 6px; transition: background 0.12s; position: relative; }
+  .picker-cell:hover { background: rgba(56,189,248,0.08); }
+  .picker-cell img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--border2); }
+  .picker-cell .cell-icon-ph { width: 38px; height: 38px; border-radius: 50%; background: var(--panel); display:flex; align-items:center; justify-content:center; font-size: 10px; color: var(--text3); border: 1.5px solid var(--border2); }
+  .picker-cell .cell-name { font-size: 9px; color: var(--text2); text-align: center; line-height: 1.15; max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .picker-cell.is-include img, .picker-cell.is-include .cell-icon-ph { border-color: var(--green); box-shadow: 0 0 0 2px rgba(74,222,128,0.35); }
+  .picker-cell.is-exclude img, .picker-cell.is-exclude .cell-icon-ph { border-color: var(--red); box-shadow: 0 0 0 2px rgba(248,113,113,0.35); }
+  .picker-grid-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 16px; text-align: center; }
+
+  /* Eidolon row shown beneath the input when a character is focused for eidolon-specific pick */
+  .picker-eid-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border2); }
+  .picker-eid-row-label { width: 100%; font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; margin-bottom: 2px; }
+  .picker-eid-btn {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 10.5px; font-weight: 700;
+    border-radius: 4px; padding: 3px 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .picker-eid-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .picker-eid-btn.any { border-color: var(--accent2); color: var(--accent2); }
+  .picker-eid-btn.eid-active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .picker-eid-btn.eid-active.mode-exclude { background: var(--red); border-color: var(--red); color: var(--bg); }
+
+  .search-wrap { position: relative; min-width: 240px; max-width: 400px; flex: 1; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
+  #searchInput { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
+  #searchInput:focus { border-color: var(--accent); }
+  #searchInput::placeholder { color: var(--text3); }
+
+  .results-info { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0 8px; letter-spacing: 0.06em; }
+  .results-info span { color: var(--accent); }
+
+  /* TABLE */
+  .table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); box-shadow: 0 4px 40px rgba(0,0,0,0.4); }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--panel2); border-bottom: 2px solid var(--border2); }
+  th { padding: 11px 12px; text-align: left; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
+  th:hover { color: var(--accent); }
+  th.sorted { color: var(--accent); }
+  th.sorted::after { content: ' ↓'; }
+  th.sorted.asc::after { content: ' ↑'; }
+  th.num { text-align: right; }
+  tbody tr { border-bottom: 1px solid rgba(30,45,71,0.6); transition: background 0.1s; }
+  tbody tr:hover { background: rgba(56,189,248,0.04); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; }
+  td.num { text-align: right; }
+
+  .rank-cell { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); text-align: center; min-width: 36px; }
+  .rank-cell.top3 { color: var(--gold); font-weight: bold; }
+
+  .dim-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700; }
+  .dim-badge.d0 { background: rgba(99,102,241,0.2);  color: var(--dim0); border: 1px solid rgba(99,102,241,0.4); }
+  .dim-badge.d1 { background: rgba(56,189,248,0.15);  color: var(--dim1); border: 1px solid rgba(56,189,248,0.35); }
+  .dim-badge.d2 { background: rgba(244,114,182,0.15); color: var(--dim2); border: 1px solid rgba(244,114,182,0.35); }
+  .dim-badge.d3 { background: rgba(251,146,60,0.15);  color: var(--dim3); border: 1px solid rgba(251,146,60,0.35); }
+  .dim-badge.d4 { background: rgba(167,139,250,0.15); color: var(--dim4); border: 1px solid rgba(167,139,250,0.35); }
+  .dim-badge.d5 { background: rgba(248,113,113,0.15); color: var(--red);  border: 1px solid rgba(248,113,113,0.35); }
+
+  .cost-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 5px; padding: 3px 8px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid rgba(45,212,191,0.35); background: rgba(45,212,191,0.07); color: var(--teal); white-space: nowrap; }
+  .cost-badge .cost-sep { color: var(--text3); font-size: 9px; }
+
+  .meid-badge { display: inline-flex; align-items: center; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+  .meid-badge.e0 { color: var(--e0);    border-color: rgba(148,163,184,0.3); background: rgba(148,163,184,0.07); }
+  .meid-badge.e1 { color: var(--e1);    border-color: rgba(74,222,128,0.3);  background: rgba(74,222,128,0.07); }
+  .meid-badge.e2 { color: var(--e2);    border-color: rgba(56,189,248,0.3);  background: rgba(56,189,248,0.07); }
+  .meid-badge.e3 { color: var(--purple); border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.07); }
+  .meid-badge.e4 { color: var(--orange); border-color: rgba(251,146,60,0.3);  background: rgba(251,146,60,0.07); }
+  .meid-badge.e5 { color: var(--red);   border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.07); }
+  .meid-badge.e6 { color: var(--e6);    border-color: rgba(251,191,36,0.35); background: rgba(251,191,36,0.08); }
+
+  #particleCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.8; }
+
+  .sustain-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 2px 8px; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 600; border: 1px solid; }
+  .sustain-pill.yes { color: var(--green); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.08); }
+  .sustain-pill.no  { color: var(--red);   border-color: rgba(248,113,113,0.3);  background: rgba(248,113,113,0.07); }
+  .sustain-pill.yes::before { content: '✦'; font-size: 8px; }
+  .sustain-pill.no::before  { content: '✕'; font-size: 9px; }
+
+  .arch-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 2px 7px; font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 600; border: 1px solid rgba(167,139,250,0.3); background: rgba(167,139,250,0.07); color: var(--purple); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .fullstar-pct  { font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .fullstar-high { color: var(--green); }
+  .fullstar-mid  { color: var(--gold); }
+  .fullstar-low  { color: var(--red); }
+
+  .team-cell { display: flex; align-items: center; gap: 6px; min-width: 300px; max-width: 520px; }
+  .team-icons { display: flex; align-items: center; flex-shrink: 0; }
+  .char-icon { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border2); object-fit: cover; margin-left: -7px; background: var(--bg2); transition: transform 0.15s; }
+  .char-icon:first-child { margin-left: 0; }
+  .team-cell:hover .char-icon { transform: scale(1.08); }
+  .char-icon-placeholder { width: 30px; height: 30px; border-radius: 50%; background: var(--panel2); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--text3); margin-left: -7px; flex-shrink: 0; }
+  .char-icon-placeholder:first-child { margin-left: 0; }
+  .team-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .rate-bar-wrap { display: flex; align-items: center; gap: 7px; min-width: 120px; }
+  .rate-bar-bg { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; min-width: 55px; }
+  .rate-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--accent)); }
+  .rate-val { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent2); min-width: 44px; text-align: right; }
+
+  .score-num { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text2); }
+  .score-num.median { color: var(--accent); font-weight: 600; font-size: 13px; }
+  .score-num.avg    { color: var(--gold); font-size: 13px; }
+  .score-num.maxv   { color: var(--purple); }
+  .score-num.std    { color: var(--text3); font-size: 11px; }
+  .score-num.samp   { color: var(--text2); }
+
+  .group-sep td { background: var(--bg2); padding: 5px 12px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; border-bottom: 1px solid var(--border2); }
+  .group-label-0 { color: var(--dim0); }
+  .group-label-1 { color: var(--dim1); }
+  .group-label-2 { color: var(--dim2); }
+  .group-label-3 { color: var(--dim3); }
+  .group-label-4 { color: var(--dim4); }
+  .group-label-5 { color: var(--red); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+  .empty-state p { font-family: 'Share Tech Mono', monospace; font-size: 13px; }
+
+  /* ROSTER IMPORT */
+  .roster-btn {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--border);
+    color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 8px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .roster-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .roster-btn.has-roster { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.08); }
+
+  .owned-toggle.active { background: rgba(74,222,128,0.10); border-color: var(--green); color: var(--green); }
+
+  .roster-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100; background: rgba(5,8,15,0.75);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .roster-modal-overlay.open { display: flex; }
+  .roster-modal {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px;
+    max-width: 620px; width: 100%; max-height: 90vh; overflow-y: auto;
+    padding: 26px 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); position: relative;
+  }
+  .roster-modal-close {
+    position: absolute; top: 18px; right: 18px; background: none; border: none; color: var(--text3);
+    font-size: 20px; cursor: pointer; line-height: 1; padding: 4px; transition: color 0.15s;
+  }
+  .roster-modal-close:hover { color: var(--text); }
+  .roster-modal h2 { font-family: 'Rajdhani', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .roster-modal-sub { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
+  .roster-modal-sub code { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent2); }
+  .roster-modal-sub a { color: var(--accent); text-decoration: none; }
+  .roster-modal-sub a:hover { text-decoration: underline; }
+
+  .roster-step { display: flex; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .roster-step-num { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.4); color: var(--orange); display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 13px; }
+  .roster-step-body { font-size: 13.5px; color: var(--text); line-height: 1.4; }
+  .roster-step-body .roster-step-hint { font-size: 11.5px; color: var(--text3); margin-top: 3px; }
+
+  .roster-dropzone {
+    margin-top: 18px; border: 1.5px dashed var(--border2); border-radius: 8px; padding: 24px;
+    text-align: center; cursor: pointer; transition: all 0.15s; background: var(--panel);
+  }
+  .roster-dropzone:hover, .roster-dropzone.drag-over { border-color: var(--accent); background: rgba(56,189,248,0.05); }
+  .roster-dropzone-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); margin-bottom: 4px; }
+  .roster-dropzone-sub { font-size: 12px; color: var(--text3); }
+  .roster-dropzone-sub code { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'Share Tech Mono', monospace; color: var(--accent2); }
+
+  .roster-status { margin-top: 14px; font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px 12px; border-radius: 6px; display: none; }
+  .roster-status.ok   { display: block; color: var(--green); background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.3); }
+  .roster-status.err  { display: block; color: var(--red);   background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3); }
+
+  .roster-modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 10px; flex-wrap: wrap; }
+  .roster-clear-btn { background: var(--panel); border: 1px solid var(--border); color: var(--red); font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 12.5px; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
+  .roster-clear-btn:hover { border-color: var(--red); background: rgba(248,113,113,0.08); }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── Version switcher ────────────────────────────────────────────────── */
+  .version-switch { position: relative; }
+  .version-switch-btn {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--panel); border: 1px solid var(--border);
+    color: var(--accent); font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 700;
+    padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: border-color 0.15s; letter-spacing: 0.03em;
+    min-width: 90px; justify-content: space-between;
+  }
+  .version-switch-btn:hover { border-color: var(--accent); }
+  .version-switch-btn svg { transition: transform 0.15s; flex-shrink: 0; }
+  .version-switch-panel.open ~ .version-switch-btn svg,
+  .version-switch-btn.open svg { transform: rotate(180deg); }
+  .version-switch-panel {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+    background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.5); min-width: 170px; max-height: 360px; overflow-y: auto;
+  }
+  .version-switch-panel.open { display: block; }
+  .version-switch-panel-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; margin-bottom: 8px; white-space: nowrap; }
+  .version-switch-list { display: flex; flex-direction: column; gap: 3px; }
+  .version-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: transparent; border: 1px solid transparent; color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: 600;
+    padding: 6px 9px; border-radius: 5px; cursor: pointer; transition: all 0.12s; text-align: left; width: 100%;
+  }
+  .version-item:hover { background: rgba(56,189,248,0.08); color: var(--accent); }
+  .version-item.active { color: var(--accent); border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.06); }
+  .version-item-tag { font-size: 9px; color: var(--teal, #2dd4bf); text-transform: uppercase; letter-spacing: 0.06em; }
+  .version-switch-older-toggle {
+    width: 100%; margin-top: 6px; background: none; border: none; border-top: 1px dashed var(--border2);
+    color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 10.5px; padding: 8px 2px 2px;
+    cursor: pointer; text-align: center;
+  }
+  .version-switch-older-toggle:hover { color: var(--accent); }
+  .version-switch-older { display: none; margin-top: 4px; }
+  .version-switch-older.open { display: flex; }
+  .version-switch-loading { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 6px 2px; }
+</style>
+</head>
+<body>
+<canvas id="particleCanvas" aria-hidden="true"></canvas>
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-badge">Pure Fiction · By Cost</div>
+      <h1>Pure Fiction <span id="versionHeaderLabel">4.4.1</span> By-Cost Teams</h1>
+      <div class="header-sub">FLOOR 4 · ENDGAME ANALYTICS · COST BRACKET PERFORMANCE</div>
+    </div>
+    <div class="header-meta">
+      <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Teams</div></div>
+      <div class="meta-chip"><span class="val" id="visibleSamples">—</span><div class="lbl">Samples</div></div>
+      <div class="meta-chip"><span class="val" id="costRangeDisplay">—</span><div class="lbl">Cost Range</div></div>
+      <button class="roster-btn" id="rosterBtn" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span id="rosterBtnLabel">Import Roster</span>
+      </button>
+    <div class="version-switch" id="versionSwitch">
+      <button class="version-switch-btn" id="versionSwitchBtn" type="button" title="Switch game version">
+        <span id="versionSwitchBtnLabel">4.4.1</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="version-switch-panel" id="versionSwitchPanel">
+        <div class="version-switch-panel-title">Game Version</div>
+        <div class="version-switch-list" id="versionSwitchRecent"><div class="version-switch-loading">Loading versions…</div></div>
+        <button class="version-switch-older-toggle" id="versionSwitchOlderToggle" type="button" style="display:none;">Show older versions ▼</button>
+        <div class="version-switch-list version-switch-older" id="versionSwitchOlder"></div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <div class="controls">
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Node</div>
+      <div class="btn-group" id="dimFilters">
+        
+        <button class="btn-toggle dim-0 active" data-dim="0">N0</button>
+        
+        <button class="btn-toggle dim-1 active" data-dim="1">N1</button>
+        
+        <button class="btn-toggle dim-2 active" data-dim="2">N2</button>
+        
+        <button class="btn-toggle dim-3 active" data-dim="3">N3</button>
+        
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Max Eidolon in Team</div>
+      <div class="btn-group" id="meidFilters">
+        <button class="btn-toggle meid e0 active" data-meid="0">E0</button>
+        <button class="btn-toggle meid e1 active" data-meid="1">E1</button>
+        <button class="btn-toggle meid e2 active" data-meid="2">E2</button>
+        <button class="btn-toggle meid e3 active" data-meid="3">E3</button>
+        <button class="btn-toggle meid e4 active" data-meid="4">E4</button>
+        <button class="btn-toggle meid e5 active" data-meid="5">E5</button>
+        <button class="btn-toggle meid e6 active" data-meid="6">E6</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Sustain</div>
+      <div class="btn-group">
+        <button class="btn-toggle sustain-on active"  id="btnSustainOn">✦ Sustain</button>
+        <button class="btn-toggle sustain-off active" id="btnSustainOff">✕ No Sustain</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">Roster</div>
+      <div class="btn-group">
+        <button class="btn-toggle owned-toggle" id="btnOwnedOnly" type="button" title="Show only teams where you own every character at a high-enough eidolon">My Characters Only</button>
+      </div>
+    </div>
+
+    <div class="ctrl-group" style="flex:1; min-width:240px; max-width:420px;">
+      <div class="ctrl-label">Search (name or Acheron(E2) for exact eid)</div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="searchInput" type="text" placeholder="Acheron · Acheron(E2) · Robin(E0)…"/>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Cost range filter -->
+  <div class="cost-panel">
+    <div class="cost-panel-title">Cost Range — filter by estimated_min_cost and estimated_max_cost (sliding window buckets)</div>
+    <div class="cost-range-group">
+      <div class="cost-range-label">Min Cost ≥ <span id="minCostLabel">0</span></div>
+      <input type="range" id="minCostSlider" min="0" max="28" step="1" value="0"/>
+    </div>
+    <div class="cost-range-group">
+      <div class="cost-range-label">Max Cost ≤ <span id="maxCostLabel">32</span></div>
+      <input type="range" id="maxCostSlider" min="4" max="32" step="1" value="32"/>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;">
+      <div class="ctrl-label">Quick Presets</div>
+      <div class="cost-presets">
+        <button class="cost-preset-btn" data-min="0" data-max="4">F2P (0–4)</button>
+        <button class="cost-preset-btn" data-min="0" data-max="8">Budget (0–8)</button>
+        <button class="cost-preset-btn" data-min="8" data-max="16">Mid (8–16)</button>
+        <button class="cost-preset-btn" data-min="16" data-max="24">High (16–24)</button>
+        <button class="cost-preset-btn" data-min="24" data-max="32">Whale (24–32)</button>
+        <button class="cost-preset-btn active" id="costResetBtn">All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unified character picker: unlimited include/exclude, left-click=include (any eidolon), right-click=exclude (any eidolon). Click eidolon chips for exact eidolon targeting. -->
+  <div class="picker-panel">
+    <div class="picker-panel-title">Character Filters — unlimited include/exclude</div>
+    <div class="picker-panel-hint">
+      Click a character to <b style="color:var(--green)">include</b> (any eidolon). Right-click to <b style="color:var(--red)">exclude</b> (any eidolon). Click the chip to open the eidolon row and select one or more exact eidolons, e.g. exclude <kbd>E2, E3, E4, E5, E6</kbd> at once.
+    </div>
+
+    <div class="picker-chips" id="pickerChips">
+      <span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>
+    </div>
+    <div class="picker-eid-row" id="pickerEidRow" style="display:none;"></div>
+
+    <div class="picker-search-row">
+      <div class="picker-search-wrap">
+        <div class="picker-search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input id="charPickerInput" type="text" placeholder="Search characters to include/exclude…" autocomplete="off"/>
+        </div>
+        <div class="picker-grid-dropdown" id="pickerGridDropdown">
+          <div class="picker-grid" id="pickerGrid"></div>
+        </div>
+      </div>
+      <button class="picker-clear-all" id="pickerClearAll">Clear all</button>
+    </div>
+  </div>
+
+  <div class="results-info" id="resultsInfo">Loading…</div>
+
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th data-col="Rank" class="num">#</th>
+            <th data-col="dim_key">Node</th>
+            <th data-col="cost_key">Cost Range</th>
+            <th data-col="max_eidolon" class="num">Max Eid.</th>
+            <th data-col="Team">Team</th>
+            <th data-col="Archetype_Core">Archetype</th>
+            <th data-col="Appearance_Rate_pct" class="num sorted">App. Rate %</th>
+            <th data-col="Samples" class="num">Samples</th>
+            <th data-col="has_sustain">Sustain</th>
+            <th data-col="Full_Star_Rate_pct" class="num">Full Star %</th>
+            <th data-col="Total_Full_Clears" class="num">FS N</th>
+            <th data-col="Min_Score" class="num">Min</th>
+            <th data-col="Percentile_25" class="num">P25</th>
+            <th data-col="Median_Score" class="num">Median</th>
+            <th data-col="Percentile_75" class="num">P75</th>
+            <th data-col="Average_Score" class="num">Avg</th>
+            <th data-col="Max_Score" class="num">Max</th>
+            <th data-col="Std_Dev" class="num">σ</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="roster-modal-overlay" id="rosterModalOverlay">
+    <div class="roster-modal">
+      <button class="roster-modal-close" id="rosterModalClose" aria-label="Close">×</button>
+      <h2>Import Your Roster</h2>
+      <div class="roster-modal-sub">
+        <a href="https://github.com/IceDynamix/reliquary-archiver" target="_blank" rel="noopener">Reliquary Archiver</a> is a free, open-source tool that reads your account data directly from the game. It captures your characters and eidolons — enough for this page to filter down to teams you can actually build. Only the <code>characters</code> section of the export is read; relics, light cones, materials, and gacha history are ignored and never leave your browser.
+      </div>
+
+      <div class="roster-step">
+        <div class="roster-step-num">1</div>
+        <div class="roster-step-body">
+          Download <code>reliquary-archiver-pktmon-x64.exe</code> from the <a href="https://github.com/IceDynamix/reliquary-archiver/releases" target="_blank" rel="noopener">Reliquary Archiver releases page</a>.
+          <div class="roster-step-hint">(the pcap version requires extra software — pktmon works out of the box on Windows 10+)</div>
+        </div>
+      </div>
+      <div class="roster-step">
+        <div class="roster-step-num">2</div>
+        <div class="roster-step-body">
+          Run the <code>.exe</code> and wait until it says "Waiting for login…"
+          <div class="roster-step-hint">Windows or your antivirus may flag it — this is a false positive. Click "More info" → "Run anyway" or add an exception.</div>
+        </div>
+      </div>
+      <div class="roster-step">
+        <div class="roster-step-num">3</div>
+        <div class="roster-step-body">Open Honkai: Star Rail, log in, and enter the game — the archiver captures your data automatically.</div>
+      </div>
+      <div class="roster-step">
+        <div class="roster-step-num">4</div>
+        <div class="roster-step-body">Find the <code>archive_output-*.json</code> file it creates, then upload it below.</div>
+      </div>
+
+      <div class="roster-dropzone" id="rosterDropzone">
+        <div class="roster-dropzone-title">Upload scanner file</div>
+        <div class="roster-dropzone-sub">Click to browse or drag in your <code>archive_output</code> file</div>
+        <input type="file" id="rosterFileInput" accept="application/json,.json" style="display:none;"/>
+      </div>
+
+      <div class="roster-status" id="rosterStatus"></div>
+
+      <div class="roster-modal-footer">
+        <button class="roster-clear-btn" id="rosterClearBtn" style="display:none;">Clear saved roster</button>
+        <div class="picker-panel-hint" style="margin:0;">Stored only in your browser (localStorage) — never uploaded anywhere.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const ICONS            = {"The Herta": "assets/icons/the_herta.webp", "Lightning Trailblazer": "assets/icons/lightning_trailblazer.webp", "Ice Trailblazer": "assets/icons/ice_trailblazer.webp", "Imaginary Trailblazer": "assets/icons/imaginary_trailblazer.webp", "Physical Trailblazer": "assets/icons/physical_trailblazer.webp", "Fire Trailblazer": "assets/icons/fire_trailblazer.webp", "Hyacine": "assets/icons/hyacine.webp", "Phainon": "assets/icons/phainon.webp", "Castorice": "assets/icons/castorice.webp", "Cipher": "assets/icons/cipher.webp", "Anaxa": "assets/icons/anaxa.webp", "Mydei": "assets/icons/mydei.webp", "Tribbie": "assets/icons/tribbie.webp", "Hysilens": "assets/icons/hysilens.webp", "The Dahlia": "assets/icons/the_dahlia.webp", "Ruan Mei": "assets/icons/ruan_mei.webp", "Sunday": "assets/icons/sunday.webp", "Robin": "assets/icons/robin.webp", "Acheron": "assets/icons/acheron.webp", "Black Swan": "assets/icons/black_swan.webp", "Sparkle": "assets/icons/sparkle.webp", "Aglaea": "assets/icons/aglaea.webp", "Boothill": "assets/icons/boothill.webp", "Jade": "assets/icons/jade.webp", "Firefly": "assets/icons/firefly.webp", "Rappa": "assets/icons/rappa.webp", "Jingliu": "assets/icons/jingliu.webp", "Yunli": "assets/icons/yunli.webp", "Kafka": "assets/icons/kafka.webp", "Dan Heng • Permansor Terrae": "assets/icons/dan_heng_permansor_terrae.webp", "Cerydra": "assets/icons/cerydra.webp", "Guinaifen": "assets/icons/guinaifen.webp", "Feixiao": "assets/icons/feixiao.webp", "Dr. Ratio": "assets/icons/dr_ratio.webp", "Aventurine": "assets/icons/aventurine.webp", "Fu Xuan": "assets/icons/fu_xuan.webp", "Luocha": "assets/icons/luocha.webp", "Topaz & Numby": "assets/icons/topaz_numby.webp", "Seele": "assets/icons/seele.webp", "Bronya": "assets/icons/bronya.webp", "Silver Wolf": "assets/icons/silver_wolf.webp", "Jing Yuan": "assets/icons/jing_yuan.webp", "Gepard": "assets/icons/gepard.webp", "Yanqing": "assets/icons/yanqing.webp", "Cyrene": "assets/icons/cyrene.webp", "Evernight": "assets/icons/evernight.webp", "Huohuo": "assets/icons/huohuo.webp", "Blade": "assets/icons/blade.webp", "Dan Heng • Imbibitor Lunae": "assets/icons/dan_heng_imbibitor_lunae.webp", "Argenti": "assets/icons/argenti.webp", "Lingsha": "assets/icons/lingsha.webp", "Fugue": "assets/icons/fugue.webp", "Clara": "assets/icons/clara.webp", "Dan Heng": "assets/icons/dan_heng.webp", "Sparxie": "assets/icons/sparxie.webp", "Himeko": "assets/icons/himeko.webp", "Jiaoqiu": "assets/icons/jiaoqiu.webp", "Sampo": "assets/icons/sampo.webp", "Luka": "assets/icons/luka.webp", "Imaginary March 7th": "assets/icons/imaginary_march_7th.webp", "Tingyun": "assets/icons/tingyun.webp", "Xueyi": "assets/icons/xueyi.webp", "Welt": "assets/icons/welt.webp", "Bailu": "assets/icons/bailu.webp", "Herta": "assets/icons/herta.webp", "Pela": "assets/icons/pela.webp", "Yukong": "assets/icons/yukong.webp", "Asta": "assets/icons/asta.webp", "Hook": "assets/icons/hook.webp", "Gallagher": "assets/icons/gallagher.webp", "Saber": "assets/icons/saber.webp", "Archer": "assets/icons/archer.webp", "Yao Guang": "assets/icons/yao_guang.webp", "Ashveil": "assets/icons/ashveil.webp", "Qingque": "assets/icons/qingque.webp", "Lynx": "assets/icons/lynx.webp", "Silver Wolf LV.999": "assets/icons/silver_wolf_lv999.webp", "Natasha": "assets/icons/natasha.webp", "Evanescia": "assets/icons/evanescia.webp", "Arlan": "assets/icons/arlan.webp", "Serval": "assets/icons/serval.webp", "Moze": "assets/icons/moze.webp", "Misha": "assets/icons/misha.webp", "Sushang": "assets/icons/sushang.webp", "Hanya": "assets/icons/hanya.webp", "Mortenax Blade": "assets/icons/mortenax_blade.webp", "Ice March 7th": "assets/icons/ice_march_7th.webp", "Himeko • Nova": "assets/icons/himeko_nova.webp", "Rin Tohsaka": "assets/icons/rin_tohsaka.webp", "Gilgamesh": "assets/icons/gilgamesh.webp"};
+const DIM_FIELD        = 'node';
+const DIM_LABEL        = 'Node';
+const DIM_GROUP_LABELS = {"0": "NODE 0 \u2014 All Nodes", "1": "NODE 1 \u2014 First Half", "2": "NODE 2 \u2014 Second Half", "3": "NODE 3 \u2014 Third Half"};
+const ROW_H      = 46;
+const OVERSCAN   = 6;
+const VIEWPORT_H = 600;
+
+let RAW_DATA = [];
+let MAX_RATE   = 1;
+let MIN_COST_G = 0;
+let MAX_COST_G = 32;
+let BASE_NAME_EIDOLONS = new Map(); // baseLower -> Set('e0','e1',...)
+let BASE_NAME_DISPLAY  = new Map(); // baseLower -> display name (first-seen casing)
+let ALL_CHAR_NAMES = [];
+let TOKEN_INDEX = new Map();
+
+function lookupIconUrl(name) {
+  let url = ICONS[name] || ICONS[name.replace(/\s+LV\.\d+$/,'').trim()];
+  if (url && !url.startsWith('http')) url = "../" + url;
+  return url || null;
+}
+
+function searchIndex(query) {
+  // Detect eidolon-specific query: "acheron(e2)" or "acheron e2"
+  const eidMatch = query.match(/^(.+?)\s*\(?(e\d)\)?$/i);
+  const words    = query.split(/\s+/).filter(Boolean);
+  if (!words.length) return null;
+
+  let resultSet = null;
+  for (const word of words) {
+    const hits = new Set();
+    TOKEN_INDEX.forEach((indices, tok) => { if (tok.includes(word)) indices.forEach(i => hits.add(i)); });
+    resultSet = resultSet === null ? hits : new Set([...resultSet].filter(i => hits.has(i)));
+    if (!resultSet.size) break;
+  }
+
+  if (eidMatch && resultSet) {
+    const base   = eidMatch[1].trim().toLowerCase();
+    const eidTag = eidMatch[2].toLowerCase(); // "e2"
+    resultSet = new Set([...resultSet].filter(i =>
+      RAW_DATA[i]._members.some(m => {
+        const ml = m.toLowerCase();
+        return ml.replace(/\s*\(e\d\)/gi,'').trim() === base && ml.includes('(' + eidTag + ')');
+      })
+    ));
+  }
+  return resultSet;
+}
+
+// ── Filter state ─────────────────────────────────────────────────────────
+let activeDims  = new Set();
+let activeMeids = new Set([0,1,2,3,4,5,6]);
+let showSustain   = true;
+let showNoSustain = true;
+let searchTerm    = '';
+let costMinFilter = MIN_COST_G;
+let costMaxFilter = MAX_COST_G;
+let sortCol       = 'Appearance_Rate_pct';
+let sortAsc       = false;
+// Character filters: Map<base, {base, mode, eids: Set('e0'..'e6') | null}>
+// eids === null means "any eidolon" (no narrowing). A non-null Set means only those exact eidolons count.
+let charFilters  = new Map();
+let filteredData = [];
+let OWNED_ROSTER = new Map(); // baseNameLower -> highest owned eidolon (0-6)
+let ownedOnlyActive = false;
+
+function recompute() {
+  let candidate;
+  if (searchTerm.length >= 2) {
+    const hits = searchIndex(searchTerm);
+    candidate  = hits ? [...hits].map(i => RAW_DATA[i]) : [];
+  } else if (searchTerm.length === 1) {
+    candidate = RAW_DATA.filter(r => r._teamLower.includes(searchTerm));
+  } else {
+    candidate = RAW_DATA;
+  }
+
+  candidate = candidate.filter(r =>
+    activeDims.has(r.dim_key) &&
+    activeMeids.has(Math.round(r.max_eidolon)) &&
+    (r.has_sustain ? showSustain : showNoSustain) &&
+    r.estimated_min_cost >= costMinFilter &&
+    r.estimated_max_cost <= costMaxFilter
+  );
+
+  const activeFilters = [...charFilters.values()];
+  if (activeFilters.length) {
+    candidate = candidate.filter(r => {
+      for (const f of activeFilters) {
+        let present;
+        if (!f.eids || f.eids.size === 0) {
+          present = r._membersBase.includes(f.base);
+        } else {
+          present = r._members.some(m => {
+            const ml = m.toLowerCase();
+            if (ml.replace(/\s*\(e\d\)/gi,'').trim() !== f.base) return false;
+            const em = ml.match(/\((e\d)\)/i);
+            return em && f.eids.has(em[1]);
+          });
+        }
+        if (f.mode === 'include' && !present) return false;
+        if (f.mode === 'exclude' && present)  return false;
+      }
+      return true;
+    });
+  }
+
+  if (ownedOnlyActive && OWNED_ROSTER.size) {
+    candidate = candidate.filter(r =>
+      r._members.every(m => {
+        const ml = m.toLowerCase();
+        const base = ml.replace(/\s*\(e\d\)/gi,'').trim();
+        const em = ml.match(/\((e\d)\)/i);
+        const required = em ? parseInt(em[1].slice(1)) : 0;
+        const owned = OWNED_ROSTER.get(base);
+        return owned !== undefined && owned >= required;
+      })
+    );
+  }
+
+  filteredData = candidate;
+  filteredData.sort((a, b) => {
+    let av = a[sortCol], bv = b[sortCol];
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    if (av == null) return 1; if (bv == null) return -1;
+    return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+  });
+
+  updateMeta();
+  document.querySelector('.table-scroll').scrollTop = 0;
+  renderViewport();
+}
+
+function updateMeta() {
+  document.getElementById('visibleCount').textContent   = filteredData.length.toLocaleString();
+  const ssum = filteredData.reduce((s,r) => s + r.Samples, 0);
+  document.getElementById('visibleSamples').textContent = ssum > 9999 ? (ssum/1000).toFixed(0)+'K' : ssum.toLocaleString();
+  document.getElementById('costRangeDisplay').textContent = costMinFilter + '–' + costMaxFilter;
+  document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> teams · cost bracket <span>${costMinFilter}→${costMaxFilter}</span>`;
+}
+
+function parseMembers(team) {
+  return team.replace(/^\(|\)$/g,'').split(/\s*[,\/\+]\s*/).map(s => s.trim()).filter(Boolean);
+}
+
+function iconEl(name) {
+  let url = ICONS[name] || ICONS[name.replace(/\s+LV\.\d+$/,'').trim()];
+  if (url) {
+    if (!url.startsWith('http')) url = "../" + url;
+    return `<img class="char-icon" src="${url}" alt="${name}" title="${name}" onerror="this.style.display='none'"/>`;
+  }
+  return `<div class="char-icon-placeholder" title="${name}">${name.slice(0,2).toUpperCase()}</div>`;
+}
+
+function fmtPct(v)      { return v == null ? '—' : v.toFixed(2) + '%'; }
+function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
+function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
+function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
+
+function rowHTML(r) {
+  const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
+  const eid     = Math.round(r.max_eidolon);
+  const sustHtml = r.has_sustain
+    ? `<span class="sustain-pill yes">Sustain</span>`
+    : `<span class="sustain-pill no">No Sustain</span>`;
+  const archHtml = r.Archetype_Core
+    ? `<span class="arch-pill" title="${r.Archetype_Core}">${r.Archetype_Core}</span>`
+    : `<span class="score-num" style="color:var(--text3)">—</span>`;
+  return `<tr>
+    <td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>
+    <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
+    <td><span class="cost-badge">${r.estimated_min_cost}<span class="cost-sep">→</span>${r.estimated_max_cost}</span></td>
+    <td class="num"><span class="meid-badge e${eid}">E${eid}</span></td>
+    <td><div class="team-cell"><div class="team-icons">${r._iconsHtml}</div><span class="team-name" title="${r.Team}">${r.Team}</span></div></td>
+    <td>${archHtml}</td>
+    <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct)}</span></div></td>
+    <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
+    <td>${sustHtml}</td>
+    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>
+    <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
+    <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span></td>
+    <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
+    <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
+    <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+  </tr>`;
+}
+
+(function setupVirtualScroll() {
+  const ts = document.querySelector('.table-scroll');
+  ts.style.maxHeight = VIEWPORT_H + 'px';
+  ts.style.overflowY = 'auto';
+  ts.addEventListener('scroll', renderViewport, { passive: true });
+})();
+
+function renderViewport() {
+  const tbody = document.getElementById('tableBody');
+  const ts    = document.querySelector('.table-scroll');
+  const COLS  = 18;
+
+  if (!filteredData.length) {
+    tbody.innerHTML = `<tr><td colspan="${COLS}"><div class="empty-state"><div class="icon">⚡</div><p>No teams match current filters</p></div></td></tr>`;
+    return;
+  }
+
+  const scrollTop = ts.scrollTop;
+  const startIdx  = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+  const endIdx    = Math.min(filteredData.length, Math.ceil((scrollTop + VIEWPORT_H) / ROW_H) + OVERSCAN);
+  const padTop    = startIdx * ROW_H;
+  const padBot    = (filteredData.length - endIdx) * ROW_H;
+
+  let html = '';
+  if (padTop > 0) html += `<tr style="height:${padTop}px"><td colspan="${COLS}" style="padding:0;border:none"></td></tr>`;
+
+  let lastDim = startIdx > 0 ? filteredData[startIdx - 1].dim_key : null;
+  for (let i = startIdx; i < endIdx; i++) {
+    const r = filteredData[i];
+    if (r.dim_key !== lastDim) {
+      const lbl = DIM_GROUP_LABELS[r.dim_key] || `${DIM_LABEL} ${r.dim_key}`;
+      html += `<tr class="group-sep"><td colspan="${COLS}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
+      lastDim = r.dim_key;
+    }
+    html += rowHTML(r);
+  }
+
+  if (padBot > 0) html += `<tr style="height:${padBot}px"><td colspan="${COLS}" style="padding:0;border:none"></td></tr>`;
+  tbody.innerHTML = html;
+}
+
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// ── Listeners ────────────────────────────────────────────────────────────
+
+document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const d = parseInt(btn.dataset.dim);
+    if (activeDims.has(d)) { if (activeDims.size > 1) { activeDims.delete(d); btn.classList.remove('active'); } }
+    else { activeDims.add(d); btn.classList.add('active'); }
+    recompute();
+  });
+});
+
+document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const e = parseFloat(btn.dataset.meid);
+    if (activeMeids.has(e)) { if (activeMeids.size > 1) { activeMeids.delete(e); btn.classList.remove('active'); } }
+    else { activeMeids.add(e); btn.classList.add('active'); }
+    recompute();
+  });
+});
+
+document.getElementById('btnSustainOn').addEventListener('click', () => {
+  if (showSustain && !showNoSustain) return;
+  showSustain = !showSustain;
+  document.getElementById('btnSustainOn').classList.toggle('active', showSustain);
+  recompute();
+});
+document.getElementById('btnSustainOff').addEventListener('click', () => {
+  if (!showSustain && showNoSustain) return;
+  showNoSustain = !showNoSustain;
+  document.getElementById('btnSustainOff').classList.toggle('active', showNoSustain);
+  recompute();
+});
+
+document.getElementById('searchInput').addEventListener('input', debounce(e => {
+  searchTerm = e.target.value.trim().toLowerCase();
+  recompute();
+}, 200));
+
+// Cost sliders
+function sliderFill(s) {
+  const pct = ((parseFloat(s.value) - parseFloat(s.min)) / (parseFloat(s.max) - parseFloat(s.min)) * 100).toFixed(1);
+  s.style.setProperty('--fill', pct + '%');
+}
+const minSlider = document.getElementById('minCostSlider');
+const maxSlider = document.getElementById('maxCostSlider');
+minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4; minSlider.value = MIN_COST_G;
+maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G; maxSlider.value = MAX_COST_G;
+sliderFill(minSlider); sliderFill(maxSlider);
+
+minSlider.addEventListener('input', () => {
+  if (parseFloat(minSlider.value) >= parseFloat(maxSlider.value) - 4)
+    minSlider.value = parseFloat(maxSlider.value) - 4;
+  costMinFilter = parseFloat(minSlider.value);
+  document.getElementById('minCostLabel').textContent = costMinFilter;
+  sliderFill(minSlider); clearPresets(); recompute();
+});
+maxSlider.addEventListener('input', () => {
+  if (parseFloat(maxSlider.value) <= parseFloat(minSlider.value) + 4)
+    maxSlider.value = parseFloat(minSlider.value) + 4;
+  costMaxFilter = parseFloat(maxSlider.value);
+  document.getElementById('maxCostLabel').textContent = costMaxFilter;
+  sliderFill(maxSlider); clearPresets(); recompute();
+});
+
+function clearPresets() { document.querySelectorAll('.cost-preset-btn').forEach(b => b.classList.remove('active')); }
+function applyPreset(mn, mx) {
+  costMinFilter = mn; costMaxFilter = mx;
+  minSlider.value = mn; maxSlider.value = mx;
+  document.getElementById('minCostLabel').textContent = mn;
+  document.getElementById('maxCostLabel').textContent = mx;
+  sliderFill(minSlider); sliderFill(maxSlider); recompute();
+}
+
+document.querySelectorAll('.cost-preset-btn[data-min]').forEach(btn => {
+  btn.addEventListener('click', () => { clearPresets(); btn.classList.add('active'); applyPreset(+btn.dataset.min, +btn.dataset.max); });
+});
+document.getElementById('costResetBtn').addEventListener('click', () => {
+  clearPresets();
+  document.getElementById('costResetBtn').classList.add('active');
+  applyPreset(MIN_COST_G, MAX_COST_G);
+});
+
+// ---- Unified character picker (unlimited include/exclude, multi-eidolon-aware) ----
+
+let openEidBase = null; // which character currently has the eidolon row expanded
+
+function eidLabelFor(f) {
+  if (!f.eids || f.eids.size === 0) return '';
+  return [...f.eids].sort().map(e => e.toUpperCase()).join(',');
+}
+
+function renderChips() {
+  const wrap = document.getElementById('pickerChips');
+  if (charFilters.size === 0) {
+    wrap.innerHTML = `<span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>`;
+    openEidBase = null;
+    renderEidRow();
+    return;
+  }
+  wrap.innerHTML = [...charFilters.values()].map(f => {
+    const display = BASE_NAME_DISPLAY.get(f.base) || f.base;
+    const url = lookupIconUrl(display);
+    const iconHtml = url
+      ? `<img src="${url}" alt="${display}" onerror="this.style.display='none'"/>`
+      : `<span class="chip-icon-ph">${display.slice(0,2).toUpperCase()}</span>`;
+    const modeIcon = f.mode === 'include' ? '✓' : '✕';
+    const eidText = eidLabelFor(f);
+    const eidLabel = eidText ? `<span class="chip-eid">${eidText}</span>` : '';
+    return `<span class="picker-chip ${f.mode}" data-base="${f.base}" title="Click to set exact eidolon(s)">${iconHtml}<span>${display}</span>${eidLabel}<span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${f.base}" title="Remove">×</button></span>`;
+  }).join('');
+
+  wrap.querySelectorAll('.picker-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      if (e.target.closest('.chip-remove')) return;
+      const base = chip.dataset.base;
+      openEidBase = (openEidBase === base) ? null : base;
+      renderEidRow();
+    });
+  });
+
+  wrap.querySelectorAll('.chip-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      charFilters.delete(btn.dataset.remove);
+      if (openEidBase === btn.dataset.remove) openEidBase = null;
+      renderChips();
+      renderPickerGrid(document.getElementById('charPickerInput').value.trim());
+      recompute();
+    });
+  });
+
+  renderEidRow();
+}
+
+// Render the eidolon multi-select row for whichever character chip is currently open
+function renderEidRow() {
+  const row = document.getElementById('pickerEidRow');
+  if (!openEidBase) { row.style.display = 'none'; row.innerHTML = ''; return; }
+
+  const f = charFilters.get(openEidBase);
+  if (!f) { row.style.display = 'none'; row.innerHTML = ''; return; }
+
+  const display = BASE_NAME_DISPLAY.get(openEidBase) || openEidBase;
+  const eidolonsSeen = [...(BASE_NAME_EIDOLONS.get(openEidBase) || new Set())].sort();
+  const selected = f.eids || new Set();
+
+  const anyActive = !f.eids || f.eids.size === 0;
+  const modeCls = f.mode === 'exclude' ? 'mode-exclude' : '';
+  const anyBtn = `<button class="picker-eid-btn any ${anyActive ? 'eid-active ' + modeCls : ''}" data-eid="any">Any</button>`;
+  const eidButtons = eidolonsSeen.map(eid => {
+    const isActive = selected.has(eid);
+    return `<button class="picker-eid-btn ${isActive ? 'eid-active ' + modeCls : ''}" data-eid="${eid}">${eid.toUpperCase()}</button>`;
+  }).join('');
+
+  row.style.display = 'flex';
+  row.innerHTML = `<div class="picker-eid-row-label">${display} — exact eidolon(s) for this ${f.mode === 'include' ? 'include' : 'exclude'} filter (multi-select)</div>${anyBtn}${eidButtons}`;
+
+  row.querySelectorAll('.picker-eid-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const eid = btn.dataset.eid;
+      const current = charFilters.get(openEidBase);
+      if (!current) return;
+      if (eid === 'any') {
+        current.eids = null; // clear narrowing, fall back to any eidolon
+      } else {
+        if (!current.eids) current.eids = new Set();
+        if (current.eids.has(eid)) {
+          current.eids.delete(eid);
+          if (current.eids.size === 0) current.eids = null;
+        } else {
+          current.eids.add(eid);
+        }
+      }
+      renderChips(); // re-renders chips and re-opens the eid row for openEidBase automatically
+      renderPickerGrid(document.getElementById('charPickerInput').value.trim());
+      recompute();
+    });
+  });
+}
+
+// Toggle a base character on/off at a given mode ('include' | 'exclude'), any eidolon by default
+function setCharFilter(base, mode) {
+  const existing = charFilters.get(base);
+  if (existing && existing.mode === mode) {
+    charFilters.delete(base); // clicking same mode again removes it
+  } else {
+    charFilters.set(base, { base, mode, eids: null });
+  }
+  renderChips();
+  renderPickerGrid(document.getElementById('charPickerInput').value.trim());
+  recompute();
+}
+
+function cellState(base) {
+  const f = charFilters.get(base);
+  return f ? f.mode : null;
+}
+
+function renderPickerGrid(query) {
+  const grid = document.getElementById('pickerGrid');
+  const q = (query || '').toLowerCase();
+  const matches = q
+    ? ALL_CHAR_NAMES.filter(n => n.toLowerCase().includes(q))
+    : ALL_CHAR_NAMES;
+
+  if (matches.length === 0) {
+    grid.innerHTML = `<div class="picker-grid-empty">No characters found</div>`;
+    return;
+  }
+
+  grid.innerHTML = matches.map(name => {
+    const base = name.toLowerCase();
+    const state = cellState(base);
+    const stateCls = state ? (state === 'include' ? 'is-include' : 'is-exclude') : '';
+    const url = lookupIconUrl(name);
+    const iconHtml = url
+      ? `<img src="${url}" alt="${name}" onerror="this.style.display='none'"/>`
+      : `<div class="cell-icon-ph">${name.slice(0,2).toUpperCase()}</div>`;
+    return `<div class="picker-cell ${stateCls}" data-base="${base.replace(/"/g,'&quot;')}" title="${name} — left-click include, right-click exclude">${iconHtml}<div class="cell-name">${name}</div></div>`;
+  }).join('');
+
+  grid.querySelectorAll('.picker-cell').forEach(cell => {
+    cell.addEventListener('click', () => setCharFilter(cell.dataset.base, 'include'));
+    cell.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      setCharFilter(cell.dataset.base, 'exclude');
+    });
+  });
+}
+
+const pickerInput        = document.getElementById('charPickerInput');
+const pickerGridDropdown = document.getElementById('pickerGridDropdown');
+
+pickerInput.addEventListener('focus', () => {
+  pickerGridDropdown.classList.add('open');
+  renderPickerGrid(pickerInput.value.trim());
+});
+pickerInput.addEventListener('input', debounce(() => {
+  renderPickerGrid(pickerInput.value.trim());
+}, 120));
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.picker-search-wrap')) {
+    pickerGridDropdown.classList.remove('open');
+  }
+});
+
+document.getElementById('pickerClearAll').addEventListener('click', () => {
+  charFilters.clear();
+  renderChips();
+  renderPickerGrid(pickerInput.value.trim());
+  recompute();
+});
+
+// ---- Owned roster import (Reliquary Archiver export) ----
+
+const ROSTER_STORAGE_KEY = 'hsr_owned_roster_v1';
+
+function ownedRosterToObj() {
+  const obj = {};
+  OWNED_ROSTER.forEach((eid, base) => { obj[base] = eid; });
+  return obj;
+}
+
+function saveOwnedRoster() {
+  try { localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(ownedRosterToObj())); }
+  catch (e) { console.warn('Could not save roster to localStorage:', e); }
+}
+
+function loadOwnedRoster() {
+  try {
+    const raw = localStorage.getItem(ROSTER_STORAGE_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    OWNED_ROSTER = new Map(Object.entries(obj));
+  } catch (e) { console.warn('Could not load saved roster:', e); }
+}
+
+function updateRosterButtonState() {
+  const btn      = document.getElementById('rosterBtn');
+  const label    = document.getElementById('rosterBtnLabel');
+  const clearBtn = document.getElementById('rosterClearBtn');
+  const count = OWNED_ROSTER.size;
+  if (count > 0) {
+    btn.classList.add('has-roster');
+    label.textContent = count + ' Characters Loaded';
+    clearBtn.style.display = 'inline-block';
+  } else {
+    btn.classList.remove('has-roster');
+    label.textContent = 'Import Roster';
+    clearBtn.style.display = 'none';
+  }
+}
+
+function setRosterStatus(msg, ok) {
+  const el = document.getElementById('rosterStatus');
+  el.textContent = msg;
+  el.className = 'roster-status ' + (ok ? 'ok' : 'err');
+}
+
+// Ground-truth variant map for characters that share one bare export name across
+// multiple playable forms. Mirrors the Polars mapping used by the DuckDB pipeline.
+// Keys are lowercased (export character name -> export path value -> dashboard name).
+// Path values are matched case-insensitively and accept either the actual HSR Path
+// name (e.g. "Preservation") or the elemental type (e.g. "Ice"), since the archiver
+// and the warehouse don't always agree on which one gets reported.
+//
+// TO ADD A NEW VARIANT (e.g. a future Trailblazer path): add one line to the inner
+// object below, keyed by whatever value the archiver reports in `character.path` for
+// that variant, mapped to the exact display name your dashboard uses. No other code
+// needs to change.
+const VARIANT_PATH_MAP = {
+  'march 7th': {
+    'preservation': 'Ice March 7th',
+    'ice':          'Ice March 7th',
+    'hunt':         'Imaginary March 7th', // archiver reports the raw Path ("Hunt") here, not the element — verify this still matches your Polars pipeline
+    'imaginary':    'Imaginary March 7th',
+  },
+  'trailblazer': {
+    'physical':     'Physical Trailblazer',
+    'destruction':  'Physical Trailblazer',
+    'fire':         'Fire Trailblazer',
+    'preservation': 'Fire Trailblazer',
+    'imaginary':    'Imaginary Trailblazer',
+    'harmony':      'Imaginary Trailblazer',
+    'ice':          'Ice Trailblazer',
+    'remembrance':  'Ice Trailblazer',
+    'lightning':    'Lightning Trailblazer',
+    'erudition':    'Lightning Trailblazer',
+    'elation':      'Lightning Trailblazer', // UNCONFIRMED: archiver reports "Elation" (not a real HSR Path) for this variant — verify against a known Lightning Trailblazer owner before trusting this
+  },
+};
+
+function resolveVariantName(rawName, rawPath) {
+  const table = VARIANT_PATH_MAP[rawName.toLowerCase()];
+  if (!table) return undefined; // not an ambiguous character at all — caller should use rawName as-is
+  return table[String(rawPath || '').toLowerCase()]; // undefined = ambiguous character, but this path isn't mapped yet
+}
+
+function parseRosterFile(text) {
+  const data = JSON.parse(text);
+  if (!data || !Array.isArray(data.characters)) {
+    throw new Error('No "characters" array found — is this a Reliquary Archiver export?');
+  }
+  const map = new Map();
+  const unresolved = [];
+  data.characters.forEach(c => {
+    if (!c.name) return;
+    // HoYo rich-text markup (e.g. "Silver Wolf LV.<unbreak>999</unbreak>") can leak into
+    // exported strings — strip any <tag>...</tag> wrapper before using the name.
+    const cleanName = String(c.name).replace(/<[^>]+>/g, '').trim();
+    if (!cleanName) return;
+    const eid = Number.isFinite(c.eidolon) ? c.eidolon : 0;
+
+    let displayName = cleanName;
+    if (VARIANT_PATH_MAP[cleanName.toLowerCase()]) {
+      const resolved = resolveVariantName(cleanName, c.path);
+      if (resolved) {
+        displayName = resolved;
+      } else {
+        // Known ambiguous character (March 7th / Trailblazer), but this path value
+        // isn't in VARIANT_PATH_MAP yet — likely a new variant the game added.
+        // Don't silently drop or merge it with another variant; keep it under a
+        // clearly-fallback name and surface it so it gets added to the table above.
+        unresolved.push(`${cleanName} (path: ${c.path || 'unknown'})`);
+        displayName = `${c.path || 'Unknown'} ${cleanName}`;
+      }
+    }
+
+    const base = displayName.toLowerCase();
+    // Keep the highest eidolon seen for a name, just in case of duplicates
+    if (!map.has(base) || map.get(base) < eid) map.set(base, eid);
+  });
+
+  if (unresolved.length) {
+    console.warn('Unmapped character variant(s) — add these to VARIANT_PATH_MAP:', unresolved);
+  }
+
+  return { map, unresolved };
+}
+
+function handleRosterFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const { map, unresolved } = parseRosterFile(e.target.result);
+      if (map.size === 0) throw new Error('No characters found in that file.');
+      OWNED_ROSTER = map;
+      saveOwnedRoster();
+      updateRosterButtonState();
+      let msg = `Loaded ${map.size} characters. "My Characters Only" is now active.`;
+      if (unresolved.length) {
+        msg += ` Heads up: ${unresolved.length} variant(s) weren't recognized (${unresolved.join(', ')}) — they were kept under a fallback name so filtering still works, but flag this for a VARIANT_PATH_MAP update.`;
+      }
+      setRosterStatus(msg, unresolved.length === 0);
+      ownedOnlyActive = true;
+      document.getElementById('btnOwnedOnly').classList.add('active');
+      recompute();
+    } catch (err) {
+      setRosterStatus('Could not read that file: ' + err.message, false);
+    }
+  };
+  reader.onerror = () => setRosterStatus('Could not read that file.', false);
+  reader.readAsText(file);
+}
+
+const rosterBtn      = document.getElementById('rosterBtn');
+const rosterOverlay  = document.getElementById('rosterModalOverlay');
+const rosterDropzone = document.getElementById('rosterDropzone');
+const rosterFileInput = document.getElementById('rosterFileInput');
+
+rosterBtn.addEventListener('click', () => rosterOverlay.classList.add('open'));
+document.getElementById('rosterModalClose').addEventListener('click', () => rosterOverlay.classList.remove('open'));
+rosterOverlay.addEventListener('click', (e) => { if (e.target === rosterOverlay) rosterOverlay.classList.remove('open'); });
+
+rosterDropzone.addEventListener('click', () => rosterFileInput.click());
+rosterFileInput.addEventListener('change', (e) => handleRosterFile(e.target.files[0]));
+
+rosterDropzone.addEventListener('dragover', (e) => { e.preventDefault(); rosterDropzone.classList.add('drag-over'); });
+rosterDropzone.addEventListener('dragleave', () => rosterDropzone.classList.remove('drag-over'));
+rosterDropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  rosterDropzone.classList.remove('drag-over');
+  handleRosterFile(e.dataTransfer.files[0]);
+});
+
+document.getElementById('rosterClearBtn').addEventListener('click', () => {
+  OWNED_ROSTER = new Map();
+  ownedOnlyActive = false;
+  try { localStorage.removeItem(ROSTER_STORAGE_KEY); } catch (e) {}
+  document.getElementById('btnOwnedOnly').classList.remove('active');
+  updateRosterButtonState();
+  setRosterStatus('Saved roster cleared.', true);
+  recompute();
+});
+
+document.getElementById('btnOwnedOnly').addEventListener('click', () => {
+  if (OWNED_ROSTER.size === 0) {
+    document.getElementById('rosterModalOverlay').classList.add('open');
+    return;
+  }
+  ownedOnlyActive = !ownedOnlyActive;
+  document.getElementById('btnOwnedOnly').classList.toggle('active', ownedOnlyActive);
+  recompute();
+});
+
+loadOwnedRoster();
+updateRosterButtonState();
+
+renderChips();
+
+document.querySelectorAll('th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortAsc = !sortAsc;
+    else { sortCol = col; sortAsc = false; }
+    document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
+    th.classList.add('sorted'); if (sortAsc) th.classList.add('asc');
+    recompute();
+  });
+});
+
+// ── Particles ────────────────────────────────────────────────────────────
+(function setupParticles() {
+  const canvas = document.getElementById('particleCanvas');
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext('2d');
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const PALETTE = ['56,189,248','45,212,191','167,139,250','251,191,36'];
+  const LINK = 105;
+  let w, h, dpr, motes = [], raf, running = false, t = 0;
+  function mkMote(fb) {
+    return { x:Math.random()*w, y:fb?h+8:Math.random()*h, vx:(Math.random()-.5)*.18, vy:-(Math.random()*.22+.06),
+      r:Math.random()*1.5+.55, tp:Math.random()*Math.PI*2, ts:Math.random()*.016+.005,
+      sw:Math.random()*.4+.12, sp:Math.random()*Math.PI*2, c:PALETTE[Math.floor(Math.random()*PALETTE.length)] };
+  }
+  function resize() {
+    dpr=Math.min(devicePixelRatio||1,2); w=innerWidth; h=innerHeight;
+    canvas.width=w*dpr; canvas.height=h*dpr;
+    canvas.style.cssText=`position:fixed;inset:0;width:${w}px;height:${h}px;`;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    motes=Array.from({length:Math.max(22,Math.min(55,Math.floor(w*h/34000)))},()=>mkMote(false));
+  }
+  function paint() {
+    t++; ctx.clearRect(0,0,w,h);
+    for(let i=0;i<motes.length;i++){
+      const a=motes[i]; a.x+=a.vx; a.y+=a.vy; a.x+=Math.sin(t*.01+a.sp)*a.sw*.05;
+      if(a.y<-10) Object.assign(a,mkMote(true));
+      for(let j=i+1;j<motes.length;j++){
+        const b=motes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+        if(d<LINK){ctx.strokeStyle=`rgba(${a.c},${(1-d/LINK)*.09})`;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+      }
+    }
+    motes.forEach(m=>{
+      const al=Math.max(.06,.28+Math.sin(t*m.ts+m.tp)*.22);
+      const gr=ctx.createRadialGradient(m.x,m.y,0,m.x,m.y,m.r*5);
+      gr.addColorStop(0,`rgba(${m.c},${al*.5})`); gr.addColorStop(1,`rgba(${m.c},0)`);
+      ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(m.x,m.y,m.r*5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=`rgba(${m.c},${Math.min(.85,al+.18)})`; ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,Math.PI*2); ctx.fill();
+    });
+    if(running) raf=requestAnimationFrame(paint);
+  }
+  function start(){if(!running){running=true;raf=requestAnimationFrame(paint);}}
+  function stop(){running=false;if(raf)cancelAnimationFrame(raf);}
+  resize(); start();
+  let rt; window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(resize,200);});
+  document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
+})();
+
+// ---- Data loading / version switching ----
+
+function prepareData() {
+  RAW_DATA.forEach(r => {
+    r.dim_key   = r[DIM_FIELD];
+    r.cost_key  = r.estimated_min_cost + '_' + r.estimated_max_cost;
+    r.has_sustain = Boolean(r.has_sustain);
+    const members  = parseMembers(r.Team);
+    r._members     = members;
+    r._teamLower   = r.Team.toLowerCase();
+    r._membersBase = members.map(m => m.replace(/\s*\(E\d\)/gi,'').trim().toLowerCase());
+    r._iconsHtml   = members.map(m => iconEl(m.replace(/\s*\(E\d\)/gi,'').trim())).join('');
+  });
+
+  MAX_RATE   = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
+  MIN_COST_G = Math.min(...RAW_DATA.map(r => r.estimated_min_cost));
+  MAX_COST_G = Math.max(...RAW_DATA.map(r => r.estimated_max_cost));
+
+  BASE_NAME_EIDOLONS = new Map();
+  BASE_NAME_DISPLAY  = new Map();
+  RAW_DATA.forEach(r => r._members.forEach(m => {
+    const baseDisplay = m.replace(/\s*\(E\d\)/gi,'').trim();
+    const baseLower   = baseDisplay.toLowerCase();
+    if (!BASE_NAME_DISPLAY.has(baseLower)) BASE_NAME_DISPLAY.set(baseLower, baseDisplay);
+    const em = m.match(/\((e\d)\)/i);
+    if (em) {
+      if (!BASE_NAME_EIDOLONS.has(baseLower)) BASE_NAME_EIDOLONS.set(baseLower, new Set());
+      BASE_NAME_EIDOLONS.get(baseLower).add(em[1].toLowerCase());
+    }
+  }));
+  ALL_CHAR_NAMES = [...BASE_NAME_DISPLAY.values()].sort();
+
+  TOKEN_INDEX = new Map();
+  RAW_DATA.forEach((r, i) => {
+    const tokens = r._teamLower.split(/[\s\(\),\/\+•&]+/).filter(t => t.length >= 2);
+    new Set(tokens).forEach(tok => {
+      if (!TOKEN_INDEX.has(tok)) TOKEN_INDEX.set(tok, []);
+      TOKEN_INDEX.get(tok).push(i);
+    });
+  });
+
+  // Reset filters to sensible defaults for the newly loaded dataset
+  activeDims  = new Set(RAW_DATA.map(r => r.dim_key));
+  activeMeids = new Set([0,1,2,3,4,5,6]);
+  showSustain   = true;
+  showNoSustain = true;
+  searchTerm    = '';
+  costMinFilter = MIN_COST_G;
+  costMaxFilter = MAX_COST_G;
+  sortCol       = 'Appearance_Rate_pct';
+  sortAsc       = false;
+  charFilters.clear();
+  openEidBase = null;
+
+  const searchInputEl = document.getElementById('searchInput');
+  if (searchInputEl) searchInputEl.value = '';
+
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  document.getElementById('btnSustainOn')?.classList.add('active');
+  document.getElementById('btnSustainOff')?.classList.add('active');
+  document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
+  document.querySelector('th[data-col="Appearance_Rate_pct"]')?.classList.add('sorted');
+
+  // Reconfigure cost sliders for the new dataset's range
+  minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4; minSlider.value = MIN_COST_G;
+  maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G; maxSlider.value = MAX_COST_G;
+  document.getElementById('minCostLabel').textContent = MIN_COST_G;
+  document.getElementById('maxCostLabel').textContent = MAX_COST_G;
+  sliderFill(minSlider); sliderFill(maxSlider);
+  clearPresets();
+  document.getElementById('costResetBtn')?.classList.add('active');
+
+  renderChips();
+  renderPickerGrid('');
+}
+
+let _brotliPromise = null;
+function getBrotli() {
+  if (!_brotliPromise) {
+    _brotliPromise = import("../vendor/brotli-wasm/index.web.js").then(m => m.default);
+  }
+  return _brotliPromise;
+}
+
+async function loadDataset(filename) {
+  const response = await fetch(filename);
+  if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
+  const buffer = await response.arrayBuffer();
+  const brotli = await getBrotli();
+  const decompressed = brotli.decompress(new Uint8Array(buffer));
+  RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
+  prepareData();
+  document.querySelector('.table-scroll').scrollTop = 0;
+  recompute();
+}
+
+function updateHeaderVersion(label) {
+  const h = document.getElementById('versionHeaderLabel');
+  if (h) h.textContent = label;
+}
+
+async function initializeApp() {
+    try {
+        await loadDataset("pure_fiction_4_4_1_by_cost_teams_data.json.br");
+    } catch (err) {
+        console.error('Data load error:', err);
+        const info = document.getElementById('resultsInfo');
+        if (info) info.textContent = '⚠️ Failed to load data. Check console.';
+        const tbody = document.getElementById('tableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+    }
+}
+
+initializeApp();
+</script>
+<script>
+// ── Version switcher ─────────────────────────────────────────────────────
+// Requires the page to define: async function loadDataset(filename) {...}
+// Optionally defines: function updateHeaderVersion(label) {...}
+(function() {
+  const VS_FILE_PREFIX   = 'pure_fiction';
+  const VS_PAGE_SUFFIX   = 'by_cost_teams';
+  const VS_CURRENT_SAFE  = '4_4_1';
+  const VS_CURRENT_LABEL = '4.4.1';
+  const VS_MANIFEST      = `${VS_FILE_PREFIX}_${VS_PAGE_SUFFIX}_versions.json`;
+  const VS_RECENT_COUNT  = 6;
+
+  let vsLiveSafe = VS_CURRENT_SAFE;
+
+  function vsFilenameFor(safe) {
+    return `${VS_FILE_PREFIX}_${safe}_${VS_PAGE_SUFFIX}_data.json.br`;
+  }
+
+  function vsItemHtml(v) {
+    const isCurrent = v.safe === vsLiveSafe;
+    return `<button type="button" class="version-item${isCurrent ? ' active' : ''}" data-safe="${v.safe}" data-label="${v.label}">${v.label}${isCurrent ? ' <span class="version-item-tag">current</span>' : ''}</button>`;
+  }
+
+  async function vsInit() {
+    const btn         = document.getElementById('versionSwitchBtn');
+    const panel       = document.getElementById('versionSwitchPanel');
+    const recentWrap  = document.getElementById('versionSwitchRecent');
+    const olderWrap   = document.getElementById('versionSwitchOlder');
+    const olderToggle = document.getElementById('versionSwitchOlderToggle');
+    if (!btn || !panel) return;
+
+    let versions = [];
+    try {
+      const res = await fetch(VS_MANIFEST);
+      if (res.ok) versions = await res.json();
+    } catch (e) {
+      console.warn('Version manifest fetch failed:', e);
+    }
+    if (!Array.isArray(versions) || versions.length === 0) {
+      versions = [{ label: VS_CURRENT_LABEL, safe: VS_CURRENT_SAFE }];
+    }
+
+    const recent = versions.slice(0, VS_RECENT_COUNT);
+    const older  = versions.slice(VS_RECENT_COUNT);
+
+    recentWrap.innerHTML = recent.map(vsItemHtml).join('');
+    if (older.length) {
+      olderWrap.innerHTML = older.map(vsItemHtml).join('');
+      olderToggle.style.display = '';
+      olderToggle.textContent = `Show older versions (${older.length}) ▼`;
+    } else {
+      olderToggle.style.display = 'none';
+    }
+
+    function wireItems() {
+      panel.querySelectorAll('.version-item').forEach(el => {
+        el.addEventListener('click', () => vsSelectVersion(el.dataset.safe, el.dataset.label));
+      });
+    }
+    wireItems();
+
+    olderToggle.addEventListener('click', () => {
+      const open = olderWrap.classList.toggle('open');
+      olderToggle.textContent = open ? 'Hide older versions ▲' : `Show older versions (${older.length}) ▼`;
+    });
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panel.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#versionSwitch')) panel.classList.remove('open');
+    });
+  }
+
+  async function vsSelectVersion(safe, label) {
+    if (safe === vsLiveSafe) {
+      document.getElementById('versionSwitchPanel')?.classList.remove('open');
+      return;
+    }
+    const panel    = document.getElementById('versionSwitchPanel');
+    const btnLabel = document.getElementById('versionSwitchBtnLabel');
+    const prevLabel = btnLabel ? btnLabel.textContent : '';
+    if (btnLabel) btnLabel.textContent = '…';
+    panel?.classList.remove('open');
+    try {
+      await loadDataset(vsFilenameFor(safe));
+      vsLiveSafe = safe;
+      if (btnLabel) btnLabel.textContent = label;
+      document.querySelectorAll('.version-item').forEach(el => {
+        const tag = el.querySelector('.version-item-tag');
+        if (tag) tag.remove();
+        const isNow = el.dataset.safe === safe;
+        el.classList.toggle('active', isNow);
+        if (isNow) el.insertAdjacentHTML('beforeend', ' <span class="version-item-tag">current</span>');
+      });
+      if (typeof updateHeaderVersion === 'function') updateHeaderVersion(label);
+    } catch (err) {
+      console.error('Version switch failed:', err);
+      if (btnLabel) btnLabel.textContent = prevLabel;
+      alert('Failed to load version ' + label + '. Please check your connection and try again.');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', vsInit);
+  } else {
+    vsInit();
+  }
+})();
+</script>
+</body>
+</html>

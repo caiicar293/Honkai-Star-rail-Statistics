@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import polars.selectors as cs
 from dotenv import load_dotenv
 import duckdb
-import time
 load_dotenv()
 
 pl.Config.set_tbl_rows(100)
@@ -288,19 +287,66 @@ class HonkaiStatistics_V2_Batch:
 
             # Collapse standard nodes into node=0 for the per-node aggregation.
             # Same condition: only include node 3 in the collapse when it actually exists for this query.
-            df = self.lf.with_columns(
-                                pl.lit(0,dtype=pl.Int64).alias("node")
-                            )
-            if self.node=="all":
-                    self.lf = pl.concat([df, self.lf], how="vertical")
-            else:
-                
+                          
+            if self.node!="all":
+
+                df = self.lf.with_columns(pl.lit(0,dtype=pl.Int64).alias("node")
+                                            )
                 self.lf = df
                     
                 
         self._process_data(self.lf, char_lf, char_cols, cons_cols, dps_names, char_to_index)
             
     def _process_data(self, lf, char_lf, char_cols, cons_cols, dps_names, char_to_index):
+        
+        # --- FIX 1 & 2: Rewritten agg helper to append Node 0 safely without erasing Node 1 & 2 ---
+        def agg_with_node_all(df, group_keys):
+            index_cols = group_keys
+            # We must ignore 'node' so it doesn't get mathematically summed (1 + 2 = 3)
+            ignore_cols = index_cols + ["node"]
+            
+            # 1. Base Aggregation: safely handle numeric and list sums
+            agg_exprs = [
+                (cs.numeric() & ~cs.by_name(*ignore_cols)).sum(),
+                (cs.by_dtype(pl.List(pl.Int64)) & ~cs.by_name(*ignore_cols)).explode(),
+                (cs.by_dtype(pl.List(pl.String)) & ~cs.by_name(*ignore_cols)).explode().unique()
+            ]
+            
+            new = df.group_by(index_cols).agg(agg_exprs)
+
+            # Selector for Planar_Set, Lightcones, and Relics columns 
+            struct_selector = cs.starts_with("Planar_Set", "Lightcones", "Relics")
+            struct_cols = df.select(struct_selector).columns
+            
+            # 2. Process each List(Struct) column individually and join back
+            if struct_cols:
+                for col in struct_cols:
+                    processed_col = (
+                        df.select(index_cols + [col])
+                        .explode(col)
+                        .drop_nulls(col) # Prevent unnesting errors on empty slots
+                        .unnest(col)
+                        .group_by(index_cols + ["name"])
+                        .agg([
+                            pl.col("count").sum(),
+                            pl.col("cycles").explode() # Flattens lists of cycles
+                        ])
+                        .group_by(index_cols)
+                        .agg(
+                            **{col: pl.struct(["name", "count", "cycles"])}
+                        )
+                    )
+                    
+                    new = new.join(processed_col, on=index_cols, how="left")
+            
+            # 3. Create the Node 0 (Combined) rows and align column order
+            res = new.with_columns(pl.lit(0, dtype=pl.Int64).alias("node"))
+            res = res.select(df.columns) # Guarantee exact schema order
+            
+            # 4. Return Original (Nodes 1 & 2) appended with Combined (Node 0)
+            return pl.concat([df, res], how="vertical")
+        
+        
         # 5. AGGREGATE CHARACTERS (The "Unpivot" trick optimized)
         base_data = (
             self.lf.select([
@@ -446,7 +492,6 @@ class HonkaiStatistics_V2_Batch:
             )
             .collect()
         )
-
         self.archetypes_stats = (
             self.team_stats
             .group_by(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "archetype_key"])
@@ -457,8 +502,7 @@ class HonkaiStatistics_V2_Batch:
                 pl.col("Total_Full_Clears").sum(),
                 pl.col("Total_Sustains").sum()
             ])
-        )
-
+        )               
         new = self.team_stats.with_columns(pl.col('team_key').alias("Consequent"))
         result = new.explode('team_key').explode('Consequent')
         result = result.filter(pl.col("team_key") != pl.col("Consequent"))
@@ -473,7 +517,26 @@ class HonkaiStatistics_V2_Batch:
             pl.col("Total_Full_Clears").sum()
         ])
 
-        self.total_samples_df = lf.group_by(
+        if self.node =="all":
+            
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "Character"]
+            self.char_stats = agg_with_node_all(self.char_stats ,index_cols)
+            
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "team_key","archetype_key"]
+            self.team_stats = agg_with_node_all(self.team_stats ,index_cols)
+            
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level","archetype_key"]
+            self.archetypes_stats = agg_with_node_all(self.archetypes_stats ,index_cols)
+            
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level","Antecedent", "Consequent"]
+            self.duos = agg_with_node_all(self.duos ,index_cols)
+            
+            df = self.lf.with_columns(
+                                pl.lit(0,dtype=pl.Int64).alias("node")
+                            )
+            self.lf = pl.concat([df, self.lf], how="vertical")
+            
+        self.total_samples_df = self.lf.group_by(
             "version", "at_eidolon_level", "up_to_eidolon_level", "node"
         ).agg(pl.col("uid").n_unique().alias("version_total_samples")).collect()
 

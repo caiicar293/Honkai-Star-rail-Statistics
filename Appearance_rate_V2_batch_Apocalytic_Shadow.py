@@ -288,13 +288,10 @@ class HonkaiStatistics_V2_APOC_Batch:
 
             # Collapse standard nodes into node=0 for the per-node aggregation.
             # Same condition: only include node 3 in the collapse when it actually exists for this query.
-            df = self.lf.with_columns(
-                                pl.lit(0,dtype=pl.Int64).alias("node")
-                            )
-            if self.node=="all":
-                self.lf = pl.concat([df, self.lf], how="vertical")
-                                
-            else:
+            if self.node!="all":
+            
+                df = self.lf.with_columns(pl.lit(0,dtype=pl.Int64).alias("node")
+                                            )
                 self.lf = df
 
         self._process_data(self.lf, char_lf, char_cols, cons_cols, dps_names, char_to_index)
@@ -303,6 +300,54 @@ class HonkaiStatistics_V2_APOC_Batch:
     # Per-node aggregation
     # ------------------------------------------------------------------
     def _process_data(self, lf, char_lf, char_cols, cons_cols, dps_names, char_to_index):
+        # --- FIX 1 & 2: Rewritten agg helper to append Node 0 safely without erasing Node 1 & 2 ---
+        def agg_with_node_all(df, group_keys):
+            index_cols = group_keys
+            # We must ignore 'node' so it doesn't get mathematically summed (1 + 2 = 3)
+            ignore_cols = index_cols + ["node"]
+            
+            # 1. Base Aggregation: safely handle numeric and list sums
+            agg_exprs = [
+                (cs.numeric() & ~cs.by_name(*ignore_cols)).sum(),
+                (cs.by_dtype(pl.List(pl.Int64)) & ~cs.by_name(*ignore_cols)).explode(),
+                (cs.by_dtype(pl.List(pl.String)) & ~cs.by_name(*ignore_cols)).explode().unique()
+            ]
+            
+            new = df.group_by(index_cols).agg(agg_exprs)
+
+            # Selector for Planar_Set, Lightcones, and Relics columns 
+            struct_selector = cs.starts_with("Planar_Set", "Lightcones", "Relics")
+            struct_cols = df.select(struct_selector).columns
+            
+            # 2. Process each List(Struct) column individually and join back
+            if struct_cols:
+                for col in struct_cols:
+                    processed_col = (
+                        df.select(index_cols + [col])
+                        .explode(col)
+                        .drop_nulls(col) # Prevent unnesting errors on empty slots
+                        .unnest(col)
+                        .group_by(index_cols + ["name"])
+                        .agg([
+                            pl.col("count").sum(),
+                            pl.col("Scores").explode() # Flattens lists of scores
+                        ])
+                        .group_by(index_cols)
+                        .agg(
+                            **{col: pl.struct(["name", "count", "Scores"])}
+                        )
+                    )
+                    
+                    new = new.join(processed_col, on=index_cols, how="left")
+            
+            # 3. Create the Node 0 (Combined) rows and align column order
+            res = new.with_columns(pl.lit(0, dtype=pl.Int64).alias("node"))
+            res = res.select(df.columns) # Guarantee exact schema order
+            
+            # 4. Return Original (Nodes 1 & 2) appended with Combined (Node 0)
+            return pl.concat([df, res], how="vertical")
+        
+        
         # 5. AGGREGATE CHARACTERS (The "Unpivot" trick optimized)
         base_data = (
             self.lf.select([
@@ -312,10 +357,10 @@ class HonkaiStatistics_V2_APOC_Batch:
                 pl.concat_list(cons_cols).alias("cons")
             ])
             .explode(["Character", "cons"])
-            # OPTIMIZATION: Drop empty slots immediately so we don't join or aggregate them
-            .filter(pl.col("Character").is_not_null()) 
+            # OPTIMIZATION: Keep empty slots, just rename them
             .with_columns([
-                pl.col("cons").fill_null(0).replace(-1, 0)
+                pl.col("cons").fill_null(0).replace(-1, 0),
+                pl.col("Character").fill_null("Empty Slot")
             ])
         )
 
@@ -384,28 +429,47 @@ class HonkaiStatistics_V2_APOC_Batch:
             get_performance_stats(base_data, ["Character", "cons"])
             # OPTIMIZATION: pl.format is vastly faster than cast + concat
             .with_columns(pl.format("Eidolon {}", pl.col("cons")).alias("Eidolon_Level"))
-            .collect()
+            
         )
 
-        pivoted = per_eidolon.pivot(
-            on="Eidolon_Level",
-            index=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"],
-            values=["Samples", "Scores", "Sustains", "Full_Clears", "Lightcones", "Relics", "Planar_Set"],
-            aggregate_function="first" 
-        )
+        # 1. Define the exact string representations in your Eidolon_Level column
+        eidolon_levels = [f"Eidolon {float(i)}" for i in range(7)]  
+        # Generates: ['Eidolon 0.0', 'Eidolon 1.0', ..., 'Eidolon 6.0']
+
+        # 2. Target columns (handles primitive, list, and list[struct] types seamlessly)
+        values_to_pivot = [
+            "Samples", "Scores", "Sustains", 
+            "Full_Clears", "Lightcones", "Relics", "Planar_Set"
+        ]
+
+        index_cols = [
+            "version", "at_eidolon_level", 
+            "up_to_eidolon_level", "node", "Character"
+        ]
+
+        # 3. Perform group_by aggregation
+        pivoted = per_eidolon.group_by(index_cols).agg([
+            pl.col(val)
+            .filter(pl.col("Eidolon_Level") == lvl)
+            .first()
+            .alias(f"{val}_{lvl}")
+            for lvl in eidolon_levels
+            for val in values_to_pivot
+        ])
+ 
 
         final_df = (
-            totals.collect()
-            .join(pivoted, on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"], how="left")
+            totals
+            .join(pivoted, on=index_cols, how="left")
         )
 
-        eidolon_cols = sorted([c for c in final_df.columns if "Eidolon" in c])
+        eidolon_cols = sorted([c for c in final_df.collect_schema() if "Eidolon" in c])
         header_cols = [
             "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", 
             "Total_Samples", "Total_Scores", "Total_Sustains", "Total_Full_Clears",
             "uids", "Lightcones", "Relics", "Planar_Set"
         ]
-        self.char_stats = final_df.select(header_cols + eidolon_cols)
+        self.char_stats = final_df.select(header_cols + eidolon_cols).collect()
 
         self.team_stats = (
             lf.with_columns(pl.concat_list(char_cols).alias("temp_team"))
@@ -456,7 +520,23 @@ class HonkaiStatistics_V2_APOC_Batch:
             pl.col("Total_Full_Clears").sum()
         ])
 
-        self.total_samples_df = lf.group_by(
+        if self.node == "all":
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "Character"]
+            self.char_stats = agg_with_node_all(self.char_stats, index_cols)
+
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "team_key", "archetype_key"]
+            self.team_stats = agg_with_node_all(self.team_stats, index_cols)
+
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "archetype_key"]
+            self.archetypes_stats = agg_with_node_all(self.archetypes_stats, index_cols)
+
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "Antecedent", "Consequent"]
+            self.duos = agg_with_node_all(self.duos, index_cols)
+
+            df = self.lf.with_columns(pl.lit(0, dtype=pl.Int64).alias("node"))
+            self.lf = pl.concat([df, self.lf], how="vertical")
+
+        self.total_samples_df = self.lf.group_by(
             "version", "at_eidolon_level", "up_to_eidolon_level", "node"
         ).agg(pl.col("uid").n_unique().alias("version_total_samples")).collect()
 

@@ -67,20 +67,34 @@ class HonkaiMetaAnalyzer:
         return f"AND floor IN ({', '.join(str(f) for f in floors)})"
 
     def _generate_query(self, task, limit_recent=False):
-        node_filter  = (
-            f"AND {task['node_col']} = {task['node_val']}"
+        node_filter = (
+            f"AND {task['node_col']} = '{task['node_val']}'"
             if task["node_col"] is not None
             else ""
         )
         floor_filter = self._floor_filter(task["floors"])
 
         recent_filter = ""
+        list_values = ""
         if limit_recent:
             recent_filter = (
                 f"AND version IN ("
                 f"SELECT DISTINCT version FROM {task['table']} "
                 f"ORDER BY version DESC LIMIT 3)"
             )
+        else:
+            # Removed nested MIN/MAX inside LIST() -> changed to LIST(Average_Score)
+            list_values = """
+                
+                LIST(Usage_pct) AS Appearance_pct_List,
+                LIST(Min_Score) AS Min_Score_List,
+                LIST(Average_Score) AS Average_Score_List,
+                LIST(Min_Score) AS Max_Score_List,
+                LIST(Median_Score) AS Median_Score_List,
+                LIST(Samples) AS Samples_List,
+                LIST(Sustain_Percentage) AS Sustain_Percentage_List,
+                LIST(Full_Clear_Rate_pct) AS Full_Star_Rate_pct_List,
+            """
 
         return f"""
             SELECT
@@ -89,31 +103,42 @@ class HonkaiMetaAnalyzer:
                 up_to_eidolon_level,
                 Archetype_Core,
 
+                
+                {list_values}
                 -- Appearance
-                ROUND(AVG(Usage_pct), 2)                                              AS Simple_Avg_Appearance,
+                ROUND(AVG(Usage_pct), 2)                                               AS Simple_Avg_Appearance,
 
                 -- Score
                 ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
                 ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Score,
-                ROUND(SUM(Median_Score * Samples) / NULLIF(SUM(Samples), 0), 2)        AS Weighted_Avg_Median,
-                {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
+                ROUND(SUM(Median_Score * Samples) / NULLIF(SUM(Samples), 0), 2)       AS Weighted_Avg_Median,
+                {task['perf']}(Average_Score)                                         AS Best_Version_Avg,
 
                 -- Metadata
-                SUM(Samples)                                                            AS Total_Samples,
+                SUM(Samples)                                                           AS Total_Samples,
+                COUNT(DISTINCT version)                                                AS Versions_Count,
+                STRING_AGG(DISTINCT version, ', ')                                     AS Versions_Used,
                 ROUND(
                     100.0 * SUM(Sustain_Samples) / NULLIF(SUM(Samples), 0),      
                     2
-                )                                                                       AS Sustain_Percentage,                                   
+                )                                                                      AS Sustain_Percentage,                   
                 ROUND(
                     100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
                     2
-                )                                                                      AS Full_Star_Rate_pct,
+                )                                                                      AS Full_Star_Rate_pct
+
+                
+             
             FROM {task['table']}
             WHERE Samples > 0
-              {floor_filter}
-              {node_filter}
-              {recent_filter}
-            GROUP BY 1, 2, 3, 4
+            {floor_filter}
+            {node_filter}
+            {recent_filter}
+            GROUP BY 
+                Game_Mode,
+                at_eidolon_level,
+                up_to_eidolon_level,
+                Archetype_Core
         """
 
     def run_analysis(self):

@@ -1,0 +1,801 @@
+{# ==========================================================================
+   trends_template.html.j2
+   ---------------------------------------------------------------------
+   Pure SVG + CSS + vanilla JS trend-line dashboard for archetype and
+   character meta summaries — no plotly.js dependency, same pattern as
+   network_dashboard_svg.html.j2 (this project has no shared base.html.j2;
+   every *_template.html.j2 is self-contained).
+
+   Data contract (written by database_trends_export.py), one file per
+   (entity_type, Game_Mode, eidolon range) slice:
+     {
+       "entity_type": "archetype" | "character",
+       "game_mode": str, "at_eidolon_level": int, "up_to_eidolon_level": int,
+       "trend_metrics": [str, ...],       // keys into each entity's "trend"
+       "summary_columns": [str, ...],     // columns rendered in the table
+       "identity_field": str,
+       "entities": [
+         { "id": str, "summary": {col: value}, "versions": [str,...],
+           "trend": {metric: [number|null, ...]} }
+       ]
+     }
+
+   Manifest contracts (paths inside are relative to docs/trends/, e.g.
+   "./archetypes/moc_e0-6.json.br" — NOT repo-root-relative):
+     docs/trends/archetype_trends_manifest.json
+     docs/trends/character_trends_manifest.json
+     { "<GAME_MODE>": { "<at>-<upto>": "./archetypes/<slice>.json.br" } }
+
+   Design intent: the "_List" / trend arrays are NEVER rendered into the
+   visible data table — only `summary` values populate table cells. Trend
+   arrays are read lazily, only when one or more rows are selected, and
+   only for the metric currently chosen in the dropdown.
+
+   Rendered to: docs/trends/index.html (same directory as both manifests
+   and every archetypes/*.json.br + characters/*.json.br slice), so
+   brotli-wasm and icon paths are resolved via "../" just like
+   docs/network/index.html.
+   ========================================================================== #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HSR Meta Trends — Archetype &amp; Character History</title>
+<link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #090c14; --bg2: #0d1220;
+    --panel: #141c2e; --panel2: #1a2338;
+    --border: #1e2d47; --border2: #243552;
+    --accent: #38bdf8; --accent2: #7dd3fc;
+    --gold: #fbbf24; --teal: #2dd4bf;
+    --purple: #a78bfa; --red: #f87171; --green: #4ade80;
+    --muted: #4a5d7a;
+    --text: #e2eaf6; --text2: #8fa3c0; --text3: #506070;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Exo 2', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  .container { position: relative; z-index: 1; max-width: 1700px; margin: 0 auto; padding: 24px; }
+
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); gap: 20px; flex-wrap: wrap; }
+  .header-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.25); border-radius: 4px; padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+  .header-badge::before { content: '●'; font-size: 7px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .header h1 { font-family: 'Rajdhani', sans-serif; font-size: 36px; font-weight: 700; letter-spacing: 0.06em; line-height: 1; }
+  .header h1 span { color: var(--accent); }
+  .header-sub { font-size: 13px; color: var(--text2); margin-top: 5px; font-family: 'Share Tech Mono', monospace; letter-spacing: 0.05em; }
+
+  .entity-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .entity-toggle button {
+    background: var(--panel); color: var(--text2); border: none; padding: 8px 18px;
+    font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.05em;
+    cursor: pointer; text-transform: uppercase;
+  }
+  .entity-toggle button.active { background: var(--accent); color: #04121c; }
+  .entity-toggle button:not(:last-child) { border-right: 1px solid var(--border); }
+
+  .controls { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; }
+  select.ctrl-select, input.ctrl-input {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 600;
+    padding: 7px 10px; border-radius: 5px; cursor: pointer; min-width: 170px;
+  }
+  input.ctrl-input { cursor: text; }
+  select.ctrl-select:focus, input.ctrl-input:focus { outline: none; border-color: var(--accent); }
+  .ctrl-hint { font-size: 11px; color: var(--text3); font-family: 'Share Tech Mono', monospace; }
+
+  .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .panel-title { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); gap: 10px; flex-wrap: wrap; }
+  .panel-title .main { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; }
+  .panel-title .sub { color: var(--text2); font-size: 12px; font-family: 'Share Tech Mono', monospace; }
+  .panel-title .clear-btn {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 5px 10px; border-radius: 5px; cursor: pointer;
+  }
+  .panel-title .clear-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .table-wrap { overflow: auto; max-height: 70vh; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.data-table thead th {
+    position: sticky; top: 0; background: var(--panel2); color: var(--text2);
+    text-align: left; padding: 9px 10px; font-family: 'Share Tech Mono', monospace;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer;
+    border-bottom: 1px solid var(--border2); white-space: nowrap; user-select: none;
+  }
+  table.data-table thead th:hover { color: var(--accent2); }
+  table.data-table thead th.sorted-asc::after { content: ' ▲'; color: var(--accent); }
+  table.data-table thead th.sorted-desc::after { content: ' ▼'; color: var(--accent); }
+  table.data-table tbody td { padding: 6px 10px; border-bottom: 1px solid rgba(30,45,71,0.5); white-space: nowrap; }
+  table.data-table tbody tr { cursor: pointer; transition: background 0.12s ease; }
+  table.data-table tbody tr:hover { background: rgba(56,189,248,0.06); }
+  table.data-table tbody tr.selected { background: rgba(56,189,248,0.14); }
+  table.data-table tbody td.id-cell { font-weight: 700; color: var(--text); position: sticky; left: 0; background: inherit; }
+  table.data-table tbody td.num-cell { font-family: 'Share Tech Mono', monospace; color: var(--accent2); text-align: right; }
+
+  .id-cell-inner { display: flex; align-items: center; gap: 6px; }
+  .icon-strip { display: inline-flex; align-items: center; flex-shrink: 0; }
+  .icon-strip img { width: 22px; height: 22px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border2); margin-right: -6px; background: var(--panel); }
+  .icon-strip img:last-child { margin-right: 0; }
+  .select-swatch { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; box-shadow: 0 0 0 2px rgba(0,0,0,0.3) inset; }
+  .select-swatch.empty { background: transparent; border: 1px solid var(--border2); box-shadow: none; }
+
+  .trend-panel { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+  .trend-empty { color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; text-align: center; padding: 40px 0; }
+  .trend-chart-wrap { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; position: relative; }
+  #trend-svg { width: 100%; height: 320px; display: block; }
+  .trend-axis-label { fill: var(--text3); font: 10px 'Share Tech Mono', monospace; }
+  .trend-gridline { stroke: var(--border); stroke-width: 1; }
+  .trend-area { opacity: 0.28; }
+  .trend-point { stroke: var(--bg); stroke-width: 1.5; cursor: pointer; }
+  #trend-tooltip {
+    position: absolute; pointer-events: none;
+    background: rgba(10,14,24,0.96); border: 1px solid var(--border2); border-radius: 6px;
+    padding: 6px 9px; color: var(--text); font-size: 12px; font-family: 'Share Tech Mono', monospace;
+    opacity: 0; transition: opacity 0.1s ease; z-index: 10;
+  }
+
+  .legend-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; padding-right: 4px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+  .legend-row .swatch { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .legend-row .name { flex: 1; min-width: 0; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .legend-row .val { font-family: 'Share Tech Mono', monospace; font-size: 11.5px; color: var(--accent2); flex-shrink: 0; }
+  .legend-row .remove-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; flex-shrink: 0; }
+  .legend-row .remove-btn:hover { color: var(--red); }
+
+  .layout-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 1100px) { .layout-grid { grid-template-columns: 1fr; } }
+
+  #status-line { text-align: center; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <div class="header-badge">Meta Intelligence</div>
+      <h1>HSR Meta <span>Trends</span></h1>
+      <div class="header-sub">Version-over-version archetype &amp; character performance history</div>
+    </div>
+    <div class="entity-toggle">
+      <button id="toggle-archetype" class="active" data-entity="archetype">Archetypes</button>
+      <button id="toggle-character" data-entity="character">Characters</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <label class="ctrl-label" for="mode-select">Game Mode</label>
+      <select id="mode-select" class="ctrl-select"><option>Loading…</option></select>
+    </div>
+    <div class="ctrl-group">
+      <label class="ctrl-label" for="eidolon-select">Eidolon Range</label>
+      <select id="eidolon-select" class="ctrl-select"><option>—</option></select>
+    </div>
+    <div class="ctrl-group" style="flex: 1; min-width: 200px;">
+      <label class="ctrl-label" for="search-input">Search</label>
+      <input type="text" id="search-input" class="ctrl-input" style="width: 100%; min-width: 0;" placeholder="Type a name…" autocomplete="off" spellcheck="false"/>
+    </div>
+    <div class="ctrl-group">
+      <label class="ctrl-label" for="metric-select">Trend Metric</label>
+      <select id="metric-select" class="ctrl-select"><option>—</option></select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-hint">Click rows to add/remove them from the chart — no limit.</span>
+    </div>
+  </div>
+
+  <div class="layout-grid">
+    <div class="panel">
+      <div class="panel-title">
+        <div class="main" id="table-title">Loading…</div>
+        <div class="sub" id="table-sub"></div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="data-table">
+          <thead><tr id="table-head-row"></tr></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        <div class="main">Trend Line</div>
+        <div class="sub" id="trend-sub"></div>
+        <button class="clear-btn" id="clear-selection-btn">Clear all</button>
+      </div>
+      <div class="trend-panel">
+        <div id="trend-empty" class="trend-empty">Click one or more rows in the table to plot their trend.</div>
+        <div id="trend-content" style="display:none;">
+          <div class="trend-chart-wrap">
+            <svg id="trend-svg" viewBox="0 0 640 320" preserveAspectRatio="xMidYMid meet">
+              <g id="trend-grid"></g>
+              <g id="trend-area-layer"></g>
+              <g id="trend-line-layer"></g>
+              <g id="trend-points-layer"></g>
+              <g id="trend-axis-layer"></g>
+            </svg>
+            <div id="trend-tooltip"></div>
+          </div>
+          <div class="legend-list" id="legend-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="status-line" aria-live="polite"></div>
+</div>
+
+<script type="module">
+  // ── Brotli decompression — identical pattern to every other dashboard on
+  //    the site (see network_dashboard_svg.html.j2 / teams_template.html.j2) ──
+  let _brotliPromise = null;
+  function getBrotli() {
+    if (!_brotliPromise) {
+      _brotliPromise = import("../vendor/brotli-wasm/index.web.js").then(m => m.default);
+    }
+    return _brotliPromise;
+  }
+
+  async function loadCompressedJson(filename) {
+    const response = await fetch(filename);
+    if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
+    const buffer = await response.arrayBuffer();
+    const brotli = await getBrotli();
+    const decompressed = brotli.decompress(new Uint8Array(buffer));
+    return JSON.parse(new TextDecoder().decode(decompressed));
+  }
+
+  async function loadJson(filename) {
+    const response = await fetch(filename);
+    if (!response.ok) throw new Error('Failed to fetch data: ' + filename);
+    return response.json();
+  }
+
+  async function loadSlice(path) {
+    return path.endsWith('.br') ? loadCompressedJson(path) : loadJson(path);
+  }
+
+  // ── Mode labels — keyed to match the manifest exactly ──
+  const MODE_LABELS = {
+    MOC: "Memory of Chaos",
+    APOC: "Apocalyptic Shadow",
+    PURE_FICTION: "Pure Fiction",
+    ANOMALY_F0: "Anomaly Arbitration — Floor 0",
+    ANOMALY_F4: "Anomaly Arbitration — Floor 4",
+    ANOMALY_F5: "Anomaly Arbitration — Floor 5"
+  };
+  const MODE_ORDER = ["MOC", "APOC", "PURE_FICTION", "ANOMALY_F0", "ANOMALY_F4", "ANOMALY_F5"];
+
+  function eidolonLabel(key) {
+    const [at, upto] = key.split("-");
+    return at === upto ? `E${at} only` : `E${at} – E${upto}`;
+  }
+  function eidolonSortKey(key) {
+    const [at, upto] = key.split("-").map(Number);
+    return at * 100 + upto;
+  }
+
+  // ── Version comparator — mirrors _version_sort_key() in
+  //    database_trends_export.py so a union of two entities' version axes
+  //    still sorts chronologically. ──
+  function versionSortKey(v) {
+    const parts = (v || "").match(/\d+/g);
+    if (!parts) return [Infinity];
+    return parts.map(Number);
+  }
+  function compareVersions(a, b) {
+    const ka = versionSortKey(a), kb = versionSortKey(b);
+    const len = Math.max(ka.length, kb.length);
+    for (let i = 0; i < len; i++) {
+      const va = ka[i] ?? -1, vb = kb[i] ?? -1;
+      if (va !== vb) return va - vb;
+    }
+    return 0;
+  }
+
+  // ── Columns that are constant across every row in a slice (redundant —
+  //    already shown in the panel title / sub) or that we want pinned to a
+  //    specific spot. Hidden entirely rather than just de-prioritized. ──
+  const HIDDEN_COLS = new Set(["Game_Mode", "at_eidolon_level", "up_to_eidolon_level"]);
+  // Columns pinned to appear immediately after the identity column, in order.
+  const PINNED_FIRST_COLS = ["Versions_Count"];
+  // Preferred default sort column (falls back to no default sort if absent).
+  const DEFAULT_SORT_COL = "Total_Samples";
+
+  const ENTITY_CONFIG = {
+    archetype: { manifest: "./archetype_trends_manifest.json", label: "Archetype" },
+    character: { manifest: "./character_trends_manifest.json", label: "Character" },
+  };
+
+  // ── Character icons — same injection pattern as network_dashboard_svg.html.j2
+  //    (icons_json + path_prefix come from Jinja context, see
+  //    generate_trends_dashboard.py). Falls back to an empty map so the page
+  //    still renders as plain text if the icons file wasn't wired up. ──
+  const ICONS = {{ icons_json | default('{}') }};
+  const ICON_PATH_PREFIX = "{{ path_prefix | default('../') }}";
+
+  function lookupIconUrl(name) {
+    let url = ICONS[name];
+    if (!url) url = ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
+    if (!url) return null;
+    if (!url.startsWith('http')) url = ICON_PATH_PREFIX + url;
+    return url;
+  }
+
+  // Archetype_Core / composite ids look like "Jade + The Herta" or
+  // "Welt + Ashveil + Himeko • Nova" — split on " + " to render one small
+  // icon per character in the composite. Plain character ids (single name,
+  // no " + ") just render their one icon.
+  function iconTokensFor(id) {
+    return String(id).split(" + ").map(t => t.trim()).filter(Boolean);
+  }
+
+  function iconStripHtml(id) {
+    const tokens = iconTokensFor(id);
+    const imgs = tokens.map(t => {
+      const url = lookupIconUrl(t);
+      return url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()"/>` : "";
+    }).filter(Boolean);
+    if (!imgs.length) return "";
+    return `<span class="icon-strip">${imgs.join("")}</span>`;
+  }
+
+  // ── Color palette for multi-select comparison lines (cycles if more
+  //    entities are selected than colors — no hard limit on selection). ──
+  const PALETTE = ["#38bdf8", "#fbbf24", "#a78bfa", "#4ade80", "#f87171", "#2dd4bf", "#f472b6", "#facc15"];
+  function colorFor(index) { return PALETTE[index % PALETTE.length]; }
+
+  // ── DOM refs ──
+  const toggleArchetype = document.getElementById("toggle-archetype");
+  const toggleCharacter = document.getElementById("toggle-character");
+  const modeSelect = document.getElementById("mode-select");
+  const eidolonSelect = document.getElementById("eidolon-select");
+  const metricSelect = document.getElementById("metric-select");
+  const searchInput = document.getElementById("search-input");
+  const tableTitle = document.getElementById("table-title");
+  const tableSub = document.getElementById("table-sub");
+  const tableHeadRow = document.getElementById("table-head-row");
+  const tableBody = document.getElementById("table-body");
+  const statusLine = document.getElementById("status-line");
+  const trendEmpty = document.getElementById("trend-empty");
+  const trendContent = document.getElementById("trend-content");
+  const trendSub = document.getElementById("trend-sub");
+  const legendList = document.getElementById("legend-list");
+  const trendTooltip = document.getElementById("trend-tooltip");
+  const clearSelectionBtn = document.getElementById("clear-selection-btn");
+
+  // ── State ──
+  let currentEntity = "archetype";
+  let manifests = {};        // entity -> manifest json
+  let currentSlice = null;   // currently loaded slice payload
+  let displayCols = [];      // ordered, filtered summary columns for the current slice
+  let sortCol = null;
+  let sortDir = 1;           // 1 asc, -1 desc
+  let selectedIds = [];      // ordered list — supports unlimited multi-select
+
+  function fmtValue(v) {
+    if (v === null || v === undefined) return "—";
+    if (typeof v === "number") {
+      return Number.isInteger(v) ? v.toLocaleString() : v.toFixed(2);
+    }
+    return String(v);
+  }
+
+  function isNumericColumn(col) {
+    if (!currentSlice) return false;
+    for (const e of currentSlice.entities) {
+      const v = e.summary[col];
+      if (v !== null && v !== undefined) return typeof v === "number";
+    }
+    return true;
+  }
+
+  // Build the visible column order: identity col is separate/first, then
+  // PINNED_FIRST_COLS (e.g. Versions_Count) right after it, then everything
+  // else from summary_columns minus HIDDEN_COLS, in original order.
+  function computeDisplayCols() {
+    const cols = currentSlice.summary_columns.filter(c => !HIDDEN_COLS.has(c));
+    const pinned = PINNED_FIRST_COLS.filter(c => cols.includes(c));
+    const rest = cols.filter(c => !pinned.includes(c));
+    return [...pinned, ...rest];
+  }
+
+  // ── Manifest loading ──
+  async function loadManifests() {
+    for (const [entity, cfg] of Object.entries(ENTITY_CONFIG)) {
+      try {
+        manifests[entity] = await loadJson(cfg.manifest);
+      } catch (e) {
+        manifests[entity] = null;
+        console.error(`Failed to load ${cfg.manifest}:`, e);
+      }
+    }
+  }
+
+  function populateModeSelect() {
+    const manifest = manifests[currentEntity];
+    modeSelect.innerHTML = "";
+    if (!manifest) {
+      modeSelect.innerHTML = "<option>Failed to load</option>";
+      return;
+    }
+    const modes = Object.keys(manifest).sort(
+      (a, b) => (MODE_ORDER.indexOf(a) + 1 || 99) - (MODE_ORDER.indexOf(b) + 1 || 99)
+    );
+    for (const m of modes) {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = MODE_LABELS[m] || m;
+      modeSelect.appendChild(opt);
+    }
+  }
+
+  function populateEidolonSelect() {
+    const manifest = manifests[currentEntity];
+    eidolonSelect.innerHTML = "";
+    if (!manifest || !manifest[modeSelect.value]) return;
+    const keys = Object.keys(manifest[modeSelect.value]).sort(
+      (a, b) => eidolonSortKey(a) - eidolonSortKey(b)
+    );
+    for (const k of keys) {
+      const opt = document.createElement("option");
+      opt.value = k;
+      opt.textContent = eidolonLabel(k);
+      eidolonSelect.appendChild(opt);
+    }
+  }
+
+  function populateMetricSelect() {
+    const prev = metricSelect.value;
+    metricSelect.innerHTML = "";
+    if (!currentSlice) return;
+    for (const m of currentSlice.trend_metrics) {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m.replace(/_/g, " ");
+      metricSelect.appendChild(opt);
+    }
+    if (currentSlice.trend_metrics.includes(prev)) metricSelect.value = prev;
+  }
+
+  // ── Slice loading ──
+  async function loadCurrentSlice() {
+    const manifest = manifests[currentEntity];
+    const mode = modeSelect.value;
+    const range = eidolonSelect.value;
+    if (!manifest || !mode || !range) return;
+    const path = manifest[mode][range];
+    statusLine.textContent = "Loading slice…";
+    try {
+      currentSlice = await loadSlice(path);
+      statusLine.textContent = "";
+      displayCols = computeDisplayCols();
+      populateMetricSelect();
+      // Default sort: most-played first, if the column exists in this slice.
+      if (displayCols.includes(DEFAULT_SORT_COL)) {
+        sortCol = DEFAULT_SORT_COL;
+        sortDir = -1;
+      } else {
+        sortCol = null;
+      }
+      selectedIds = [];
+      renderTable();
+      drawTrend();
+    } catch (e) {
+      statusLine.textContent = "Failed to load slice: " + path;
+      console.error(e);
+    }
+  }
+
+  // ── Table rendering (summary columns ONLY — trend arrays never touch the DOM here) ──
+  function renderTable() {
+    if (!currentSlice) return;
+    const cfg = ENTITY_CONFIG[currentEntity];
+    tableTitle.textContent = `${MODE_LABELS[currentSlice.game_mode] || currentSlice.game_mode} — ${cfg.label}s`;
+    tableSub.textContent = eidolonLabel(`${currentSlice.at_eidolon_level}-${currentSlice.up_to_eidolon_level}`);
+
+    // Header
+    tableHeadRow.innerHTML = "";
+    const idTh = document.createElement("th");
+    idTh.textContent = cfg.label;
+    idTh.dataset.col = "__id__";
+    tableHeadRow.appendChild(idTh);
+    for (const col of displayCols) {
+      const th = document.createElement("th");
+      th.textContent = col.replace(/_/g, " ");
+      th.dataset.col = col;
+      tableHeadRow.appendChild(th);
+    }
+    tableHeadRow.querySelectorAll("th").forEach(th => {
+      th.onclick = () => {
+        const col = th.dataset.col;
+        if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
+        renderTableBody();
+        updateSortIndicators();
+      };
+    });
+
+    renderTableBody();
+    updateSortIndicators();
+  }
+
+  function updateSortIndicators() {
+    tableHeadRow.querySelectorAll("th").forEach(th => {
+      th.classList.remove("sorted-asc", "sorted-desc");
+      if (th.dataset.col === sortCol) th.classList.add(sortDir === 1 ? "sorted-asc" : "sorted-desc");
+    });
+  }
+
+  function renderTableBody() {
+    if (!currentSlice) return;
+    const term = searchInput.value.trim().toLowerCase();
+    let rows = currentSlice.entities.filter(e => !term || String(e.id).toLowerCase().includes(term));
+
+    if (sortCol) {
+      const numeric = sortCol === "__id__" ? false : isNumericColumn(sortCol);
+      rows = rows.slice().sort((a, b) => {
+        const va = sortCol === "__id__" ? a.id : a.summary[sortCol];
+        const vb = sortCol === "__id__" ? b.id : b.summary[sortCol];
+        if (va === null || va === undefined) return 1;
+        if (vb === null || vb === undefined) return -1;
+        if (numeric) return (va - vb) * sortDir;
+        return String(va).localeCompare(String(vb)) * sortDir;
+      });
+    }
+
+    tableBody.innerHTML = "";
+    for (const e of rows) {
+      const tr = document.createElement("tr");
+      const selIndex = selectedIds.indexOf(e.id);
+      if (selIndex !== -1) tr.classList.add("selected");
+      tr.onclick = () => toggleSelect(e.id);
+
+      const idTd = document.createElement("td");
+      idTd.className = "id-cell";
+      const swatch = selIndex !== -1
+        ? `<span class="select-swatch" style="background:${colorFor(selIndex)}"></span>`
+        : `<span class="select-swatch empty"></span>`;
+      idTd.innerHTML = `<span class="id-cell-inner">${swatch}${iconStripHtml(e.id)}<span>${e.id}</span></span>`;
+      tr.appendChild(idTd);
+
+      for (const col of displayCols) {
+        const td = document.createElement("td");
+        const v = e.summary[col];
+        td.className = typeof v === "number" ? "num-cell" : "";
+        td.textContent = fmtValue(v);
+        tr.appendChild(td);
+      }
+      tableBody.appendChild(tr);
+    }
+    statusLine.textContent = `${rows.length} of ${currentSlice.entities.length} shown`;
+  }
+
+  // ── Selection (unlimited multi-select — click a row to add/remove it) ──
+  function toggleSelect(id) {
+    const idx = selectedIds.indexOf(id);
+    if (idx === -1) selectedIds.push(id);
+    else selectedIds.splice(idx, 1);
+    renderTableBody();
+    drawTrend();
+  }
+
+  clearSelectionBtn.onclick = () => {
+    selectedIds = [];
+    renderTableBody();
+    drawTrend();
+  };
+
+  // ── Trend chart (pure SVG, redrawn on selection or metric change) ──
+  // Supports 1..N overlaid series. Each entity's version axis may differ,
+  // so we build a chronologically-sorted UNION of versions across every
+  // selected entity and map each series onto that shared x-axis, leaving
+  // gaps (nulls) where an entity has no data for a given version.
+  function drawTrend() {
+    if (!currentSlice || !selectedIds.length) {
+      trendEmpty.style.display = "block";
+      trendContent.style.display = "none";
+      trendSub.textContent = "";
+      legendList.innerHTML = "";
+      return;
+    }
+
+    const metric = metricSelect.value;
+    const entities = selectedIds
+      .map(id => currentSlice.entities.find(e => e.id === id))
+      .filter(Boolean);
+
+    trendEmpty.style.display = "none";
+    trendContent.style.display = "block";
+    trendSub.textContent = metric.replace(/_/g, " ");
+
+    // Union + chronological sort of every selected entity's version axis.
+    const versionSet = new Set();
+    for (const e of entities) for (const v of e.versions) versionSet.add(v);
+    const versions = Array.from(versionSet).sort(compareVersions);
+
+    // Per-entity: version -> value lookup, then project onto the shared axis.
+    const series = entities.map((e, i) => {
+      const lookup = new Map();
+      e.versions.forEach((v, vi) => lookup.set(v, (e.trend[metric] || [])[vi]));
+      const values = versions.map(v => (lookup.has(v) ? lookup.get(v) : null));
+      return { entity: e, values, color: colorFor(i) };
+    });
+
+    const grid = document.getElementById("trend-grid");
+    const lineLayer = document.getElementById("trend-line-layer");
+    const areaLayer = document.getElementById("trend-area-layer");
+    const pointsLayer = document.getElementById("trend-points-layer");
+    const axisLayer = document.getElementById("trend-axis-layer");
+    grid.innerHTML = ""; lineLayer.innerHTML = ""; areaLayer.innerHTML = ""; pointsLayer.innerHTML = ""; axisLayer.innerHTML = "";
+
+    const allNums = series.flatMap(s => s.values.filter(v => typeof v === "number"));
+    if (!allNums.length) {
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t.setAttribute("x", 320); t.setAttribute("y", 160); t.setAttribute("text-anchor", "middle");
+      t.setAttribute("class", "trend-axis-label");
+      t.textContent = "No data for this metric.";
+      axisLayer.appendChild(t);
+      renderLegend(series, metric, null, null);
+      return;
+    }
+
+    const W = 640, H = 320, PAD_L = 46, PAD_R = 14, PAD_T = 14, PAD_B = 30;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+    const minV = Math.min(...allNums);
+    const maxV = Math.max(...allNums);
+    const rangeV = (maxV - minV) || 1;
+    const yFor = v => PAD_T + plotH - ((v - minV) / rangeV) * plotH;
+    const xFor = i => PAD_L + (versions.length === 1 ? plotW / 2 : (i / (versions.length - 1)) * plotW);
+
+    // Gridlines + y-axis labels (4 bands)
+    for (let g = 0; g <= 4; g++) {
+      const y = PAD_T + (plotH / 4) * g;
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", PAD_L); line.setAttribute("x2", W - PAD_R);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      line.setAttribute("class", "trend-gridline");
+      grid.appendChild(line);
+
+      const val = maxV - (rangeV / 4) * g;
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("x", PAD_L - 6); label.setAttribute("y", y + 3);
+      label.setAttribute("text-anchor", "end"); label.setAttribute("class", "trend-axis-label");
+      label.textContent = Number.isInteger(val) ? val : val.toFixed(1);
+      axisLayer.appendChild(label);
+    }
+
+    // x-axis version labels (thin out if crowded)
+    const labelStep = Math.max(1, Math.ceil(versions.length / 8));
+    versions.forEach((ver, i) => {
+      if (i % labelStep !== 0 && i !== versions.length - 1) return;
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("x", xFor(i)); label.setAttribute("y", H - PAD_B + 16);
+      label.setAttribute("text-anchor", "middle"); label.setAttribute("class", "trend-axis-label");
+      label.textContent = ver;
+      axisLayer.appendChild(label);
+    });
+
+    // Draw each series: area (only if single series, to avoid an unreadable
+    // overlapping-fill mess once you're comparing many entities), line, points.
+    const drawArea = series.length === 1;
+    for (const s of series) {
+      let pathD = "", areaD = "", drawing = false, lastIdx = -1;
+      s.values.forEach((v, i) => {
+        if (v === null || v === undefined) { drawing = false; return; }
+        const x = xFor(i), y = yFor(v);
+        if (!drawing) {
+          pathD += `M ${x} ${y} `;
+          areaD += `M ${x} ${PAD_T + plotH} L ${x} ${y} `;
+          drawing = true;
+        } else {
+          pathD += `L ${x} ${y} `;
+          areaD += `L ${x} ${y} `;
+        }
+        lastIdx = i;
+      });
+
+      if (drawArea && lastIdx >= 0) {
+        areaD += `L ${xFor(lastIdx)} ${PAD_T + plotH} Z`;
+        const area = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        area.setAttribute("d", areaD);
+        area.setAttribute("class", "trend-area");
+        area.setAttribute("fill", s.color);
+        areaLayer.appendChild(area);
+      }
+
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", pathD);
+      path.setAttribute("class", "trend-line");
+      path.setAttribute("fill", "none");
+      path.setAttribute("stroke", s.color);
+      path.setAttribute("stroke-width", "2.2");
+      lineLayer.appendChild(path);
+
+      s.values.forEach((v, i) => {
+        if (v === null || v === undefined) return;
+        const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        c.setAttribute("cx", xFor(i)); c.setAttribute("cy", yFor(v)); c.setAttribute("r", 3.3);
+        c.setAttribute("class", "trend-point");
+        c.setAttribute("fill", s.color);
+        c.addEventListener("mouseenter", () => {
+          trendTooltip.style.opacity = "1";
+          trendTooltip.textContent = `${s.entity.id} · ${versions[i]}: ${Number.isInteger(v) ? v : v.toFixed(2)}`;
+        });
+        c.addEventListener("mousemove", (ev) => {
+          const rect = document.getElementById("trend-svg").getBoundingClientRect();
+          trendTooltip.style.left = (ev.clientX - rect.left + 12) + "px";
+          trendTooltip.style.top = (ev.clientY - rect.top - 10) + "px";
+        });
+        c.addEventListener("mouseleave", () => { trendTooltip.style.opacity = "0"; });
+        pointsLayer.appendChild(c);
+      });
+    }
+
+    renderLegend(series, metric, versions, versions.length ? versions[versions.length - 1] : null);
+  }
+
+  function renderLegend(series, metric, versions, latestVersion) {
+    legendList.innerHTML = "";
+    for (const s of series) {
+      let latestVal = null;
+      if (versions && latestVersion) {
+        for (let i = versions.length - 1; i >= 0; i--) {
+          if (s.values[i] !== null && s.values[i] !== undefined) { latestVal = s.values[i]; break; }
+        }
+      }
+      const row = document.createElement("div");
+      row.className = "legend-row";
+      row.innerHTML = `
+        <span class="swatch" style="background:${s.color}"></span>
+        ${iconStripHtml(s.entity.id)}
+        <span class="name">${s.entity.id}</span>
+        <span class="val">${latestVal === null ? "—" : fmtValue(latestVal)}</span>
+        <button class="remove-btn" title="Remove">✕</button>
+      `;
+      row.querySelector(".remove-btn").onclick = (ev) => {
+        ev.stopPropagation();
+        toggleSelect(s.entity.id);
+      };
+      legendList.appendChild(row);
+    }
+  }
+
+  // ── Event wiring ──
+  function setEntity(entity) {
+    currentEntity = entity;
+    toggleArchetype.classList.toggle("active", entity === "archetype");
+    toggleCharacter.classList.toggle("active", entity === "character");
+    populateModeSelect();
+    populateEidolonSelect();
+    loadCurrentSlice();
+  }
+
+  toggleArchetype.onclick = () => setEntity("archetype");
+  toggleCharacter.onclick = () => setEntity("character");
+  modeSelect.onchange = () => { populateEidolonSelect(); loadCurrentSlice(); };
+  eidolonSelect.onchange = () => loadCurrentSlice();
+  metricSelect.onchange = () => drawTrend();
+  searchInput.oninput = () => renderTableBody();
+
+  // ── Boot ──
+  (async function init() {
+    statusLine.textContent = "Loading manifests…";
+    await loadManifests();
+    setEntity("archetype");
+  })();
+</script>
+</body>
+</html>

@@ -1,907 +1,464 @@
-import duckdb
-import pandas as pd
 import os
+import duckdb
+import polars as pl
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-class HonkaiCostTeamMetaAnalyzer:
-    """
-    Aggregates *_by_cost_teams tables across all versions (and optionally
-    the 3 most-recent versions), grouping by:
-        estimated_min_cost, estimated_max_cost, max_eidolon, Team
-
-    Full_Star_Rate is intentionally RE-CALCULATED as:
-        SUM(Total_Full_Clears) / SUM(Samples)
-    rather than averaging the pre-computed percentages.
-    """
-
+# =====================================================================
+# Base Analyzer Class (Shared Lazy Aggregations)
+# =====================================================================
+class BaseCostMetaAnalyzer:
     def __init__(self, db_name=os.getenv("DB_File")):
         self.db_path = db_name
-        self.tasks = [
-            {
-                "mode":     "MOC",
-                "table":    "moc_by_cost_teams",
-                "floors":   [10, 12],
-                "perf":     "MIN",        # lower cycles-used = better for MOC
-                "node_col": "node",
-                "node_val": "0",          # integer node; keep only node 0 (combined)
-            },
-            {
-                "mode":     "APOC",
-                "table":    "apoc_by_cost_teams",
-                "floors":   [4],
-                "perf":     "MAX",
-                "node_col": "node",
-                "node_val": "'0'",        # VARCHAR node in apoc/anomaly
-            },
-            {
-                "mode":     "PURE_FICTION",
-                "table":    "pure_fiction_by_cost_teams",
-                "floors":   [4],
-                "perf":     "MAX",
-                "node_col": "node",
-                "node_val": "'0'",
-            },
-            {
-                "mode":     "ANOMALY_F0",
-                "table":    "anomaly_by_cost_teams",
-                "floors":   [0],
-                "perf":     "MIN",
-                "node_col": None,
-                "node_val": None,
-            },
-            {
-                "mode":     "ANOMALY_F4",
-                "table":    "anomaly_by_cost_teams",
-                "floors":   [4],
-                "perf":     "MIN",
-                "node_col": None,
-                "node_val": None,
-            },
-            {
-                "mode":     "ANOMALY_F5",
-                "table":    "anomaly_by_cost_teams",
-                "floors":   [5],
-                "perf":     "MIN",
-                "node_col": None,
-                "node_val": None,
-            },
-        ]
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
-    def _floor_filter(floors: list) -> str:
-        if len(floors) == 1:
-            return f"AND floor = {floors[0]}"
-        return f"AND floor IN ({', '.join(str(f) for f in floors)})"
+    def _apply_base_filters(lazy_df: pl.LazyFrame, task: dict) -> pl.LazyFrame:
+        """Filters out non-positive sample rows, incorrect floors, and non-target nodes."""
+        filtered = lazy_df.filter(
+            (pl.col("Samples") > 0) & (pl.col("floor").is_in(task["floors"]))
+        )
+        if task["node_col"] is not None:
+            node_val = str(task["node_val"]).strip("'")
+            filtered = filtered.filter(
+                pl.col(task["node_col"]).cast(pl.String) == node_val
+            )
+        return filtered
 
     @staticmethod
-    def _node_filter(task: dict) -> str:
-        if task["node_col"] is None:
-            return ""
-        return f"AND {task['node_col']} = {task['node_val']}"
-
-    @staticmethod
-    def _recent_filter(table: str) -> str:
-        return (
-            f"AND version IN ("
-            f"SELECT DISTINCT version FROM {table} "
-            f"ORDER BY version DESC LIMIT 3)"
+    def _get_common_agg_exprs(
+        task: dict, usage_col: str, is_history: bool
+    ) -> list[pl.Expr]:
+        """Generates common score and metadata aggregations across all cost tables."""
+        best_score_expr = (
+            pl.col("Average_Score").min()
+            if task["perf"] == "MIN"
+            else pl.col("Average_Score").max()
         )
 
-    # ------------------------------------------------------------------
-    # Query builder
-    # ------------------------------------------------------------------
+        exprs = []
 
-    def _generate_query(self, task: dict, limit_recent: bool = False) -> str:
-        floor_f  = self._floor_filter(task["floors"])
-        node_f   = self._node_filter(task)
-        recent_f = self._recent_filter(task["table"]) if limit_recent else ""
-
-        return f"""
-            SELECT
-                '{task['mode']}'                                                       AS Game_Mode,
-                at_eidolon_level,
-                up_to_eidolon_level,
-                Team,
-                Archetype_Core,
-                estimated_min_cost,
-                estimated_max_cost,
-                max_eidolon,
-                has_sustain,
-
-                -- Appearance (simple average across versions)
-                ROUND(AVG(Appearance_Rate_pct), 2)                                    AS Simple_Avg_Appearance,
-
-                -- Score aggregates
-                ROUND(MIN(Min_Score), 2)                                              AS Min_Score,
-                ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
-                ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Score,
-                ROUND(SUM(Median_Score  * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Median,
-                {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
-                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
-
-                -- Full-star rate: recalculate from raw counts, NOT avg of pct
-                SUM(Total_Full_Clears)                                                  AS Total_Full_Clears,
-                SUM(Samples)                                                           AS Total_Samples,
-                ROUND(
-                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
-                    2
-                )                                                                      AS Full_Star_Rate_pct,
-                
-
-                -- Metadata
-                COUNT(DISTINCT version)                                                AS Version_Count,
-                STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC)               AS Versions_Used
-            FROM {task['table']}
-            WHERE Samples > 0
-              {floor_f}
-              {node_f}
-              {recent_f}
-            GROUP BY
-                1,  -- Game_Mode
-                2,  -- at_eidolon_level
-                3,  -- up_to_eidolon_level
-                4,  -- Team
-                5,  -- Archetype_Core
-                6,  -- estimated_min_cost
-                7,  -- estimated_max_cost
-                8,  -- max_eidolon
-                9   -- has_sustain
-        """
-
-    def _generate_rolling_query(self, task: dict, window: int = 3) -> str:
-        """
-        Unlike `_recent_filter` (a single static clip to the latest N
-        versions -> one row per group), this produces a TRAILING rolling
-        average: one row per group PER As_Of_Version, aggregated over that
-        version and the (window - 1) versions immediately before it.
-        """
-        floor_f = self._floor_filter(task["floors"])
-        node_f  = self._node_filter(task)
-        table   = task["table"]
-
-        return f"""
-            WITH version_ranks AS (
-                SELECT DISTINCT version,
-                       DENSE_RANK() OVER (ORDER BY version) AS vrank
-                FROM {table}
-            ),
-            base AS (
-                SELECT t.*, vr.vrank
-                FROM {table} t
-                JOIN version_ranks vr USING (version)
-                WHERE Samples > 0
-                  {floor_f}
-                  {node_f}
+        # Conditionally add List aggregations ONLY for full-history runs
+        if is_history:
+            exprs.extend(
+                [
+                    pl.col(usage_col).alias("Appearance_pct_List") ,
+                    pl.col("Min_Score").alias("Min_Score_List"),
+                    pl.col("Average_Score").alias("Average_Score_List"),
+                    pl.col("Max_Score").alias("Max_Score_List"),
+                    pl.col("Median_Score").alias("Median_Score_List"),
+                    pl.col("Samples").alias("Samples_List"),
+                    pl.col("Full_Clear_Rate_pct").alias("Full_Star_Rate_pct_List"),
+                ]
             )
-            SELECT
-                vr_asof.version                                                        AS As_Of_Version,
-                '{task['mode']}'                                                       AS Game_Mode,
-                b.at_eidolon_level,
-                b.up_to_eidolon_level,
-                b.Team,
-                b.Archetype_Core,
-                b.estimated_min_cost,
-                b.estimated_max_cost,
-                b.max_eidolon,
-                b.has_sustain,
+          
+            
 
-                ROUND(AVG(b.Appearance_Rate_pct), 2)                                   AS Simple_Avg_Appearance,
-                DENSE_RANK() OVER (ORDER BY vr_asof.version DESC)                      AS Version_Group_Num,    
-                ROUND(MIN(Min_Score), 2)                                               AS Min_Score,
-                ROUND(AVG(b.Average_Score), 2)                                         AS Simple_Avg_Score,
-                ROUND(SUM(b.Average_Score * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Score,
-                ROUND(SUM(b.Median_Score  * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Median,
-                {task['perf']}(b.Average_Score)                                        AS Best_Version_Avg,
-                ROUND(MAX(Max_Score),2)                                                AS Max_Score,
+        # Common metric aggregations
+        exprs.extend(
+            [
+                pl.col(usage_col).mean().round(2).alias("Simple_Avg_Appearance"),
+                pl.col("Min_Score").min().round(2).alias("Min_Score"),
+                pl.col("Average_Score").mean().round(2).alias("Simple_Avg_Score"),
+                (
+                    (pl.col("Average_Score") * pl.col("Samples")).sum()
+                    / pl.col("Samples").sum()
+                )
+                .round(2)
+                .alias("Weighted_Avg_Score"),
+                (
+                    (pl.col("Median_Score") * pl.col("Samples")).sum()
+                    / pl.col("Samples").sum()
+                )
+                .round(2)
+                .alias("Weighted_Avg_Median"),
+                best_score_expr.round(2).alias("Best_Version_Avg"),
+                pl.col("Max_Score").max().round(2).alias("Max_Score"),
+                pl.col("Total_Full_Clears").sum().alias("Total_Full_Clears"),
+                pl.col("Samples").sum().alias("Total_Samples"),
+                (
+                    100.0
+                    * pl.col("Total_Full_Clears").sum()
+                    / pl.col("Samples").sum()
+                )
+                .round(2)
+                .alias("Full_Star_Rate_pct"),
+                pl.col("version").n_unique().alias("Version_Count"),
+                pl.col("version")
+                .unique()
+                .sort(descending=True)
+                .cast(pl.String)
+                .str.join(", ")
+                .alias("Versions_Used"),
+            ]
+        )
+        return exprs
 
-                SUM(b.Total_Full_Clears)                                                AS Total_Full_Clears,
-                SUM(b.Samples)                                                         AS Total_Samples,
-                ROUND(
-                    100.0 * SUM(b.Total_Full_Clears) / NULLIF(SUM(b.Samples), 0),
-                    2
-                )                                                                      AS Full_Star_Rate_pct,
 
-                COUNT(DISTINCT b.version)                                              AS Version_Count,
-                STRING_AGG(DISTINCT b.version, ', ' ORDER BY b.version DESC)           AS Versions_Used
-            FROM base b
-            JOIN version_ranks vr_asof
-              ON b.vrank BETWEEN vr_asof.vrank - {window - 1} AND vr_asof.vrank
-            GROUP BY
-                1,  -- As_Of_Version
-                2,  -- Game_Mode
-                3,  -- at_eidolon_level
-                4,  -- up_to_eidolon_level
-                5,  -- Team
-                6,  -- Archetype_Core
-                7,  -- estimated_min_cost
-                8,  -- estimated_max_cost
-                9,  -- max_eidolon
-                10  -- has_sustain
-        """
+# =====================================================================
+# 1. HonkaiCostTeamMetaAnalyzer
+# =====================================================================
+class HonkaiCostTeamMetaAnalyzer(BaseCostMetaAnalyzer):
+    def __init__(self, db_name=os.getenv("DB_File")):
+        super().__init__(db_name)
+        self.tasks = [
+            {"mode": "MOC", "table": "moc_by_cost_teams", "floors": [10, 12], "perf": "MIN", "node_col": "node", "node_val": "0"},
+            {"mode": "APOC", "table": "apoc_by_cost_teams", "floors": [4], "perf": "MAX", "node_col": "node", "node_val": "'0'"},
+            {"mode": "PURE_FICTION", "table": "pure_fiction_by_cost_teams", "floors": [4], "perf": "MAX", "node_col": "node", "node_val": "'0'"},
+            {"mode": "ANOMALY_F0", "table": "anomaly_by_cost_teams", "floors": [0], "perf": "MIN", "node_col": None, "node_val": None},
+            {"mode": "ANOMALY_F4", "table": "anomaly_by_cost_teams", "floors": [4], "perf": "MIN", "node_col": None, "node_val": None},
+            {"mode": "ANOMALY_F5", "table": "anomaly_by_cost_teams", "floors": [5], "perf": "MIN", "node_col": None, "node_val": None},
+        ]
 
-    # ------------------------------------------------------------------
-    # Main runner
-    # ------------------------------------------------------------------
+    def _aggregate(self, raw_lazy: pl.LazyFrame, task: dict, limit_recent: bool = False, is_history: bool = False) -> pl.DataFrame:
+        lazy = self._apply_base_filters(raw_lazy, task)
+
+        if limit_recent:
+            recent_versions = (
+                lazy.select("version")
+                .unique()
+                .sort("version", descending=True)
+                .limit(3)
+                .collect()["version"]
+            )
+            lazy = lazy.filter(pl.col("version").is_in(recent_versions))
+
+        lazy = lazy.with_columns(pl.lit(task["mode"]).alias("Game_Mode"))
+
+        group_cols = [
+            "Game_Mode", "at_eidolon_level", "up_to_eidolon_level", "Team",
+            "Archetype_Core", "estimated_min_cost", "estimated_max_cost",
+            "max_eidolon", "has_sustain"
+        ]
+
+        agg_exprs = self._get_common_agg_exprs(task, usage_col="Appearance_Rate_pct", is_history=is_history)
+        return lazy.group_by(group_cols).agg(agg_exprs).collect()
+
+    def _aggregate_rolling(self, raw_lazy: pl.LazyFrame, task: dict, window: int = 3) -> pl.DataFrame:
+        lazy = self._apply_base_filters(raw_lazy, task)
+
+        # Rank versions
+        versions_df = (
+            lazy.select("version")
+            .unique()
+            .sort("version")
+            .with_columns(pl.int_range(0, pl.len()).alias("vrank"))
+            .collect()
+        )
+
+        if versions_df.is_empty():
+            return pl.DataFrame()
+
+        base = lazy.join(versions_df.lazy(), on="version")
+
+        # Use how="cross" instead of how="inner" with pl.TRUE
+        as_of_df = versions_df.rename({"version": "As_Of_Version", "vrank": "asof_vrank"}).lazy()
+        joined = base.join(as_of_df, how="cross").filter(
+            (pl.col("vrank") <= pl.col("asof_vrank")) &
+            (pl.col("vrank") >= (pl.col("asof_vrank") - (window - 1)))
+        )
+
+        joined = joined.with_columns(
+            pl.lit(task["mode"]).alias("Game_Mode"),
+            (pl.col("asof_vrank").max() - pl.col("asof_vrank") + 1).alias("Version_Group_Num")
+        )
+
+        group_cols = [
+            "As_Of_Version", "Game_Mode", "at_eidolon_level", "up_to_eidolon_level",
+            "Team", "Archetype_Core", "estimated_min_cost", "estimated_max_cost",
+            "max_eidolon", "has_sustain"
+        ]
+
+        agg_exprs = [pl.col("Version_Group_Num").first().alias("Version_Group_Num")]
+        agg_exprs.extend(self._get_common_agg_exprs(task, usage_col="Appearance_Rate_pct", is_history=False))
+
+        return joined.group_by(group_cols).agg(agg_exprs).collect()
 
     def run_analysis(self):
         con = duckdb.connect(self.db_path)
-        all_history: list[pd.DataFrame] = []
-        all_recent:  list[pd.DataFrame] = []
-        all_rolling: list[pd.DataFrame] = []
+        all_history, all_recent, all_rolling = [], [], []
 
         print(f"Starting By-Cost Team Meta Analysis on {self.db_path}...")
 
         for task in self.tasks:
             try:
-                df_h = con.execute(self._generate_query(task, limit_recent=False)).df()
-                if not df_h.empty:
+                raw_lazy = con.execute(f"SELECT * FROM {task['table']}").pl().lazy()
+
+                df_h = self._aggregate(raw_lazy, task, limit_recent=False, is_history=True)
+                if not df_h.is_empty():
                     all_history.append(df_h)
 
-                df_r = con.execute(self._generate_query(task, limit_recent=True)).df()
-                if not df_r.empty:
+                df_r = self._aggregate(raw_lazy, task, limit_recent=True, is_history=False)
+                if not df_r.is_empty():
                     all_recent.append(df_r)
 
-                df_roll = con.execute(self._generate_rolling_query(task, window=3)).df()
-                if not df_roll.empty:
+                df_roll = self._aggregate_rolling(raw_lazy, task, window=3)
+                if not df_roll.is_empty():
                     all_rolling.append(df_roll)
 
                 print(f"  + {task['mode']:15s}  history={len(df_h):,}  recent={len(df_r):,}  rolling={len(df_roll):,}")
             except Exception as e:
                 print(f"  ! Error on {task['mode']}: {e}")
 
-        if not all_history and not all_recent and not all_rolling:
+        self._write_tables(con, all_history, all_recent, all_rolling, "team")
+        con.close()
+
+    def _write_tables(self, con, history, recent, rolling, prefix):
+        if not history and not recent and not rolling:
             print("No data found. Exiting.")
-            con.close()
             return
 
         con.execute("BEGIN TRANSACTION")
         try:
-            if all_history:
-                full_df = pd.concat(all_history, ignore_index=True)
-                con.execute("DROP TABLE IF EXISTS by_cost_team_meta_summary")
-                con.execute("CREATE TABLE by_cost_team_meta_summary AS SELECT * FROM full_df")
-                print(f"\n  Wrote by_cost_team_meta_summary     ({len(full_df):,} rows)")
+            if history:
+                full_df = pl.concat(history, how="diagonal")
+                con.execute(f"DROP TABLE IF EXISTS by_cost_{prefix}_meta_summary")
+                con.execute(f"CREATE TABLE by_cost_{prefix}_meta_summary AS SELECT * FROM full_df")
+                print(f"\n  Wrote by_cost_{prefix}_meta_summary     ({len(full_df):,} rows)")
 
-            if all_recent:
-                recent_df = pd.concat(all_recent, ignore_index=True)
-                con.execute("DROP TABLE IF EXISTS by_cost_team_recent_meta_summary")
-                con.execute(
-                    "CREATE TABLE by_cost_team_recent_meta_summary AS SELECT * FROM recent_df"
-                )
-                print(f"  Wrote by_cost_team_recent_meta_summary ({len(recent_df):,} rows)")
+            if recent:
+                recent_df = pl.concat(recent, how="diagonal")
+                con.execute(f"DROP TABLE IF EXISTS by_cost_{prefix}_recent_meta_summary")
+                con.execute(f"CREATE TABLE by_cost_{prefix}_recent_meta_summary AS SELECT * FROM recent_df")
+                print(f"  Wrote by_cost_{prefix}_recent_meta_summary ({len(recent_df):,} rows)")
 
-            if all_rolling:
-                rolling_df = pd.concat(all_rolling, ignore_index=True)
-                con.execute("DROP TABLE IF EXISTS by_cost_team_rolling_meta_summary")
-                con.execute(
-                    "CREATE TABLE by_cost_team_rolling_meta_summary AS SELECT * FROM rolling_df"
-                )
-                print(f"  Wrote by_cost_team_rolling_meta_summary ({len(rolling_df):,} rows)")
+            if rolling:
+                rolling_df = pl.concat(rolling, how="diagonal")
+                con.execute(f"DROP TABLE IF EXISTS by_cost_{prefix}_rolling_meta_summary")
+                con.execute(f"CREATE TABLE by_cost_{prefix}_rolling_meta_summary AS SELECT * FROM rolling_df")
+                print(f"  Wrote by_cost_{prefix}_rolling_meta_summary ({len(rolling_df):,} rows)")
 
             con.execute("COMMIT")
-            print(
-                "\n>>> Analysis complete. "
-                "Tables 'by_cost_team_meta_summary', "
-                "'by_cost_team_recent_meta_summary', and "
-                "'by_cost_team_rolling_meta_summary' are now live."
-            )
+            print(f"\n>>> Analysis complete for {prefix}.")
         except Exception as e:
             con.execute("ROLLBACK")
             print(f"\n>>> Error during DB write: {e}")
-        finally:
-            con.close()
 
 
-class HonkaiCostArchetypeMetaAnalyzer:
-    """
-    Aggregates *_by_cost_archetypes tables across all versions (and optionally
-    the 3 most-recent versions), grouping by:
-        estimated_min_cost, estimated_max_cost, max_eidolon, Archetype_Core
-
-    Unlike the team-level tables, the archetype-level tables have no `Team`
-    or `has_sustain` column -- sustain presence is instead captured via a
-    raw `Sustain_Samples`, which (like Full_Star_Rate) is RE-CALCULATED here as:
-        SUM(Sustain_Samples) / SUM(Samples)
-    rather than averaging the pre-computed Sustain_Percentage_pct.
-
-    Full_Star_Rate is likewise RE-CALCULATED as:
-        SUM(Total_Full_Clears) / SUM(Samples)
-    rather than averaging the pre-computed percentages.
-    """
-
+# =====================================================================
+# 2. HonkaiCostArchetypeMetaAnalyzer
+# =====================================================================
+class HonkaiCostArchetypeMetaAnalyzer(BaseCostMetaAnalyzer):
     def __init__(self, db_name=os.getenv("DB_File")):
-        self.db_path = db_name
+        super().__init__(db_name)
         self.tasks = [
-            {
-                "mode":     "MOC",
-                "table":    "moc_by_cost_archetypes",
-                "floors":   [10, 12],
-                "perf":     "MIN",        # lower cycles-used = better for MOC
-                "node_col": "node",
-                "node_val": "0",          # integer node; keep only node 0 (combined)
-            },
-            {
-                "mode":     "APOC",
-                "table":    "apoc_by_cost_archetypes",
-                "floors":   [4],
-                "perf":     "MAX",
-                "node_col": "node",
-                "node_val": "'0'",        # VARCHAR node in apoc/anomaly
-            },
-            {
-                "mode":     "PURE_FICTION",
-                "table":    "pure_fiction_by_cost_archetypes",
-                "floors":   [4],
-                "perf":     "MAX",
-                "node_col": "node",
-                "node_val": "'0'",
-            },
-            {
-                "mode":     "ANOMALY_F0",
-                "table":    "anomaly_by_cost_archetypes",
-                "floors":   [0],
-                "perf":     "MIN",
-                "node_col": None,
-                "node_val": None,
-            },
-            {
-                "mode":     "ANOMALY_F4",
-                "table":    "anomaly_by_cost_archetypes",
-                "floors":   [4],
-                "perf":     "MIN",
-                "node_col": None,
-                "node_val": None,
-            },
-            {
-                "mode":     "ANOMALY_F5",
-                "table":    "anomaly_by_cost_archetypes",
-                "floors":   [5],
-                "perf":     "MIN",
-                "node_col": None,
-                "node_val": None,
-            },
+            {"mode": "MOC", "table": "moc_by_cost_archetypes", "floors": [10, 12], "perf": "MIN", "node_col": "node", "node_val": "0"},
+            {"mode": "APOC", "table": "apoc_by_cost_archetypes", "floors": [4], "perf": "MAX", "node_col": "node", "node_val": "'0'"},
+            {"mode": "PURE_FICTION", "table": "pure_fiction_by_cost_archetypes", "floors": [4], "perf": "MAX", "node_col": "node", "node_val": "'0'"},
+            {"mode": "ANOMALY_F0", "table": "anomaly_by_cost_archetypes", "floors": [0], "perf": "MIN", "node_col": None, "node_val": None},
+            {"mode": "ANOMALY_F4", "table": "anomaly_by_cost_archetypes", "floors": [4], "perf": "MIN", "node_col": None, "node_val": None},
+            {"mode": "ANOMALY_F5", "table": "anomaly_by_cost_archetypes", "floors": [5], "perf": "MIN", "node_col": None, "node_val": None},
         ]
 
-    # ------------------------------------------------------------------
-    # Helpers (identical semantics to HonkaiCostTeamMetaAnalyzer)
-    # ------------------------------------------------------------------
+    def _get_archetype_exprs(self, task: dict, is_history: bool) -> list[pl.Expr]:
+        exprs = self._get_common_agg_exprs(task, usage_col="Usage_pct", is_history=is_history)
+        exprs.extend([
+            pl.col("Sustain_Samples").sum().alias("Total_Sustain_Samples"),
+            (100.0 * pl.col("Sustain_Samples").sum() / pl.col("Samples").sum()).round(2).alias("Sustain_Rate_pct"),
+            pl.col("Sustain_Percentage").alias("Sustain_Percentage_List")
+        ])
+        return exprs
 
-    @staticmethod
-    def _floor_filter(floors: list) -> str:
-        if len(floors) == 1:
-            return f"AND floor = {floors[0]}"
-        return f"AND floor IN ({', '.join(str(f) for f in floors)})"
+    def _aggregate(self, raw_lazy: pl.LazyFrame, task: dict, limit_recent: bool = False, is_history: bool = False) -> pl.DataFrame:
+        lazy = self._apply_base_filters(raw_lazy, task)
 
-    @staticmethod
-    def _node_filter(task: dict) -> str:
-        if task["node_col"] is None:
-            return ""
-        return f"AND {task['node_col']} = {task['node_val']}"
+        if limit_recent:
+            recent_versions = (
+                lazy.select("version")
+                .unique()
+                .sort("version", descending=True)
+                .limit(3)
+                .collect()["version"]
+            )
+            lazy = lazy.filter(pl.col("version").is_in(recent_versions))
 
-    @staticmethod
-    def _recent_filter(table: str) -> str:
-        return (
-            f"AND version IN ("
-            f"SELECT DISTINCT version FROM {table} "
-            f"ORDER BY version DESC LIMIT 3)"
+        lazy = lazy.with_columns(pl.lit(task["mode"]).alias("Game_Mode"))
+
+        group_cols = [
+            "Game_Mode", "at_eidolon_level", "up_to_eidolon_level",
+            "Archetype_Core", "estimated_min_cost", "estimated_max_cost", "max_eidolon"
+        ]
+
+        return lazy.group_by(group_cols).agg(self._get_archetype_exprs(task, is_history=is_history)).collect()
+
+    def _aggregate_rolling(self, raw_lazy: pl.LazyFrame, task: dict, window: int = 3) -> pl.DataFrame:
+        lazy = self._apply_base_filters(raw_lazy, task)
+
+        versions_df = (
+            lazy.select("version")
+            .unique()
+            .sort("version")
+            .with_columns(pl.int_range(0, pl.len()).alias("vrank"))
+            .collect()
         )
 
-    # ------------------------------------------------------------------
-    # Query builder
-    # ------------------------------------------------------------------
+        if versions_df.is_empty():
+            return pl.DataFrame()
 
-    def _generate_query(self, task: dict, limit_recent: bool = False) -> str:
-        floor_f  = self._floor_filter(task["floors"])
-        node_f   = self._node_filter(task)
-        recent_f = self._recent_filter(task["table"]) if limit_recent else ""
+        base = lazy.join(versions_df.lazy(), on="version")
 
-        return f"""
-            SELECT
-                '{task['mode']}'                                                       AS Game_Mode,
-                at_eidolon_level,
-                up_to_eidolon_level,
-                Archetype_Core,
-                estimated_min_cost,
-                estimated_max_cost,
-                max_eidolon,
+        as_of_df = versions_df.rename({"version": "As_Of_Version", "vrank": "asof_vrank"}).lazy()
+        joined = base.join(as_of_df, how="cross").filter(
+            (pl.col("vrank") <= pl.col("asof_vrank")) &
+            (pl.col("vrank") >= (pl.col("asof_vrank") - (window - 1)))
+        )
 
-                -- Appearance (simple average across versions)
-                ROUND(AVG(Usage_pct), 2)                                    AS Simple_Avg_Appearance,
+        joined = joined.with_columns(
+            pl.lit(task["mode"]).alias("Game_Mode"),
+            (pl.col("asof_vrank").max() - pl.col("asof_vrank") + 1).alias("Version_Group_Num")
+        )
 
-                -- Score aggregates
-                ROUND(MIN(Min_Score), 2)                                              AS Min_Score,
-                ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
-                ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Score,
-                ROUND(SUM(Median_Score  * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Median,
-                {task['perf']}(Average_Score)                                         AS Best_Version_Avg,
-                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
+        group_cols = [
+            "As_Of_Version", "Game_Mode", "at_eidolon_level", "up_to_eidolon_level",
+            "Archetype_Core", "estimated_min_cost", "estimated_max_cost", "max_eidolon"
+        ]
 
-                -- Full-star rate: recalculate from raw counts, NOT avg of pct
-                SUM(Total_Full_Clears)                                                  AS Total_Full_Clears,
-                SUM(Samples)                                                           AS Total_Samples,
-                ROUND(
-                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
-                    2
-                )                                                                      AS Full_Star_Rate_pct,
+        agg_exprs = [pl.col("Version_Group_Num").first().alias("Version_Group_Num")]
+        agg_exprs.extend(self._get_archetype_exprs(task, is_history=False))
 
-                -- Sustain rate: recalculate from raw counts, NOT avg of pct
-                SUM(Sustain_Samples)                                                     AS Total_Sustain_Samples,
-                ROUND(
-                    100.0 * SUM(Sustain_Samples) / NULLIF(SUM(Samples), 0),
-                    2
-                )                                                                      AS Sustain_Rate_pct,
-
-                -- Metadata
-                COUNT(DISTINCT version)                                                AS Version_Count,
-                STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC)               AS Versions_Used
-            FROM {task['table']}
-            WHERE Samples > 0
-              {floor_f}
-              {node_f}
-              {recent_f}
-            GROUP BY
-                1,  -- Game_Mode
-                2,  -- at_eidolon_level
-                3,  -- up_to_eidolon_level
-                4,  -- Archetype_Core
-                5,  -- estimated_min_cost
-                6,  -- estimated_max_cost
-                7   -- max_eidolon
-        """
-
-    def _generate_rolling_query(self, task: dict, window: int = 3) -> str:
-        """
-        Trailing rolling average: one row per group PER As_Of_Version,
-        aggregated over that version and the (window - 1) versions
-        immediately before it (rather than one static clip to the latest N).
-        """
-        floor_f = self._floor_filter(task["floors"])
-        node_f  = self._node_filter(task)
-        table   = task["table"]
-
-        return f"""
-            WITH version_ranks AS (
-                SELECT DISTINCT version,
-                       DENSE_RANK() OVER (ORDER BY version) AS vrank
-                FROM {table}
-            ),
-            base AS (
-                SELECT t.*, vr.vrank
-                FROM {table} t
-                JOIN version_ranks vr USING (version)
-                WHERE Samples > 0
-                  {floor_f}
-                  {node_f}
-            )
-            SELECT
-                vr_asof.version                                                        AS As_Of_Version,
-                '{task['mode']}'                                                       AS Game_Mode,
-                b.at_eidolon_level,
-                b.up_to_eidolon_level,
-                b.Archetype_Core,
-                b.estimated_min_cost,
-                b.estimated_max_cost,
-                b.max_eidolon,
-
-                ROUND(AVG(b.Usage_pct), 2)                                             AS Simple_Avg_Appearance,
-                DENSE_RANK() OVER (ORDER BY vr_asof.version DESC)                      AS Version_Group_Num,
-                ROUND(MIN(Min_Score), 2)                                                AS Min_Score,
-                ROUND(AVG(b.Average_Score), 2)                                         AS Simple_Avg_Score,
-                ROUND(SUM(b.Average_Score * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Score,
-                ROUND(SUM(b.Median_Score  * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Median,
-                {task['perf']}(b.Average_Score)                                        AS Best_Version_Avg,
-                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
-
-                SUM(b.Total_Full_Clears)                                                AS Total_Full_Clears,
-                SUM(b.Samples)                                                         AS Total_Samples,
-                ROUND(
-                    100.0 * SUM(b.Total_Full_Clears) / NULLIF(SUM(b.Samples), 0),
-                    2
-                )                                                                      AS Full_Star_Rate_pct,
-
-                SUM(b.Sustain_Samples)                                                  AS Total_Sustain_Samples,
-                ROUND(
-                    100.0 * SUM(b.Sustain_Samples) / NULLIF(SUM(b.Samples), 0),
-                    2
-                )                                                                      AS Sustain_Rate_pct,
-
-                COUNT(DISTINCT b.version)                                              AS Version_Count,
-                STRING_AGG(DISTINCT b.version, ', ' ORDER BY b.version DESC)           AS Versions_Used
-            FROM base b
-            JOIN version_ranks vr_asof
-              ON b.vrank BETWEEN vr_asof.vrank - {window - 1} AND vr_asof.vrank
-            GROUP BY
-                1,  -- As_Of_Version
-                2,  -- Game_Mode
-                3,  -- at_eidolon_level
-                4,  -- up_to_eidolon_level
-                5,  -- Archetype_Core
-                6,  -- estimated_min_cost
-                7,  -- estimated_max_cost
-                8   -- max_eidolon
-        """
-
-    # ------------------------------------------------------------------
-    # Main runner
-    # ------------------------------------------------------------------
+        return joined.group_by(group_cols).agg(agg_exprs).collect()
 
     def run_analysis(self):
         con = duckdb.connect(self.db_path)
-        all_history: list[pd.DataFrame] = []
-        all_recent:  list[pd.DataFrame] = []
-        all_rolling: list[pd.DataFrame] = []
+        all_history, all_recent, all_rolling = [], [], []
 
         print(f"Starting By-Cost Archetype Meta Analysis on {self.db_path}...")
 
         for task in self.tasks:
             try:
-                df_h = con.execute(self._generate_query(task, limit_recent=False)).df()
-                if not df_h.empty:
+                raw_lazy = con.execute(f"SELECT * FROM {task['table']}").pl().lazy()
+
+                df_h = self._aggregate(raw_lazy, task, limit_recent=False, is_history=True)
+                if not df_h.is_empty():
                     all_history.append(df_h)
 
-                df_r = con.execute(self._generate_query(task, limit_recent=True)).df()
-                if not df_r.empty:
+                df_r = self._aggregate(raw_lazy, task, limit_recent=True, is_history=False)
+                if not df_r.is_empty():
                     all_recent.append(df_r)
 
-                df_roll = con.execute(self._generate_rolling_query(task, window=3)).df()
-                if not df_roll.empty:
+                df_roll = self._aggregate_rolling(raw_lazy, task, window=3)
+                if not df_roll.is_empty():
                     all_rolling.append(df_roll)
 
                 print(f"  + {task['mode']:15s}  history={len(df_h):,}  recent={len(df_r):,}  rolling={len(df_roll):,}")
             except Exception as e:
                 print(f"  ! Error on {task['mode']}: {e}")
 
-        if not all_history and not all_recent and not all_rolling:
-            print("No data found. Exiting.")
-            con.close()
-            return
-
-        con.execute("BEGIN TRANSACTION")
-        try:
-            if all_history:
-                full_df = pd.concat(all_history, ignore_index=True)
-                con.execute("DROP TABLE IF EXISTS by_cost_archetype_meta_summary")
-                con.execute("CREATE TABLE by_cost_archetype_meta_summary AS SELECT * FROM full_df")
-                print(f"\n  Wrote by_cost_archetype_meta_summary     ({len(full_df):,} rows)")
-
-            if all_recent:
-                recent_df = pd.concat(all_recent, ignore_index=True)
-                con.execute("DROP TABLE IF EXISTS by_cost_archetype_recent_meta_summary")
-                con.execute(
-                    "CREATE TABLE by_cost_archetype_recent_meta_summary AS SELECT * FROM recent_df"
-                )
-                print(f"  Wrote by_cost_archetype_recent_meta_summary ({len(recent_df):,} rows)")
-
-            if all_rolling:
-                rolling_df = pd.concat(all_rolling, ignore_index=True)
-                con.execute("DROP TABLE IF EXISTS by_cost_archetype_rolling_meta_summary")
-                con.execute(
-                    "CREATE TABLE by_cost_archetype_rolling_meta_summary AS SELECT * FROM rolling_df"
-                )
-                print(f"  Wrote by_cost_archetype_rolling_meta_summary ({len(rolling_df):,} rows)")
-
-            con.execute("COMMIT")
-            print(
-                "\n>>> Analysis complete. "
-                "Tables 'by_cost_archetype_meta_summary', "
-                "'by_cost_archetype_recent_meta_summary', and "
-                "'by_cost_archetype_rolling_meta_summary' are now live."
-            )
-        except Exception as e:
-            con.execute("ROLLBACK")
-            print(f"\n>>> Error during DB write: {e}")
-        finally:
-            con.close()
+        HonkaiCostTeamMetaAnalyzer._write_tables(self, con, all_history, all_recent, all_rolling, "archetype")
+        con.close()
 
 
-class HonkaiCostCharacterMetaAnalyzer:
-    """
-    Aggregates *_by_cost_chars tables across all versions (and optionally
-    the 3 most-recent versions), grouping by:
-        estimated_min_cost, estimated_max_cost, Character
-
-    Unlike the team/archetype-level tables, the character-level tables have
-    no `Team`, `Archetype_Core`, `max_eidolon`, or `has_sustain` column.
-    Instead they carry a raw `Sustain_Samples` (like Full_Star_Clears), which
-    is RE-CALCULATED here as:
-        SUM(Sustain_Samples) / SUM(Samples)
-    rather than averaging the pre-computed Sustain_Percentage_pct.
-
-    Full_Star_Rate is likewise RE-CALCULATED as:
-        SUM(Full_Star_Clears) / SUM(Samples)
-    rather than averaging the pre-computed percentages.
-    """
-
+# =====================================================================
+# 3. HonkaiCostCharacterMetaAnalyzer
+# =====================================================================
+class HonkaiCostCharacterMetaAnalyzer(BaseCostMetaAnalyzer):
     def __init__(self, db_name=os.getenv("DB_File")):
-        self.db_path = db_name
+        super().__init__(db_name)
         self.tasks = [
-            {
-                "mode":     "MOC",
-                "table":    "moc_by_cost_chars",
-                "floors":   [10, 12],
-                "perf":     "MIN",        # lower cycles-used = better for MOC
-                "node_col": "node",
-                "node_val": "0",          # integer node; keep only node 0 (combined)
-            },
-            {
-                "mode":     "APOC",
-                "table":    "apoc_by_cost_chars",
-                "floors":   [4],
-                "perf":     "MAX",
-                "node_col": "node",
-                "node_val": "'0'",        # VARCHAR node in apoc/anomaly
-            },
-            {
-                "mode":     "PURE_FICTION",
-                "table":    "pure_fiction_by_cost_chars",
-                "floors":   [4],
-                "perf":     "MAX",
-                "node_col": "node",
-                "node_val": "'0'",
-            },
-            {
-                "mode":     "ANOMALY_F0",
-                "table":    "anomaly_by_cost_chars",
-                "floors":   [0],
-                "perf":     "MIN",
-                "node_col": None,
-                "node_val": None,
-            },
-            {
-                "mode":     "ANOMALY_F4",
-                "table":    "anomaly_by_cost_chars",
-                "floors":   [4],
-                "perf":     "MIN",
-                "node_col": None,
-                "node_val": None,
-            },
-            {
-                "mode":     "ANOMALY_F5",
-                "table":    "anomaly_by_cost_chars",
-                "floors":   [5],
-                "perf":     "MIN",
-                "node_col": None,
-                "node_val": None,
-            },
+            {"mode": "MOC", "table": "moc_by_cost_chars", "floors": [10, 12], "perf": "MIN", "node_col": "node", "node_val": "0"},
+            {"mode": "APOC", "table": "apoc_by_cost_chars", "floors": [4], "perf": "MAX", "node_col": "node", "node_val": "'0'"},
+            {"mode": "PURE_FICTION", "table": "pure_fiction_by_cost_chars", "floors": [4], "perf": "MAX", "node_col": "node", "node_val": "'0'"},
+            {"mode": "ANOMALY_F0", "table": "anomaly_by_cost_chars", "floors": [0], "perf": "MIN", "node_col": None, "node_val": None},
+            {"mode": "ANOMALY_F4", "table": "anomaly_by_cost_chars", "floors": [4], "perf": "MIN", "node_col": None, "node_val": None},
+            {"mode": "ANOMALY_F5", "table": "anomaly_by_cost_chars", "floors": [5], "perf": "MIN", "node_col": None, "node_val": None},
         ]
 
-    # ------------------------------------------------------------------
-    # Helpers (identical semantics to HonkaiCostTeamMetaAnalyzer)
-    # ------------------------------------------------------------------
+    def _get_character_exprs(self, task: dict, is_history: bool) -> list[pl.Expr]:
+        exprs = self._get_common_agg_exprs(task, usage_col="Appearance_Rate_pct", is_history=is_history)
+        exprs.extend([
+            pl.col("Sustain_Samples").sum().alias("Total_Sustain_Samples"),
+            (100.0 * pl.col("Sustain_Samples").sum() / pl.col("Samples").sum()).round(2).alias("Sustain_Rate_pct"),
+            pl.col("Sustain_Percentage").alias("Sustain_Percentage_List")])
+        return exprs
 
-    @staticmethod
-    def _floor_filter(floors: list) -> str:
-        if len(floors) == 1:
-            return f"AND floor = {floors[0]}"
-        return f"AND floor IN ({', '.join(str(f) for f in floors)})"
+    def _aggregate(self, raw_lazy: pl.LazyFrame, task: dict, limit_recent: bool = False, is_history: bool = False) -> pl.DataFrame:
+        lazy = self._apply_base_filters(raw_lazy, task)
 
-    @staticmethod
-    def _node_filter(task: dict) -> str:
-        if task["node_col"] is None:
-            return ""
-        return f"AND {task['node_col']} = {task['node_val']}"
+        if limit_recent:
+            recent_versions = (
+                lazy.select("version")
+                .unique()
+                .sort("version", descending=True)
+                .limit(3)
+                .collect()["version"]
+            )
+            lazy = lazy.filter(pl.col("version").is_in(recent_versions))
 
-    @staticmethod
-    def _recent_filter(table: str) -> str:
-        return (
-            f"AND version IN ("
-            f"SELECT DISTINCT version FROM {table} "
-            f"ORDER BY version DESC LIMIT 3)"
+        lazy = lazy.with_columns(pl.lit(task["mode"]).alias("Game_Mode"))
+
+        group_cols = [
+            "Game_Mode", "at_eidolon_level", "up_to_eidolon_level",
+            "Character", "estimated_min_cost", "estimated_max_cost", "max_eidolon"
+        ]
+
+        return lazy.group_by(group_cols).agg(self._get_character_exprs(task, is_history=is_history)).collect()
+
+    def _aggregate_rolling(self, raw_lazy: pl.LazyFrame, task: dict, window: int = 3) -> pl.DataFrame:
+        lazy = self._apply_base_filters(raw_lazy, task)
+
+        versions_df = (
+            lazy.select("version")
+            .unique()
+            .sort("version")
+            .with_columns(pl.int_range(0, pl.len()).alias("vrank"))
+            .collect()
         )
 
-    # ------------------------------------------------------------------
-    # Query builder
-    # ------------------------------------------------------------------
+        if versions_df.is_empty():
+            return pl.DataFrame()
 
-    def _generate_query(self, task: dict, limit_recent: bool = False) -> str:
-        floor_f  = self._floor_filter(task["floors"])
-        node_f   = self._node_filter(task)
-        recent_f = self._recent_filter(task["table"]) if limit_recent else ""
+        base = lazy.join(versions_df.lazy(), on="version")
 
-        return f"""
-            SELECT
-                '{task['mode']}'                                                       AS Game_Mode,
-                at_eidolon_level,
-                up_to_eidolon_level,
-                Character,
-                estimated_min_cost,
-                estimated_max_cost,
-                max_eidolon,
+        as_of_df = versions_df.rename({"version": "As_Of_Version", "vrank": "asof_vrank"}).lazy()
+        joined = base.join(as_of_df, how="cross").filter(
+            (pl.col("vrank") <= pl.col("asof_vrank")) &
+            (pl.col("vrank") >= (pl.col("asof_vrank") - (window - 1)))
+        )
 
-                -- Appearance (simple average across versions)
-                ROUND(AVG(Appearance_Rate_pct), 2)                                    AS Simple_Avg_Appearance,
+        joined = joined.with_columns(
+            pl.lit(task["mode"]).alias("Game_Mode"),
+            (pl.col("asof_vrank").max() - pl.col("asof_vrank") + 1).alias("Version_Group_Num")
+        )
 
-                -- Score aggregates
-                ROUND(MIN(Min_Score), 2)                                              AS Min_Score,
-                ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
-                ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Score,
-                ROUND(SUM(Median_Score  * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Median,
-                {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
-                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
+        group_cols = [
+            "As_Of_Version", "Game_Mode", "at_eidolon_level", "up_to_eidolon_level",
+            "Character", "estimated_min_cost", "estimated_max_cost", "max_eidolon"
+        ]
 
-                -- Full-star rate: recalculate from raw counts, NOT avg of pct
-                SUM(Total_Full_Clears)                                                  AS Total_Full_Star_Clears,
-                SUM(Samples)                                                           AS Total_Samples,
-                ROUND(
-                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
-                    2
-                )                                                                      AS Full_Star_Rate_pct,
+        agg_exprs = [pl.col("Version_Group_Num").first().alias("Version_Group_Num")]
+        agg_exprs.extend(self._get_character_exprs(task, is_history=False))
 
-                -- Sustain rate: recalculate from raw counts, NOT avg of pct
-                SUM(Sustain_Samples)                                                     AS Total_Sustain_Samples,
-                ROUND(
-                    100.0 * SUM(Sustain_Samples) / NULLIF(SUM(Samples), 0),
-                    2
-                )                                                                      AS Sustain_Rate_pct,
-
-                -- Metadata
-                COUNT(DISTINCT version)                                                AS Version_Count,
-                STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC)               AS Versions_Used
-            FROM {task['table']}
-            WHERE Samples > 0
-              {floor_f}
-              {node_f}
-              {recent_f}
-            GROUP BY
-                1,  -- Game_Mode
-                2,  -- at_eidolon_level
-                3,  -- up_to_eidolon_level
-                4,  -- Character
-                5,  -- estimated_min_cost
-                6 ,  -- estimated_max_cost
-                7   -- max_eidolon
-        """
-
-    def _generate_rolling_query(self, task: dict, window: int = 3) -> str:
-        """
-        Trailing rolling average: one row per group PER As_Of_Version,
-        aggregated over that version and the (window - 1) versions
-        immediately before it (rather than one static clip to the latest N).
-        """
-        floor_f = self._floor_filter(task["floors"])
-        node_f  = self._node_filter(task)
-        table   = task["table"]
-
-        return f"""
-            WITH version_ranks AS (
-                SELECT DISTINCT version,
-                       DENSE_RANK() OVER (ORDER BY version) AS vrank
-                FROM {table}
-            ),
-            base AS (
-                SELECT t.*, vr.vrank
-                FROM {table} t
-                JOIN version_ranks vr USING (version)
-                WHERE Samples > 0
-                  {floor_f}
-                  {node_f}
-            )
-            SELECT
-                vr_asof.version                                                        AS As_Of_Version,
-                '{task['mode']}'                                                       AS Game_Mode,
-                b.at_eidolon_level,
-                b.up_to_eidolon_level,
-                b.Character,
-                b.estimated_min_cost,
-                b.estimated_max_cost,
-                b.max_eidolon,
-
-                ROUND(AVG(b.Appearance_Rate_pct), 2)                                   AS Simple_Avg_Appearance,
-                DENSE_RANK() OVER (ORDER BY vr_asof.version DESC)                      AS Version_Group_Num,
-                ROUND(MIN(Min_Score), 2)                                               AS Min_Score,
-                ROUND(AVG(b.Average_Score), 2)                                         AS Simple_Avg_Score,
-                ROUND(SUM(b.Average_Score * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Score,
-                ROUND(SUM(b.Median_Score  * b.Samples) / NULLIF(SUM(b.Samples), 0), 2) AS Weighted_Avg_Median,
-                {task['perf']}(b.Average_Score)                                        AS Best_Version_Avg,
-                ROUND(MAX(Max_Score),2)                                               AS Max_Score,
-
-                SUM(b.Total_Full_Clears)                                                AS Total_Full_Star_Clears,
-                SUM(b.Samples)                                                         AS Total_Samples,
-                ROUND(
-                    100.0 * SUM(b.Total_Full_Clears) / NULLIF(SUM(b.Samples), 0),
-                    2
-                )                                                                      AS Full_Star_Rate_pct,
-
-                SUM(b.Sustain_Samples)                                                  AS Total_Sustain_Samples,
-                ROUND(
-                    100.0 * SUM(b.Sustain_Samples) / NULLIF(SUM(b.Samples), 0),
-                    2
-                )                                                                      AS Sustain_Rate_pct,
-
-                COUNT(DISTINCT b.version)                                              AS Version_Count,
-                STRING_AGG(DISTINCT b.version, ', ' ORDER BY b.version DESC)           AS Versions_Used
-            FROM base b
-            JOIN version_ranks vr_asof
-              ON b.vrank BETWEEN vr_asof.vrank - {window - 1} AND vr_asof.vrank
-            GROUP BY
-                1,  -- As_Of_Version
-                2,  -- Game_Mode
-                3,  -- at_eidolon_level
-                4,  -- up_to_eidolon_level
-                5,  -- Character
-                6,  -- estimated_min_cost
-                7,  -- estimated_max_cost
-                8   -- max_eidolon
-        """
-
-    # ------------------------------------------------------------------
-    # Main runner
-    # ------------------------------------------------------------------
+        return joined.group_by(group_cols).agg(agg_exprs).collect()
 
     def run_analysis(self):
         con = duckdb.connect(self.db_path)
-        all_history: list[pd.DataFrame] = []
-        all_recent:  list[pd.DataFrame] = []
-        all_rolling: list[pd.DataFrame] = []
+        all_history, all_recent, all_rolling = [], [], []
 
         print(f"Starting By-Cost Character Meta Analysis on {self.db_path}...")
 
         for task in self.tasks:
             try:
-                df_h = con.execute(self._generate_query(task, limit_recent=False)).df()
-                if not df_h.empty:
+                raw_lazy = con.execute(f"SELECT * FROM {task['table']}").pl().lazy()
+
+                df_h = self._aggregate(raw_lazy, task, limit_recent=False, is_history=True)
+                if not df_h.is_empty():
                     all_history.append(df_h)
 
-                df_r = con.execute(self._generate_query(task, limit_recent=True)).df()
-                if not df_r.empty:
+                df_r = self._aggregate(raw_lazy, task, limit_recent=True, is_history=False)
+                if not df_r.is_empty():
                     all_recent.append(df_r)
 
-                df_roll = con.execute(self._generate_rolling_query(task, window=3)).df()
-                if not df_roll.empty:
+                df_roll = self._aggregate_rolling(raw_lazy, task, window=3)
+                if not df_roll.is_empty():
                     all_rolling.append(df_roll)
 
                 print(f"  + {task['mode']:15s}  history={len(df_h):,}  recent={len(df_r):,}  rolling={len(df_roll):,}")
             except Exception as e:
                 print(f"  ! Error on {task['mode']}: {e}")
 
-        if not all_history and not all_recent and not all_rolling:
-            print("No data found. Exiting.")
-            con.close()
-            return
-
-        con.execute("BEGIN TRANSACTION")
-        try:
-            if all_history:
-                full_df = pd.concat(all_history, ignore_index=True)
-                con.execute("DROP TABLE IF EXISTS by_cost_character_meta_summary")
-                con.execute("CREATE TABLE by_cost_character_meta_summary AS SELECT * FROM full_df")
-                print(f"\n  Wrote by_cost_character_meta_summary     ({len(full_df):,} rows)")
-
-            if all_recent:
-                recent_df = pd.concat(all_recent, ignore_index=True)
-                con.execute("DROP TABLE IF EXISTS by_cost_character_recent_meta_summary")
-                con.execute(
-                    "CREATE TABLE by_cost_character_recent_meta_summary AS SELECT * FROM recent_df"
-                )
-                print(f"  Wrote by_cost_character_recent_meta_summary ({len(recent_df):,} rows)")
-
-            if all_rolling:
-                rolling_df = pd.concat(all_rolling, ignore_index=True)
-                con.execute("DROP TABLE IF EXISTS by_cost_character_rolling_meta_summary")
-                con.execute(
-                    "CREATE TABLE by_cost_character_rolling_meta_summary AS SELECT * FROM rolling_df"
-                )
-                print(f"  Wrote by_cost_character_rolling_meta_summary ({len(rolling_df):,} rows)")
-
-            con.execute("COMMIT")
-            print(
-                "\n>>> Analysis complete. "
-                "Tables 'by_cost_character_meta_summary', "
-                "'by_cost_character_recent_meta_summary', and "
-                "'by_cost_character_rolling_meta_summary' are now live."
-            )
-        except Exception as e:
-            con.execute("ROLLBACK")
-            print(f"\n>>> Error during DB write: {e}")
-        finally:
-            con.close()
+        HonkaiCostTeamMetaAnalyzer._write_tables(self, con, all_history, all_recent, all_rolling, "character")
+        con.close()
 
 
 if __name__ == "__main__":

@@ -154,6 +154,7 @@ class CharacterMetaAnalyzer:
         perf         = task["perf"]
 
         recent_filter = ""
+        list_values = ""
         if limit_recent:
             recent_filter = (
                 f"AND version IN ("
@@ -162,6 +163,20 @@ class CharacterMetaAnalyzer:
                 f"  ORDER BY version DESC LIMIT 3"
                 f")"
             )
+        else:
+            # Removed nested MIN/MAX inside LIST() -> changed to LIST(Average_Score)
+            list_values = """
+                
+                LIST(Appearance_Rate_pct) AS Appearance_Rate_pct_List,
+                LIST(Min_Score) AS Min_Score_List,
+                LIST(Average_Score) AS Average_Score_List,
+                LIST(Min_Score) AS Max_Score_List,
+                LIST(Median_Score) AS Median_Score_List,
+                LIST(Samples) AS Samples_List,
+                LIST(Sustain_Percentage) AS Sustain_Percentage_List,
+                LIST(Full_Clear_Rate_pct) AS Full_Star_Rate_pct_List,
+            """
+            
 
         weighted_eid = "\n                ,".join(
             f"ROUND(SUM({e} * Samples) / NULLIF(SUM(Samples), 0), 4) AS {e}"
@@ -181,7 +196,7 @@ class CharacterMetaAnalyzer:
                 up_to_eidolon_level,
 
                 {meta_cols},
-
+                {list_values}
                 -- Appearance
                 ROUND(AVG(Appearance_Rate_pct), 4)                                          AS Simple_Avg_Appearance,
                 ROUND(

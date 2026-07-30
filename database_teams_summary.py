@@ -1,5 +1,5 @@
 import duckdb
-import pandas as pd
+import polars as pl
 import os
 from dotenv import load_dotenv
 
@@ -13,10 +13,10 @@ class HonkaiTeamMetaAnalyzer:
             {
                 "mode":      "MOC",
                 "table":     "moc_stats_teams",
-                "floors":    [10, 12],   # floor 10 (legacy) and 12 treated as same stage
+                "floors":    [10, 12],
                 "perf":      "MIN",
                 "node_col":  "node",
-                "node_val":  "'0'",
+                "node_val":  "0",
             },
             {
                 "mode":      "APOC",
@@ -24,7 +24,7 @@ class HonkaiTeamMetaAnalyzer:
                 "floors":    [4],
                 "perf":      "MAX",
                 "node_col":  "node",
-                "node_val":  "'0'",
+                "node_val":  "0",
             },
             {
                 "mode":      "PURE_FICTION",
@@ -32,7 +32,7 @@ class HonkaiTeamMetaAnalyzer:
                 "floors":    [4],
                 "perf":      "MAX",
                 "node_col":  "node",
-                "node_val":  "'0'",
+                "node_val":  "0",
             },
             {
                 "mode":      "ANOMALY_F0",
@@ -60,61 +60,79 @@ class HonkaiTeamMetaAnalyzer:
             },
         ]
 
-    @staticmethod
-    def _floor_filter(floors: list) -> str:
-        if len(floors) == 1:
-            return f"AND floor = {floors[0]}"
-        return f"AND floor IN ({', '.join(str(f) for f in floors)})"
+    def _aggregate_lazy(self, raw_lazy: pl.LazyFrame, task: dict, limit_recent: bool = False) -> pl.DataFrame:
+        """Applies lazy logical operations and executes optimized graph via .collect()."""
 
-    def _generate_query(self, task, limit_recent=False):
-        node_filter  = (
-            f"AND {task['node_col']} = {task['node_val']}"
-            if task["node_col"] is not None
-            else ""
+        # 1. Base Filters (Pushed down to source level)
+        lazy = raw_lazy.filter(
+            (pl.col("Samples") > 0) & 
+            (pl.col("floor").is_in(task["floors"]))
         )
-        floor_filter = self._floor_filter(task["floors"])
 
-        recent_filter = ""
-        if limit_recent:
-            recent_filter = (
-                f"AND version IN ("
-                f"SELECT DISTINCT version FROM {task['table']} "
-                f"ORDER BY version DESC LIMIT 3)"
+        if task["node_col"] is not None:
+            lazy = lazy.filter(
+                pl.col(task["node_col"]).cast(pl.String) == str(task["node_val"])
             )
 
-        return f"""
-            SELECT
-                '{task['mode']}' AS Game_Mode,
-                at_eidolon_level,
-                up_to_eidolon_level,
-                Team,
-                Archetype_Core,
-                "Sustain?" AS Sustain,
+        # 2. Limit Recent Versions Filter
+        if limit_recent:
+            # Evaluate distinct versions lazily
+            top_3_versions = (
+                lazy.select("version")
+                .unique()
+                .sort("version", descending=True)
+                .limit(3)
+                .collect()["version"]  # Collect brief sub-query
+            )
+            lazy = lazy.filter(pl.col("version").is_in(top_3_versions))
 
-                -- Appearance
-                ROUND(AVG(Appearance_Rate_pct), 2)                                    AS Simple_Avg_Appearance,
+        # 3. Helper Columns
+        lazy = lazy.with_columns(
+            pl.lit(task["mode"]).alias("Game_Mode"),
+            pl.col("Sustain?").alias("Sustain")
+        )
 
-                -- Score
-                ROUND(AVG(Average_Score), 2)                                          AS Simple_Avg_Score,
-                ROUND(SUM(Average_Score * Samples) / NULLIF(SUM(Samples), 0), 2)      AS Weighted_Avg_Score,
-                ROUND(SUM(Median_Score * Samples) / NULLIF(SUM(Samples), 0), 2)       AS Weighted_Avg_Median,
-                {task['perf']}(Average_Score)                                          AS Best_Version_Avg,
+        group_cols = [
+            "Game_Mode",
+            "at_eidolon_level",
+            "up_to_eidolon_level",
+            "Team",
+            "Archetype_Core",
+            "Sustain",
+        ]
 
-                -- Metadata
-                SUM(Samples)                                                            AS Total_Samples,                                 
-                ROUND(
-                    100.0 * SUM(Total_Full_Clears) / NULLIF(SUM(Samples), 0),
-                    2
-                )                                                                      AS Full_Star_Rate_pct,
-                COUNT(DISTINCT version)                                               AS Version_Count,
-                STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC)              AS Versions_Used
-            FROM {task['table']}
-            WHERE Samples > 0
-              {floor_filter}
-              {node_filter}
-              {recent_filter}
-            GROUP BY 1, 2, 3, 4,5,6
-        """
+        # 4. Aggregations
+        agg_exprs = []
+
+        if not limit_recent:
+            agg_exprs.extend([
+                pl.col("Appearance_Rate_pct").alias("Usage_pct_List"),
+                pl.col("Min_Score").alias("Min_Score_List"),
+                pl.col("Average_Score").alias("Average_Score_List"),
+                pl.col("Max_Score").alias("Max_Score_List"),
+                pl.col("Median_Score").alias("Median_Score_List"),
+                pl.col("Samples").alias("Samples_List"),
+                pl.col("Full_Clear_Rate_pct").alias("Full_Star_Rate_pct_List"),
+            ])
+
+        best_score_expr = (
+            pl.col("Average_Score").min() if task["perf"] == "MIN" else pl.col("Average_Score").max()
+        )
+
+        agg_exprs.extend([
+            pl.col("Appearance_Rate_pct").mean().round(2).alias("Simple_Avg_Appearance"),
+            pl.col("Average_Score").mean().round(2).alias("Simple_Avg_Score"),
+            ((pl.col("Average_Score") * pl.col("Samples")).sum() / pl.col("Samples").sum()).round(2).alias("Weighted_Avg_Score"),
+            ((pl.col("Median_Score") * pl.col("Samples")).sum() / pl.col("Samples").sum()).round(2).alias("Weighted_Avg_Median"),
+            best_score_expr.alias("Best_Version_Avg"),
+            pl.col("Samples").sum().alias("Total_Samples"),
+            (100.0 * pl.col("Total_Full_Clears").sum() / pl.col("Samples").sum()).round(2).alias("Full_Star_Rate_pct"),
+            pl.col("version").n_unique().alias("Version_Count"),
+            pl.col("version").unique().sort(descending=True).cast(pl.String).str.join(", ").alias("Versions_Used"),
+        ])
+
+        # Execute optimization engine with .collect()
+        return lazy.group_by(group_cols).agg(agg_exprs).collect()
 
     def run_analysis(self):
         con = duckdb.connect(self.db_path)
@@ -125,12 +143,15 @@ class HonkaiTeamMetaAnalyzer:
 
         for task in self.tasks:
             try:
-                df_h = con.execute(self._generate_query(task, limit_recent=False)).df()
-                if not df_h.empty:
+                # Convert DuckDB Arrow relation directly to a LazyFrame (.pl().lazy())
+                raw_lazy = con.execute(f"SELECT * FROM {task['table']}").pl().lazy()
+
+                df_h = self._aggregate_lazy(raw_lazy, task, limit_recent=False)
+                if not df_h.is_empty():
                     all_history.append(df_h)
 
-                df_r = con.execute(self._generate_query(task, limit_recent=True)).df()
-                if not df_r.empty:
+                df_r = self._aggregate_lazy(raw_lazy, task, limit_recent=True)
+                if not df_r.is_empty():
                     all_recent.append(df_r)
 
                 print(f"  + Successfully aggregated Team stats for {task['mode']}")
@@ -145,13 +166,13 @@ class HonkaiTeamMetaAnalyzer:
         con.execute("BEGIN TRANSACTION")
         try:
             if all_history:
-                full_df = pd.concat(all_history, ignore_index=True)
+                full_df = pl.concat(all_history, how="diagonal")
                 con.execute("DROP TABLE IF EXISTS team_meta_summary")
                 con.execute("CREATE TABLE team_meta_summary AS SELECT * FROM full_df")
                 print(f"\n  Wrote team_meta_summary ({len(full_df):,} rows)")
 
             if all_recent:
-                recent_df = pd.concat(all_recent, ignore_index=True)
+                recent_df = pl.concat(all_recent, how="diagonal")
                 con.execute("DROP TABLE IF EXISTS team_recent_meta_summary")
                 con.execute("CREATE TABLE team_recent_meta_summary AS SELECT * FROM recent_df")
                 print(f"  Wrote team_recent_meta_summary ({len(recent_df):,} rows)")

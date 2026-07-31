@@ -347,16 +347,26 @@
   let sortCol = null;
   let sortDir = 1;           // 1 asc, -1 desc
   let selectedIds = [];      // ordered list — supports unlimited multi-select
+  // The mode the CURRENTLY LOADED slice actually belongs to. Deliberately
+  // separate from modeSelect.value: by the time modeSelect fires "onchange",
+  // the dropdown has already flipped to the new mode, so reading
+  // modeSelect.value at that point would mislabel the outgoing mode's
+  // eidolon selection under the new mode's key. activeMode only updates once
+  // a slice for the new mode has actually finished loading (see
+  // loadCurrentSlice), so persistState() always attributes the right
+  // eidolon range to the right mode.
+  let activeMode = null;
 
   // Per-entity-type state store. Lets you set up a search/sort/comparison on
   // Archetypes, flip to Characters, do something else, and flip back to find
   // Archetypes exactly as you left it. Also what preserves search/sort/
-  // selection/metric across Eidolon Range switches within the same entity
-  // type (mode + eidolon are stored here too, so re-entering an entity type
-  // restores the exact slice you were on, not just the first option).
+  // selection/metric across Eidolon Range AND Game Mode switches within the
+  // same entity type. Eidolon range is remembered PER game mode (via
+  // eidolonByMode), so hopping MOC -> APOC -> MOC restores MOC's own eidolon
+  // range instead of resetting to the first option every time.
   const entityState = {
-    archetype: { mode: null, eidolon: null, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
-    character: { mode: null, eidolon: null, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
+    archetype: { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
+    character: { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
   };
 
   // Snapshot the live UI/working state into entityState[currentEntity].
@@ -364,8 +374,12 @@
   // eidolon range, so the state being left behind is up to date.
   function persistState() {
     const st = entityState[currentEntity];
-    st.mode = modeSelect.value || st.mode;
-    st.eidolon = eidolonSelect.value || st.eidolon;
+    // Use activeMode (the mode the loaded slice belongs to), NOT
+    // modeSelect.value — see the activeMode comment above for why.
+    const mode = activeMode || modeSelect.value;
+    const eidolon = eidolonSelect.value;
+    if (mode) st.mode = mode;
+    if (mode && eidolon) st.eidolonByMode[mode] = eidolon;
     st.search = searchInput.value;
     st.sortCol = sortCol;
     st.sortDir = sortDir;
@@ -472,6 +486,7 @@
     try {
       currentSlice = await loadSlice(path);
       statusLine.textContent = "";
+      activeMode = mode; // slice has now actually loaded for this mode — safe to attribute state to it
       displayCols = computeDisplayCols();
       populateMetricSelect(st.metric);
 
@@ -794,13 +809,18 @@
 
     const st = entityState[entity];
     populateModeSelect(st.mode);
-    populateEidolonSelect(st.eidolon);
+    populateEidolonSelect(st.eidolonByMode[modeSelect.value]);
     loadCurrentSlice(); // restores search/sort/selection/metric once the slice arrives
   }
 
   toggleArchetype.onclick = () => setEntity("archetype");
   toggleCharacter.onclick = () => setEntity("character");
-  modeSelect.onchange = () => { persistState(); populateEidolonSelect(); loadCurrentSlice(); };
+  modeSelect.onchange = () => {
+    persistState();
+    const st = entityState[currentEntity];
+    populateEidolonSelect(st.eidolonByMode[modeSelect.value]); // restore THIS mode's own eidolon range, not just the first option
+    loadCurrentSlice();
+  };
   eidolonSelect.onchange = () => { persistState(); loadCurrentSlice(); };
   metricSelect.onchange = () => { drawTrend(); persistState(); };
   searchInput.oninput = () => { renderTableBody(); persistState(); };
@@ -810,7 +830,7 @@
     statusLine.textContent = "Loading manifests…";
     await loadManifests();
     populateModeSelect(entityState.archetype.mode);
-    populateEidolonSelect(entityState.archetype.eidolon);
+    populateEidolonSelect(entityState.archetype.eidolonByMode[modeSelect.value]);
     loadCurrentSlice();
   })();
 </script>

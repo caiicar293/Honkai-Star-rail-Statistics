@@ -385,6 +385,31 @@
   let sortDir = 1;           // 1 asc, -1 desc
   let selectedIds = [];      // ordered list — supports unlimited multi-select
 
+  // Per-entity-type state store. Lets you set up a search/sort/comparison on
+  // Archetypes, flip to Characters, do something else, and flip back to find
+  // Archetypes exactly as you left it. Also what preserves search/sort/
+  // selection/metric across Eidolon Range switches within the same entity
+  // type (mode + eidolon are stored here too, so re-entering an entity type
+  // restores the exact slice you were on, not just the first option).
+  const entityState = {
+    archetype: { mode: null, eidolon: null, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
+    character: { mode: null, eidolon: null, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
+  };
+
+  // Snapshot the live UI/working state into entityState[currentEntity].
+  // Call this right before anything that might switch entity type, mode, or
+  // eidolon range, so the state being left behind is up to date.
+  function persistState() {
+    const st = entityState[currentEntity];
+    st.mode = modeSelect.value || st.mode;
+    st.eidolon = eidolonSelect.value || st.eidolon;
+    st.search = searchInput.value;
+    st.sortCol = sortCol;
+    st.sortDir = sortDir;
+    st.selectedIds = selectedIds.slice();
+    st.metric = metricSelect.value || st.metric;
+  }
+
   function fmtValue(v) {
     if (v === null || v === undefined) return "—";
     if (typeof v === "number") {
@@ -424,7 +449,7 @@
     }
   }
 
-  function populateModeSelect() {
+  function populateModeSelect(desired) {
     const manifest = manifests[currentEntity];
     modeSelect.innerHTML = "";
     if (!manifest) {
@@ -440,9 +465,10 @@
       opt.textContent = MODE_LABELS[m] || m;
       modeSelect.appendChild(opt);
     }
+    if (desired && modes.includes(desired)) modeSelect.value = desired;
   }
 
-  function populateEidolonSelect() {
+  function populateEidolonSelect(desired) {
     const manifest = manifests[currentEntity];
     eidolonSelect.innerHTML = "";
     if (!manifest || !manifest[modeSelect.value]) return;
@@ -455,10 +481,11 @@
       opt.textContent = eidolonLabel(k);
       eidolonSelect.appendChild(opt);
     }
+    if (desired && keys.includes(desired)) eidolonSelect.value = desired;
   }
 
-  function populateMetricSelect() {
-    const prev = metricSelect.value;
+  function populateMetricSelect(desired) {
+    const prev = desired || metricSelect.value;
     metricSelect.innerHTML = "";
     if (!currentSlice) return;
     for (const m of currentSlice.trend_metrics) {
@@ -478,21 +505,38 @@
     if (!manifest || !mode || !range) return;
     const path = manifest[mode][range];
     statusLine.textContent = "Loading slice…";
+    const st = entityState[currentEntity];
     try {
       currentSlice = await loadSlice(path);
       statusLine.textContent = "";
       displayCols = computeDisplayCols();
-      populateMetricSelect();
-      // Default sort: most-played first, if the column exists in this slice.
-      if (displayCols.includes(DEFAULT_SORT_COL)) {
+      populateMetricSelect(st.metric);
+
+      // Restore this entity type's remembered sort, falling back to the
+      // most-played default only the first time this entity type is used
+      // (or if the remembered column doesn't exist in this slice).
+      if (st.sortCol && displayCols.includes(st.sortCol)) {
+        sortCol = st.sortCol;
+        sortDir = st.sortDir;
+      } else if (displayCols.includes(DEFAULT_SORT_COL)) {
         sortCol = DEFAULT_SORT_COL;
         sortDir = -1;
       } else {
         sortCol = null;
+        sortDir = 1;
       }
-      selectedIds = [];
+
+      // Restore search text and multi-select comparison — carried across
+      // both Eidolon Range switches and Archetype/Character toggles. IDs
+      // that don't exist in the new slice just won't resolve to a row/series
+      // (handled gracefully in renderTableBody/drawTrend), so nothing breaks
+      // if the entity set differs slightly between slices.
+      searchInput.value = st.search || "";
+      selectedIds = st.selectedIds ? st.selectedIds.slice() : [];
+
       renderTable();
       drawTrend();
+      persistState();
     } catch (e) {
       statusLine.textContent = "Failed to load slice: " + path;
       console.error(e);
@@ -524,6 +568,7 @@
         if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
         renderTableBody();
         updateSortIndicators();
+        persistState();
       };
     });
 
@@ -589,12 +634,14 @@
     else selectedIds.splice(idx, 1);
     renderTableBody();
     drawTrend();
+    persistState();
   }
 
   clearSelectionBtn.onclick = () => {
     selectedIds = [];
     renderTableBody();
     drawTrend();
+    persistState();
   };
 
   // ── Trend chart (pure SVG, redrawn on selection or metric change) ──
@@ -775,26 +822,33 @@
 
   // ── Event wiring ──
   function setEntity(entity) {
+    if (entity === currentEntity && manifests[entity]) return; // already active, nothing to restore
+    persistState(); // snapshot whatever was set up on the entity type we're leaving
+
     currentEntity = entity;
     toggleArchetype.classList.toggle("active", entity === "archetype");
     toggleCharacter.classList.toggle("active", entity === "character");
-    populateModeSelect();
-    populateEidolonSelect();
-    loadCurrentSlice();
+
+    const st = entityState[entity];
+    populateModeSelect(st.mode);
+    populateEidolonSelect(st.eidolon);
+    loadCurrentSlice(); // restores search/sort/selection/metric once the slice arrives
   }
 
   toggleArchetype.onclick = () => setEntity("archetype");
   toggleCharacter.onclick = () => setEntity("character");
-  modeSelect.onchange = () => { populateEidolonSelect(); loadCurrentSlice(); };
-  eidolonSelect.onchange = () => loadCurrentSlice();
-  metricSelect.onchange = () => drawTrend();
-  searchInput.oninput = () => renderTableBody();
+  modeSelect.onchange = () => { persistState(); populateEidolonSelect(); loadCurrentSlice(); };
+  eidolonSelect.onchange = () => { persistState(); loadCurrentSlice(); };
+  metricSelect.onchange = () => { drawTrend(); persistState(); };
+  searchInput.oninput = () => { renderTableBody(); persistState(); };
 
   // ── Boot ──
   (async function init() {
     statusLine.textContent = "Loading manifests…";
     await loadManifests();
-    setEntity("archetype");
+    populateModeSelect(entityState.archetype.mode);
+    populateEidolonSelect(entityState.archetype.eidolon);
+    loadCurrentSlice();
   })();
 </script>
 </body>

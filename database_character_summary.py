@@ -167,14 +167,14 @@ class CharacterMetaAnalyzer:
             # Removed nested MIN/MAX inside LIST() -> changed to LIST(Average_Score)
             list_values = """
                 
-                LIST(Appearance_Rate_pct) AS Appearance_Rate_pct_List,
-                LIST(Min_Score) AS Min_Score_List,
-                LIST(Average_Score) AS Average_Score_List,
-                LIST(Min_Score) AS Max_Score_List,
-                LIST(Median_Score) AS Median_Score_List,
-                LIST(Samples) AS Samples_List,
-                LIST(Sustain_Percentage) AS Sustain_Percentage_List,
-                LIST(Full_Clear_Rate_pct) AS Full_Star_Rate_pct_List,
+                LIST(Appearance_Rate_pct ORDER BY version DESC) AS Appearance_Rate_pct_List,
+                LIST(Min_Score ORDER BY version DESC) AS Min_Score_List,
+                LIST(Average_Score ORDER BY version DESC) AS Average_Score_List,
+                LIST(Max_Score ORDER BY version DESC) AS Max_Score_List,
+                LIST(Median_Score ORDER BY version DESC) AS Median_Score_List,
+                LIST(Samples ORDER BY version DESC) AS Samples_List,
+                LIST(Sustain_Percentage ORDER BY version DESC) AS Sustain_Percentage_List,
+                LIST(Full_Clear_Rate_pct ORDER BY version DESC) AS Full_Star_Rate_pct_List,
             """
             
 

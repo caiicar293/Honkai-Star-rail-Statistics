@@ -89,7 +89,7 @@ class HonkaiMetaAnalyzer:
                 LIST(Usage_pct) AS Appearance_pct_List,
                 LIST(Min_Score) AS Min_Score_List,
                 LIST(Average_Score) AS Average_Score_List,
-                LIST(Min_Score) AS Max_Score_List,
+                LIST(Max_Score) AS Max_Score_List,
                 LIST(Median_Score) AS Median_Score_List,
                 LIST(Samples) AS Samples_List,
                 LIST(Sustain_Percentage) AS Sustain_Percentage_List,
@@ -117,7 +117,7 @@ class HonkaiMetaAnalyzer:
                 -- Metadata
                 SUM(Samples)                                                           AS Total_Samples,
                 COUNT(DISTINCT version)                                                AS Versions_Count,
-                STRING_AGG(DISTINCT version, ', ')                                     AS Versions_Used,
+                STRING_AGG(DISTINCT version, ', ' ORDER BY version DESC)               AS Versions_Used,
                 ROUND(
                     100.0 * SUM(Sustain_Samples) / NULLIF(SUM(Samples), 0),      
                     2

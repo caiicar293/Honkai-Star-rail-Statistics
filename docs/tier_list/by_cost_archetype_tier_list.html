@@ -118,6 +118,64 @@
     border-radius: 4px; padding: 4px 9px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
   }
   .cost-preset-btn:hover, .cost-preset-btn.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.07); }
+  .cost-panel.locked { opacity: 0.45; pointer-events: none; position: relative; }
+  .cost-panel-lock-note { width: 100%; font-size: 11px; color: var(--accent); font-family: 'Share Tech Mono', monospace; letter-spacing: 0.05em; margin-top: -4px; }
+
+  /* RANKING MODE TABS (Tier List vs Cost Efficiency) */
+  .ranking-mode-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .ranking-mode-tab {
+    background: var(--panel2); border: 1.5px solid var(--border2); color: var(--text2);
+    font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 9px 18px; border-radius: 8px; cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+  }
+  .ranking-mode-tab:hover { border-color: var(--teal); color: var(--teal); }
+  .ranking-mode-tab.active { background: rgba(45,212,191,0.14); border-color: var(--teal); color: var(--teal); box-shadow: 0 0 14px rgba(45,212,191,0.2); }
+
+  /* EFFICIENCY PANEL */
+  .efficiency-panel {
+    background: var(--panel); border: 1px solid var(--teal); border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end;
+  }
+  .efficiency-panel-title { font-size: 10px; color: var(--teal); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; width: 100%; margin-bottom: 2px; }
+  .efficiency-target-group { display: flex; flex-direction: column; gap: 6px; min-width: 200px; }
+  .efficiency-target-group input[type="number"] {
+    width: 140px; background: var(--bg2); border: 1px solid var(--border2); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 13px; padding: 6px 10px; border-radius: 4px; outline: none;
+  }
+  .efficiency-target-group input[type="number"]:focus { border-color: var(--teal); }
+
+  /* COST TIER EDITOR (inside Tier Settings panel) */
+  .cost-tier-row { display: flex; align-items: center; gap: 6px; font-family: 'Share Tech Mono', monospace; font-size: 11.5px; }
+  .cost-tier-row label { width: 62px; color: var(--text2); flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cost-tier-row input[type="number"] {
+    width: 62px; background: var(--bg2); border: 1px solid var(--border2); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 11.5px; padding: 4px 6px; border-radius: 4px; outline: none;
+  }
+  .cost-tier-row input[type="number"]:focus { border-color: var(--teal); }
+  .cost-tier-row span.dash { color: var(--text3); }
+
+  /* EFFICIENCY RESULTS LIST -- grouped into Cost Efficiency Tier brackets
+     (same labels/ranges as the Cost Tier Presets editor in Tier Settings) */
+  .efficiency-tier-list { display: flex; flex-direction: column; gap: 10px; }
+  .efficiency-tier-row { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); box-shadow: 0 4px 30px rgba(0,0,0,0.35); }
+  .efficiency-tier-label-wrap { width: 108px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 10px 6px; text-align: center; }
+  .efficiency-tier-label { font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 800; color: #0a0e18; text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.15; }
+  .efficiency-tier-range { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: rgba(10,14,24,0.8); }
+  .efficiency-tier-count { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: rgba(10,14,24,0.65); text-transform: uppercase; letter-spacing: 0.05em; }
+  .efficiency-tier-content { display: flex; flex-direction: column; gap: 8px; padding: 14px; flex-grow: 1; }
+  .efficiency-tier-content:empty::after { content: 'No entries reach the target score in this cost bracket'; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px; }
+  .efficiency-row {
+    display: flex; align-items: center; gap: 14px; background: var(--panel2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 10px 16px;
+  }
+  .efficiency-rank {
+    font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 800; color: var(--teal);
+    width: 34px; flex-shrink: 0; text-align: center;
+  }
+  .efficiency-row .arch-card-icons { flex-shrink: 0; }
+  .efficiency-row .arch-card-name { flex: 1; min-width: 120px; }
+  .efficiency-row .arch-card-stats { flex-shrink: 0; }
+  .stat-pill.cost-hero { color: var(--bg); background: var(--teal); border-color: var(--teal); font-weight: 700; }
 
   /* TIER SETTINGS PANEL */
   /* VERSION HISTORY NAV */
@@ -281,6 +339,11 @@
     <button class="category-tab" data-category="amplifier">⚡ Amplifiers</button>
   </div>
 
+  <div class="ranking-mode-tabs" id="rankingModeTabs">
+    <button class="ranking-mode-tab active" data-ranking-mode="tier">🏆 Tier List</button>
+    <button class="ranking-mode-tab" data-ranking-mode="efficiency">💰 Cost Efficiency</button>
+  </div>
+
   <div class="mode-tabs" id="modeTabs"></div>
 
   <div class="version-panel" id="versionPanel">
@@ -325,8 +388,9 @@
     </div>
   </div>
 
-  <div class="cost-panel">
+  <div class="cost-panel" id="costPanel">
     <div class="cost-panel-title">Cost Range — filter by estimated_min_cost and estimated_max_cost (sliding window buckets)</div>
+    <div class="cost-panel-lock-note" id="costPanelLockNote" style="display:none;">🔒 Locked to All while Cost Efficiency mode is active — it ranks across the whole cost range by design.</div>
     <div class="cost-range-group">
       <div class="cost-range-label">Min Cost ≥ <span id="minCostLabel">0</span></div>
       <input type="range" id="minCostSlider" min="0" max="28" step="1" value="0"/>
@@ -337,15 +401,20 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:5px;">
       <div class="ctrl-label">Quick Presets</div>
-      <div class="cost-presets">
-        <button class="cost-preset-btn" data-min="0" data-max="4">F2P (0–4)</button>
-        <button class="cost-preset-btn" data-min="0" data-max="8">Budget (0–8)</button>
-        <button class="cost-preset-btn" data-min="8" data-max="16">Mid (8–16)</button>
-        <button class="cost-preset-btn" data-min="16" data-max="24">High (16–24)</button>
-        <button class="cost-preset-btn" data-min="24" data-max="32">Whale (24–32)</button>
+      <div class="cost-presets" id="costPresets">
         <button class="cost-preset-btn active" id="costResetBtn">All</button>
       </div>
     </div>
+  </div>
+
+  <div class="efficiency-panel" id="efficiencyPanel" style="display:none;">
+    <div class="efficiency-panel-title">Cost Efficiency — results grouped into Cost Efficiency Tier brackets below (cost range auto-set to All, see above)</div>
+    <div class="efficiency-target-group">
+      <div class="cost-range-label" id="efficiencyTargetLabelWrap">Target <span id="efficiencyDirectionLabel">score ≤</span></div>
+      <input type="number" step="0.01" id="efficiencyTargetInput"/>
+    </div>
+    <div class="direction-note" id="efficiencyDirectionNote"></div>
+    <button class="reset-btn" id="resetEfficiencyBtn">Reset Target To Default</button>
   </div>
 
   <div class="settings-toggle" id="settingsToggle"><span class="chev">▶</span> Tier Settings — performance thresholds &amp; min appearance rate</div>
@@ -373,6 +442,11 @@
       <div class="threshold-row"><span class="tswatch" style="background:var(--t15)"></span><label>T1.5 <</label><input type="number" step="0.01" id="thresh_T1_5"/></div>
       <div class="threshold-row"><span class="tswatch" style="background:var(--t2)"></span><label>T2</label><span style="color:var(--text3)">everything else</span></div>
       <button class="reset-btn" id="resetModeBtn">Reset This Mode</button>
+    </div>
+    <div class="settings-col">
+      <div class="ctrl-label">Cost Efficiency Tiers (Quick Presets above + ranking brackets in Cost Efficiency mode)</div>
+      <div id="costTierEditor"></div>
+      <button class="reset-btn" id="resetCostTiersBtn">Reset Cost Tiers To Defaults</button>
     </div>
   </div>
 
@@ -410,6 +484,46 @@ const HISTORY_MANIFEST = [{"group_num": 1, "file": "history/by_cost_archetype_hi
 
 let TIER_CONFIG = JSON.parse(JSON.stringify(DEFAULT_TIER_CONFIG));
 const DEFAULT_MIN_APPEARANCE = 0.1;
+
+// ---------------------------------------------------------------------
+// COST TIER PRESETS — the Quick Presets buttons in the Cost Range panel.
+// Purely a UI convenience for setting costMinFilter/costMaxFilter; edit
+// defaults in by_cost_archetype_tier_list_generator.py (DEFAULT_COST_TIERS)
+// or live in-browser via the Cost Tier Presets editor in Tier Settings.
+// ---------------------------------------------------------------------
+const DEFAULT_COST_TIERS = [{"key": "f2p", "label": "F2P", "min": 0, "max": 4}, {"key": "budget", "label": "Budget", "min": 0, "max": 8}, {"key": "mid", "label": "Mid", "min": 8, "max": 16}, {"key": "high", "label": "High", "min": 16, "max": 24}, {"key": "whale", "label": "Whale", "min": 24, "max": 32}];
+let COST_TIERS = JSON.parse(JSON.stringify(DEFAULT_COST_TIERS));
+
+// Color palette cycled across however many Cost Efficiency Tiers exist
+// (COST_TIERS is editable/reorderable via the Tier Settings panel, so the
+// count isn't fixed at 5). 'Unranked' (cost outside every configured
+// bracket) always gets --muted.
+const COST_TIER_PALETTE = ['var(--accent)','var(--teal)','var(--purple)','var(--gold)','var(--orange)','var(--green)','var(--red)'];
+
+// Assigns a row to the FIRST Cost Efficiency Tier (in COST_TIERS order)
+// whose [min,max] contains its estimated_min_cost. Tiers are allowed to
+// overlap (e.g. Budget 0–8 contains F2P's 0–4) -- first match wins, so
+// ordering the tiers cheapest-first in the editor gives the expected
+// "most specific bracket" grouping. Returns -1 if no configured tier
+// covers that cost (shown as an "Unranked" bucket).
+function assignCostTierIndex(cost) {
+  for (let i = 0; i < COST_TIERS.length; i++) {
+    if (cost >= COST_TIERS[i].min && cost <= COST_TIERS[i].max) return i;
+  }
+  return -1;
+}
+
+// ---------------------------------------------------------------------
+// COST EFFICIENCY — per-mode "reach at least this score" target used by
+// the Cost Efficiency ranking mode. Defaults mirror each mode's T1
+// threshold (see generator's DEFAULT_EFFICIENCY_TARGET); fully editable
+// live via the efficiency panel's Target input.
+// ---------------------------------------------------------------------
+const DEFAULT_EFFICIENCY_TARGET = {"MOC": 0.0, "ANOMALY_F0": 0.0, "ANOMALY_F4": 0.0, "ANOMALY_F5": 0.0, "APOC": 3850, "PURE_FICTION": 40000};
+let efficiencyTarget = JSON.parse(JSON.stringify(DEFAULT_EFFICIENCY_TARGET));
+let rankingMode = 'tier'; // 'tier' | 'efficiency'
+// Cost range remembered from Tier List mode, restored when leaving efficiency mode.
+let _savedCostMin = null, _savedCostMax = null;
 
 let RAW_DATA = [];
 let LATEST_DATA = null;           // the initially-loaded "Latest" dataset, cached for instant switch-back
@@ -505,6 +619,7 @@ function buildModeTabs() {
       document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
       btn.classList.add('active');
       syncThresholdInputs();
+      syncEfficiencyInputs();
       recompute();
     });
     wrap.appendChild(btn);
@@ -524,6 +639,7 @@ document.querySelectorAll('.category-tab').forEach(btn => {
     }
     buildModeTabs();
     syncThresholdInputs();
+    syncEfficiencyInputs();
     recompute();
   });
 });
@@ -540,6 +656,73 @@ function syncThresholdInputs() {
   document.getElementById('thresh_T1').value   = cfg.thresholds.T1;
   document.getElementById('thresh_T1_5').value = cfg.thresholds.T1_5;
 }
+
+// Keeps the Cost Efficiency panel's Target input/label/direction note in
+// sync with the currently-selected mode. Called whenever currentMode
+// changes (mode tab, category tab, or a dataset/version switch).
+function syncEfficiencyInputs() {
+  if (!currentMode) return;
+  const cfg = TIER_CONFIG[currentMode];
+  const cmp = cfg.direction === 'asc' ? 'score ≤' : 'score ≥';
+  document.getElementById('efficiencyDirectionLabel').textContent = cmp;
+  document.getElementById('efficiencyTargetInput').value = efficiencyTarget[currentMode];
+  document.getElementById('efficiencyDirectionNote').textContent = cfg.direction === 'asc'
+    ? 'Lower score = better (cycles used) — cheapest way to stay at or under this score'
+    : 'Higher score = better (points) — cheapest way to reach at least this score';
+}
+
+document.getElementById('efficiencyTargetInput').addEventListener('input', e => {
+  if (!currentMode) return;
+  const v = parseFloat(e.target.value);
+  if (!isNaN(v)) { efficiencyTarget[currentMode] = v; recompute(); }
+});
+document.getElementById('resetEfficiencyBtn').addEventListener('click', () => {
+  if (!currentMode) return;
+  efficiencyTarget[currentMode] = DEFAULT_EFFICIENCY_TARGET[currentMode];
+  syncEfficiencyInputs();
+  recompute();
+});
+
+// Locks the Cost Range panel to the dataset's full bounds while Cost
+// Efficiency mode is active -- efficiency ranking is meant to search the
+// whole cost range for the cheapest option, not a pre-narrowed slice.
+function lockCostPanelToAll() {
+  _savedCostMin = costMinFilter; _savedCostMax = costMaxFilter;
+  clearPresets();
+  document.getElementById('costResetBtn').classList.add('active');
+  applyPreset(MIN_COST_G, MAX_COST_G);
+  document.getElementById('costPanel').classList.add('locked');
+  document.getElementById('costPanelLockNote').style.display = 'block';
+}
+function unlockCostPanel() {
+  document.getElementById('costPanel').classList.remove('locked');
+  document.getElementById('costPanelLockNote').style.display = 'none';
+  if (_savedCostMin != null && _savedCostMax != null) {
+    clearPresets();
+    document.getElementById('costResetBtn').classList.remove('active');
+    applyPreset(_savedCostMin, _savedCostMax);
+  }
+}
+
+document.querySelectorAll('.ranking-mode-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.rankingMode;
+    if (mode === rankingMode) return;
+    rankingMode = mode;
+    document.querySelectorAll('.ranking-mode-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    const effPanel = document.getElementById('efficiencyPanel');
+    if (rankingMode === 'efficiency') {
+      effPanel.style.display = 'flex';
+      syncEfficiencyInputs();
+      lockCostPanelToAll();
+    } else {
+      effPanel.style.display = 'none';
+      unlockCostPanel();
+    }
+    recompute();
+  });
+});
 
 ['thresh_T0','thresh_T0_5','thresh_T1','thresh_T1_5'].forEach(id => {
   document.getElementById(id).addEventListener('input', e => {
@@ -558,10 +741,15 @@ document.getElementById('resetModeBtn').addEventListener('click', () => {
 });
 document.getElementById('resetAllBtn').addEventListener('click', () => {
   TIER_CONFIG = JSON.parse(JSON.stringify(DEFAULT_TIER_CONFIG));
+  efficiencyTarget = JSON.parse(JSON.stringify(DEFAULT_EFFICIENCY_TARGET));
+  COST_TIERS = JSON.parse(JSON.stringify(DEFAULT_COST_TIERS));
   minAppearance = DEFAULT_MIN_APPEARANCE;
   document.getElementById('minAppSlider').value = DEFAULT_MIN_APPEARANCE;
   document.getElementById('minAppLabel').textContent = DEFAULT_MIN_APPEARANCE;
   syncThresholdInputs();
+  syncEfficiencyInputs();
+  renderCostTierEditor();
+  renderCostPresets();
   recompute();
 });
 
@@ -634,25 +822,63 @@ function applyPreset(mn, mx) {
   document.getElementById('maxCostLabel').textContent = mx;
   sliderFill(minSlider); sliderFill(maxSlider); recompute();
 }
-document.querySelectorAll('.cost-preset-btn[data-min]').forEach(btn => {
-  btn.addEventListener('click', () => { clearPresets(); btn.classList.add('active'); applyPreset(+btn.dataset.min, +btn.dataset.max); });
-});
+
+// Rebuilds the Quick Presets buttons from COST_TIERS (adjustable via the
+// Cost Tier Presets editor in Tier Settings) plus the static "All" button.
+function renderCostPresets() {
+  const wrap = document.getElementById('costPresets');
+  wrap.querySelectorAll('.cost-preset-btn[data-min]').forEach(b => b.remove());
+  const allBtn = document.getElementById('costResetBtn');
+  COST_TIERS.forEach(tier => {
+    const btn = document.createElement('button');
+    btn.className = 'cost-preset-btn';
+    btn.dataset.min = tier.min; btn.dataset.max = tier.max;
+    btn.textContent = `${tier.label} (${tier.min}\u2013${tier.max})`;
+    btn.addEventListener('click', () => { clearPresets(); btn.classList.add('active'); applyPreset(tier.min, tier.max); });
+    wrap.insertBefore(btn, allBtn);
+  });
+}
 document.getElementById('costResetBtn').addEventListener('click', () => {
   clearPresets();
   document.getElementById('costResetBtn').classList.add('active');
   applyPreset(MIN_COST_G, MAX_COST_G);
 });
 
+// Builds the editable Cost Tier Presets rows inside Tier Settings, one
+// per entry in COST_TIERS -- editing min/max here reruns renderCostPresets()
+// so the Quick Presets buttons pick up the new values immediately.
+function renderCostTierEditor() {
+  const wrap = document.getElementById('costTierEditor');
+  wrap.innerHTML = '';
+  COST_TIERS.forEach((tier, i) => {
+    const row = document.createElement('div');
+    row.className = 'cost-tier-row';
+    row.innerHTML = `<label title="${tier.label}">${tier.label}</label>
+      <input type="number" step="1" value="${tier.min}" data-i="${i}" data-field="min"/>
+      <span class="dash">\u2013</span>
+      <input type="number" step="1" value="${tier.max}" data-i="${i}" data-field="max"/>`;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('input[type="number"]').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = +e.target.dataset.i, field = e.target.dataset.field;
+      const v = parseFloat(e.target.value);
+      if (!isNaN(v)) { COST_TIERS[i][field] = v; renderCostPresets(); recompute(); }
+    });
+  });
+}
+document.getElementById('resetCostTiersBtn').addEventListener('click', () => {
+  COST_TIERS = JSON.parse(JSON.stringify(DEFAULT_COST_TIERS));
+  renderCostTierEditor();
+  renderCostPresets();
+  recompute();
+});
+renderCostPresets();
+renderCostTierEditor();
+
 function recompute() {
   if (!currentMode) return;
   let candidate = RAW_DATA.filter(r => r.Game_Mode === currentMode && r.Category === currentCategory);
-
-  if (searchTerm.length >= 2) {
-    const hits = searchIndex(searchTerm);
-    candidate = hits ? candidate.filter(r => hits.has(r._idx)) : [];
-  } else if (searchTerm.length === 1) {
-    candidate = candidate.filter(r => r._coreLower.includes(searchTerm));
-  }
 
   candidate = candidate.filter(r => {
     if (!activeMeids.has(Math.round(r.max_eidolon))) return false;
@@ -664,6 +890,38 @@ function recompute() {
   });
 
   const cfg = TIER_CONFIG[currentMode];
+
+  if (rankingMode === 'efficiency') {
+    const target = efficiencyTarget[currentMode];
+    let qualifying = [];
+    let hidden = 0;
+    candidate.forEach(r => {
+      if ((r.Simple_Avg_Appearance || 0) < minAppearance) { hidden++; return; }
+      const score = r[scoreMetric];
+      if (score == null || isNaN(score)) return;
+      const meets = cfg.direction === 'asc' ? score <= target : score >= target;
+      if (meets) qualifying.push(r);
+    });
+    // Cheapest min-cost first; ties broken by best score at that cost.
+    qualifying.sort((a, b) => {
+      if (a.estimated_min_cost !== b.estimated_min_cost) return a.estimated_min_cost - b.estimated_min_cost;
+      const av = a[scoreMetric], bv = b[scoreMetric];
+      return cfg.direction === 'asc' ? av - bv : bv - av;
+    });
+    // Assign one continuous #1..#N rank across the FULL qualifying set --
+    // spanning every Cost Efficiency Tier bracket -- BEFORE search narrows
+    // anything. Search is a find-in-list tool here, not a re-ranking
+    // filter, so a row's number stays fixed no matter what's typed.
+    qualifying.forEach((r, i) => { r._effRank = i + 1; });
+
+    const displayed = applySearchFilter(qualifying);
+    renderEfficiencyList(displayed, cfg, target);
+    updateEfficiencyMeta(displayed, hidden, target, cfg, qualifying.length);
+    return;
+  }
+
+  candidate = applySearchFilter(candidate);
+
   const ranked = [];
   let hidden = 0;
   candidate.forEach(r => {
@@ -681,6 +939,19 @@ function recompute() {
   updateMeta(ranked, hidden);
 }
 
+// Shared search-narrowing step used by both ranking modes. Kept separate
+// from the rest of recompute()'s filtering so Cost Efficiency mode can
+// run it AFTER ranks are assigned (see note above).
+function applySearchFilter(rows) {
+  if (searchTerm.length >= 2) {
+    const hits = searchIndex(searchTerm);
+    return hits ? rows.filter(r => hits.has(r._idx)) : [];
+  } else if (searchTerm.length === 1) {
+    return rows.filter(r => r._coreLower.includes(searchTerm));
+  }
+  return rows;
+}
+
 function updateMeta(ranked, hidden) {
   document.getElementById('visibleCount').textContent = ranked.length.toLocaleString();
   document.getElementById('hiddenCount').textContent  = hidden.toLocaleString();
@@ -689,6 +960,88 @@ function updateMeta(ranked, hidden) {
     `Showing <span>${ranked.length}</span> ranked ${CATEGORY_META[currentCategory].noun} for <span>${MODE_META[currentMode]?.label || currentMode}</span> · ` +
     `metric <span>${scoreMetric}</span> · min appearance <span>${minAppearance}%</span> · ` +
     `<span>${hidden}</span> hidden below threshold`;
+}
+
+function updateEfficiencyMeta(displayed, hidden, target, cfg, totalQualifying) {
+  document.getElementById('visibleCount').textContent = totalQualifying.toLocaleString();
+  document.getElementById('hiddenCount').textContent  = hidden.toLocaleString();
+  document.getElementById('costRangeDisplay').textContent = 'All';
+  const cmp = cfg.direction === 'asc' ? '≤' : '≥';
+  const searchNote = displayed.length !== totalQualifying ? ` · <span>${displayed.length}</span> shown for search` : '';
+  document.getElementById('resultsInfo').innerHTML =
+    `<span>${totalQualifying}</span> ${CATEGORY_META[currentCategory].noun} reach score ${cmp} <span>${target}</span> for <span>${MODE_META[currentMode]?.label || currentMode}</span>${searchNote} · ` +
+    `metric <span>${scoreMetric}</span> · ranks are continuous across cost brackets · min appearance <span>${minAppearance}%</span> · ` +
+    `<span>${hidden}</span> hidden below threshold`;
+}
+
+function efficiencyRowHTML(r, rank, scoreMetric) {
+  const eid = Math.round(r.max_eidolon);
+  const sustainCls = r.Sustain_Rate_pct >= 50 ? 'sustain-hi' : 'sustain-lo';
+  return `<div class="efficiency-row">
+    <div class="efficiency-rank">#${rank}</div>
+    <div class="arch-card-icons">${r._iconsHtml}</div>
+    <div class="arch-card-name" title="${r.Archetype_Core}">${r.Archetype_Core}</div>
+    <div class="arch-card-stats">
+      <span class="stat-pill cost-hero">${r.estimated_min_cost}→${r.estimated_max_cost}</span>
+      <span class="stat-pill score">${fmtNum(r[scoreMetric], 2)}</span>
+      <span class="stat-pill rate">${fmtPct(r.Simple_Avg_Appearance)} app.</span>
+      <span class="stat-pill eid">E${eid}</span>
+      <span class="stat-pill ${sustainCls}">${fmtPct(r.Sustain_Rate_pct)} sus.</span>
+      <span class="stat-pill full-star">${fmtPct(r.Full_Star_Rate_pct)} 3★</span>
+      <span class="stat-pill">n=${fmtInt(r.Total_Samples)}</span>
+    </div>
+  </div>`;
+}
+
+function renderEfficiencyList(qualifying, cfg, target) {
+  const container = document.getElementById('tierListContainer');
+  container.innerHTML = '';
+  if (!qualifying.length) {
+    const cmp = cfg.direction === 'asc' ? '≤' : '≥';
+    container.innerHTML = `<div class="empty-state"><div class="icon">💰</div><p>No ${CATEGORY_META[currentCategory].noun} reach score ${cmp} ${target} under current filters</p></div>`;
+    return;
+  }
+
+  // Group into Cost Efficiency Tier brackets (COST_TIERS -- the same rows
+  // edited in the Tier Settings "Cost Efficiency Tiers" editor and shown
+  // as Quick Presets buttons above). `qualifying` is already sorted
+  // cheapest-min-cost-first by the caller, so each bucket comes out
+  // pre-sorted too.
+  const buckets = COST_TIERS.map(() => []);
+  const unranked = [];
+  qualifying.forEach(r => {
+    const idx = assignCostTierIndex(r.estimated_min_cost);
+    (idx === -1 ? unranked : buckets[idx]).push(r);
+  });
+
+  const list = document.createElement('div');
+  list.className = 'efficiency-tier-list';
+  COST_TIERS.forEach((tier, idx) => {
+    list.appendChild(costTierRow(tier.label, tier.min, tier.max, buckets[idx], COST_TIER_PALETTE[idx % COST_TIER_PALETTE.length]));
+  });
+  if (unranked.length) {
+    list.appendChild(costTierRow('Unranked', null, null, unranked, 'var(--muted)'));
+  }
+  container.appendChild(list);
+}
+
+function costTierRow(label, min, max, items, color) {
+  const row = document.createElement('div');
+  row.className = 'efficiency-tier-row';
+
+  const labelWrap = document.createElement('div');
+  labelWrap.className = 'efficiency-tier-label-wrap';
+  labelWrap.style.background = color;
+  const rangeText = (min == null || max == null) ? 'out of range' : `${min}–${max}`;
+  labelWrap.innerHTML = `<div class="efficiency-tier-label">${label}</div><div class="efficiency-tier-range">${rangeText}</div><div class="efficiency-tier-count">${items.length}</div>`;
+  row.appendChild(labelWrap);
+
+  const content = document.createElement('div');
+  content.className = 'efficiency-tier-content';
+  content.innerHTML = items.map(r => efficiencyRowHTML(r, r._effRank, scoreMetric)).join('');
+  row.appendChild(content);
+
+  return row;
 }
 
 function cardHTML(r) {
@@ -789,6 +1142,7 @@ function prepareData() {
   }
   buildModeTabs();
   syncThresholdInputs();
+  syncEfficiencyInputs();
 }
 
 let _brotliPromise = null;

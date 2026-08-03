@@ -113,6 +113,28 @@ DEFAULT_TIER_CONFIG = {
     },
 }
 
+# ---------------------------------------------------------------------
+# Default cost-bracket presets shown as Quick Preset buttons in the cost
+# panel. Purely a UI convenience -- editable live in-browser via the
+# "Cost Tier Settings" editor in the Tier Settings panel, same pattern as
+# DEFAULT_TIER_CONFIG. min/max are in the same estimated_min_cost /
+# estimated_max_cost units as the DB columns.
+# ---------------------------------------------------------------------
+DEFAULT_COST_TIERS = [
+    {"key": "f2p",    "label": "F2P",    "min": 0,  "max": 4},
+    {"key": "budget", "label": "Budget", "min": 0,  "max": 8},
+    {"key": "mid",    "label": "Mid",    "min": 8,  "max": 16},
+    {"key": "high",   "label": "High",   "min": 16, "max": 24},
+    {"key": "whale",  "label": "Whale",  "min": 24, "max": 32},
+]
+
+# Default "reach at least this score" target that seeds the Cost
+# Efficiency ranking mode's per-mode threshold input. Mirrors each mode's
+# T1 boundary from DEFAULT_TIER_CONFIG above -- i.e. the out-of-the-box
+# question is "what's the cheapest way to be at least T1-tier?". Fully
+# adjustable live in-browser, same as the tier thresholds.
+DEFAULT_EFFICIENCY_TARGET = {"MOC": 0.0 , "ANOMALY_F0": 0.0, "ANOMALY_F4": 0.0, "ANOMALY_F5": 0.0, "APOC": 3850, "PURE_FICTION": 40000}
+
 MODE_META = {
     "MOC":          {"label": "MOC",         "full": "Memory of Chaos"},
     "APOC":         {"label": "APOC",        "full": "Apocalyptic Shadow"},
@@ -235,7 +257,7 @@ def fetch_character_rolling_data_by_group(db_path: str, group_num: int, characte
             Best_Version_Avg, 
             Min_Score,
             Max_Score,
-            Total_Full_Star_Clears AS Total_Full_Clears,
+            Total_Full_Clears,
             Total_Samples, 
             Full_Star_Rate_pct, 
             Total_Sustain_Samples,
@@ -359,6 +381,8 @@ def build(args):
         "tier_config_json": json.dumps(DEFAULT_TIER_CONFIG, ensure_ascii=False),
         "mode_meta_json": json.dumps(MODE_META, ensure_ascii=False),
         "default_min_appearance": DEFAULT_MIN_APPEARANCE,
+        "cost_tiers_json": json.dumps(DEFAULT_COST_TIERS, ensure_ascii=False),
+        "efficiency_target_json": json.dumps(DEFAULT_EFFICIENCY_TARGET, ensure_ascii=False),
         "history_manifest_json": json.dumps(history_manifest, ensure_ascii=False),
     }
 

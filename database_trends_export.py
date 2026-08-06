@@ -85,6 +85,13 @@ TABLE_CONFIGS = [
         "output_dir":   "docs/trends/characters",
         "manifest_path": "docs/trends/character_trends_manifest.json",
     },
+    {
+        "table":        "team_meta_summary",
+        "identity_col": "Team",
+        "entity_type":  "team",
+        "output_dir":   "docs/trends/teams",
+        "manifest_path": "docs/trends/team_trends_manifest.json",
+    },
 ]
 
 

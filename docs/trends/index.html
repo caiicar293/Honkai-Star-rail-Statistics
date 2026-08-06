@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>HSR Meta Trends — Archetype &amp; Character History</title>
+<title>HSR Meta Trends — Archetype, Character &amp; Team History</title>
 <link rel="icon" type="image/jpeg" href="../favicon.jpg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
@@ -57,6 +57,60 @@
   select.ctrl-select:focus, input.ctrl-input:focus { outline: none; border-color: var(--accent); }
   .ctrl-hint { font-size: 11px; color: var(--text3); font-family: 'Share Tech Mono', monospace; }
 
+  /* Team character picker — unlimited include/exclude chips, ported from
+     by_cost_teams_template.html.j2's unified picker. No per-character eidolon
+     sub-row and no cost panel here: team_meta_summary's Team field carries no
+     per-member eidolon tags (eidolon is already a slice dimension, selected
+     via Eidolon Range above), and this table has no cost dimension at all. */
+  .picker-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; display: none; }
+  .picker-panel.visible { display: block; }
+  .picker-panel-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; margin-bottom: 2px; }
+  .picker-panel-hint { font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; margin-bottom: 10px; }
+  .picker-panel-hint kbd { background: var(--bg2); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 5px; font-size: 10px; color: var(--accent2); }
+
+  .picker-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .picker-chip {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 16px; padding: 3px 6px 3px 4px;
+    font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 700; border: 1px solid; cursor: default;
+    user-select: none; transition: transform 0.1s;
+  }
+  .picker-chip:hover { transform: translateY(-1px); }
+  .picker-chip.include { color: var(--green); border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
+  .picker-chip.exclude { color: var(--red);   border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); }
+  .picker-chip img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.15); }
+  .picker-chip .chip-icon-ph { width: 20px; height: 20px; border-radius: 50%; background: var(--panel2); display:flex; align-items:center; justify-content:center; font-size: 8px; color: var(--text3); }
+  .picker-chip .chip-mode { font-size: 10px; opacity: 0.8; }
+  .picker-chip .chip-remove { background: none; border: none; color: inherit; cursor: pointer; font-size: 13px; line-height: 1; padding: 1px 3px; border-radius: 50%; opacity: 0.7; transition: opacity 0.15s, background 0.15s; }
+  .picker-chip .chip-remove:hover { opacity: 1; background: rgba(255,255,255,0.12); }
+  .picker-chips-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0; }
+
+  .picker-search-wrap { position: relative; }
+  .picker-search-row { display: flex; gap: 8px; align-items: center; }
+  .picker-search-input-wrap { position: relative; flex: 1; min-width: 200px; max-width: 420px; }
+  .picker-search-input-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
+  #teamPickerInput { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
+  #teamPickerInput:focus { border-color: var(--accent); }
+  #teamPickerInput::placeholder { color: var(--text3); }
+  .picker-clear-all { background: var(--bg2); border: 1px solid var(--border); color: var(--text3); font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600; border-radius: 5px; padding: 7px 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .picker-clear-all:hover { border-color: var(--red); color: var(--red); }
+
+  .picker-grid-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+    background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    width: min(560px, 90vw); max-height: 360px; overflow-y: auto;
+  }
+  .picker-grid-dropdown.open { display: block; }
+  .picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; }
+  .picker-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 2px; border-radius: 6px; transition: background 0.12s; position: relative; }
+  .picker-cell:hover { background: rgba(56,189,248,0.08); }
+  .picker-cell img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--border2); }
+  .picker-cell .cell-icon-ph { width: 38px; height: 38px; border-radius: 50%; background: var(--panel); display:flex; align-items:center; justify-content:center; font-size: 10px; color: var(--text3); border: 1.5px solid var(--border2); }
+  .picker-cell .cell-name { font-size: 9px; color: var(--text2); text-align: center; line-height: 1.15; max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .picker-cell.is-include img, .picker-cell.is-include .cell-icon-ph { border-color: var(--green); box-shadow: 0 0 0 2px rgba(74,222,128,0.35); }
+  .picker-cell.is-exclude img, .picker-cell.is-exclude .cell-icon-ph { border-color: var(--red); box-shadow: 0 0 0 2px rgba(248,113,113,0.35); }
+  .picker-grid-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 16px; text-align: center; }
+
   .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
   .panel-title { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); gap: 10px; flex-wrap: wrap; }
   .panel-title .main { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; }
@@ -80,11 +134,15 @@
   table.data-table thead th.sorted-asc::after { content: ' ▲'; color: var(--accent); }
   table.data-table thead th.sorted-desc::after { content: ' ▼'; color: var(--accent); }
   table.data-table tbody td { padding: 6px 10px; border-bottom: 1px solid rgba(30,45,71,0.5); white-space: nowrap; }
-  table.data-table tbody tr { cursor: pointer; transition: background 0.12s ease; }
+  table.data-table tbody tr { height: 34px; cursor: pointer; transition: background 0.12s ease; }
   table.data-table tbody tr:hover { background: rgba(56,189,248,0.06); }
   table.data-table tbody tr.selected { background: rgba(56,189,248,0.14); }
   table.data-table tbody td.id-cell { font-weight: 700; color: var(--text); position: sticky; left: 0; background: inherit; }
   table.data-table tbody td.num-cell { font-family: 'Share Tech Mono', monospace; color: var(--accent2); text-align: right; }
+  .table-empty-row td { text-align: center; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 30px 0 !important; cursor: default; }
+  .table-spacer-row { cursor: default; }
+  .table-spacer-row:hover { background: none !important; }
+  .table-spacer-row td { padding: 0 !important; border: none !important; }
 
   .id-cell-inner { display: flex; align-items: center; gap: 6px; }
   .icon-strip { display: inline-flex; align-items: center; flex-shrink: 0; }
@@ -128,11 +186,12 @@
     <div>
       <div class="header-badge">Meta Intelligence</div>
       <h1>HSR Meta <span>Trends</span></h1>
-      <div class="header-sub">Version-over-version archetype &amp; character performance history</div>
+      <div class="header-sub">Version-over-version archetype, character &amp; team performance history</div>
     </div>
     <div class="entity-toggle">
       <button id="toggle-archetype" class="active" data-entity="archetype">Archetypes</button>
       <button id="toggle-character" data-entity="character">Characters</button>
+      <button id="toggle-team" data-entity="team">Teams</button>
     </div>
   </div>
 
@@ -155,6 +214,29 @@
     </div>
     <div class="ctrl-group">
       <span class="ctrl-hint">Click rows to add/remove them from the chart — no limit.</span>
+    </div>
+  </div>
+
+  <!-- Teams-only unified character picker: unlimited include/exclude, left-click=include, right-click=exclude. Hidden for Archetypes/Characters via .visible toggle in JS. -->
+  <div class="picker-panel" id="teamPickerPanel">
+    <div class="picker-panel-title">Character Filters — unlimited include/exclude</div>
+    <div class="picker-panel-hint">Click a character to <b style="color:var(--green)">include</b> them in every team shown. Right-click to <b style="color:var(--red)">exclude</b> teams containing them. Eidolon is controlled by the Eidolon Range selector above, not per-character here.</div>
+
+    <div class="picker-chips" id="teamPickerChips">
+      <span class="picker-chips-empty" id="teamPickerChipsEmpty">No characters selected.</span>
+    </div>
+
+    <div class="picker-search-row">
+      <div class="picker-search-wrap">
+        <div class="picker-search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input id="teamPickerInput" type="text" placeholder="Search characters to include/exclude…" autocomplete="off"/>
+        </div>
+        <div class="picker-grid-dropdown" id="teamPickerGridDropdown">
+          <div class="picker-grid" id="teamPickerGrid"></div>
+        </div>
+      </div>
+      <button class="picker-clear-all" id="teamPickerClearAll">Clear all</button>
     </div>
   </div>
 
@@ -273,13 +355,16 @@
   //    specific spot. Hidden entirely rather than just de-prioritized. ──
   const HIDDEN_COLS = new Set(["Game_Mode", "at_eidolon_level", "up_to_eidolon_level"]);
   // Columns pinned to appear immediately after the identity column, in order.
-  const PINNED_FIRST_COLS = ["Versions_Count"];
+  // Both spellings are listed because team_meta_summary's column is named
+  // "Version_Count" (singular) while archetype/character use "Versions_Count".
+  const PINNED_FIRST_COLS = ["Versions_Count", "Version_Count"];
   // Preferred default sort column (falls back to no default sort if absent).
   const DEFAULT_SORT_COL = "Total_Samples";
 
   const ENTITY_CONFIG = {
     archetype: { manifest: "./archetype_trends_manifest.json", label: "Archetype" },
     character: { manifest: "./character_trends_manifest.json", label: "Character" },
+    team:      { manifest: "./team_trends_manifest.json",      label: "Team" },
   };
 
   // ── Character icons — same injection pattern as network_dashboard_svg.html.j2
@@ -300,9 +385,16 @@
   // Archetype_Core / composite ids look like "Jade + The Herta" or
   // "Welt + Ashveil + Himeko • Nova" — split on " + " to render one small
   // icon per character in the composite. Plain character ids (single name,
-  // no " + ") just render their one icon.
+  // no " + ") just render their one icon. Team ids are a different shape
+  // entirely — "(Bailu, Topaz & Numby, Ashveil, Mortenax Blade)" — parens
+  // wrapping a comma-separated four-person roster, same convention as
+  // by_cost_teams_template.html.j2's parseMembers(). Detect that shape first.
   function iconTokensFor(id) {
-    return String(id).split(" + ").map(t => t.trim()).filter(Boolean);
+    const s = String(id).trim();
+    if (s.startsWith("(") && s.endsWith(")")) {
+      return s.slice(1, -1).split(/\s*,\s*/).map(t => t.trim()).filter(Boolean);
+    }
+    return s.split(" + ").map(t => t.trim()).filter(Boolean);
   }
 
   function iconStripHtml(id) {
@@ -323,6 +415,7 @@
   // ── DOM refs ──
   const toggleArchetype = document.getElementById("toggle-archetype");
   const toggleCharacter = document.getElementById("toggle-character");
+  const toggleTeam = document.getElementById("toggle-team");
   const modeSelect = document.getElementById("mode-select");
   const eidolonSelect = document.getElementById("eidolon-select");
   const metricSelect = document.getElementById("metric-select");
@@ -331,6 +424,7 @@
   const tableSub = document.getElementById("table-sub");
   const tableHeadRow = document.getElementById("table-head-row");
   const tableBody = document.getElementById("table-body");
+  const tableWrapEl = document.querySelector(".table-wrap");
   const statusLine = document.getElementById("status-line");
   const trendEmpty = document.getElementById("trend-empty");
   const trendContent = document.getElementById("trend-content");
@@ -338,6 +432,12 @@
   const legendList = document.getElementById("legend-list");
   const trendTooltip = document.getElementById("trend-tooltip");
   const clearSelectionBtn = document.getElementById("clear-selection-btn");
+  const teamPickerPanel = document.getElementById("teamPickerPanel");
+  const teamPickerChips = document.getElementById("teamPickerChips");
+  const teamPickerInput = document.getElementById("teamPickerInput");
+  const teamPickerGridDropdown = document.getElementById("teamPickerGridDropdown");
+  const teamPickerGrid = document.getElementById("teamPickerGrid");
+  const teamPickerClearAll = document.getElementById("teamPickerClearAll");
 
   // ── State ──
   let currentEntity = "archetype";
@@ -347,6 +447,18 @@
   let sortCol = null;
   let sortDir = 1;           // 1 asc, -1 desc
   let selectedIds = [];      // ordered list — supports unlimited multi-select
+
+  // ── Virtualized table body ─────────────────────────────────────────────
+  // Only the rows intersecting the scrolled viewport (+ overscan) are ever
+  // in the DOM. Matters most for Teams, where a slice can be hundreds/
+  // thousands of 4-person combos each carrying an icon strip — rendering
+  // all of them at once is what actually gets slow, not the archetype/
+  // character tables. currentRows holds the filtered+sorted result set;
+  // renderViewport() paints only the visible slice of it on every scroll
+  // tick, same windowing technique as by_cost_teams_template.html.j2.
+  let currentRows = [];
+  const ROW_H = 34;   // must match the fixed `table.data-table tbody tr { height }` in CSS
+  const OVERSCAN = 8; // extra rows rendered above/below the viewport to avoid blank flashes on fast scroll
   // The mode the CURRENTLY LOADED slice actually belongs to. Deliberately
   // separate from modeSelect.value: by the time modeSelect fires "onchange",
   // the dropdown has already flipped to the new mode, so reading
@@ -367,7 +479,129 @@
   const entityState = {
     archetype: { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
     character: { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
+    team:      { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null, charFilters: [] },
   };
+
+  // ── Teams-only character picker state ──────────────────────────────────
+  // Map<baseLower, {base, mode: 'include'|'exclude', display}>. Rebuilt from
+  // the currently loaded team slice each time it loads (rosters can differ
+  // slightly slice to slice), but the user's chosen filters persist in
+  // entityState.team.charFilters across mode/eidolon-range switches, same
+  // as search/sort/selection already do above.
+  let teamCharFilters = new Map();
+  let ALL_TEAM_CHAR_NAMES = [];        // display names, sorted
+  let TEAM_CHAR_DISPLAY = new Map();   // baseLower -> display name
+  let teamPickerOpen = false;
+
+  function parseTeamMembers(id) {
+    const s = String(id).trim();
+    const inner = (s.startsWith("(") && s.endsWith(")")) ? s.slice(1, -1) : s;
+    return inner.split(/\s*,\s*/).map(t => t.replace(/\s*\(E\d\)/gi, "").trim()).filter(Boolean);
+  }
+
+  function rebuildTeamRoster() {
+    TEAM_CHAR_DISPLAY = new Map();
+    if (currentSlice && currentSlice.entities) {
+      for (const e of currentSlice.entities) {
+        for (const name of parseTeamMembers(e.id)) {
+          const base = name.toLowerCase();
+          if (!TEAM_CHAR_DISPLAY.has(base)) TEAM_CHAR_DISPLAY.set(base, name);
+        }
+      }
+    }
+    ALL_TEAM_CHAR_NAMES = [...TEAM_CHAR_DISPLAY.values()].sort();
+    // Drop any filter for a character that doesn't exist in this slice's roster.
+    for (const base of [...teamCharFilters.keys()]) {
+      if (!TEAM_CHAR_DISPLAY.has(base)) teamCharFilters.delete(base);
+    }
+  }
+
+  function setTeamCharFilter(base, mode) {
+    const existing = teamCharFilters.get(base);
+    if (existing && existing.mode === mode) {
+      teamCharFilters.delete(base); // clicking the same mode again removes it
+    } else {
+      teamCharFilters.set(base, { base, mode, display: TEAM_CHAR_DISPLAY.get(base) || base });
+    }
+    renderTeamPickerChips();
+    renderTeamPickerGrid(teamPickerInput.value.trim());
+    renderTableBody();
+    persistState();
+  }
+
+  function renderTeamPickerChips() {
+    if (teamCharFilters.size === 0) {
+      teamPickerChips.innerHTML = `<span class="picker-chips-empty" id="teamPickerChipsEmpty">No characters selected.</span>`;
+      return;
+    }
+    teamPickerChips.innerHTML = [...teamCharFilters.values()].map(f => {
+      const url = lookupIconUrl(f.display);
+      const iconHtml = url
+        ? `<img src="${url}" alt="${f.display}" onerror="this.style.display='none'"/>`
+        : `<span class="chip-icon-ph">${f.display.slice(0, 2).toUpperCase()}</span>`;
+      const modeIcon = f.mode === "include" ? "✓" : "✕";
+      return `<span class="picker-chip ${f.mode}" data-base="${f.base}">${iconHtml}<span>${f.display}</span><span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${f.base}" title="Remove">×</button></span>`;
+    }).join("");
+
+    teamPickerChips.querySelectorAll(".chip-remove").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        teamCharFilters.delete(btn.dataset.remove);
+        renderTeamPickerChips();
+        renderTeamPickerGrid(teamPickerInput.value.trim());
+        renderTableBody();
+        persistState();
+      });
+    });
+  }
+
+  function renderTeamPickerGrid(query) {
+    const q = (query || "").toLowerCase();
+    const matches = q ? ALL_TEAM_CHAR_NAMES.filter(n => n.toLowerCase().includes(q)) : ALL_TEAM_CHAR_NAMES;
+
+    if (matches.length === 0) {
+      teamPickerGrid.innerHTML = `<div class="picker-grid-empty">No characters found</div>`;
+      return;
+    }
+
+    teamPickerGrid.innerHTML = matches.map(name => {
+      const base = name.toLowerCase();
+      const f = teamCharFilters.get(base);
+      const stateCls = f ? (f.mode === "include" ? "is-include" : "is-exclude") : "";
+      const url = lookupIconUrl(name);
+      const iconHtml = url
+        ? `<img src="${url}" alt="${name}" onerror="this.style.display='none'"/>`
+        : `<div class="cell-icon-ph">${name.slice(0, 2).toUpperCase()}</div>`;
+      return `<div class="picker-cell ${stateCls}" data-base="${base.replace(/"/g, "&quot;")}" title="${name} — left-click include, right-click exclude">${iconHtml}<div class="cell-name">${name}</div></div>`;
+    }).join("");
+
+    teamPickerGrid.querySelectorAll(".picker-cell").forEach(cell => {
+      cell.addEventListener("click", () => setTeamCharFilter(cell.dataset.base, "include"));
+      cell.addEventListener("contextmenu", (e) => { e.preventDefault(); setTeamCharFilter(cell.dataset.base, "exclude"); });
+    });
+  }
+
+  // Applied inside renderTableBody() for the team entity only. Same
+  // include-means-every-filter-must-be-present / exclude-means-none-present
+  // semantics as by_cost_teams_template.html.j2's recompute().
+  function applyTeamCharFilters(rows) {
+    if (currentEntity !== "team" || teamCharFilters.size === 0) return rows;
+    const filters = [...teamCharFilters.values()];
+    return rows.filter(e => {
+      const membersBase = parseTeamMembers(e.id).map(m => m.toLowerCase());
+      for (const f of filters) {
+        const present = membersBase.includes(f.base);
+        if (f.mode === "include" && !present) return false;
+        if (f.mode === "exclude" && present) return false;
+      }
+      return true;
+    });
+  }
+
+  function updateTeamPickerVisibility() {
+    teamPickerPanel.classList.toggle("visible", currentEntity === "team");
+    if (currentEntity !== "team") teamPickerGridDropdown.classList.remove("open");
+  }
 
   // Snapshot the live UI/working state into entityState[currentEntity].
   // Call this right before anything that might switch entity type, mode, or
@@ -385,6 +619,7 @@
     st.sortDir = sortDir;
     st.selectedIds = selectedIds.slice();
     st.metric = metricSelect.value || st.metric;
+    if (currentEntity === "team") st.charFilters = [...teamCharFilters.values()];
   }
 
   function fmtValue(v) {
@@ -512,6 +747,14 @@
       searchInput.value = st.search || "";
       selectedIds = st.selectedIds ? st.selectedIds.slice() : [];
 
+      if (currentEntity === "team") {
+        rebuildTeamRoster();
+        teamCharFilters = new Map((st.charFilters || []).map(f => [f.base, f]));
+        renderTeamPickerChips();
+        renderTeamPickerGrid(teamPickerInput.value.trim());
+      }
+      updateTeamPickerVisibility();
+
       renderTable();
       drawTrend();
       persistState();
@@ -561,10 +804,16 @@
     });
   }
 
-  function renderTableBody() {
-    if (!currentSlice) return;
+  // Recomputes currentRows (search + character filters + sort) from
+  // currentSlice, then repaints from the top. Called whenever the ROW SET
+  // or ORDER changes: new slice, search text, sort column, Teams picker
+  // filters. Jumping the scroll position back to 0 here mirrors the same
+  // behavior in by_cost_teams_template.html.j2's recompute().
+  function computeRows() {
+    if (!currentSlice) { currentRows = []; return; }
     const term = searchInput.value.trim().toLowerCase();
     let rows = currentSlice.entities.filter(e => !term || String(e.id).toLowerCase().includes(term));
+    rows = applyTeamCharFilters(rows);
 
     if (sortCol) {
       const numeric = sortCol === "__id__" ? false : isNumericColumn(sortCol);
@@ -577,47 +826,113 @@
         return String(va).localeCompare(String(vb)) * sortDir;
       });
     }
-
-    tableBody.innerHTML = "";
-    for (const e of rows) {
-      const tr = document.createElement("tr");
-      const selIndex = selectedIds.indexOf(e.id);
-      if (selIndex !== -1) tr.classList.add("selected");
-      tr.onclick = () => toggleSelect(e.id);
-
-      const idTd = document.createElement("td");
-      idTd.className = "id-cell";
-      const swatch = selIndex !== -1
-        ? `<span class="select-swatch" style="background:${colorFor(selIndex)}"></span>`
-        : `<span class="select-swatch empty"></span>`;
-      idTd.innerHTML = `<span class="id-cell-inner">${swatch}${iconStripHtml(e.id)}<span>${e.id}</span></span>`;
-      tr.appendChild(idTd);
-
-      for (const col of displayCols) {
-        const td = document.createElement("td");
-        const v = e.summary[col];
-        td.className = typeof v === "number" ? "num-cell" : "";
-        td.textContent = fmtValue(v);
-        tr.appendChild(td);
-      }
-      tableBody.appendChild(tr);
-    }
-    statusLine.textContent = `${rows.length} of ${currentSlice.entities.length} shown`;
+    currentRows = rows;
   }
 
+  function renderTableBody() {
+    if (!currentSlice) return;
+    computeRows();
+    statusLine.textContent = `${currentRows.length} of ${currentSlice.entities.length} shown`;
+    if (tableWrapEl) tableWrapEl.scrollTop = 0;
+    renderViewport();
+  }
+
+  // ── Virtualized tbody rendering ────────────────────────────────────────
+  // The whole tbody is rebuilt as ONE innerHTML string and swapped in with a
+  // single assignment. This matters: clearing the tbody and appending the new
+  // rows as two separate steps lets the browser lay out an empty tbody mid-
+  // scroll, which collapses scrollHeight and clamps the container's scrollTop
+  // back to 0 — every scroll attempt then snaps back to the top, so everything
+  // below the first screenful is unreachable. An atomic swap never exposes
+  // that intermediate empty state (same approach as by_cost_teams_template
+  // .html.j2's renderViewport()).
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // Builds the <tr> markup for one entity — identical cell markup to before,
+  // just emitted as a string so renderViewport() can assemble the entire
+  // tbody in a single innerHTML assignment.
+  function rowHtml(e) {
+    const selIndex = selectedIds.indexOf(e.id);
+    const swatch = selIndex !== -1
+      ? `<span class="select-swatch" style="background:${colorFor(selIndex)}"></span>`
+      : `<span class="select-swatch empty"></span>`;
+    let cells = `<td class="id-cell"><span class="id-cell-inner">${swatch}${iconStripHtml(e.id)}<span>${esc(e.id)}</span></span></td>`;
+    for (const col of displayCols) {
+      const v = e.summary[col];
+      cells += `<td class="${typeof v === "number" ? "num-cell" : ""}">${esc(fmtValue(v))}</td>`;
+    }
+    return `<tr data-id="${esc(e.id)}" class="${selIndex !== -1 ? "selected" : ""}">${cells}</tr>`;
+  }
+
+  // Spacer <tr> stands in for the rows NOT rendered — it's what keeps the
+  // native scrollbar's height/position correct without every row actually
+  // existing in the DOM.
+  function spacerRowHtml(heightPx) {
+    return `<tr class="table-spacer-row" style="height:${heightPx}px"><td colspan="${1 + displayCols.length}"></td></tr>`;
+  }
+
+  // Paints only the rows of currentRows that intersect the current scroll
+  // position (+ OVERSCAN), padded above/below with two spacer rows sized to
+  // stand in for the rows NOT rendered. Called on every scroll tick, so it
+  // does no filtering or sorting of its own — that's computeRows()'s job.
+  function renderViewport() {
+    if (!currentSlice) return;
+    const rows = currentRows;
+    const nCols = 1 + displayCols.length;
+
+    if (!rows.length) {
+      tableBody.innerHTML = `<tr class="table-empty-row"><td colspan="${nCols}">No rows match the current filters.</td></tr>`;
+      return;
+    }
+
+    // Deterministic viewport height instead of reading tableWrapEl's
+    // clientHeight live: on the very first render the tbody is still empty,
+    // so clientHeight only reflects the sticky header (~1 row tall), which
+    // would paint a handful of rows and leave the rest of the window blank
+    // until the first scroll. min() keeps a short slice (content shorter
+    // than 70vh) from claiming a taller window than it actually has.
+    const viewportH = Math.min(window.innerHeight * 0.7, rows.length * ROW_H);
+    const scrollTop = tableWrapEl ? tableWrapEl.scrollTop : 0;
+    const startIdx = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+    const endIdx = Math.min(rows.length, Math.ceil((scrollTop + viewportH) / ROW_H) + OVERSCAN);
+
+    let html = "";
+    if (startIdx > 0) html += spacerRowHtml(startIdx * ROW_H);
+    for (let i = startIdx; i < endIdx; i++) html += rowHtml(rows[i]);
+    if (endIdx < rows.length) html += spacerRowHtml((rows.length - endIdx) * ROW_H);
+    tableBody.innerHTML = html;
+  }
+
+  // Row clicks are delegated — rows are rebuilt on every scroll tick, so
+  // per-row listeners would be churned constantly; one listener on the tbody
+  // works no matter which rows are currently in the DOM.
+  tableBody.addEventListener("click", (e) => {
+    const tr = e.target.closest("tr[data-id]");
+    if (!tr) return;
+    toggleSelect(tr.dataset.id);
+  });
+
+  if (tableWrapEl) tableWrapEl.addEventListener("scroll", renderViewport, { passive: true });
+
   // ── Selection (unlimited multi-select — click a row to add/remove it) ──
+  // Selection changes the highlighted swatch/row only — the row SET and
+  // ORDER are unchanged, so this repaints the current viewport in place
+  // via renderViewport() rather than recomputing rows and resetting scroll.
   function toggleSelect(id) {
     const idx = selectedIds.indexOf(id);
     if (idx === -1) selectedIds.push(id);
     else selectedIds.splice(idx, 1);
-    renderTableBody();
+    renderViewport();
     drawTrend();
     persistState();
   }
 
   clearSelectionBtn.onclick = () => {
     selectedIds = [];
-    renderTableBody();
+    renderViewport();
     drawTrend();
     persistState();
   };
@@ -806,15 +1121,18 @@
     currentEntity = entity;
     toggleArchetype.classList.toggle("active", entity === "archetype");
     toggleCharacter.classList.toggle("active", entity === "character");
+    toggleTeam.classList.toggle("active", entity === "team");
+    updateTeamPickerVisibility();
 
     const st = entityState[entity];
     populateModeSelect(st.mode);
     populateEidolonSelect(st.eidolonByMode[modeSelect.value]);
-    loadCurrentSlice(); // restores search/sort/selection/metric once the slice arrives
+    loadCurrentSlice(); // restores search/sort/selection/metric (and, for teams, charFilters) once the slice arrives
   }
 
   toggleArchetype.onclick = () => setEntity("archetype");
   toggleCharacter.onclick = () => setEntity("character");
+  toggleTeam.onclick = () => setEntity("team");
   modeSelect.onchange = () => {
     persistState();
     const st = entityState[currentEntity];
@@ -824,6 +1142,23 @@
   eidolonSelect.onchange = () => { persistState(); loadCurrentSlice(); };
   metricSelect.onchange = () => { drawTrend(); persistState(); };
   searchInput.oninput = () => { renderTableBody(); persistState(); };
+
+  // Teams-only character picker wiring.
+  teamPickerInput.addEventListener("focus", () => {
+    teamPickerGridDropdown.classList.add("open");
+    renderTeamPickerGrid(teamPickerInput.value.trim());
+  });
+  teamPickerInput.addEventListener("input", () => renderTeamPickerGrid(teamPickerInput.value.trim()));
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".picker-search-wrap")) teamPickerGridDropdown.classList.remove("open");
+  });
+  teamPickerClearAll.addEventListener("click", () => {
+    teamCharFilters.clear();
+    renderTeamPickerChips();
+    renderTeamPickerGrid(teamPickerInput.value.trim());
+    renderTableBody();
+    persistState();
+  });
 
   // ── Boot ──
   (async function init() {

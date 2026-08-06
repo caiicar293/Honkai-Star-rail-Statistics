@@ -1,0 +1,71 @@
+{
+  "ANOMALY_F0": {
+    "0-0": "./teams/anomaly_f0_e0-0.json.br",
+    "0-1": "./teams/anomaly_f0_e0-1.json.br",
+    "0-2": "./teams/anomaly_f0_e0-2.json.br",
+    "0-6": "./teams/anomaly_f0_e0-6.json.br",
+    "1-1": "./teams/anomaly_f0_e1-1.json.br",
+    "1-2": "./teams/anomaly_f0_e1-2.json.br",
+    "1-6": "./teams/anomaly_f0_e1-6.json.br",
+    "2-2": "./teams/anomaly_f0_e2-2.json.br",
+    "2-6": "./teams/anomaly_f0_e2-6.json.br",
+    "6-6": "./teams/anomaly_f0_e6-6.json.br"
+  },
+  "ANOMALY_F4": {
+    "0-0": "./teams/anomaly_f4_e0-0.json.br",
+    "0-1": "./teams/anomaly_f4_e0-1.json.br",
+    "0-2": "./teams/anomaly_f4_e0-2.json.br",
+    "0-6": "./teams/anomaly_f4_e0-6.json.br",
+    "1-1": "./teams/anomaly_f4_e1-1.json.br",
+    "1-2": "./teams/anomaly_f4_e1-2.json.br",
+    "1-6": "./teams/anomaly_f4_e1-6.json.br",
+    "2-2": "./teams/anomaly_f4_e2-2.json.br",
+    "2-6": "./teams/anomaly_f4_e2-6.json.br",
+    "6-6": "./teams/anomaly_f4_e6-6.json.br"
+  },
+  "ANOMALY_F5": {
+    "0-2": "./teams/anomaly_f5_e0-2.json.br",
+    "0-6": "./teams/anomaly_f5_e0-6.json.br",
+    "1-2": "./teams/anomaly_f5_e1-2.json.br",
+    "1-6": "./teams/anomaly_f5_e1-6.json.br",
+    "2-2": "./teams/anomaly_f5_e2-2.json.br",
+    "2-6": "./teams/anomaly_f5_e2-6.json.br",
+    "6-6": "./teams/anomaly_f5_e6-6.json.br"
+  },
+  "APOC": {
+    "0-0": "./teams/apoc_e0-0.json.br",
+    "0-1": "./teams/apoc_e0-1.json.br",
+    "0-2": "./teams/apoc_e0-2.json.br",
+    "0-6": "./teams/apoc_e0-6.json.br",
+    "1-1": "./teams/apoc_e1-1.json.br",
+    "1-2": "./teams/apoc_e1-2.json.br",
+    "1-6": "./teams/apoc_e1-6.json.br",
+    "2-2": "./teams/apoc_e2-2.json.br",
+    "2-6": "./teams/apoc_e2-6.json.br",
+    "6-6": "./teams/apoc_e6-6.json.br"
+  },
+  "MOC": {
+    "0-0": "./teams/moc_e0-0.json.br",
+    "0-1": "./teams/moc_e0-1.json.br",
+    "0-2": "./teams/moc_e0-2.json.br",
+    "0-6": "./teams/moc_e0-6.json.br",
+    "1-1": "./teams/moc_e1-1.json.br",
+    "1-2": "./teams/moc_e1-2.json.br",
+    "1-6": "./teams/moc_e1-6.json.br",
+    "2-2": "./teams/moc_e2-2.json.br",
+    "2-6": "./teams/moc_e2-6.json.br",
+    "6-6": "./teams/moc_e6-6.json.br"
+  },
+  "PURE_FICTION": {
+    "0-0": "./teams/pure_fiction_e0-0.json.br",
+    "0-1": "./teams/pure_fiction_e0-1.json.br",
+    "0-2": "./teams/pure_fiction_e0-2.json.br",
+    "0-6": "./teams/pure_fiction_e0-6.json.br",
+    "1-1": "./teams/pure_fiction_e1-1.json.br",
+    "1-2": "./teams/pure_fiction_e1-2.json.br",
+    "1-6": "./teams/pure_fiction_e1-6.json.br",
+    "2-2": "./teams/pure_fiction_e2-2.json.br",
+    "2-6": "./teams/pure_fiction_e2-6.json.br",
+    "6-6": "./teams/pure_fiction_e6-6.json.br"
+  }
+}

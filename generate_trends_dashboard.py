@@ -56,7 +56,7 @@ def generate_trends_dashboard(
     if not template_dir.exists():
         raise SystemExit(f"[ERROR] Template directory not found: {template_dir}")
 
-    for manifest_name in ("archetype_trends_manifest.json", "character_trends_manifest.json"):
+    for manifest_name in ("archetype_trends_manifest.json", "character_trends_manifest.json", "team_trends_manifest.json"):
         manifest_path = output_path.parent / manifest_name
         if not manifest_path.exists():
             print(f"[WARN] {manifest_path} not found yet — the page will render, but that "

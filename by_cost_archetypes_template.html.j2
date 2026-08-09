@@ -610,7 +610,7 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 
 // ---- Data loading / version switching ----
 
-function prepareData() {
+function prepareData(savedState) {
   RAW_DATA.forEach(r => {
     r.dim_key   = r[DIM_FIELD];
     r.cost_key  = r.estimated_min_cost + '_' + r.estimated_max_cost;
@@ -633,8 +633,11 @@ function prepareData() {
     });
   });
 
-  // Reset filters to sensible defaults for the newly loaded dataset
-  activeDims  = new Set(RAW_DATA.map(r => r.dim_key));
+  // Defaults for a fresh page load: all dims, all max-eidolons, full cost range.
+  const validDims  = new Set(RAW_DATA.map(r => r.dim_key));
+  const validMeids = new Set(RAW_DATA.map(r => Math.round(r.max_eidolon)));
+
+  activeDims  = new Set(validDims);
   activeMeids = new Set([0,1,2,3,4,5,6]);
   searchTerm    = '';
   costMinFilter = MIN_COST_G;
@@ -643,22 +646,61 @@ function prepareData() {
   sortAsc       = false;
 
   const searchInputEl = document.getElementById('searchInput');
-  if (searchInputEl) searchInputEl.value = '';
 
-  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
-  document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  // Carry over the user's state from the version we're leaving — dropping
+  // anything that doesn't exist in the newly loaded dataset (carry-over mode).
+  if (savedState) {
+    if (Array.isArray(savedState.dims)) {
+      activeDims = new Set(savedState.dims.filter(d => validDims.has(d)));
+      if (activeDims.size === 0) activeDims = new Set(validDims);
+    }
+    if (Array.isArray(savedState.meids)) {
+      activeMeids = new Set(savedState.meids.filter(e => validMeids.has(e)));
+      if (activeMeids.size === 0) activeMeids = new Set([0,1,2,3,4,5,6]);
+    }
+    if (typeof savedState.search === 'string') {
+      searchInputEl.value = savedState.search;
+      searchTerm = savedState.search.trim().toLowerCase();
+    }
+    if (typeof savedState.costMin === 'number') costMinFilter = Math.max(MIN_COST_G, Math.min(savedState.costMin, MAX_COST_G - 4));
+    if (typeof savedState.costMax === 'number') costMaxFilter = Math.max(MIN_COST_G + 4, Math.min(savedState.costMax, MAX_COST_G));
+    if (savedState.sortCol && RAW_DATA[0] && (savedState.sortCol in RAW_DATA[0] || savedState.sortCol === 'Rank')) sortCol = savedState.sortCol;
+    if (typeof savedState.sortAsc === 'boolean') sortAsc = savedState.sortAsc;
+  }
+
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn =>
+    btn.classList.toggle('active', activeDims.has(parseInt(btn.dataset.dim))));
+  document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn =>
+    btn.classList.toggle('active', activeMeids.has(parseInt(btn.dataset.meid))));
   document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
-  document.querySelector('th[data-col="Usage_pct"]')?.classList.add('sorted');
+  const sortedTh = document.querySelector(`th[data-col="${sortCol}"]`);
+  if (sortedTh) { sortedTh.classList.add('sorted'); if (sortAsc) sortedTh.classList.add('asc'); }
 
-  // Reconfigure cost sliders for the new dataset's range
-  minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4; minSlider.value = MIN_COST_G;
-  maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G; maxSlider.value = MAX_COST_G;
-  document.getElementById('minCostLabel').textContent = MIN_COST_G;
-  document.getElementById('maxCostLabel').textContent = MAX_COST_G;
+  // Reconfigure cost sliders for the new dataset's range (restored values kept)
+  minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4; minSlider.value = costMinFilter;
+  maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G; maxSlider.value = costMaxFilter;
+  document.getElementById('minCostLabel').textContent = costMinFilter;
+  document.getElementById('maxCostLabel').textContent = costMaxFilter;
   sliderFill(minSlider); sliderFill(maxSlider);
   clearPresets();
-  document.getElementById('costResetBtn')?.classList.add('active');
+  document.getElementById('costResetBtn')?.classList.toggle('active', costMinFilter === MIN_COST_G && costMaxFilter === MAX_COST_G);
 }
+
+// Snapshot the current UI state so it can be carried over to the newly
+// loaded version's dataset (filters only — no character picker on this page).
+function captureState() {
+  return {
+    dims:    [...activeDims],
+    meids:   [...activeMeids],
+    search:  document.getElementById('searchInput')?.value || '',
+    costMin: costMinFilter,
+    costMax: costMaxFilter,
+    sortCol: sortCol,
+    sortAsc: sortAsc,
+  };
+}
+
+let HAS_LOADED = false;
 
 let _brotliPromise = null;
 function getBrotli() {
@@ -675,7 +717,8 @@ async function loadDataset(filename) {
   const brotli = await getBrotli();
   const decompressed = brotli.decompress(new Uint8Array(buffer));
   RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
-  prepareData();
+  prepareData(HAS_LOADED ? captureState() : null); // first load → defaults; version switch → carry over state
+  HAS_LOADED = true;
   document.querySelector('.table-scroll').scrollTop = 0;
   recompute();
 }

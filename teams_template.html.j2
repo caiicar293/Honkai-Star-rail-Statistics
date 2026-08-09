@@ -405,11 +405,7 @@ function searchIndex(query) {
 }
 
 let activeDims   = new Set();
-let activeRanges = new Set([
-  '0_0','0_1','0_2','0_6',
-  '1_1','1_2','1_6',
-  '2_2','2_6','6_6'
-]);
+let activeRanges = new Set(['0_6']); // E0–E6 only by default (full set is built from data in prepareData)
 let showSustain   = true;
 let showNoSustain = true;
 let searchTerm    = '';
@@ -802,7 +798,7 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 
 // ---- Data loading / version switching ----
 
-function prepareData() {
+function prepareData(savedState) {
   RAW_DATA.forEach(r => {
     r.dim_key       = r[DIM_FIELD];
     r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
@@ -826,9 +822,17 @@ function prepareData() {
     });
   });
 
-  // Reset filters to sensible defaults for the newly loaded dataset
-  activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
-  activeRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
+  // Defaults for a fresh page load: E0–E6 only + individual nodes (N1/N2/N3),
+  // with N0 ("All Nodes / Both Halves" catch-all) off.
+  const validDims   = new Set(RAW_DATA.map(r => r.dim_key));
+  const validRanges = new Set(RAW_DATA.map(r => r.eid_range_key));
+
+  const defaultDims = new Set(validDims);
+  if (/node|both|all/i.test(String(DIM_GROUP_LABELS['0'] || ''))) defaultDims.delete(0);
+  const defaultRanges = validRanges.has('0_6') ? new Set(['0_6']) : new Set(validRanges);
+
+  activeDims   = new Set(defaultDims);
+  activeRanges = new Set(defaultRanges);
   showSustain   = true;
   showNoSustain = true;
   charFilters.clear();
@@ -837,18 +841,65 @@ function prepareData() {
   sortAsc    = false;
 
   const searchInputEl = document.getElementById('searchInput');
-  if (searchInputEl) searchInputEl.value = '';
 
-  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
-  document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
-  document.getElementById('btnSustainOn')?.classList.add('active');
-  document.getElementById('btnSustainOff')?.classList.add('active');
+  // Carry over the user's state from the version we're leaving — dropping
+  // anything that doesn't exist in the newly loaded dataset (carry-over mode).
+  if (savedState) {
+    if (Array.isArray(savedState.dims)) {
+      activeDims = new Set(savedState.dims.filter(d => validDims.has(d)));
+      if (activeDims.size === 0) activeDims = new Set(defaultDims);
+    }
+    if (Array.isArray(savedState.ranges)) {
+      activeRanges = new Set(savedState.ranges.filter(k => validRanges.has(k)));
+      if (activeRanges.size === 0) activeRanges = new Set(defaultRanges);
+    }
+    if (typeof savedState.sustain === 'boolean')   showSustain   = savedState.sustain;
+    if (typeof savedState.noSustain === 'boolean') showNoSustain = savedState.noSustain;
+    if (typeof savedState.search === 'string') {
+      searchInputEl.value = savedState.search;
+      searchTerm = savedState.search.trim().toLowerCase();
+    }
+    if (savedState.sortCol && RAW_DATA[0] && (savedState.sortCol in RAW_DATA[0] || savedState.sortCol === 'Rank')) sortCol = savedState.sortCol;
+    if (typeof savedState.sortAsc === 'boolean') sortAsc = savedState.sortAsc;
+    if (Array.isArray(savedState.charFilters)) {
+      savedState.charFilters.forEach(f => {
+        if (f && f.name && ALL_CHAR_NAMES.some(n => n.toLowerCase() === f.name.toLowerCase())) {
+          charFilters.set(f.name.toLowerCase(), { name: f.name, mode: f.mode === 'exclude' ? 'exclude' : 'include' });
+        }
+      });
+    }
+  }
+
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn =>
+    btn.classList.toggle('active', activeDims.has(parseInt(btn.dataset.dim))));
+  document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn =>
+    btn.classList.toggle('active', activeRanges.has(`${btn.dataset.at}_${btn.dataset.upto}`)));
+  document.getElementById('btnSustainOn')?.classList.toggle('active', showSustain);
+  document.getElementById('btnSustainOff')?.classList.toggle('active', showNoSustain);
   document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
-  document.querySelector('th[data-col="Appearance_Rate_pct"]')?.classList.add('sorted');
+  const sortedTh = document.querySelector(`th[data-col="${sortCol}"]`);
+  if (sortedTh) { sortedTh.classList.add('sorted'); if (sortAsc) sortedTh.classList.add('asc'); }
 
   renderChips();
   renderPickerGrid('');
 }
+
+// Snapshot the current UI state so it can be carried over to the newly
+// loaded version's dataset (filters + selected characters).
+function captureState() {
+  return {
+    dims:        [...activeDims],
+    ranges:      [...activeRanges],
+    sustain:     showSustain,
+    noSustain:   showNoSustain,
+    search:      document.getElementById('searchInput')?.value || '',
+    sortCol:     sortCol,
+    sortAsc:     sortAsc,
+    charFilters: [...charFilters.values()].map(f => ({ name: f.name, mode: f.mode })),
+  };
+}
+
+let HAS_LOADED = false;
 
 let _brotliPromise = null;
 function getBrotli() {
@@ -865,7 +916,8 @@ async function loadDataset(filename) {
   const brotli = await getBrotli();
   const decompressed = brotli.decompress(new Uint8Array(buffer));
   RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
-  prepareData();
+  prepareData(HAS_LOADED ? captureState() : null); // first load → defaults; version switch → carry over state
+  HAS_LOADED = true;
   const ts = document.querySelector('.table-scroll');
   if (ts) ts.scrollTop = 0;
   recompute();

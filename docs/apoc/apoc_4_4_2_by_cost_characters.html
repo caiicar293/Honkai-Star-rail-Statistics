@@ -771,7 +771,25 @@ async function fetchBrotliJson(filename) {
   return JSON.parse(new TextDecoder().decode(decompressed));
 }
 
+// Snapshot the current UI state so it can be carried over to the newly
+// loaded version's datasets (filters only — no character picker on this page).
+function captureState() {
+  return {
+    tab:      activeTab,
+    dims:     [...activeDims],
+    meids:    [...activeMeids],
+    search:   document.getElementById('searchInput')?.value || '',
+    costMin:  costMinFilter,
+    costMax:  costMaxFilter,
+    sortCol:  sortCol,
+    sortAsc:  sortAsc,
+  };
+}
+
+let HAS_LOADED = false;
+
 async function loadDatasets(costFilename, eidFilename) {
+  const savedState = HAS_LOADED ? captureState() : null; // first load → defaults; version switch → carry over state
   const [costData, eidData] = await Promise.all([
     fetchBrotliJson(costFilename),
     fetchBrotliJson(eidFilename),
@@ -781,26 +799,63 @@ async function loadDatasets(costFilename, eidFilename) {
   prepareDataset('cost', 'Character');
   prepareDataset('eid', 'Character_Eidolon');
 
-  // Reset filter state for the freshly-loaded dataset
+  // Defaults for a fresh page load: all dims, all max-eidolons, full cost range.
+  const validDims  = new Set([...RAW.cost, ...RAW.eid].map(r => r.dim_key));
+  const validMeids = new Set(RAW.cost.map(r => Math.round(r.max_eidolon)));
+
   activeDims  = new Set(RAW[activeTab].map(r => r.dim_key));
   activeMeids = new Set([0,1,2,3,4,5,6]);
   searchTerm  = '';
   sortCol     = 'Appearance_Rate_pct';
   sortAsc     = false;
-  const searchInputEl = document.getElementById('searchInput');
-  if (searchInputEl) searchInputEl.value = '';
-  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
-  document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
-
-  minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4; minSlider.value = MIN_COST_G;
-  maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G; maxSlider.value = MAX_COST_G;
   costMinFilter = MIN_COST_G; costMaxFilter = MAX_COST_G;
-  document.getElementById('minCostLabel').textContent = MIN_COST_G;
-  document.getElementById('maxCostLabel').textContent = MAX_COST_G;
+  const searchInputEl = document.getElementById('searchInput');
+
+  // Carry over the user's state from the version we're leaving — dropping
+  // anything that doesn't exist in the newly loaded dataset (carry-over mode).
+  if (savedState) {
+    if (savedState.tab === 'eid' || savedState.tab === 'cost') {
+      activeTab = savedState.tab;
+      document.getElementById('tabCostBtn').classList.toggle('active', activeTab === 'cost');
+      document.getElementById('tabEidBtn').classList.toggle('active', activeTab === 'eid');
+      document.getElementById('costPanel').style.display = activeTab === 'cost' ? '' : 'none';
+      document.getElementById('meidCtrlGroup').style.display = activeTab === 'cost' ? '' : 'none';
+      document.getElementById('tabDesc').textContent = activeTab === 'cost'
+        ? 'Cost bracket view — one row per (Character, cost bracket, max eidolon in team). Filter by cost range and max team eidolon below.'
+        : 'Max eidolon view — pooled across ALL cost brackets and team eidolon combos, one row per (Character, Character\u2019s own eidolon). Cost/team-eidolon filters do not apply here.';
+    }
+    if (Array.isArray(savedState.dims)) {
+      activeDims = new Set(savedState.dims.filter(d => validDims.has(d)));
+      if (activeDims.size === 0) activeDims = new Set(validDims);
+    }
+    if (Array.isArray(savedState.meids)) {
+      activeMeids = new Set(savedState.meids.filter(e => validMeids.has(e)));
+      if (activeMeids.size === 0) activeMeids = new Set([0,1,2,3,4,5,6]);
+    }
+    if (typeof savedState.search === 'string') {
+      searchInputEl.value = savedState.search;
+      searchTerm = savedState.search.trim().toLowerCase();
+    }
+    if (typeof savedState.costMin === 'number') costMinFilter = Math.max(MIN_COST_G, Math.min(savedState.costMin, MAX_COST_G - 4));
+    if (typeof savedState.costMax === 'number') costMaxFilter = Math.max(MIN_COST_G + 4, Math.min(savedState.costMax, MAX_COST_G));
+    if (savedState.sortCol && RAW[activeTab][0] && savedState.sortCol in RAW[activeTab][0]) sortCol = savedState.sortCol;
+    if (typeof savedState.sortAsc === 'boolean') sortAsc = savedState.sortAsc;
+  }
+
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn =>
+    btn.classList.toggle('active', activeDims.has(parseInt(btn.dataset.dim))));
+  document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn =>
+    btn.classList.toggle('active', activeMeids.has(parseInt(btn.dataset.meid))));
+
+  minSlider.min = MIN_COST_G; minSlider.max = MAX_COST_G - 4; minSlider.value = costMinFilter;
+  maxSlider.min = MIN_COST_G + 4; maxSlider.max = MAX_COST_G; maxSlider.value = costMaxFilter;
+  document.getElementById('minCostLabel').textContent = costMinFilter;
+  document.getElementById('maxCostLabel').textContent = costMaxFilter;
   sliderFill(minSlider); sliderFill(maxSlider);
   clearPresets();
-  document.getElementById('costResetBtn')?.classList.add('active');
+  document.getElementById('costResetBtn')?.classList.toggle('active', costMinFilter === MIN_COST_G && costMaxFilter === MAX_COST_G);
 
+  HAS_LOADED = true;
   recompute();
 }
 

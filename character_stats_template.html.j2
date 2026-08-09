@@ -312,7 +312,7 @@ let MAX_RATE = 1;
 
 // ---- State ----
 let activeDims   = new Set();
-let activeRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
+let activeRanges = new Set(['0_6']); // E0–E6 only by default (full set is built from data in prepareData)
 let searchTerm = '';
 let sortCol    = 'Appearance_Rate_pct';
 let sortAsc    = false;
@@ -597,7 +597,7 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 
 // ---- Data loading / version switching ----
 
-function prepareData() {
+function prepareData(savedState) {
   RAW_DATA.forEach(r => {
     r.dim_key       = r[DIM_FIELD];
     r.eid_range_key = `${r.at_eidolon_level}_${r.up_to_eidolon_level}`;
@@ -612,21 +612,64 @@ function prepareData() {
 
   MAX_RATE = Math.max(...RAW_DATA.map(r => r.Appearance_Rate_pct));
 
-  // Reset filters to sensible defaults for the newly loaded dataset
-  activeDims   = new Set(RAW_DATA.map(r => r.dim_key));
-  activeRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
+  // Defaults for a fresh page load: E0–E6 only + individual nodes (N1/N2/N3),
+  // with N0 ("All Nodes / Both Halves" catch-all) off.
+  const validDims   = new Set(RAW_DATA.map(r => r.dim_key));
+  const validRanges = new Set(RAW_DATA.map(r => r.eid_range_key));
+
+  const defaultDims = new Set(validDims);
+  if (/node|both|all/i.test(String(DIM_GROUP_LABELS['0'] || ''))) defaultDims.delete(0);
+  const defaultRanges = validRanges.has('0_6') ? new Set(['0_6']) : new Set(validRanges);
+
+  activeDims   = new Set(defaultDims);
+  activeRanges = new Set(defaultRanges);
   searchTerm = '';
   sortCol    = 'Appearance_Rate_pct';
   sortAsc    = false;
 
   const searchInputEl = document.getElementById('searchInput');
-  if (searchInputEl) searchInputEl.value = '';
 
-  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
-  document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  // Carry over the user's state from the version we're leaving — dropping
+  // anything that doesn't exist in the newly loaded dataset (carry-over mode).
+  if (savedState) {
+    if (Array.isArray(savedState.dims)) {
+      activeDims = new Set(savedState.dims.filter(d => validDims.has(d)));
+      if (activeDims.size === 0) activeDims = new Set(defaultDims);
+    }
+    if (Array.isArray(savedState.ranges)) {
+      activeRanges = new Set(savedState.ranges.filter(k => validRanges.has(k)));
+      if (activeRanges.size === 0) activeRanges = new Set(defaultRanges);
+    }
+    if (typeof savedState.search === 'string') {
+      searchInputEl.value = savedState.search;
+      searchTerm = savedState.search.trim().toLowerCase();
+    }
+    if (savedState.sortCol && RAW_DATA[0] && (savedState.sortCol in RAW_DATA[0] || savedState.sortCol === 'Rank')) sortCol = savedState.sortCol;
+    if (typeof savedState.sortAsc === 'boolean') sortAsc = savedState.sortAsc;
+  }
+
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn =>
+    btn.classList.toggle('active', activeDims.has(parseInt(btn.dataset.dim))));
+  document.querySelectorAll('#eidFilters .btn-toggle').forEach(btn =>
+    btn.classList.toggle('active', activeRanges.has(`${btn.dataset.at}_${btn.dataset.upto}`)));
   document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
-  document.querySelector('th[data-col="Appearance_Rate_pct"]')?.classList.add('sorted');
+  const sortedTh = document.querySelector(`th[data-col="${sortCol}"]`);
+  if (sortedTh) { sortedTh.classList.add('sorted'); if (sortAsc) sortedTh.classList.add('asc'); }
 }
+
+// Snapshot the current UI state so it can be carried over to the newly
+// loaded version's dataset (filters only — no character picker on this page).
+function captureState() {
+  return {
+    dims:    [...activeDims],
+    ranges:  [...activeRanges],
+    search:  document.getElementById('searchInput')?.value || '',
+    sortCol: sortCol,
+    sortAsc: sortAsc,
+  };
+}
+
+let HAS_LOADED = false;
 
 let _brotliPromise = null;
 function getBrotli() {
@@ -643,7 +686,8 @@ async function loadDataset(filename) {
   const brotli = await getBrotli();
   const decompressed = brotli.decompress(new Uint8Array(buffer));
   RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
-  prepareData();
+  prepareData(HAS_LOADED ? captureState() : null); // first load → defaults; version switch → carry over state
+  HAS_LOADED = true;
   recompute();
 }
 

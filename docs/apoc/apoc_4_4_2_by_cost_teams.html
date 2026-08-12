@@ -752,6 +752,7 @@ let ownedOnlyActive = false;
 // any dim with a pin) are greyed out and teams that reuse a pinned team's
 // characters are excluded from the table. Reset on every data load.
 let plannerPins        = new Map();
+let AUTO_REMOVED       = []; // base names whose include filters were auto-removed by pinning
 let NON_PLANNER_DIMS   = new Set(); // dims that can never be planned (node 0, Anomaly floors 4/5)
 let _dimsBeforePlanner = null;      // snapshot of activeDims taken at the first pin
 let PLANNER_EXCLUDED   = 0;         // rows removed by planner mode in the last recompute
@@ -922,7 +923,20 @@ function togglePin(row) {
   // and Anomaly's floors 4+5 can't be planned, so clicking them does nothing.
   if (!PLANNER_DIMS.includes(row.dim_key)) return;
   if (plannerPins.has(row.dim_key)) plannerPins.delete(row.dim_key);
-  else plannerPins.set(row.dim_key, row);
+  else {
+    plannerPins.set(row.dim_key, row);
+    // The pinned team satisfies these characters by itself, so drop any include
+    // filters on them — otherwise every row containing the character is
+    // conflict-excluded and the table collapses to zero teams. The characters
+    // stay locked (greyed out) in the picker until the team is unpinned.
+    row._membersBase.forEach(m => {
+      const f = charFilters.get(m);
+      if (f && f.mode === 'include') {
+        charFilters.delete(m);
+        if (!AUTO_REMOVED.includes(m)) AUTO_REMOVED.push(m);
+      }
+    });
+  }
   applyPlannerState();
   recompute();
 }
@@ -1182,6 +1196,7 @@ function updatePlannerBanner() {
     if (exportBtn) { exportBtn.disabled = true; exportBtn.classList.remove('copied', 'copy-failed'); exportBtn.innerHTML = '⧉ Export ▾'; }
     if (exportMenu) exportMenu.classList.remove('open');
     clearTimeout(_exportResetTimer);
+    AUTO_REMOVED = [];
     if (totals) totals.innerHTML = '';
     return;
   }
@@ -1195,6 +1210,10 @@ function updatePlannerBanner() {
   let html = `<b>${plannerPins.size}</b> pinned`;
   if (PLANNER_EXCLUDED > 0) html += ` · <b class="excl">${PLANNER_EXCLUDED.toLocaleString()}</b> teams excluded (locked ${DIM_LABEL.toLowerCase()}s + conflicts)`;
   if (shareWarn) html += ` · <span class="warn">⚠️ pinned teams share characters</span>`;
+  if (AUTO_REMOVED.length) {
+    const names = AUTO_REMOVED.map(m => BASE_NAME_DISPLAY.get(m) || m).join(', ');
+    html += ` · <span class="warn">include filter auto-removed for ${names}</span>`;
+  }
   status.innerHTML = html;
 }
 

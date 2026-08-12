@@ -82,6 +82,8 @@
   .btn-toggle.sustain-yes.active { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.1); }
   .btn-toggle.sustain-no.active  { border-color: var(--red);   color: var(--red);   background: rgba(248,113,113,0.1); }
 
+  .btn-toggle.dedupe-variant.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.1); }
+
   .search-wrap { position: relative; min-width: 240px; max-width: 400px; flex: 1; }
   .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
   #searchInput { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
@@ -413,6 +415,10 @@
       <div class="cost-range-label" id="efficiencyTargetLabelWrap">Target <span id="efficiencyDirectionLabel">score ≤</span></div>
       <input type="number" step="0.01" id="efficiencyTargetInput"/>
     </div>
+    <div class="efficiency-target-group">
+      <div class="cost-range-label">Variants</div>
+      <button class="btn-toggle dedupe-variant" id="dedupeVariantBtn" title="For each archetype/character, keep only its cheapest eidolon variant">🔻 Cheapest Variant Only</button>
+    </div>
     <div class="direction-note" id="efficiencyDirectionNote"></div>
     <button class="reset-btn" id="resetEfficiencyBtn">Reset Target To Default</button>
   </div>
@@ -522,6 +528,7 @@ function assignCostTierIndex(cost) {
 const DEFAULT_EFFICIENCY_TARGET = {"MOC": 0.0, "ANOMALY_F0": 0.0, "ANOMALY_F4": 0.0, "ANOMALY_F5": 0.0, "APOC": 3850, "PURE_FICTION": 40000};
 let efficiencyTarget = JSON.parse(JSON.stringify(DEFAULT_EFFICIENCY_TARGET));
 let rankingMode = 'tier'; // 'tier' | 'efficiency'
+let dedupeVariants = false; // Cost Efficiency mode: collapse eidolon variants of the same archetype/character down to just its cheapest one
 // Cost range remembered from Tier List mode, restored when leaving efficiency mode.
 let _savedCostMin = null, _savedCostMax = null;
 
@@ -553,6 +560,33 @@ const TIER_ORDER = ['T0','T0.5','T1','T1.5','T2'];
 
 function parseMembers(core) {
   return core.split(/\s*[,\/\+]\s*/).map(s => s.trim()).filter(Boolean);
+}
+
+// Strips "(E0)"."(E6)" eidolon annotations from an Archetype_Core string so
+// different eidolon variants of the same archetype/character collapse to
+// the same identity key, e.g. "Acheron(E2)" and "Acheron(E0)" -> "acheron".
+function baseArchetypeKey(core) {
+  return core.replace(/\s*\(E\d\)/gi, '').trim().toLowerCase();
+}
+
+// Collapses a list of Cost Efficiency-qualifying rows down to one row per
+// archetype/character (per baseArchetypeKey), keeping whichever eidolon
+// variant has the lowest estimated_min_cost. Ties are broken by the
+// better score for the current metric/direction. Used by the "Cheapest
+// Variant Only" toggle in Cost Efficiency mode.
+function dedupeToLowestCostVariant(rows, cfg) {
+  const bestByKey = new Map();
+  rows.forEach(r => {
+    const key = baseArchetypeKey(r.Archetype_Core);
+    const existing = bestByKey.get(key);
+    if (!existing) { bestByKey.set(key, r); return; }
+    if (r.estimated_min_cost < existing.estimated_min_cost) { bestByKey.set(key, r); return; }
+    if (r.estimated_min_cost === existing.estimated_min_cost) {
+      const better = cfg.direction === 'asc' ? r[scoreMetric] < existing[scoreMetric] : r[scoreMetric] > existing[scoreMetric];
+      if (better) bestByKey.set(key, r);
+    }
+  });
+  return Array.from(bestByKey.values());
 }
 
 function iconEl(name) {
@@ -680,6 +714,11 @@ document.getElementById('resetEfficiencyBtn').addEventListener('click', () => {
   if (!currentMode) return;
   efficiencyTarget[currentMode] = DEFAULT_EFFICIENCY_TARGET[currentMode];
   syncEfficiencyInputs();
+  recompute();
+});
+document.getElementById('dedupeVariantBtn').addEventListener('click', function() {
+  dedupeVariants = !dedupeVariants;
+  this.classList.toggle('active', dedupeVariants);
   recompute();
 });
 
@@ -902,6 +941,7 @@ function recompute() {
       const meets = cfg.direction === 'asc' ? score <= target : score >= target;
       if (meets) qualifying.push(r);
     });
+    if (dedupeVariants) qualifying = dedupeToLowestCostVariant(qualifying, cfg);
     // Cheapest min-cost first; ties broken by best score at that cost.
     qualifying.sort((a, b) => {
       if (a.estimated_min_cost !== b.estimated_min_cost) return a.estimated_min_cost - b.estimated_min_cost;

@@ -916,30 +916,67 @@ function plannerLockedDims() {
   return locked;
 }
 
+// Trailblazer / March 7th have several forms that share one roster slot — a
+// pinned team uses *all* variants of such a character (they're locked in the
+// picker, conflict-excluded from the table, and their include filters are
+// auto-removed). Maps a base name to its sibling variant base names.
+function variantSiblings(base) {
+  // word-boundary match so a future character whose name merely *contains*
+  // 'trailblazer' / 'march 7th' can't be over-expanded; a bare family name
+  // (e.g. 'trailblazer') still maps to all variants.
+  const family = Object.keys(VARIANT_PATH_MAP).find(f => base === f || base.endsWith(' ' + f));
+  if (!family) return [base];
+  return [...new Set(Object.values(VARIANT_PATH_MAP[family]))].map(n => n.toLowerCase());
+}
+
 function pinnedMemberBases() {
   const used = new Set();
-  plannerPins.forEach(pin => pin._membersBase.forEach(m => used.add(m)));
+  plannerPins.forEach(pin => pin._membersBase.forEach(m => variantSiblings(m).forEach(s => used.add(s))));
   return used;
+}
+
+// Re-apply include filters that pinning auto-removed — unless another pinned
+// team still uses the same character (variant siblings included).
+function restoreRemovedFilters(pin) {
+  const removed = pin._removedFilters || [];
+  delete pin._removedFilters;
+  if (!removed.length) return;
+  const stillUsed = pinnedMemberBases();
+  removed.forEach(f => {
+    if (stillUsed.has(f.base)) return;
+    charFilters.set(f.base, f);
+    AUTO_REMOVED = AUTO_REMOVED.filter(n => n !== f.base);
+  });
 }
 
 function togglePin(row) {
   // Only the planner dims (nodes/floors 1–3) are pinnable — node 0 / floor 0
   // and Anomaly's floors 4+5 can't be planned, so clicking them does nothing.
   if (!PLANNER_DIMS.includes(row.dim_key)) return;
-  if (plannerPins.has(row.dim_key)) plannerPins.delete(row.dim_key);
-  else {
+  if (plannerPins.has(row.dim_key)) {
+    const pin = plannerPins.get(row.dim_key);
+    plannerPins.delete(row.dim_key);
+    restoreRemovedFilters(pin);
+  } else {
     plannerPins.set(row.dim_key, row);
     // The pinned team satisfies these characters by itself, so drop any include
-    // filters on them — otherwise every row containing the character is
-    // conflict-excluded and the table collapses to zero teams. The characters
-    // stay locked (greyed out) in the picker until the team is unpinned.
-    row._membersBase.forEach(m => {
-      const f = charFilters.get(m);
+    // filters on them (and on Trailblazer / March 7th variant siblings, which
+    // share the same roster slot) — otherwise every row containing the character
+    // is conflict-excluded and the table collapses to zero teams. The characters
+    // stay locked (greyed out) in the picker until the team is unpinned, and the
+    // removed filters are restored on unpin.
+    const removed = [];
+    row._membersBase.forEach(m => variantSiblings(m).forEach(s => {
+      const f = charFilters.get(s);
       if (f && f.mode === 'include') {
-        charFilters.delete(m);
-        if (!AUTO_REMOVED.includes(m)) AUTO_REMOVED.push(m);
+        charFilters.delete(s);
+        removed.push(f);
       }
-    });
+    }));
+    if (removed.length) {
+      row._removedFilters = removed;
+      removed.forEach(f => { if (!AUTO_REMOVED.includes(f.base)) AUTO_REMOVED.push(f.base); });
+    }
   }
   applyPlannerState();
   recompute();
@@ -1748,7 +1785,9 @@ updateRosterButtonState();
 renderChips();
 
 document.getElementById('plannerClearBtn').addEventListener('click', () => {
+  const pins = [...plannerPins.values()];
   plannerPins.clear();
+  pins.forEach(pin => restoreRemovedFilters(pin));
   applyPlannerState();
   recompute();
 });
@@ -1786,9 +1825,9 @@ document.getElementById('tableBody').addEventListener('click', (e) => {
   const tr = e.target.closest('tr');
   if (!tr) return;
   if (tr.classList.contains('pinned-row')) {
-    plannerPins.delete(parseInt(tr.dataset.dim, 10));
-    applyPlannerState();
-    recompute();
+    // route through togglePin so auto-removed include filters are restored
+    const pin = plannerPins.get(parseInt(tr.dataset.dim, 10));
+    if (pin) togglePin(pin);
     return;
   }
   const idx = parseInt(tr.dataset.idx, 10);

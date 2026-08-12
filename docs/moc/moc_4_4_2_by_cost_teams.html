@@ -318,6 +318,82 @@
   .roster-clear-btn { background: var(--panel); border: 1px solid var(--border); color: var(--red); font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 12.5px; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
   .roster-clear-btn:hover { border-color: var(--red); background: rgba(248,113,113,0.08); }
 
+  /* PLANNER MODE — click a team row to pin it: the pinned row is shown on top
+     with full stats, its node (and every non-planner dim: node 0 / floor 0,
+     Anomaly floors 4+5) is greyed out, and teams on the other nodes that reuse
+     any of its characters are excluded from the table. */
+  .planner-banner {
+    display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.35);
+    border-radius: 8px; padding: 10px 16px; margin-bottom: 14px;
+  }
+  .planner-banner.on { display: flex; }
+  .planner-banner-title { font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.04em; color: var(--green); display: flex; align-items: center; gap: 7px; }
+  .planner-banner-status { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text2); }
+  .planner-banner-status b { color: var(--green); font-weight: 700; }
+  .planner-banner-status b.excl { color: var(--red); }
+  .planner-banner-status .warn { color: var(--gold); font-weight: 700; }
+  .planner-clear { background: var(--bg2); border: 1px solid var(--border); color: var(--text3); font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600; border-radius: 5px; padding: 6px 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; margin-left: auto; }
+  .planner-clear:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+  .planner-clear:disabled { opacity: 0.45; cursor: default; }
+  .planner-copy {
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600;
+    border-radius: 5px; padding: 6px 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .planner-copy:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.07); }
+  .planner-copy:disabled { opacity: 0.45; cursor: default; }
+  .planner-copy.copied { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.08); }
+  .planner-copy.copy-failed { border-color: var(--red); color: var(--red); background: rgba(248,113,113,0.08); }
+  .planner-export { position: relative; }
+  .planner-export-menu {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+    background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 5px; box-shadow: 0 12px 32px rgba(0,0,0,0.5); min-width: 195px;
+  }
+  .planner-export-menu.open { display: block; }
+  .planner-export-item {
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    background: none; border: none; color: var(--text2); font-family: 'Rajdhani', sans-serif;
+    font-size: 13px; font-weight: 600; padding: 7px 10px; border-radius: 5px; cursor: pointer; transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .planner-export-item:hover { background: rgba(56,189,248,0.08); color: var(--text); }
+  .btn-toggle.dim-locked { opacity: 0.32; cursor: not-allowed; pointer-events: none; border-style: dashed; text-decoration: line-through; }
+  tbody tr.pinned-row td { background: rgba(74,222,128,0.08); border-top: 1px solid rgba(74,222,128,0.25); }
+  tbody tr.pinned-row:hover td { background: rgba(74,222,128,0.14); }
+  tbody tr.pinned-row td:first-child { box-shadow: inset 3px 0 0 var(--green); }
+  tbody tr.pinned-row .rank-cell { color: var(--green); font-weight: 700; }
+  .pinned-sep td { background: var(--panel2); color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; padding: 6px 12px; border-top: 1px solid var(--border2); border-bottom: 1px solid var(--border2); }
+  /* Pinnable-row affordance: nodes/floors 1–3 rows are highlighted as clickable */
+  tbody tr.pinnable { cursor: pointer; }
+  tbody tr.pinnable td:first-child { box-shadow: inset 2px 0 0 rgba(74,222,128,0.30); }
+  tbody tr.pinnable:hover td { background: rgba(74,222,128,0.06); }
+  tbody tr.pinnable .rank-cell { position: relative; }
+  tbody tr.pinnable:hover .rank-cell::before { content: '📌'; position: absolute; left: 3px; top: 50%; transform: translateY(-50%); font-size: 10px; }
+  tbody tr.not-pinnable { cursor: default; }
+  /* Pinned-team totals strip inside the planner banner */
+  .planner-totals { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+  .planner-total-chip {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 5px; padding: 3px 10px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700;
+    border: 1px solid rgba(45,212,191,0.35); background: rgba(45,212,191,0.07); color: var(--teal); white-space: nowrap;
+  }
+  .planner-total-chip.score { border-color: rgba(56,189,248,0.35); background: rgba(56,189,248,0.07); color: var(--accent2); }
+  .planner-total-chip b { color: var(--text); font-weight: 700; margin-left: 2px; }
+  .picker-cell.is-locked { opacity: 0.35; cursor: not-allowed; }
+  .picker-cell.is-locked:hover { background: none; }
+  .picker-cell .cell-lock { position: absolute; top: 1px; right: 2px; font-size: 9px; }
+  .picker-chip.is-locked { opacity: 0.45; cursor: not-allowed; }
+  .picker-chip.is-locked:hover { transform: none; }
+  tbody tr.row-noop td { animation: planner-noop 0.35s ease; }
+  @keyframes planner-noop {
+    0%, 100% { background-color: transparent; transform: translateX(0); }
+    25% { background-color: rgba(248,113,113,0.12); transform: translateX(-3px); }
+    60% { background-color: rgba(248,113,113,0.12); transform: translateX(2px); }
+  }
+
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg2); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -501,6 +577,23 @@
     </div>
   </div>
 
+  <!-- Planner mode banner — appears once a team row is pinned -->
+  <div class="planner-banner" id="plannerBanner">
+    <div class="planner-banner-title">📌 Planner Mode</div>
+    <div class="planner-banner-status" id="plannerBannerStatus"></div>
+    <button class="planner-clear" id="plannerClearBtn" type="button" disabled>Clear Pins</button>
+    <div class="planner-export" id="plannerExportWrap">
+      <button class="planner-copy" id="plannerExportBtn" type="button" disabled title="Export the pinned team plan">⧉ Export ▾</button>
+      <div class="planner-export-menu" id="plannerExportMenu">
+        <button class="planner-export-item" data-export="text" type="button">📋 Copy as Text</button>
+        <button class="planner-export-item" data-export="json" type="button">🧾 Copy as JSON</button>
+        <button class="planner-export-item" data-export="url" type="button">🔗 Copy Share Link</button>
+        <button class="planner-export-item" data-export="file" type="button">💾 Download JSON</button>
+      </div>
+    </div>
+    <div class="planner-totals" id="plannerTotals"></div>
+  </div>
+
   <div class="results-info" id="resultsInfo">Loading…</div>
 
   <div class="table-wrap">
@@ -517,7 +610,7 @@
             <th data-col="Appearance_Rate_pct" class="num sorted">App. Rate %</th>
             <th data-col="Samples" class="num">Samples</th>
             <th data-col="has_sustain">Sustain</th>
-            <th data-col="Full_Star_Rate_pct" class="num">Full Star %</th>
+            <th data-col="Full_Clear_Rate_pct" class="num">Full Star %</th>
             <th data-col="Total_Full_Clears" class="num">FS N</th>
             <th data-col="Min_Score" class="num">Min</th>
             <th data-col="Percentile_25" class="num">P25</th>
@@ -588,6 +681,14 @@ const ROW_H      = 46;
 const OVERSCAN   = 6;
 const VIEWPORT_H = 600;
 
+// Planner dims: the nodes/floors a team can be pinned for. Dim 0 is the
+// catch-all aggregate (never pinnable); Anomaly's floors 4/5 are excluded the
+// same way because the generator's planner_dims there is [1,2,3].
+const PLANNER_DIMS = ([1, 2, 3]).filter(d => d !== 0);
+// MOC reports cycle counts instead of scores (all teams share one cycle counter),
+// so its pinned-teams totals show only the summed cost — no score aggregates.
+const IS_MOC = true;
+
 let RAW_DATA = [];
 let MAX_RATE   = 1;
 let MIN_COST_G = 0;
@@ -646,6 +747,14 @@ let charFilters  = new Map();
 let filteredData = [];
 let OWNED_ROSTER = new Map(); // baseNameLower -> highest owned eidolon (0-6)
 let ownedOnlyActive = false;
+// Planner state: plannerPins maps a dim to its one pinned team row. While at
+// least one team is pinned (planner mode), locked dims (non-planner dims and
+// any dim with a pin) are greyed out and teams that reuse a pinned team's
+// characters are excluded from the table. Reset on every data load.
+let plannerPins        = new Map();
+let NON_PLANNER_DIMS   = new Set(); // dims that can never be planned (node 0, Anomaly floors 4/5)
+let _dimsBeforePlanner = null;      // snapshot of activeDims taken at the first pin
+let PLANNER_EXCLUDED   = 0;         // rows removed by planner mode in the last recompute
 
 function recompute() {
   let candidate;
@@ -701,6 +810,20 @@ function recompute() {
     );
   }
 
+  // Planner mode: remove rows on locked dims (non-planner dims + dims that
+  // already have a pinned team) and any team reusing a pinned team's characters.
+  PLANNER_EXCLUDED = 0;
+  if (plannerPins.size) {
+    const locked = plannerLockedDims();
+    const used   = pinnedMemberBases();
+    const before = candidate.length;
+    candidate = candidate.filter(r => {
+      if (locked.has(r.dim_key)) return false;
+      return !r._membersBase.some(m => used.has(m));
+    });
+    PLANNER_EXCLUDED = before - candidate.length;
+  }
+
   filteredData = candidate;
   filteredData.sort((a, b) => {
     let av = a[sortCol], bv = b[sortCol];
@@ -711,6 +834,7 @@ function recompute() {
   });
 
   updateMeta();
+  updatePlannerBanner();
   document.querySelector('.table-scroll').scrollTop = 0;
   renderViewport();
 }
@@ -720,7 +844,8 @@ function updateMeta() {
   const ssum = filteredData.reduce((s,r) => s + r.Samples, 0);
   document.getElementById('visibleSamples').textContent = ssum > 9999 ? (ssum/1000).toFixed(0)+'K' : ssum.toLocaleString();
   document.getElementById('costRangeDisplay').textContent = costMinFilter + '–' + costMaxFilter;
-  document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> teams · cost bracket <span>${costMinFilter}→${costMaxFilter}</span>`;
+  const hint = plannerActive() ? '' : ` · <span style="color:var(--text3)">click a team row on ${DIM_LABEL.toLowerCase()}s 1–3 to pin it and plan around it</span>`;
+  document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> teams · cost bracket <span>${costMinFilter}→${costMaxFilter}</span>${hint}`;
 }
 
 function parseMembers(team) {
@@ -741,7 +866,7 @@ function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
 function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
 function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
 
-function rowHTML(r) {
+function rowHTML(r, attrs) {
   const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
   const eid     = Math.round(r.max_eidolon);
   const sustHtml = r.has_sustain
@@ -750,7 +875,7 @@ function rowHTML(r) {
   const archHtml = r.Archetype_Core
     ? `<span class="arch-pill" title="${r.Archetype_Core}">${r.Archetype_Core}</span>`
     : `<span class="score-num" style="color:var(--text3)">—</span>`;
-  return `<tr>
+  return `<tr${attrs ? ' ' + attrs : ''}>
     <td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>
     <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
     <td><span class="cost-badge">${r.estimated_min_cost}<span class="cost-sep">→</span>${r.estimated_max_cost}</span></td>
@@ -772,6 +897,307 @@ function rowHTML(r) {
   </tr>`;
 }
 
+// ── Planner mode (pin a row in the main table) ───────────────────────────
+// Clicking a team row pins it: the pinned row is shown on top with full stats,
+// its node (and every non-planner dim: node 0 / floor 0, Anomaly floors 4+5)
+// is greyed out, and teams on the other nodes that reuse any of its characters
+// are excluded from the table.
+
+function plannerActive() { return plannerPins.size > 0; }
+
+function plannerLockedDims() {
+  const locked = new Set(NON_PLANNER_DIMS);
+  plannerPins.forEach((_, d) => locked.add(d));
+  return locked;
+}
+
+function pinnedMemberBases() {
+  const used = new Set();
+  plannerPins.forEach(pin => pin._membersBase.forEach(m => used.add(m)));
+  return used;
+}
+
+function togglePin(row) {
+  // Only the planner dims (nodes/floors 1–3) are pinnable — node 0 / floor 0
+  // and Anomaly's floors 4+5 can't be planned, so clicking them does nothing.
+  if (!PLANNER_DIMS.includes(row.dim_key)) return;
+  if (plannerPins.has(row.dim_key)) plannerPins.delete(row.dim_key);
+  else plannerPins.set(row.dim_key, row);
+  applyPlannerState();
+  recompute();
+}
+
+function applyPlannerState() {
+  // Snapshot the active dims on the first pin. While planner mode is on, the
+  // active dims are always rebuilt as snapshot-minus-locked so a dim reappears
+  // as soon as its pin is removed; on clear the snapshot is restored wholesale.
+  if (plannerActive() && !_dimsBeforePlanner) _dimsBeforePlanner = new Set(activeDims);
+  if (plannerActive()) {
+    const locked = plannerLockedDims();
+    activeDims = new Set([..._dimsBeforePlanner].filter(d => !locked.has(d)));
+  } else if (_dimsBeforePlanner) {
+    activeDims = _dimsBeforePlanner;
+    _dimsBeforePlanner = null;
+  }
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
+    const d      = parseInt(btn.dataset.dim, 10);
+    const locked = plannerActive() && plannerLockedDims().has(d);
+    btn.disabled = locked;
+    btn.classList.toggle('dim-locked', locked);
+    btn.classList.toggle('active', activeDims.has(d));
+  });
+  renderChips();
+  renderPickerGrid((document.getElementById('charPickerInput')?.value || '').trim());
+}
+
+function plannerTotalsData() {
+  const t = { cMin: 0, cMax: 0, sMin: 0, sMed: 0, sAvg: 0, sMax: 0 };
+  plannerPins.forEach(p => {
+    t.cMin += p.estimated_min_cost || 0;
+    t.cMax += p.estimated_max_cost || 0;
+    if (!IS_MOC) {
+      t.sMin += p.Min_Score || 0;
+      t.sMed += p.Median_Score || 0;
+      t.sAvg += p.Average_Score || 0;
+      t.sMax += p.Max_Score || 0;
+    }
+  });
+  return t;
+}
+
+function plannerTotalsHTML() {
+  if (!plannerPins.size) return '';
+  const t = plannerTotalsData();
+  let html = `<span class="planner-total-chip">Σ Cost <b>${fmtInt(Math.round(t.cMin))}→${fmtInt(Math.round(t.cMax))}</b></span>`;
+  if (!IS_MOC) {
+    html += `<span class="planner-total-chip score">Σ Min <b>${fmtInt(Math.round(t.sMin))}</b></span>`;
+    html += `<span class="planner-total-chip score">Σ Median <b>${fmtInt(Math.round(t.sMed))}</b></span>`;
+    html += `<span class="planner-total-chip score">Σ Avg <b>${fmtInt(Math.round(t.sAvg))}</b></span>`;
+    html += `<span class="planner-total-chip score">Σ Max <b>${fmtInt(Math.round(t.sMax))}</b></span>`;
+  }
+  return html;
+}
+
+function plannerTotalsText() {
+  const t = plannerTotalsData();
+  let s = `Σ Cost: ${fmtInt(Math.round(t.cMin))}→${fmtInt(Math.round(t.cMax))}`;
+  if (!IS_MOC) {
+    s += ` · Σ Min: ${fmtInt(Math.round(t.sMin))} · Σ Median: ${fmtInt(Math.round(t.sMed))} · Σ Avg: ${fmtInt(Math.round(t.sAvg))} · Σ Max: ${fmtInt(Math.round(t.sMax))}`;
+  }
+  return s;
+}
+
+// Build a shareable plain-text summary of the pinned teams.
+function plannerPlanText() {
+  if (!plannerPins.size) return '';
+  const header = `📌 TEAM PLAN — MOC ${currentVersion()}`;
+  const sep    = '─'.repeat(Math.max(20, header.length));
+  const lines  = [header, sep, ''];
+  [...plannerPins.values()].forEach((p, i) => {
+    const lbl = DIM_GROUP_LABELS[p.dim_key] || `${DIM_LABEL} ${p.dim_key}`;
+    const eid = Math.round(p.max_eidolon);
+    lines.push(`${i + 1}. ${lbl}`);
+    lines.push(`   Team      : ${p.Team}`);
+    lines.push(`   Cost      : ${Math.round(p.estimated_min_cost || 0)}→${Math.round(p.estimated_max_cost || 0)}`);
+    lines.push(`   Max Eid   : E${eid}`);
+    if (p.Appearance_Rate_pct != null) lines.push(`   App Rate  : ${fmtPct(p.Appearance_Rate_pct)}`);
+    if (p.Full_Clear_Rate_pct != null) lines.push(`   Full Star : ${fmtPct(p.Full_Clear_Rate_pct)}`);
+    lines.push('');
+  });
+  lines.push(sep);
+  lines.push(plannerTotalsText());
+  return lines.join('\n');
+}
+
+// ── Plan export: plain text, JSON roster, or a shareable URL ─────────────
+let _exportResetTimer = null;
+
+function currentVersion() {
+  return document.getElementById('versionHeaderLabel')?.textContent || '4.4.2';
+}
+
+function b64urlEncode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlDecode(str) {
+  const pad = '='.repeat((4 - str.length % 4) % 4);
+  const bin = atob(str.replace(/-/g, '+').replace(/_/g, '/') + pad);
+  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+}
+
+// Full JSON roster for the clipboard.
+function plannerJSON() {
+  const curVersion = currentVersion();
+  const totals = plannerTotalsData();
+  const teams = [...plannerPins.values()].map(p => ({
+    node: p.dim_key,
+    node_label: DIM_GROUP_LABELS[p.dim_key] || `${DIM_LABEL} ${p.dim_key}`,
+    team: p.Team,
+    members: p._members.map(m => {
+      const em = m.match(/\s*\((E\d)\)$/i);
+      return { name: m.replace(/\s*\((E\d)\)$/i, '').trim(), eid: em ? parseInt(em[1].slice(1), 10) : 0 };
+    }),
+    cost_min: Math.round(p.estimated_min_cost || 0),
+    cost_max: Math.round(p.estimated_max_cost || 0),
+    max_eidolon: Math.round(p.max_eidolon),
+    appearance_rate_pct: p.Appearance_Rate_pct ?? null,
+    full_clear_rate_pct: p.Full_Clear_Rate_pct ?? null,
+  }));
+  return JSON.stringify({
+    type: 'hsr_team_plan',
+    mode: 'MOC',
+    version: curVersion,
+    exported_at: new Date().toISOString(),
+    teams,
+    totals: {
+      cost_min: Math.round(totals.cMin),
+      cost_max: Math.round(totals.cMax),
+      min_score: IS_MOC ? null : Math.round(totals.sMin),
+      median_score: IS_MOC ? null : Math.round(totals.sMed),
+      avg_score: IS_MOC ? null : Math.round(totals.sAvg),
+      max_score: IS_MOC ? null : Math.round(totals.sMax),
+    },
+  }, null, 2);
+}
+
+// Compact payload embedded in a shareable URL hash.
+function plannerSharePayload() {
+  const curVersion = currentVersion();
+  return {
+    m: 'MOC',
+    v: curVersion,
+    teams: [...plannerPins.values()].map(p => ({ d: p.dim_key, t: p.Team })),
+  };
+}
+
+function plannerShareURL() {
+  const payload = b64urlEncode(JSON.stringify(plannerSharePayload()));
+  // Keep any query string; on file:// pages origin is the literal 'null', so
+  // fall back to a relative URL.
+  const origin = (location.origin && location.origin !== 'null') ? location.origin : '';
+  return origin + location.pathname + (location.search || '') + '#plan=' + payload;
+}
+
+// Try to restore a plan carried in a shared URL (#plan=<base64url>).
+function restorePlanFromHash() {
+  try {
+    const m = (location.hash || '').match(/^#plan=(.+)$/);
+    if (!m) return 0;
+    const payload = JSON.parse(b64urlDecode(m[1]));
+    if (!payload || !Array.isArray(payload.teams)) return 0;
+    let restored = 0;
+    payload.teams.forEach(t => {
+      const row = RAW_DATA.find(r => r.dim_key === t.d && r.Team === t.t);
+      if (row && PLANNER_DIMS.includes(row.dim_key) && !plannerPins.has(row.dim_key)) {
+        plannerPins.set(row.dim_key, row);
+        restored++;
+      }
+    });
+    return restored;
+  } catch (e) { return 0; }
+}
+
+function copyTextToClipboard(text) {
+  const fallback = () => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text).then(() => true).catch(() => fallback());
+  }
+  return Promise.resolve(fallback());
+}
+
+const EXPORT_LABELS = {
+  text: '📋 Copied!',
+  json: '🧾 JSON Copied!',
+  url: '🔗 Link Copied!',
+  file: '💾 Downloaded!',
+};
+
+// Trigger a browser download of the JSON roster.
+function downloadPlanJSON() {
+  const version = currentVersion().replace(/[^a-zA-Z0-9._-]/g, '_');
+  const modeSlug = 'MOC'.toLowerCase().replace(/\s+/g, '_');
+  const filename = `hsr_team_plan_${modeSlug}_${version}.json`;
+  const blob = new Blob([plannerJSON()], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Defer revocation: revoking synchronously can abort the download in Safari/Firefox.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return filename;
+}
+function runExport(kind) {
+  const btn = document.getElementById('plannerExportBtn');
+  if (!btn || !plannerPins.size) return;
+  clearTimeout(_exportResetTimer);
+  const finish = (ok) => {
+    btn.classList.add(ok ? 'copied' : 'copy-failed');
+    btn.innerHTML = ok ? EXPORT_LABELS[kind] : (kind === 'file' ? '✕ Download failed' : '✕ Copy failed');
+    _exportResetTimer = setTimeout(() => {
+      btn.classList.remove('copied', 'copy-failed');
+      btn.innerHTML = '⧉ Export ▾';
+    }, 1600);
+  };
+  if (kind === 'file') {
+    try { downloadPlanJSON(); finish(true); } catch (e) { finish(false); }
+    return;
+  }
+  const text = kind === 'json' ? plannerJSON()
+    : kind === 'url' ? plannerShareURL()
+    : plannerPlanText();
+  if (!text) return;
+  copyTextToClipboard(text).then(ok => finish(ok));
+}
+
+function updatePlannerBanner() {
+  const banner  = document.getElementById('plannerBanner');
+  const totals  = document.getElementById('plannerTotals');
+  if (!banner) return;
+  const status = document.getElementById('plannerBannerStatus');
+  const clear  = document.getElementById('plannerClearBtn');
+  const exportBtn = document.getElementById('plannerExportBtn');
+  const exportMenu = document.getElementById('plannerExportMenu');
+  if (!plannerActive()) {
+    banner.classList.remove('on');
+    if (clear) clear.disabled = true;
+    if (exportBtn) { exportBtn.disabled = true; exportBtn.classList.remove('copied', 'copy-failed'); exportBtn.innerHTML = '⧉ Export ▾'; }
+    if (exportMenu) exportMenu.classList.remove('open');
+    clearTimeout(_exportResetTimer);
+    if (totals) totals.innerHTML = '';
+    return;
+  }
+  banner.classList.add('on');
+  if (clear) clear.disabled = false;
+  if (exportBtn) exportBtn.disabled = false;
+  if (totals) totals.innerHTML = plannerTotalsHTML();
+  const used = pinnedMemberBases();
+  const totalMembers = [...plannerPins.values()].reduce((n, p) => n + p._membersBase.length, 0);
+  const shareWarn = used.size < totalMembers;
+  let html = `<b>${plannerPins.size}</b> pinned`;
+  if (PLANNER_EXCLUDED > 0) html += ` · <b class="excl">${PLANNER_EXCLUDED.toLocaleString()}</b> teams excluded (locked ${DIM_LABEL.toLowerCase()}s + conflicts)`;
+  if (shareWarn) html += ` · <span class="warn">⚠️ pinned teams share characters</span>`;
+  status.innerHTML = html;
+}
+
 (function setupVirtualScroll() {
   const ts = document.querySelector('.table-scroll');
   ts.style.maxHeight = VIEWPORT_H + 'px';
@@ -784,18 +1210,30 @@ function renderViewport() {
   const ts    = document.querySelector('.table-scroll');
   const COLS  = 18;
 
-  if (!filteredData.length) {
-    tbody.innerHTML = `<tr><td colspan="${COLS}"><div class="empty-state"><div class="icon">⚡</div><p>No teams match current filters</p></div></td></tr>`;
+  const pinnedList = [...plannerPins.values()];
+  if (!filteredData.length && !pinnedList.length) {
+    const msg = plannerActive()
+      ? 'All available teams are excluded by your pins — clear pins to see more.'
+      : 'No teams match current filters';
+    tbody.innerHTML = `<tr><td colspan="${COLS}"><div class="empty-state"><div class="icon">⚡</div><p>${msg}</p></div></td></tr>`;
     return;
   }
 
+  // Pinned rows + their separator occupy a fixed block at the top of the scroll
+  // area, so the body's virtual window must be offset by that block height.
   const scrollTop = ts.scrollTop;
-  const startIdx  = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
-  const endIdx    = Math.min(filteredData.length, Math.ceil((scrollTop + VIEWPORT_H) / ROW_H) + OVERSCAN);
+  const blockH    = pinnedList.length * ROW_H + (pinnedList.length ? ROW_H : 0);
+  const effTop    = Math.max(0, scrollTop - blockH);
+  const startIdx  = Math.max(0, Math.floor(effTop / ROW_H) - OVERSCAN);
+  const endIdx    = Math.min(filteredData.length, Math.ceil((effTop + VIEWPORT_H) / ROW_H) + OVERSCAN);
   const padTop    = startIdx * ROW_H;
   const padBot    = (filteredData.length - endIdx) * ROW_H;
 
   let html = '';
+  if (pinnedList.length) {
+    pinnedList.forEach(r => html += rowHTML(r, `class="pinned-row" data-dim="${r.dim_key}"`));
+    html += `<tr class="pinned-sep"><td colspan="${COLS}">📌 Pinned teams — click a pinned row to unpin it</td></tr>`;
+  }
   if (padTop > 0) html += `<tr style="height:${padTop}px"><td colspan="${COLS}" style="padding:0;border:none"></td></tr>`;
 
   let lastDim = startIdx > 0 ? filteredData[startIdx - 1].dim_key : null;
@@ -806,10 +1244,18 @@ function renderViewport() {
       html += `<tr class="group-sep"><td colspan="${COLS}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
       lastDim = r.dim_key;
     }
-    html += rowHTML(r);
+    const pinnable = PLANNER_DIMS.includes(r.dim_key);
+    const pinTitle = pinnable
+      ? 'Click to pin this team — teams on the other nodes/floors that reuse its characters are excluded'
+      : `${DIM_LABEL} ${r.dim_key} can't be pinned — only ${DIM_LABEL.toLowerCase()}s 1–3 are pinnable`;
+    html += rowHTML(r, `class="${pinnable ? 'pinnable' : 'not-pinnable'}" data-idx="${i}" title="${pinTitle}"`);
   }
 
-  if (padBot > 0) html += `<tr style="height:${padBot}px"><td colspan="${COLS}" style="padding:0;border:none"></td></tr>`;
+  if (!filteredData.length && pinnedList.length) {
+    html += `<tr><td colspan="${COLS}"><div class="empty-state"><div class="icon">⚡</div><p>All available teams are excluded by your pins — clear pins to see more.</p></div></td></tr>`;
+  } else if (padBot > 0) {
+    html += `<tr style="height:${padBot}px"><td colspan="${COLS}" style="padding:0;border:none"></td></tr>`;
+  }
   tbody.innerHTML = html;
 }
 
@@ -914,6 +1360,7 @@ function renderChips() {
     renderEidRow();
     return;
   }
+  const locked = pinnedMemberBases();
   wrap.innerHTML = [...charFilters.values()].map(f => {
     const display = BASE_NAME_DISPLAY.get(f.base) || f.base;
     const url = lookupIconUrl(display);
@@ -923,13 +1370,19 @@ function renderChips() {
     const modeIcon = f.mode === 'include' ? '✓' : '✕';
     const eidText = eidLabelFor(f);
     const eidLabel = eidText ? `<span class="chip-eid">${eidText}</span>` : '';
-    return `<span class="picker-chip ${f.mode}" data-base="${f.base}" title="Click to set exact eidolon(s)">${iconHtml}<span>${display}</span>${eidLabel}<span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${f.base}" title="Remove">×</button></span>`;
+    const isLocked = locked.has(f.base);
+    const lockIcon = isLocked ? '<span title="Locked — used by a pinned team">🔒</span>' : '';
+    const removeBtn = isLocked
+      ? `<button class="chip-remove" disabled title="Locked — unpin the team to edit this character" style="opacity:0.35;cursor:not-allowed;">×</button>`
+      : `<button class="chip-remove" data-remove="${f.base}" title="Remove">×</button>`;
+    return `<span class="picker-chip ${f.mode}${isLocked ? ' is-locked' : ''}" data-base="${f.base}" title="${isLocked ? 'Locked — used by a pinned team' : 'Click to set exact eidolon(s)'}">${iconHtml}<span>${display}</span>${eidLabel}<span class="chip-mode">${modeIcon}</span>${lockIcon}${removeBtn}</span>`;
   }).join('');
 
   wrap.querySelectorAll('.picker-chip').forEach(chip => {
     chip.addEventListener('click', (e) => {
       if (e.target.closest('.chip-remove')) return;
       const base = chip.dataset.base;
+      if (pinnedMemberBases().has(base)) return; // locked while in planner mode
       openEidBase = (openEidBase === base) ? null : base;
       renderEidRow();
     });
@@ -952,6 +1405,7 @@ function renderChips() {
 // Render the eidolon multi-select row for whichever character chip is currently open
 function renderEidRow() {
   const row = document.getElementById('pickerEidRow');
+  if (openEidBase && pinnedMemberBases().has(openEidBase)) openEidBase = null; // locked while in planner mode
   if (!openEidBase) { row.style.display = 'none'; row.innerHTML = ''; return; }
 
   const f = charFilters.get(openEidBase);
@@ -997,6 +1451,7 @@ function renderEidRow() {
 
 // Toggle a base character on/off at a given mode ('include' | 'exclude'), any eidolon by default
 function setCharFilter(base, mode) {
+  if (pinnedMemberBases().has(base)) return; // locked while in planner mode
   const existing = charFilters.get(base);
   if (existing && existing.mode === mode) {
     charFilters.delete(base); // clicking same mode again removes it
@@ -1025,6 +1480,7 @@ function renderPickerGrid(query) {
     return;
   }
 
+  const locked = pinnedMemberBases();
   grid.innerHTML = matches.map(name => {
     const base = name.toLowerCase();
     const state = cellState(base);
@@ -1033,10 +1489,12 @@ function renderPickerGrid(query) {
     const iconHtml = url
       ? `<img src="${url}" alt="${name}" onerror="this.style.display='none'"/>`
       : `<div class="cell-icon-ph">${name.slice(0,2).toUpperCase()}</div>`;
-    return `<div class="picker-cell ${stateCls}" data-base="${base.replace(/"/g,'&quot;')}" title="${name} — left-click include, right-click exclude">${iconHtml}<div class="cell-name">${name}</div></div>`;
+    const isLocked = locked.has(base);
+    return `<div class="picker-cell ${stateCls}${isLocked ? ' is-locked' : ''}" data-base="${base.replace(/"/g,'&quot;')}" title="${isLocked ? 'Locked — used by a pinned team' : name + ' — left-click include, right-click exclude'}">${iconHtml}${isLocked ? '<span class="cell-lock">🔒</span>' : ''}<div class="cell-name">${name}</div></div>`;
   }).join('');
 
   grid.querySelectorAll('.picker-cell').forEach(cell => {
+    if (cell.classList.contains('is-locked')) return;
     cell.addEventListener('click', () => setCharFilter(cell.dataset.base, 'include'));
     cell.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -1266,6 +1724,28 @@ updateRosterButtonState();
 
 renderChips();
 
+document.getElementById('plannerClearBtn').addEventListener('click', () => {
+  plannerPins.clear();
+  applyPlannerState();
+  recompute();
+});
+
+const exportWrap = document.getElementById('plannerExportWrap');
+const exportBtn  = document.getElementById('plannerExportBtn');
+const exportMenu = document.getElementById('plannerExportMenu');
+
+exportBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  exportMenu.classList.toggle('open');
+});
+exportMenu.addEventListener('click', (e) => {
+  const item = e.target.closest('.planner-export-item');
+  if (!item) return;
+  runExport(item.dataset.export);
+  exportMenu.classList.remove('open');
+});
+document.addEventListener('click', () => exportMenu.classList.remove('open'));
+
 document.querySelectorAll('th[data-col]').forEach(th => {
   th.addEventListener('click', () => {
     const col = th.dataset.col;
@@ -1275,6 +1755,31 @@ document.querySelectorAll('th[data-col]').forEach(th => {
     th.classList.add('sorted'); if (sortAsc) th.classList.add('asc');
     recompute();
   });
+});
+
+// Pin / unpin teams by clicking rows. Pinned rows (top of the table) toggle
+// off; body rows toggle their dim's pin on/off.
+document.getElementById('tableBody').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr');
+  if (!tr) return;
+  if (tr.classList.contains('pinned-row')) {
+    plannerPins.delete(parseInt(tr.dataset.dim, 10));
+    applyPlannerState();
+    recompute();
+    return;
+  }
+  const idx = parseInt(tr.dataset.idx, 10);
+  if (!Number.isInteger(idx)) return;
+  const r = filteredData[idx];
+  if (!r) return;
+  if (!PLANNER_DIMS.includes(r.dim_key)) {
+    // Node 0 / floors 4+5 aren't pinnable — flash the row so the click isn't silent.
+    tr.classList.add('row-noop');
+    clearTimeout(tr._noopTimer);
+    tr._noopTimer = setTimeout(() => tr.classList.remove('row-noop'), 350);
+    return;
+  }
+  togglePin(r);
 });
 
 // ── Particles ────────────────────────────────────────────────────────────
@@ -1438,6 +1943,17 @@ function prepareData(savedState) {
   clearPresets();
   document.getElementById('costResetBtn')?.classList.toggle('active', costMinFilter === MIN_COST_G && costMaxFilter === MAX_COST_G);
 
+  // Planner pins are per-dataset planning state — reset on every (re)load,
+  // including version switches. Non-planner dims (node 0 / floor 0, Anomaly
+  // floors 4+5) are always locked once planner mode starts.
+  plannerPins = new Map();
+  _dimsBeforePlanner = null;
+  NON_PLANNER_DIMS = new Set(
+    [...document.querySelectorAll('#dimFilters .btn-toggle')]
+      .map(b => parseInt(b.dataset.dim, 10))
+      .filter(d => !PLANNER_DIMS.includes(d))
+  );
+
   renderChips();
   renderPickerGrid('');
 }
@@ -1446,7 +1962,9 @@ function prepareData(savedState) {
 // loaded version's dataset (filters + selected characters with eidolon pins).
 function captureState() {
   return {
-    dims:        [...activeDims],
+    // If planner mode is active, carry the pre-planner dims (the snapshot) so
+    // the next version doesn't load with reduced dims and no pins.
+    dims:        _dimsBeforePlanner ? [..._dimsBeforePlanner] : [...activeDims],
     meids:       [...activeMeids],
     sustain:     showSustain,
     noSustain:   showNoSustain,
@@ -1477,9 +1995,14 @@ async function loadDataset(filename) {
   const brotli = await getBrotli();
   const decompressed = brotli.decompress(new Uint8Array(buffer));
   RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
-  prepareData(HAS_LOADED ? captureState() : null); // first load → defaults; version switch → carry over state
+  const isFirstLoad = !HAS_LOADED;
+  prepareData(isFirstLoad ? null : captureState()); // first load → defaults; version switch → carry over state
   HAS_LOADED = true;
+  // A shared link (#plan=...) re-pins its teams on first open; the applyPlannerState
+  // call below locks their dims and syncs the UI.
+  if (isFirstLoad) restorePlanFromHash();
   document.querySelector('.table-scroll').scrollTop = 0;
+  applyPlannerState();
   recompute();
 }
 

@@ -381,6 +381,15 @@
   .roster-man-badge.added    { color: var(--green);  background: rgba(74,222,128,0.14);   border: 1px solid rgba(74,222,128,0.35); }
   .roster-man-badge.changed  { color: var(--orange); background: rgba(251,146,60,0.14);  border: 1px solid rgba(251,146,60,0.35); }
   .roster-man-badge.imported { color: var(--text3);  background: rgba(148,163,184,0.10); border: 1px solid rgba(148,163,184,0.25); }
+  .roster-man-badge.removed  { color: var(--red);    background: rgba(248,113,113,0.14); border: 1px solid rgba(248,113,113,0.35); }
+
+  /* Badge legend strip inside the popover */
+  .owned-pop-legend {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px;
+    padding: 7px 12px; border-top: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text3); line-height: 1.6;
+  }
+  .owned-pop-legend .roster-man-badge, .owned-pop-legend .roster-man-icon-na { cursor: help; }
 
   /* PLANNER MODE — click a team row to pin it: the pinned row is shown on top
      with full stats, its node (and every non-planner dim: node 0 / floor 0,
@@ -599,6 +608,13 @@
             <input class="roster-manager-search" id="rosterManagerSearch" type="text" placeholder="Search characters…" />
           </div>
           <div class="roster-manager-list" id="rosterManagerList"></div>
+        </div>
+        <div class="owned-pop-legend" title="What each badge means">
+          <span class="roster-man-badge imported">Imported</span> from file
+          · <span class="roster-man-badge added">Added</span> manually
+          · <span class="roster-man-badge changed">E2→E4 ▲</span> eidolon changed
+          · <span class="roster-man-badge removed">Removed</span> taken out
+          · <span class="roster-man-icon-na legend-na">N/A</span> not in this dataset
         </div>
         <div class="owned-pop-foot">
           <button class="roster-reset-btn" id="rosterResetBtn" style="display:none;">↺ Reset to imported roster</button>
@@ -1757,31 +1773,41 @@ function renderRosterManager() {
   // dataset (those get the N/A icon treatment since no image exists for them).
   const owned = [];
   ownedKeys.forEach(base => {
-    const name = BASE_NAME_DISPLAY.get(base) || base;
-    if (!q || name.toLowerCase().includes(q)) owned.push(name);
+    const name = BASE_NAME_DISPLAY.get(base) || prettyName(base);
+    if (!q || name.toLowerCase().includes(q)) owned.push({ base, name });
   });
-  owned.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-
-  // Missing rows: spotted characters the user doesn't own.
-  const missing = shownSpotted.filter(n => !ownedSet.has(n.toLowerCase()));
+  owned.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
   const spottedSet = new Set(spotted.map(n => n.toLowerCase()));
   const ownedCount = ownedKeys.filter(b => spottedSet.has(b)).length;
 
+  // Missing rows: spotted characters the user doesn't own, plus any roster
+  // characters that were removed (still in the import baseline but no longer
+  // owned) even when they aren't present in this dataset.
+  const missing = [];
+  shownSpotted.forEach(n => { if (!ownedSet.has(n.toLowerCase())) missing.push({ base: n.toLowerCase(), name: n }); });
+  [...OWNED_ROSTER_BASE.keys()].forEach(base => {
+    if (ownedSet.has(base) || spottedSet.has(base)) return;
+    const name = BASE_NAME_DISPLAY.get(base) || prettyName(base);
+    if (!q || name.toLowerCase().includes(q)) missing.push({ base, name });
+  });
+
   // Origin counts vs the import baseline
-  let imported = 0, added = 0, changed = 0;
+  let imported = 0, added = 0, changed = 0, removed = 0;
   OWNED_ROSTER.forEach((eid, base) => {
     if (!OWNED_ROSTER_BASE.has(base)) added++;
     else if (OWNED_ROSTER_BASE.get(base) !== eid) changed++;
     else imported++;
   });
+  OWNED_ROSTER_BASE.forEach((eid, base) => { if (!OWNED_ROSTER.has(base)) removed++; });
 
   resetBtn.style.display = OWNED_ROSTER_BASE.size ? 'inline-block' : 'none';
   summary.innerHTML =
     `You own <b>${ownedCount}</b> of ${spotted.length} characters spotted in this data (<b>${spotted.length - ownedCount}</b> missing).` +
     ` <span style="color:var(--text3)">${imported} imported</span>` +
     (added   ? ` · <span style="color:var(--green)">${added} added</span>` : '') +
-    (changed ? ` · <span style="color:var(--orange)">${changed} eidolon changed</span>` : '');
+    (changed ? ` · <span style="color:var(--orange)">${changed} eidolon changed</span>` : '') +
+    (removed ? ` · <span style="color:var(--red)">${removed} removed</span>` : '');
 
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
@@ -1790,8 +1816,9 @@ function renderRosterManager() {
     return;
   }
 
-  const ownedHtml = owned.map(name => {
-    const base = name.toLowerCase();
+  const ownedHtml = owned.map(r => {
+    const base = r.base;
+    const name = r.name;
     const eid = OWNED_ROSTER.get(base) || 0;
     return `<div class="roster-man-row">` +
       rosterIconHtml(name) +
@@ -1806,12 +1833,17 @@ function renderRosterManager() {
     `</div>`;
   }).join('');
 
-  const missingHtml = missing.map(name => {
-    const base = name.toLowerCase();
+  const missingHtml = missing.map(m => {
+    const base = m.base;
+    const name = m.name;
+    const wasOwned = OWNED_ROSTER_BASE.has(base);
+    const addLabel = wasOwned ? 'Restore' : '+ Add';
+    const addTitle = wasOwned ? `Restore at E${OWNED_ROSTER_BASE.get(base)}` : 'Add to roster at E0';
     return `<div class="roster-man-row missing">` +
       rosterIconHtml(name) +
       `<span class="roster-man-name" title="${esc(name)}">${esc(name)}</span>` +
-      `<button type="button" class="roster-man-btn add" data-action="add" data-base="${esc(base)}" title="Add to roster at E0" aria-label="Add ${esc(name)} to roster">+ Add</button>` +
+      (wasOwned ? `<span class="roster-man-badge removed">Removed</span>` : '') +
+      `<button type="button" class="roster-man-btn add" data-action="add" data-base="${esc(base)}" title="${addTitle}" aria-label="${addLabel} ${esc(name)}">${addLabel}</button>` +
     `</div>`;
   }).join('');
 
@@ -1842,6 +1874,13 @@ function syncOwnedActive() {
   document.getElementById('btnOwnedOnly')?.classList.toggle('active', ownedOnlyActive);
   ownedPopToggle.classList.toggle('active', ownedOnlyActive);
   document.getElementById('ownedPopCheck').textContent = ownedOnlyActive ? '✓' : '◻';
+}
+
+// Fallback display name for characters not present in this dataset (no icon,
+// no BASE_NAME_DISPLAY entry): "not_in_dataset_char" -> "Not In Dataset Char".
+function prettyName(base) {
+  return String(base).split(/[_\- ]+/).filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 function rosterIconHtml(name) {
@@ -2009,12 +2048,18 @@ document.getElementById('rosterClearBtn').addEventListener('click', () => {
 });
 
 document.getElementById('rosterManagerList').addEventListener('click', (e) => {
+  // Stop propagation: every action re-renders the list, which orphans the
+  // clicked button before the document click listener runs — without this the
+  // popover would close on every stepper / add / remove click.
+  e.stopPropagation();
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
   const base   = btn.dataset.base;
   const action = btn.dataset.action;
   if (action === 'add') {
-    OWNED_ROSTER.set(base, 0);
+    // Restoring a removed character brings it back at its imported eidolon.
+    const baseEid = OWNED_ROSTER_BASE.get(base);
+    OWNED_ROSTER.set(base, baseEid !== undefined ? baseEid : 0);
     rosterChanged();
   } else if (action === 'remove') {
     OWNED_ROSTER.delete(base);

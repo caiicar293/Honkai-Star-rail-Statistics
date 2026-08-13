@@ -318,6 +318,70 @@
   .roster-clear-btn { background: var(--panel); border: 1px solid var(--border); color: var(--red); font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 12.5px; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
   .roster-clear-btn:hover { border-color: var(--red); background: rgba(248,113,113,0.08); }
 
+  .roster-reset-btn { background: var(--panel); border: 1px solid var(--border); color: var(--orange); font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 12.5px; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
+  .roster-reset-btn:hover { border-color: var(--orange); background: rgba(251,146,60,0.08); }
+
+  .roster-manager { margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow: hidden; }
+  .roster-manager-head { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .roster-manager-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 14px; color: var(--text); }
+  .roster-manager-sub { font-size: 11.5px; color: var(--text3); margin-top: 2px; line-height: 1.45; }
+  .roster-manager-search { width: 100%; margin-top: 9px; box-sizing: border-box; background: var(--bg2); border: 1px solid var(--border); border-radius: 5px; padding: 6px 10px; color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .roster-manager-search:focus { outline: none; border-color: var(--accent); }
+  .roster-manager-list { max-height: 250px; overflow-y: auto; }
+  .roster-man-row { display: flex; align-items: center; gap: 8px; padding: 4px 14px; border-bottom: 1px solid var(--border2); font-size: 13px; }
+  .roster-man-row:last-child { border-bottom: none; }
+  .roster-man-row.missing { opacity: 0.72; }
+  .roster-man-row.sec-label { padding: 5px 14px 3px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); background: var(--bg2); }
+  .roster-man-name { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .roster-man-eid { display: inline-flex; align-items: center; gap: 4px; }
+  .roster-man-eid-val { font-family: 'Share Tech Mono', monospace; font-size: 12px; min-width: 26px; text-align: center; color: var(--accent2); }
+  .roster-man-btn { background: var(--bg2); border: 1px solid var(--border); color: var(--text2); font-size: 12px; line-height: 1; padding: 3px 7px; border-radius: 4px; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: 700; }
+  .roster-man-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .roster-man-btn.add { color: var(--green); border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
+  .roster-man-btn.add:hover { background: rgba(74,222,128,0.16); }
+  .roster-man-btn.remove { color: var(--red); border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.08); padding: 3px 6px; }
+  .roster-man-btn.remove:hover { background: rgba(248,113,113,0.16); }
+
+  /* MY CHARACTERS popover — the full roster manager moved out of the import modal.
+     Rows show each owned character's webp icon (N/A when the character isn't in this
+     dataset and no image exists), an origin badge (Imported / Added / E#→E# eidolon
+     change), eidolon steppers, and add/remove; missing characters get + Add. */
+  .owned-group { position: relative; }
+  .owned-popover {
+    display: none; position: absolute; top: calc(100% + 8px); left: 0; z-index: 70;
+    width: 380px; max-width: calc(100vw - 32px); background: var(--bg2);
+    border: 1px solid var(--border2); border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.55); overflow: hidden;
+  }
+  .owned-popover.open { display: block; }
+  .owned-pop-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .owned-pop-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 14px; color: var(--text); letter-spacing: 0.04em; flex: 1; }
+  .owned-pop-toggle {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--panel); border: 1px solid var(--border);
+    color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600; padding: 5px 10px;
+    border-radius: 5px; cursor: pointer; white-space: nowrap;
+  }
+  .owned-pop-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .owned-pop-toggle.active { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.08); }
+  .owned-pop-check { display: inline-block; width: 13px; text-align: center; font-family: 'Share Tech Mono', monospace; }
+  .owned-pop-close { background: none; border: none; color: var(--text3); font-size: 16px; cursor: pointer; line-height: 1; padding: 2px 4px; }
+  .owned-pop-close:hover { color: var(--text); }
+  .owned-pop-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .owned-pop-hint { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text3); }
+
+  /* Roster manager nested inside the popover — no outer panel chrome */
+  .owned-popover .roster-manager { margin: 0; border: none; background: transparent; }
+  .owned-popover .roster-manager-head { padding: 8px 12px; }
+  .owned-popover .roster-manager-list { max-height: 300px; }
+
+  /* Row icons + N/A for characters missing from the dataset */
+  .roster-man-icon { width: 30px; height: 30px; border-radius: 5px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); background: var(--bg2); }
+  .roster-man-icon-ph { width: 30px; height: 30px; border-radius: 5px; flex-shrink: 0; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', sans-serif; font-size: 10px; font-weight: 700; color: var(--text3); }
+  .roster-man-icon-na { width: 30px; height: 30px; border-radius: 5px; flex-shrink: 0; background: rgba(148,163,184,0.08); border: 1px dashed rgba(148,163,184,0.4); display: flex; align-items: center; justify-content: center; font-family: 'Rajdhani', sans-serif; font-size: 9px; font-weight: 700; color: var(--text3); letter-spacing: 0.05em; cursor: help; }
+  .roster-man-badge { flex-shrink: 0; font-size: 8.5px; letter-spacing: 0.04em; font-family: 'Rajdhani', sans-serif; font-weight: 700; padding: 1px 5px; border-radius: 4px; text-transform: uppercase; white-space: nowrap; }
+  .roster-man-badge.added    { color: var(--green);  background: rgba(74,222,128,0.14);   border: 1px solid rgba(74,222,128,0.35); }
+  .roster-man-badge.changed  { color: var(--orange); background: rgba(251,146,60,0.14);  border: 1px solid rgba(251,146,60,0.35); }
+  .roster-man-badge.imported { color: var(--text3);  background: rgba(148,163,184,0.10); border: 1px solid rgba(148,163,184,0.25); }
+
   /* PLANNER MODE — click a team row to pin it: the pinned row is shown on top
      with full stats, its node (and every non-planner dim: node 0 / floor 0,
      Anomaly floors 4+5) is greyed out, and teams on the other nodes that reuse
@@ -514,10 +578,32 @@
       </div>
     </div>
 
-    <div class="ctrl-group">
+    <div class="ctrl-group owned-group">
       <div class="ctrl-label">Roster</div>
       <div class="btn-group">
-        <button class="btn-toggle owned-toggle" id="btnOwnedOnly" type="button" title="Show only teams where you own every character at a high-enough eidolon">My Characters Only</button>
+        <button class="btn-toggle owned-toggle" id="btnOwnedOnly" type="button" title="View your roster — see which characters came from your import vs were added manually, plus any eidolon changes. The filter toggle lives inside.">My Characters</button>
+      </div>
+      <div class="owned-popover" id="ownedPopover">
+        <div class="owned-pop-head">
+          <div class="owned-pop-title">My Characters</div>
+          <button class="owned-pop-toggle" id="ownedPopToggle" type="button" title="Show only teams where you own every character at a high-enough eidolon">
+            <span>Only show my characters</span>
+            <span class="owned-pop-check" id="ownedPopCheck">◻</span>
+          </button>
+          <button class="owned-pop-close" id="ownedPopClose" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="roster-manager" id="rosterManager">
+          <div class="roster-manager-head">
+            <div class="roster-manager-title">Your roster</div>
+            <div class="roster-manager-sub" id="rosterManagerSummary"></div>
+            <input class="roster-manager-search" id="rosterManagerSearch" type="text" placeholder="Search characters…" />
+          </div>
+          <div class="roster-manager-list" id="rosterManagerList"></div>
+        </div>
+        <div class="owned-pop-foot">
+          <button class="roster-reset-btn" id="rosterResetBtn" style="display:none;">↺ Reset to imported roster</button>
+          <span class="owned-pop-hint">Stored only in your browser (localStorage)</span>
+        </div>
       </div>
     </div>
 
@@ -671,7 +757,7 @@
 
       <div class="roster-modal-footer">
         <button class="roster-clear-btn" id="rosterClearBtn" style="display:none;">Clear saved roster</button>
-        <div class="picker-panel-hint" style="margin:0;">Stored only in your browser (localStorage) — never uploaded anywhere.</div>
+        <div class="picker-panel-hint" style="margin:0;">Stored only in your browser (localStorage) — never uploaded anywhere. Manage what-if pulls under the My Characters button.</div>
       </div>
     </div>
   </div>
@@ -750,6 +836,7 @@ let sortAsc       = false;
 let charFilters  = new Map();
 let filteredData = [];
 let OWNED_ROSTER = new Map(); // baseNameLower -> highest owned eidolon (0-6)
+let OWNED_ROSTER_BASE = new Map(); // baseline from the last import — "reset to imported roster" restores this
 let ownedOnlyActive = false;
 // Planner state: plannerPins maps a dim to its one pinned team row. While at
 // least one team is pinned (planner mode), locked dims (non-planner dims and
@@ -1588,11 +1675,12 @@ document.getElementById('pickerClearAll').addEventListener('click', () => {
 
 // ---- Owned roster import (Reliquary Archiver export) ----
 
-const ROSTER_STORAGE_KEY = 'hsr_owned_roster_v1';
+const ROSTER_STORAGE_KEY      = 'hsr_owned_roster_v1';
+const ROSTER_BASE_STORAGE_KEY = 'hsr_owned_roster_base_v1';
 
-function ownedRosterToObj() {
+function ownedRosterToObj(map = OWNED_ROSTER) {
   const obj = {};
-  OWNED_ROSTER.forEach((eid, base) => { obj[base] = eid; });
+  map.forEach((eid, base) => { obj[base] = eid; });
   return obj;
 }
 
@@ -1601,12 +1689,20 @@ function saveOwnedRoster() {
   catch (e) { console.warn('Could not save roster to localStorage:', e); }
 }
 
+function saveOwnedRosterBase() {
+  try { localStorage.setItem(ROSTER_BASE_STORAGE_KEY, JSON.stringify(ownedRosterToObj(OWNED_ROSTER_BASE))); }
+  catch (e) { console.warn('Could not save roster baseline to localStorage:', e); }
+}
+
 function loadOwnedRoster() {
   try {
     const raw = localStorage.getItem(ROSTER_STORAGE_KEY);
     if (!raw) return;
-    const obj = JSON.parse(raw);
-    OWNED_ROSTER = new Map(Object.entries(obj));
+    OWNED_ROSTER = new Map(Object.entries(JSON.parse(raw)));
+    // Baseline for the what-if reset. Falls back to the current roster if the
+    // baseline key isn't there yet (e.g. a roster saved before this feature).
+    const baseRaw = localStorage.getItem(ROSTER_BASE_STORAGE_KEY);
+    OWNED_ROSTER_BASE = baseRaw ? new Map(Object.entries(JSON.parse(baseRaw))) : new Map(OWNED_ROSTER);
   } catch (e) { console.warn('Could not load saved roster:', e); }
 }
 
@@ -1631,6 +1727,140 @@ function setRosterStatus(msg, ok) {
   el.textContent = msg;
   el.className = 'roster-status ' + (ok ? 'ok' : 'err');
 }
+
+// What-if roster editor: shows every character spotted in this patch's data with
+// its eidolon, lets you add missing characters / raise or lower eidolons (live),
+// and can reset back to the baseline that came from the last roster import.
+function renderRosterManager() {
+  const list     = document.getElementById('rosterManagerList');
+  const summary  = document.getElementById('rosterManagerSummary');
+  const resetBtn = document.getElementById('rosterResetBtn');
+  if (!list || !summary || !resetBtn) return;
+
+  if (OWNED_ROSTER.size === 0) {
+    list.innerHTML = `<div class="roster-man-row"><span class="roster-man-name">No roster yet — click “Import Roster” to load your characters.</span></div>`;
+    summary.textContent = '';
+    resetBtn.style.display = 'none';
+    syncOwnedActive();
+    return;
+  }
+
+  // Universe of characters: what the picker sees (spotted in this data).
+  const spotted = ALL_CHAR_NAMES.length ? [...ALL_CHAR_NAMES].sort() : [];
+  const q = (document.getElementById('rosterManagerSearch').value || '').trim().toLowerCase();
+  const shownSpotted = q ? spotted.filter(n => n.toLowerCase().includes(q)) : spotted;
+
+  const ownedKeys = [...OWNED_ROSTER.keys()];
+  const ownedSet  = new Set(ownedKeys);
+
+  // Owned rows: every owned character — including any not present in this
+  // dataset (those get the N/A icon treatment since no image exists for them).
+  const owned = [];
+  ownedKeys.forEach(base => {
+    const name = BASE_NAME_DISPLAY.get(base) || base;
+    if (!q || name.toLowerCase().includes(q)) owned.push(name);
+  });
+  owned.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+
+  // Missing rows: spotted characters the user doesn't own.
+  const missing = shownSpotted.filter(n => !ownedSet.has(n.toLowerCase()));
+
+  const spottedSet = new Set(spotted.map(n => n.toLowerCase()));
+  const ownedCount = ownedKeys.filter(b => spottedSet.has(b)).length;
+
+  // Origin counts vs the import baseline
+  let imported = 0, added = 0, changed = 0;
+  OWNED_ROSTER.forEach((eid, base) => {
+    if (!OWNED_ROSTER_BASE.has(base)) added++;
+    else if (OWNED_ROSTER_BASE.get(base) !== eid) changed++;
+    else imported++;
+  });
+
+  resetBtn.style.display = OWNED_ROSTER_BASE.size ? 'inline-block' : 'none';
+  summary.innerHTML =
+    `You own <b>${ownedCount}</b> of ${spotted.length} characters spotted in this data (<b>${spotted.length - ownedCount}</b> missing).` +
+    ` <span style="color:var(--text3)">${imported} imported</span>` +
+    (added   ? ` · <span style="color:var(--green)">${added} added</span>` : '') +
+    (changed ? ` · <span style="color:var(--orange)">${changed} eidolon changed</span>` : '');
+
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  if (!owned.length && !missing.length) {
+    list.innerHTML = `<div class="roster-man-row"><span class="roster-man-name">No characters match your search.</span></div>`;
+    return;
+  }
+
+  const ownedHtml = owned.map(name => {
+    const base = name.toLowerCase();
+    const eid = OWNED_ROSTER.get(base) || 0;
+    return `<div class="roster-man-row">` +
+      rosterIconHtml(name) +
+      `<span class="roster-man-name" title="${esc(name)}">${esc(name)}</span>` +
+      rosterBadgeHtml(base, eid) +
+      `<span class="roster-man-eid">` +
+        `<button type="button" class="roster-man-btn" data-action="eid-down" data-base="${esc(base)}" title="Lower eidolon" aria-label="Lower ${esc(name)} eidolon">−</button>` +
+        `<span class="roster-man-eid-val">E${eid}</span>` +
+        `<button type="button" class="roster-man-btn" data-action="eid-up" data-base="${esc(base)}" title="Raise eidolon" aria-label="Raise ${esc(name)} eidolon">+</button>` +
+      `</span>` +
+      `<button type="button" class="roster-man-btn remove" data-action="remove" data-base="${esc(base)}" title="Remove from roster" aria-label="Remove ${esc(name)} from roster">✕</button>` +
+    `</div>`;
+  }).join('');
+
+  const missingHtml = missing.map(name => {
+    const base = name.toLowerCase();
+    return `<div class="roster-man-row missing">` +
+      rosterIconHtml(name) +
+      `<span class="roster-man-name" title="${esc(name)}">${esc(name)}</span>` +
+      `<button type="button" class="roster-man-btn add" data-action="add" data-base="${esc(base)}" title="Add to roster at E0" aria-label="Add ${esc(name)} to roster">+ Add</button>` +
+    `</div>`;
+  }).join('');
+
+  list.innerHTML =
+    (owned.length ? `<div class="roster-man-row sec-label">Owned — ${owned.length}</div>` + ownedHtml : '') +
+    (missing.length ? `<div class="roster-man-row sec-label">Missing — ${missing.length}</div>` + missingHtml : '');
+  syncOwnedActive();
+}
+
+function rosterChanged() {
+  saveOwnedRoster();
+  updateRosterButtonState();
+  renderRosterManager();
+  recompute();
+}
+
+// ---- My Characters popover (roster breakdown) ----
+// The full roster manager lives here. Rows carry the webp icon (N/A when the
+// character isn't in this dataset), an origin badge (Imported / Added /
+// E#→E# eidolon change), and the what-if controls (steppers, add, remove).
+// The "Only show my characters" filter toggle lives in the popover header.
+
+const ownedPopover   = document.getElementById('ownedPopover');
+const ownedPopToggle = document.getElementById('ownedPopToggle');
+const ownedPopClose  = document.getElementById('ownedPopClose');
+
+function syncOwnedActive() {
+  document.getElementById('btnOwnedOnly')?.classList.toggle('active', ownedOnlyActive);
+  ownedPopToggle.classList.toggle('active', ownedOnlyActive);
+  document.getElementById('ownedPopCheck').textContent = ownedOnlyActive ? '✓' : '◻';
+}
+
+function rosterIconHtml(name) {
+  const url = lookupIconUrl(name);
+  if (url) return `<img class="roster-man-icon" src="${url}" alt="${name}" loading="lazy" onerror="this.style.display='none'"/>`;
+  // No image in this dataset — the character isn't present in it.
+  const escName = String(name).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return `<span class="roster-man-icon-na" title="${escName} — no image in this dataset (not available)">N/A</span>`;
+}
+
+function rosterBadgeHtml(base, eid) {
+  if (!OWNED_ROSTER_BASE.has(base)) return `<span class="roster-man-badge added">Added</span>`;
+  const baseEid = OWNED_ROSTER_BASE.get(base);
+  if (baseEid !== eid) return `<span class="roster-man-badge changed">E${baseEid}→E${eid} ${eid > baseEid ? '▲' : '▼'}</span>`;
+  return `<span class="roster-man-badge imported">Imported</span>`;
+}
+
+function openOwnedPopover()  { renderRosterManager(); ownedPopover.classList.add('open'); }
+function closeOwnedPopover() { ownedPopover.classList.remove('open'); }
 
 // Ground-truth variant map for characters that share one bare export name across
 // multiple playable forms. Mirrors the Polars mapping used by the DuckDB pipeline.
@@ -1721,7 +1951,11 @@ function handleRosterFile(file) {
       const { map, unresolved } = parseRosterFile(e.target.result);
       if (map.size === 0) throw new Error('No characters found in that file.');
       OWNED_ROSTER = map;
+      // Baseline for the what-if reset — the imported roster is always the "default"
+      // that ↺ Reset restores to, no matter how many edits are made after import.
+      OWNED_ROSTER_BASE = new Map(map);
       saveOwnedRoster();
+      saveOwnedRosterBase();
       updateRosterButtonState();
       let msg = `Loaded ${map.size} characters. "My Characters Only" is now active.`;
       if (unresolved.length) {
@@ -1729,7 +1963,8 @@ function handleRosterFile(file) {
       }
       setRosterStatus(msg, unresolved.length === 0);
       ownedOnlyActive = true;
-      document.getElementById('btnOwnedOnly').classList.add('active');
+      syncOwnedActive();
+      renderRosterManager();
       recompute();
     } catch (err) {
       setRosterStatus('Could not read that file: ' + err.message, false);
@@ -1761,11 +1996,46 @@ rosterDropzone.addEventListener('drop', (e) => {
 
 document.getElementById('rosterClearBtn').addEventListener('click', () => {
   OWNED_ROSTER = new Map();
+  OWNED_ROSTER_BASE = new Map();
   ownedOnlyActive = false;
   try { localStorage.removeItem(ROSTER_STORAGE_KEY); } catch (e) {}
-  document.getElementById('btnOwnedOnly').classList.remove('active');
+  try { localStorage.removeItem(ROSTER_BASE_STORAGE_KEY); } catch (e) {}
+  syncOwnedActive();
   updateRosterButtonState();
+  renderRosterManager();
+  closeOwnedPopover();
   setRosterStatus('Saved roster cleared.', true);
+  recompute();
+});
+
+document.getElementById('rosterManagerList').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const base   = btn.dataset.base;
+  const action = btn.dataset.action;
+  if (action === 'add') {
+    OWNED_ROSTER.set(base, 0);
+    rosterChanged();
+  } else if (action === 'remove') {
+    OWNED_ROSTER.delete(base);
+    rosterChanged();
+  } else if (action === 'eid-up') {
+    OWNED_ROSTER.set(base, Math.min(6, (OWNED_ROSTER.get(base) ?? 0) + 1));
+    rosterChanged();
+  } else if (action === 'eid-down') {
+    OWNED_ROSTER.set(base, Math.max(0, (OWNED_ROSTER.get(base) ?? 0) - 1));
+    rosterChanged();
+  }
+});
+document.getElementById('rosterManagerSearch').addEventListener('input', () => renderRosterManager());
+
+document.getElementById('rosterResetBtn').addEventListener('click', () => {
+  if (OWNED_ROSTER_BASE.size === 0) return;
+  OWNED_ROSTER = new Map(OWNED_ROSTER_BASE);
+  saveOwnedRoster();
+  updateRosterButtonState();
+  renderRosterManager();
+  setRosterStatus('Reset to your imported roster — what-if edits undone.', true);
   recompute();
 });
 
@@ -1774,13 +2044,27 @@ document.getElementById('btnOwnedOnly').addEventListener('click', () => {
     document.getElementById('rosterModalOverlay').classList.add('open');
     return;
   }
+  // Open (or close) the roster breakdown popover — the owned-only filter
+  // toggle now lives inside it.
+  if (ownedPopover.classList.contains('open')) closeOwnedPopover();
+  else openOwnedPopover();
+});
+
+ownedPopToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
   ownedOnlyActive = !ownedOnlyActive;
-  document.getElementById('btnOwnedOnly').classList.toggle('active', ownedOnlyActive);
+  syncOwnedActive();
   recompute();
 });
+ownedPopClose.addEventListener('click', closeOwnedPopover);
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#ownedPopover') && !e.target.closest('#btnOwnedOnly')) closeOwnedPopover();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeOwnedPopover(); });
 
 loadOwnedRoster();
 updateRosterButtonState();
+renderRosterManager();
 
 renderChips();
 
@@ -1991,7 +2275,7 @@ function prepareData(savedState) {
     btn.classList.toggle('active', activeMeids.has(parseInt(btn.dataset.meid))));
   document.getElementById('btnSustainOn')?.classList.toggle('active', showSustain);
   document.getElementById('btnSustainOff')?.classList.toggle('active', showNoSustain);
-  document.getElementById('btnOwnedOnly')?.classList.toggle('active', ownedOnlyActive);
+  syncOwnedActive();
   document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
   const sortedTh = document.querySelector(`th[data-col="${sortCol}"]`);
   if (sortedTh) { sortedTh.classList.add('sorted'); if (sortAsc) sortedTh.classList.add('asc'); }
@@ -2060,6 +2344,7 @@ async function loadDataset(filename) {
   const isFirstLoad = !HAS_LOADED;
   prepareData(isFirstLoad ? null : captureState()); // first load → defaults; version switch → carry over state
   HAS_LOADED = true;
+  renderRosterManager(); // ALL_CHAR_NAMES is now populated — refresh the what-if editor
   // A shared link (#plan=...) re-pins its teams on first open; the applyPlannerState
   // call below locks their dims and syncs the UI.
   if (isFirstLoad) restorePlanFromHash();

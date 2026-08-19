@@ -116,6 +116,19 @@
   .by-cost-sustain { display: none; }
   .by-cost-sustain.visible { display: flex; }
 
+  /* Cost Efficiency mode (by-cost only) — plot the minimum cost to reach a
+     configurable target score over time, mirroring the Cost Efficiency panel
+     in by_cost_archetype_tier_list_template.html.j2. */
+  .efficiency-panel { display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  .efficiency-panel.visible { display: block; }
+  .efficiency-panel-title { font-size: 10px; color: var(--teal); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; margin-bottom: 10px; }
+  .efficiency-controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+  .efficiency-mode-btn { background: var(--panel2); border: 1px solid var(--border); color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 5px; cursor: pointer; white-space: nowrap; letter-spacing: 0.03em; transition: all 0.15s; }
+  .efficiency-mode-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .efficiency-mode-btn.active { border-color: var(--teal); color: #04121c; background: var(--teal); }
+  .efficiency-target-input { min-width: 110px; }
+  .efficiency-note { font-size: 11px; color: var(--text3); font-family: 'Share Tech Mono', monospace; width: 100%; }
+
   .controls { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
   .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
   .ctrl-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Share Tech Mono', monospace; }
@@ -384,6 +397,29 @@
         <button class="clear-btn" id="clear-selection-btn">Clear all</button>
       </div>
       <div class="trend-panel">
+        <div class="efficiency-panel" id="efficiencyPanel">
+          <div class="efficiency-panel-title">Cost Efficiency — plot minimum cost to reach a target score</div>
+          <div class="efficiency-controls">
+            <button type="button" class="efficiency-mode-btn" id="efficiencyModeBtn">💰 Cost Efficiency Mode</button>
+            <div class="ctrl-group">
+              <label class="ctrl-label" for="efficiencyStatSelect">Target Score Stat</label>
+              <select id="efficiencyStatSelect" class="ctrl-select">
+                <option value="Min_Score">Min</option>
+                <option value="Average_Score" selected>Average</option>
+                <option value="Max_Score">Max</option>
+                <option value="Median_Score">Median</option>
+              </select>
+            </div>
+            <div class="ctrl-group">
+              <label class="ctrl-label">Target <span id="efficiencyDirectionLabel">score ≤</span></label>
+              <input type="number" step="any" id="efficiencyTargetInput" class="ctrl-input efficiency-target-input"/>
+            </div>
+            <div class="ctrl-group">
+              <button type="button" class="clear-btn" id="efficiencyResetBtn">Reset to default</button>
+            </div>
+            <div class="efficiency-note" id="efficiencyDirectionNote"></div>
+          </div>
+        </div>
         <div id="trend-empty" class="trend-empty">Click one or more rows in the table to plot their trend.</div>
         <div id="trend-content" style="display:none;">
           <div class="trend-chart-wrap">
@@ -576,6 +612,11 @@
   const teamPickerGridDropdown = document.getElementById("teamPickerGridDropdown");
   const teamPickerGrid = document.getElementById("teamPickerGrid");
   const teamPickerClearAll = document.getElementById("teamPickerClearAll");
+  const efficiencyPanel = document.getElementById("efficiencyPanel");
+  const efficiencyModeBtn = document.getElementById("efficiencyModeBtn");
+  const efficiencyStatSelect = document.getElementById("efficiencyStatSelect");
+  const efficiencyTargetInput = document.getElementById("efficiencyTargetInput");
+  const efficiencyResetBtn = document.getElementById("efficiencyResetBtn");
 
   // ── State ──
   function isByCostEntity(entity = currentEntity) {
@@ -638,6 +679,27 @@
   let byCostMeids = new Set([0, 1, 2, 3, 4, 5, 6]);
   let byCostShowSustain = true, byCostShowNoSustain = true;
   let byCostMin = 0, byCostMax = 32;
+
+  // ── Cost Efficiency mode state (by-cost only) ─────────────────────────
+  // Mirrors by_cost_archetype_tier_list_template.html.j2's Cost Efficiency
+  // panel: a per-mode target score, an 'asc' (lower is better, cycles) vs
+  // 'desc' (higher is better, points) direction, and a score statistic
+  // (Min/Average/Max/Median) used to test whether a variant reaches the
+  // target. In efficiency mode the trend chart's y-axis becomes the
+  // minimum cost to reach that target at each version.
+  let efficiencyMode = false;
+  let efficiencyStat = "Average_Score";
+  const EFFICIENCY_STAT_META = {
+    Min_Score: "Min",
+    Average_Score: "Average",
+    Max_Score: "Max",
+    Median_Score: "Median",
+  };
+  const DEFAULT_EFFICIENCY_TARGET = {
+    MOC: 0.0, ANOMALY_F0: 0.0, ANOMALY_F4: 0.0, ANOMALY_F5: 0.0,
+    APOC: 3850, PURE_FICTION: 40000,
+  };
+  let efficiencyTarget = { ...DEFAULT_EFFICIENCY_TARGET };
 
   // ── Teams-only character picker state ──────────────────────────────────
   // Map<baseLower, {base, mode: 'include'|'exclude', display}>. Rebuilt from
@@ -819,6 +881,8 @@
     byCostCostPanel.classList.toggle("visible", visible);
     byCostSustainGroup.classList.toggle("visible", currentEntity === "by_cost_team");
     eidolonCtrlGroup.style.display = visible ? "none" : "";
+    efficiencyPanel.classList.toggle("visible", visible);
+    efficiencyModeBtn.classList.toggle("active", efficiencyMode);
     byCostTypeToggle.querySelectorAll("button").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.byCostEntity === currentEntity);
     });
@@ -834,6 +898,38 @@
   function sliderFill(s) {
     const pct = ((parseFloat(s.value) - parseFloat(s.min)) / (parseFloat(s.max) - parseFloat(s.min)) * 100).toFixed(1);
     s.style.setProperty("--fill", pct + "%");
+  }
+
+  // Lower is better (cycles) for MOC + Anomaly; higher is better (points)
+  // for APOC + Pure Fiction — same convention as the archetype tier list.
+  function modeDirection(mode) {
+    return (mode === "APOC" || mode === "PURE_FICTION") ? "desc" : "asc";
+  }
+
+  // Strips per-member "(E\d)" eidolon annotations so different cost/eidolon
+  // variants of the same team/archetype/character collapse to one base
+  // identity for Cost Efficiency mode, e.g. "Himeko(E0) + The Herta(E2)"
+  // -> "Himeko + The Herta".
+  function baseEntityLabel(id) {
+    return String(id).replace(/\(E\d+\)/gi, "").replace(/\s+/g, " ").trim();
+  }
+  function baseEntityKey(id) {
+    return baseEntityLabel(id).toLowerCase();
+  }
+
+  // Keeps the efficiency panel's direction label/note/target value in sync
+  // with the currently loaded game mode.
+  function syncEfficiencyInputs() {
+    const mode = activeMode || modeSelect.value;
+    const dir = modeDirection(mode);
+    const cmp = dir === "asc" ? "≤" : "≥";
+    const label = document.getElementById("efficiencyDirectionLabel");
+    const note = document.getElementById("efficiencyDirectionNote");
+    if (label) label.textContent = "score " + cmp;
+    if (note) note.textContent = dir === "asc"
+      ? "Lower score = better (cycles) — cheapest way to stay at or under the target."
+      : "Higher score = better (points) — cheapest way to reach at least the target.";
+    efficiencyTargetInput.value = efficiencyTarget[mode] ?? 0;
   }
 
   function syncByCostRange() {
@@ -942,6 +1038,7 @@
       statusLine.textContent = "";
       activeMode = mode; // slice has now actually loaded for this mode — safe to attribute state to it
       updateByCostControls();
+      syncEfficiencyInputs();
       syncByCostRange();
       displayCols = computeDisplayCols();
       populateMetricSelect(st.metric);
@@ -1205,6 +1302,11 @@
       return;
     }
 
+    if (efficiencyMode && isByCostEntity()) {
+      drawEfficiencyTrend();
+      return;
+    }
+
     const metric = metricSelect.value;
     const entities = selectedIds
       .map(id => currentSlice.entities.find(e => entityKey(e) === id))
@@ -1224,9 +1326,107 @@
       const lookup = new Map();
       e.versions.forEach((v, vi) => lookup.set(v, (e.trend[metric] || [])[vi]));
       const values = versions.map(v => (lookup.has(v) ? lookup.get(v) : null));
-      return { entity: e, values, color: colorFor(i) };
+      return { label: entityLabel(e), values, color: colorFor(i), removeIds: [entityKey(e)] };
     });
 
+    renderTrendChart(series, metric.replace(/_/g, " "), versions);
+  }
+
+  // ── Cost Efficiency trend (by-cost only) ───────────────────────────────
+  // Groups the selected variants by base entity (eidolon annotations
+  // stripped), then for each base entity plots the minimum cost across ALL
+  // of its cost × eidolon variants that reach the target score at each
+  // version. Adding another variant of the same base entity therefore does
+  // not add a second line — every variant feeds the one "min cost to reach
+  // target" series for that base. The clicked variant keys themselves stay
+  // in selectedIds, so turning efficiency mode off plots them all again.
+  function drawEfficiencyTrend() {
+    const mode = currentSlice.game_mode || activeMode;
+    const dir = modeDirection(mode);
+    const stat = efficiencyStat;
+    const target = efficiencyTarget[mode] ?? 0;
+    const statLabel = EFFICIENCY_STAT_META[stat] || stat.replace(/_/g, " ");
+
+    trendEmpty.style.display = "none";
+    trendContent.style.display = "block";
+    trendSub.textContent = `Minimum cost to reach ${statLabel} score ${dir === "asc" ? "≤" : "≥"} ${target}`;
+
+    // Preserve click order and collapse to unique base entities, while
+    // remembering the original display label for each base.
+    const baseOrder = [];
+    const baseSet = new Set();
+    const baseLabelByKey = new Map();
+    const selectedEntities = [];
+    for (const id of selectedIds) {
+      const e = currentSlice.entities.find(en => entityKey(en) === id);
+      if (!e) continue;
+      selectedEntities.push(e);
+      const key = baseEntityKey(entityLabel(e));
+      if (!baseSet.has(key)) {
+        baseSet.add(key);
+        baseOrder.push(key);
+        baseLabelByKey.set(key, baseEntityLabel(entityLabel(e)));
+      }
+    }
+
+    // Collect every cost × eidolon variant of each selected base entity from
+    // the full slice. The cost slider is deliberately ignored here — the
+    // whole point is to search the entire cost range for the cheapest option
+    // (same as the tier list locking cost to "All" in efficiency mode). The
+    // max-eidolon and sustain filters still gate which variants qualify.
+    const variantsByBase = new Map();
+    for (const e of currentSlice.entities) {
+      const key = baseEntityKey(entityLabel(e));
+      if (!baseSet.has(key)) continue;
+      const eid = Math.round(Number(byCostSummary(e, "max_eidolon")));
+      if (!byCostMeids.has(eid)) continue;
+      if (isTeamEntity()) {
+        const sustain = byCostSummary(e, "has_sustain");
+        if (sustain === true && !byCostShowSustain) continue;
+        if (sustain === false && !byCostShowNoSustain) continue;
+      }
+      if (!variantsByBase.has(key)) variantsByBase.set(key, []);
+      variantsByBase.get(key).push(e);
+    }
+
+    // Union of versions across all qualifying variants.
+    const versionSet = new Set();
+    for (const key of baseOrder) {
+      for (const e of (variantsByBase.get(key) || [])) for (const v of e.versions) versionSet.add(v);
+    }
+    const versions = Array.from(versionSet).sort(compareVersions);
+
+    const series = baseOrder.map((key, i) => {
+      const variants = variantsByBase.get(key) || [];
+      const values = versions.map(ver => {
+        let best = null;
+        for (const e of variants) {
+          const vi = e.versions.indexOf(ver);
+          if (vi === -1) continue;
+          const score = (e.trend[stat] || [])[vi];
+          if (score === null || score === undefined || Number.isNaN(Number(score))) continue;
+          const meets = dir === "asc" ? Number(score) <= target : Number(score) >= target;
+          if (!meets) continue;
+          const cost = Number(byCostSummary(e, "estimated_min_cost"));
+          if (!Number.isFinite(cost)) continue;
+          if (best === null || cost < best) best = cost;
+        }
+        return best;
+      });
+      const removeIds = selectedEntities
+        .filter(e => baseEntityKey(entityLabel(e)) === key)
+        .map(e => entityKey(e));
+      return { label: baseLabelByKey.get(key) || key, values, color: colorFor(i), removeIds };
+    });
+
+    renderTrendChart(series, "Minimum Cost", versions);
+  }
+
+  // ── Shared SVG chart renderer ──────────────────────────────────────────
+  // Draws grid, axes, lines, points and the legend for a normalized series
+  // array [{ label, color, values, removeIds }]. Both the regular trend path
+  // and the cost-efficiency path feed into this.
+  function renderTrendChart(series, yLabel, versions) {
     const grid = document.getElementById("trend-grid");
     const lineLayer = document.getElementById("trend-line-layer");
     const areaLayer = document.getElementById("trend-area-layer");
@@ -1241,7 +1441,7 @@
       t.setAttribute("class", "trend-axis-label");
       t.textContent = "No data for this metric.";
       axisLayer.appendChild(t);
-      renderLegend(series, metric, null, null);
+      renderLegend(series, yLabel, null, null);
       return;
     }
 
@@ -1326,7 +1526,7 @@
         c.setAttribute("fill", s.color);
         c.addEventListener("mouseenter", () => {
           trendTooltip.style.opacity = "1";
-          trendTooltip.textContent = `${entityLabel(s.entity)} · ${versions[i]}: ${Number.isInteger(v) ? v : v.toFixed(2)}`;
+          trendTooltip.textContent = `${s.label} · ${versions[i]}: ${Number.isInteger(v) ? v : v.toFixed(2)}`;
         });
         c.addEventListener("mousemove", (ev) => {
           const rect = document.getElementById("trend-svg").getBoundingClientRect();
@@ -1338,7 +1538,7 @@
       });
     }
 
-    renderLegend(series, metric, versions, versions.length ? versions[versions.length - 1] : null);
+    renderLegend(series, yLabel, versions, versions.length ? versions[versions.length - 1] : null);
   }
 
   function renderLegend(series, metric, versions, latestVersion) {
@@ -1354,14 +1554,18 @@
       row.className = "legend-row";
       row.innerHTML = `
         <span class="swatch" style="background:${s.color}"></span>
-        ${iconStripHtml(entityLabel(s.entity))}
-        <span class="name">${entityLabel(s.entity)}</span>
+        ${iconStripHtml(s.label)}
+        <span class="name">${s.label}</span>
         <span class="val">${latestVal === null ? "—" : fmtValue(latestVal)}</span>
         <button class="remove-btn" title="Remove">✕</button>
       `;
       row.querySelector(".remove-btn").onclick = (ev) => {
         ev.stopPropagation();
-        toggleSelect(entityKey(s.entity));
+        const ids = (s.removeIds && s.removeIds.length) ? s.removeIds : [s.label];
+        selectedIds = selectedIds.filter(id => !ids.includes(id));
+        renderViewport();
+        drawTrend();
+        persistState();
       };
       legendList.appendChild(row);
     }
@@ -1401,6 +1605,29 @@
   };
   eidolonSelect.onchange = () => { persistState(); loadCurrentSlice(); };
   metricSelect.onchange = () => { drawTrend(); persistState(); };
+
+  efficiencyModeBtn.onclick = () => {
+    efficiencyMode = !efficiencyMode;
+    efficiencyModeBtn.classList.toggle("active", efficiencyMode);
+    drawTrend();
+    persistState();
+  };
+  efficiencyStatSelect.onchange = () => {
+    efficiencyStat = efficiencyStatSelect.value;
+    drawTrend();
+    persistState();
+  };
+  efficiencyTargetInput.oninput = () => {
+    const mode = activeMode || modeSelect.value;
+    const v = parseFloat(efficiencyTargetInput.value);
+    if (!isNaN(v)) { efficiencyTarget[mode] = v; drawTrend(); }
+  };
+  efficiencyResetBtn.onclick = () => {
+    const mode = activeMode || modeSelect.value;
+    efficiencyTarget[mode] = DEFAULT_EFFICIENCY_TARGET[mode] ?? 0;
+    syncEfficiencyInputs();
+    drawTrend();
+  };
 
   byCostSustainOn.onclick = () => {
     byCostShowSustain = !byCostShowSustain;

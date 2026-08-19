@@ -1,0 +1,20 @@
+{
+  "MOC": {
+    "all": "./by_cost_teams/moc.json.br"
+  },
+  "APOC": {
+    "all": "./by_cost_teams/apoc.json.br"
+  },
+  "PURE_FICTION": {
+    "all": "./by_cost_teams/pure_fiction.json.br"
+  },
+  "ANOMALY_F0": {
+    "all": "./by_cost_teams/anomaly_f0.json.br"
+  },
+  "ANOMALY_F4": {
+    "all": "./by_cost_teams/anomaly_f4.json.br"
+  },
+  "ANOMALY_F5": {
+    "all": "./by_cost_teams/anomaly_f5.json.br"
+  }
+}

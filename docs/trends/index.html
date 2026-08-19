@@ -44,6 +44,33 @@
   }
   .entity-toggle button.active { background: var(--accent); color: #04121c; }
   .entity-toggle button:not(:last-child) { border-right: 1px solid var(--border); }
+  .by-cost-type-toggle { display: none; gap: 6px; margin: -4px 0 14px; flex-wrap: wrap; }
+  .by-cost-type-toggle.visible { display: flex; }
+  .by-cost-type-toggle button {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 6px 13px; border-radius: 5px; cursor: pointer; text-transform: uppercase;
+  }
+  .by-cost-type-toggle button.active { color: var(--teal); border-color: var(--teal); background: rgba(45,212,191,0.08); }
+  .by-cost-controls { display: none; }
+  .by-cost-controls.visible { display: flex; }
+  .by-cost-cost-panel {
+    display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 16px; gap: 16px; flex-wrap: wrap; align-items: flex-end;
+  }
+  .by-cost-cost-panel.visible { display: flex; }
+  .by-cost-cost-panel .cost-range-group { display: flex; flex-direction: column; gap: 5px; min-width: 180px; flex: 1; }
+  .by-cost-cost-panel .cost-range-label { font-size: 11px; color: var(--text2); font-family: 'Share Tech Mono', monospace; display: flex; justify-content: space-between; }
+  .by-cost-cost-panel .cost-range-label span { color: var(--teal); font-weight: 700; }
+  .by-cost-cost-panel input[type="range"] { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--teal) var(--fill, 0%), var(--border2) var(--fill, 0%)); outline: none; cursor: pointer; }
+  .by-cost-cost-panel input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--teal); border: 2px solid var(--bg); cursor: pointer; }
+  .by-cost-cost-panel input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--teal); border: 2px solid var(--bg); cursor: pointer; }
+  .by-cost-presets { display: flex; gap: 5px; flex-wrap: wrap; }
+  .by-cost-preset { background: var(--bg2); border: 1px solid var(--border); color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+  .by-cost-preset:hover, .by-cost-preset.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.07); }
+  .by-cost-meid-label { width: 100%; }
+  .by-cost-sustain { display: none; }
+  .by-cost-sustain.visible { display: flex; }
 
   .controls { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
   .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
@@ -192,6 +219,7 @@
       <button id="toggle-archetype" class="active" data-entity="archetype">Archetypes</button>
       <button id="toggle-character" data-entity="character">Characters</button>
       <button id="toggle-team" data-entity="team">Teams</button>
+      <button id="toggle-by-cost" data-entity="by_cost_team">By Cost</button>
     </div>
   </div>
 
@@ -200,7 +228,7 @@
       <label class="ctrl-label" for="mode-select">Game Mode</label>
       <select id="mode-select" class="ctrl-select"><option>Loading…</option></select>
     </div>
-    <div class="ctrl-group">
+    <div class="ctrl-group" id="eidolonCtrlGroup">
       <label class="ctrl-label" for="eidolon-select">Eidolon Range</label>
       <select id="eidolon-select" class="ctrl-select"><option>—</option></select>
     </div>
@@ -217,7 +245,58 @@
     </div>
   </div>
 
-  <!-- Teams-only unified character picker: unlimited include/exclude, left-click=include, right-click=exclude. Hidden for Archetypes/Characters via .visible toggle in JS. -->
+  <div class="by-cost-type-toggle" id="byCostTypeToggle" aria-label="By-cost dataset">
+    <button type="button" data-by-cost-entity="by_cost_team" class="active">Teams</button>
+    <button type="button" data-by-cost-entity="by_cost_character">Characters</button>
+    <button type="button" data-by-cost-entity="by_cost_archetype">Archetypes</button>
+  </div>
+
+  <div class="by-cost-controls" id="byCostControls">
+    <div class="ctrl-group">
+      <div class="ctrl-label by-cost-meid-label">Max Eidolon in Cost Row</div>
+      <div class="btn-group" id="byCostMeidFilters">
+        <button class="btn-toggle meid e0 active" data-meid="0">E0</button>
+        <button class="btn-toggle meid e1 active" data-meid="1">E1</button>
+        <button class="btn-toggle meid e2 active" data-meid="2">E2</button>
+        <button class="btn-toggle meid e3 active" data-meid="3">E3</button>
+        <button class="btn-toggle meid e4 active" data-meid="4">E4</button>
+        <button class="btn-toggle meid e5 active" data-meid="5">E5</button>
+        <button class="btn-toggle meid e6 active" data-meid="6">E6</button>
+      </div>
+    </div>
+    <div class="ctrl-group by-cost-sustain" id="byCostSustainGroup">
+      <div class="ctrl-label">Sustain (Teams)</div>
+      <div class="btn-group">
+        <button class="btn-toggle active" id="byCostSustainOn">✦ Sustain</button>
+        <button class="btn-toggle active" id="byCostSustainOff">✕ No Sustain</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="by-cost-cost-panel" id="byCostCostPanel">
+    <div class="ctrl-label" style="width:100%;">Cost Range — live filter across all cost brackets in the selected game mode</div>
+    <div class="cost-range-group">
+      <div class="cost-range-label">Min Cost ≥ <span id="byCostMinLabel">0</span></div>
+      <input type="range" id="byCostMinSlider" min="0" max="28" step="1" value="0"/>
+    </div>
+    <div class="cost-range-group">
+      <div class="cost-range-label">Max Cost ≤ <span id="byCostMaxLabel">32</span></div>
+      <input type="range" id="byCostMaxSlider" min="4" max="32" step="1" value="32"/>
+    </div>
+    <div>
+      <div class="ctrl-label" style="margin-bottom:5px;">Quick Presets</div>
+      <div class="by-cost-presets">
+        <button class="by-cost-preset" data-min="0" data-max="4">F2P</button>
+        <button class="by-cost-preset" data-min="0" data-max="8">Budget</button>
+        <button class="by-cost-preset" data-min="8" data-max="16">Mid</button>
+        <button class="by-cost-preset" data-min="16" data-max="24">High</button>
+        <button class="by-cost-preset" data-min="24" data-max="32">Whale</button>
+        <button class="by-cost-preset" id="byCostReset">All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teams-only unified character picker: unlimited include/exclude, left-click=include, right-click=exclude. Hidden for non-team datasets. -->
   <div class="picker-panel" id="teamPickerPanel">
     <div class="picker-panel-title">Character Filters — unlimited include/exclude</div>
     <div class="picker-panel-hint">Click a character to <b style="color:var(--green)">include</b> them in every team shown. Right-click to <b style="color:var(--red)">exclude</b> teams containing them. Eidolon is controlled by the Eidolon Range selector above, not per-character here.</div>
@@ -362,21 +441,25 @@
   const DEFAULT_SORT_COL = "Total_Samples";
 
   const ENTITY_CONFIG = {
-    archetype: { manifest: "./archetype_trends_manifest.json", label: "Archetype" },
-    character: { manifest: "./character_trends_manifest.json", label: "Character" },
-    team:      { manifest: "./team_trends_manifest.json",      label: "Team" },
+    archetype:       { manifest: "./archetype_trends_manifest.json",       label: "Archetype" },
+    character:       { manifest: "./character_trends_manifest.json",       label: "Character" },
+    team:            { manifest: "./team_trends_manifest.json",            label: "Team" },
+    by_cost_team:   { manifest: "./by_cost_team_trends_manifest.json",   label: "By-Cost Team",      byCost: true, team: true },
+    by_cost_character: { manifest: "./by_cost_character_trends_manifest.json", label: "By-Cost Character", byCost: true },
+    by_cost_archetype: { manifest: "./by_cost_archetype_trends_manifest.json", label: "By-Cost Archetype", byCost: true },
   };
 
   // ── Character icons — same injection pattern as network_dashboard_svg.html.j2
   //    (icons_json + path_prefix come from Jinja context, see
   //    generate_trends_dashboard.py). Falls back to an empty map so the page
   //    still renders as plain text if the icons file wasn't wired up. ──
-  const ICONS = {"The Herta": "assets/icons/the_herta.webp", "Lightning Trailblazer": "assets/icons/lightning_trailblazer.webp", "Ice Trailblazer": "assets/icons/ice_trailblazer.webp", "Imaginary Trailblazer": "assets/icons/imaginary_trailblazer.webp", "Physical Trailblazer": "assets/icons/physical_trailblazer.webp", "Fire Trailblazer": "assets/icons/fire_trailblazer.webp", "Hyacine": "assets/icons/hyacine.webp", "Phainon": "assets/icons/phainon.webp", "Castorice": "assets/icons/castorice.webp", "Cipher": "assets/icons/cipher.webp", "Anaxa": "assets/icons/anaxa.webp", "Mydei": "assets/icons/mydei.webp", "Tribbie": "assets/icons/tribbie.webp", "Hysilens": "assets/icons/hysilens.webp", "The Dahlia": "assets/icons/the_dahlia.webp", "Ruan Mei": "assets/icons/ruan_mei.webp", "Sunday": "assets/icons/sunday.webp", "Robin": "assets/icons/robin.webp", "Acheron": "assets/icons/acheron.webp", "Black Swan": "assets/icons/black_swan.webp", "Sparkle": "assets/icons/sparkle.webp", "Aglaea": "assets/icons/aglaea.webp", "Boothill": "assets/icons/boothill.webp", "Jade": "assets/icons/jade.webp", "Firefly": "assets/icons/firefly.webp", "Rappa": "assets/icons/rappa.webp", "Jingliu": "assets/icons/jingliu.webp", "Yunli": "assets/icons/yunli.webp", "Kafka": "assets/icons/kafka.webp", "Dan Heng • Permansor Terrae": "assets/icons/dan_heng_permansor_terrae.webp", "Cerydra": "assets/icons/cerydra.webp", "Guinaifen": "assets/icons/guinaifen.webp", "Feixiao": "assets/icons/feixiao.webp", "Dr. Ratio": "assets/icons/dr_ratio.webp", "Aventurine": "assets/icons/aventurine.webp", "Fu Xuan": "assets/icons/fu_xuan.webp", "Luocha": "assets/icons/luocha.webp", "Topaz & Numby": "assets/icons/topaz_numby.webp", "Seele": "assets/icons/seele.webp", "Bronya": "assets/icons/bronya.webp", "Silver Wolf": "assets/icons/silver_wolf.webp", "Jing Yuan": "assets/icons/jing_yuan.webp", "Gepard": "assets/icons/gepard.webp", "Yanqing": "assets/icons/yanqing.webp", "Cyrene": "assets/icons/cyrene.webp", "Evernight": "assets/icons/evernight.webp", "Huohuo": "assets/icons/huohuo.webp", "Blade": "assets/icons/blade.webp", "Dan Heng • Imbibitor Lunae": "assets/icons/dan_heng_imbibitor_lunae.webp", "Argenti": "assets/icons/argenti.webp", "Lingsha": "assets/icons/lingsha.webp", "Fugue": "assets/icons/fugue.webp", "Clara": "assets/icons/clara.webp", "Dan Heng": "assets/icons/dan_heng.webp", "Sparxie": "assets/icons/sparxie.webp", "Himeko": "assets/icons/himeko.webp", "Jiaoqiu": "assets/icons/jiaoqiu.webp", "Sampo": "assets/icons/sampo.webp", "Luka": "assets/icons/luka.webp", "Imaginary March 7th": "assets/icons/imaginary_march_7th.webp", "Tingyun": "assets/icons/tingyun.webp", "Xueyi": "assets/icons/xueyi.webp", "Welt": "assets/icons/welt.webp", "Bailu": "assets/icons/bailu.webp", "Herta": "assets/icons/herta.webp", "Pela": "assets/icons/pela.webp", "Yukong": "assets/icons/yukong.webp", "Asta": "assets/icons/asta.webp", "Hook": "assets/icons/hook.webp", "Gallagher": "assets/icons/gallagher.webp", "Saber": "assets/icons/saber.webp", "Archer": "assets/icons/archer.webp", "Yao Guang": "assets/icons/yao_guang.webp", "Ashveil": "assets/icons/ashveil.webp", "Qingque": "assets/icons/qingque.webp", "Lynx": "assets/icons/lynx.webp", "Silver Wolf LV.999": "assets/icons/silver_wolf_lv999.webp", "Natasha": "assets/icons/natasha.webp", "Evanescia": "assets/icons/evanescia.webp", "Arlan": "assets/icons/arlan.webp", "Serval": "assets/icons/serval.webp", "Moze": "assets/icons/moze.webp", "Misha": "assets/icons/misha.webp", "Sushang": "assets/icons/sushang.webp", "Hanya": "assets/icons/hanya.webp", "Mortenax Blade": "assets/icons/mortenax_blade.webp", "Ice March 7th": "assets/icons/ice_march_7th.webp", "Himeko • Nova": "assets/icons/himeko_nova.webp", "Rin Tohsaka": "assets/icons/rin_tohsaka.webp", "Gilgamesh": "assets/icons/gilgamesh.webp"};
+  const ICONS = {"The Herta": "assets/icons/the_herta.webp", "Lightning Trailblazer": "assets/icons/lightning_trailblazer.webp", "Ice Trailblazer": "assets/icons/ice_trailblazer.webp", "Imaginary Trailblazer": "assets/icons/imaginary_trailblazer.webp", "Physical Trailblazer": "assets/icons/physical_trailblazer.webp", "Fire Trailblazer": "assets/icons/fire_trailblazer.webp", "Hyacine": "assets/icons/hyacine.webp", "Phainon": "assets/icons/phainon.webp", "Castorice": "assets/icons/castorice.webp", "Cipher": "assets/icons/cipher.webp", "Anaxa": "assets/icons/anaxa.webp", "Mydei": "assets/icons/mydei.webp", "Tribbie": "assets/icons/tribbie.webp", "Hysilens": "assets/icons/hysilens.webp", "The Dahlia": "assets/icons/the_dahlia.webp", "Ruan Mei": "assets/icons/ruan_mei.webp", "Sunday": "assets/icons/sunday.webp", "Robin": "assets/icons/robin.webp", "Acheron": "assets/icons/acheron.webp", "Black Swan": "assets/icons/black_swan.webp", "Sparkle": "assets/icons/sparkle.webp", "Aglaea": "assets/icons/aglaea.webp", "Boothill": "assets/icons/boothill.webp", "Jade": "assets/icons/jade.webp", "Firefly": "assets/icons/firefly.webp", "Rappa": "assets/icons/rappa.webp", "Jingliu": "assets/icons/jingliu.webp", "Yunli": "assets/icons/yunli.webp", "Kafka": "assets/icons/kafka.webp", "Dan Heng • Permansor Terrae": "assets/icons/dan_heng_permansor_terrae.webp", "Cerydra": "assets/icons/cerydra.webp", "Guinaifen": "assets/icons/guinaifen.webp", "Feixiao": "assets/icons/feixiao.webp", "Dr. Ratio": "assets/icons/dr_ratio.webp", "Aventurine": "assets/icons/aventurine.webp", "Fu Xuan": "assets/icons/fu_xuan.webp", "Luocha": "assets/icons/luocha.webp", "Topaz & Numby": "assets/icons/topaz_numby.webp", "Seele": "assets/icons/seele.webp", "Bronya": "assets/icons/bronya.webp", "Silver Wolf": "assets/icons/silver_wolf.webp", "Jing Yuan": "assets/icons/jing_yuan.webp", "Gepard": "assets/icons/gepard.webp", "Yanqing": "assets/icons/yanqing.webp", "Cyrene": "assets/icons/cyrene.webp", "Evernight": "assets/icons/evernight.webp", "Huohuo": "assets/icons/huohuo.webp", "Blade": "assets/icons/blade.webp", "Dan Heng • Imbibitor Lunae": "assets/icons/dan_heng_imbibitor_lunae.webp", "Argenti": "assets/icons/argenti.webp", "Lingsha": "assets/icons/lingsha.webp", "Fugue": "assets/icons/fugue.webp", "Clara": "assets/icons/clara.webp", "Dan Heng": "assets/icons/dan_heng.webp", "Sparxie": "assets/icons/sparxie.webp", "Himeko": "assets/icons/himeko.webp", "Jiaoqiu": "assets/icons/jiaoqiu.webp", "Sampo": "assets/icons/sampo.webp", "Luka": "assets/icons/luka.webp", "Imaginary March 7th": "assets/icons/imaginary_march_7th.webp", "Tingyun": "assets/icons/tingyun.webp", "Xueyi": "assets/icons/xueyi.webp", "Welt": "assets/icons/welt.webp", "Bailu": "assets/icons/bailu.webp", "Herta": "assets/icons/herta.webp", "Pela": "assets/icons/pela.webp", "Yukong": "assets/icons/yukong.webp", "Asta": "assets/icons/asta.webp", "Hook": "assets/icons/hook.webp", "Gallagher": "assets/icons/gallagher.webp", "Saber": "assets/icons/saber.webp", "Archer": "assets/icons/archer.webp", "Yao Guang": "assets/icons/yao_guang.webp", "Ashveil": "assets/icons/ashveil.webp", "Qingque": "assets/icons/qingque.webp", "Lynx": "assets/icons/lynx.webp", "Silver Wolf LV.999": "assets/icons/silver_wolf_lv999.webp", "Natasha": "assets/icons/natasha.webp", "Evanescia": "assets/icons/evanescia.webp", "Arlan": "assets/icons/arlan.webp", "Serval": "assets/icons/serval.webp", "Moze": "assets/icons/moze.webp", "Misha": "assets/icons/misha.webp", "Sushang": "assets/icons/sushang.webp", "Hanya": "assets/icons/hanya.webp", "Mortenax Blade": "assets/icons/mortenax_blade.webp", "Ice March 7th": "assets/icons/ice_march_7th.webp", "Himeko • Nova": "assets/icons/himeko_nova.webp", "Rin Tohsaka": "assets/icons/rin_tohsaka.webp", "Gilgamesh": "assets/icons/gilgamesh.webp", "Robin • Summeretto": "assets/icons/robin_summeretto.webp", "Aventurine • Waveflair": "assets/icons/aventurine_waveflair.webp"};
   const ICON_PATH_PREFIX = "../";
 
   function lookupIconUrl(name) {
     let url = ICONS[name];
     if (!url) url = ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
+    if (!url) url = ICONS[name.replace(/\s*\(E\d+\)$/i, '').trim()];
     if (!url) return null;
     if (!url.startsWith('http')) url = ICON_PATH_PREFIX + url;
     return url;
@@ -416,6 +499,17 @@
   const toggleArchetype = document.getElementById("toggle-archetype");
   const toggleCharacter = document.getElementById("toggle-character");
   const toggleTeam = document.getElementById("toggle-team");
+  const toggleByCost = document.getElementById("toggle-by-cost");
+  const byCostTypeToggle = document.getElementById("byCostTypeToggle");
+  const byCostControls = document.getElementById("byCostControls");
+  const byCostCostPanel = document.getElementById("byCostCostPanel");
+  const byCostMinSlider = document.getElementById("byCostMinSlider");
+  const byCostMaxSlider = document.getElementById("byCostMaxSlider");
+  const eidolonCtrlGroup = document.getElementById("eidolonCtrlGroup");
+  const byCostMeidFilters = document.getElementById("byCostMeidFilters");
+  const byCostSustainGroup = document.getElementById("byCostSustainGroup");
+  const byCostSustainOn = document.getElementById("byCostSustainOn");
+  const byCostSustainOff = document.getElementById("byCostSustainOff");
   const modeSelect = document.getElementById("mode-select");
   const eidolonSelect = document.getElementById("eidolon-select");
   const metricSelect = document.getElementById("metric-select");
@@ -440,6 +534,18 @@
   const teamPickerClearAll = document.getElementById("teamPickerClearAll");
 
   // ── State ──
+  function isByCostEntity(entity = currentEntity) {
+    return Boolean(ENTITY_CONFIG[entity]?.byCost);
+  }
+  function isTeamEntity(entity = currentEntity) {
+    return entity === "team" || entity === "by_cost_team";
+  }
+  function entityKey(e) {
+    return e.key ?? e.id;
+  }
+  function entityLabel(e) {
+    return e.label ?? e.id;
+  }
   let currentEntity = "archetype";
   let manifests = {};        // entity -> manifest json
   let currentSlice = null;   // currently loaded slice payload
@@ -480,7 +586,14 @@
     archetype: { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
     character: { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
     team:      { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null, charFilters: [] },
+    by_cost_team:      { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null, charFilters: [] },
+    by_cost_character: { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
+    by_cost_archetype: { mode: null, eidolonByMode: {}, search: "", sortCol: null, sortDir: 1, selectedIds: [], metric: null },
   };
+
+  let byCostMeids = new Set([0, 1, 2, 3, 4, 5, 6]);
+  let byCostShowSustain = true, byCostShowNoSustain = true;
+  let byCostMin = 0, byCostMax = 32;
 
   // ── Teams-only character picker state ──────────────────────────────────
   // Map<baseLower, {base, mode: 'include'|'exclude', display}>. Rebuilt from
@@ -503,7 +616,7 @@
     TEAM_CHAR_DISPLAY = new Map();
     if (currentSlice && currentSlice.entities) {
       for (const e of currentSlice.entities) {
-        for (const name of parseTeamMembers(e.id)) {
+        for (const name of parseTeamMembers(entityLabel(e))) {
           const base = name.toLowerCase();
           if (!TEAM_CHAR_DISPLAY.has(base)) TEAM_CHAR_DISPLAY.set(base, name);
         }
@@ -585,10 +698,10 @@
   // include-means-every-filter-must-be-present / exclude-means-none-present
   // semantics as by_cost_teams_template.html.j2's recompute().
   function applyTeamCharFilters(rows) {
-    if (currentEntity !== "team" || teamCharFilters.size === 0) return rows;
+    if (!isTeamEntity() || teamCharFilters.size === 0) return rows;
     const filters = [...teamCharFilters.values()];
     return rows.filter(e => {
-      const membersBase = parseTeamMembers(e.id).map(m => m.toLowerCase());
+      const membersBase = parseTeamMembers(entityLabel(e)).map(m => m.toLowerCase());
       for (const f of filters) {
         const present = membersBase.includes(f.base);
         if (f.mode === "include" && !present) return false;
@@ -599,8 +712,8 @@
   }
 
   function updateTeamPickerVisibility() {
-    teamPickerPanel.classList.toggle("visible", currentEntity === "team");
-    if (currentEntity !== "team") teamPickerGridDropdown.classList.remove("open");
+    teamPickerPanel.classList.toggle("visible", isTeamEntity());
+    if (!isTeamEntity()) teamPickerGridDropdown.classList.remove("open");
   }
 
   // Snapshot the live UI/working state into entityState[currentEntity].
@@ -619,7 +732,7 @@
     st.sortDir = sortDir;
     st.selectedIds = selectedIds.slice();
     st.metric = metricSelect.value || st.metric;
-    if (currentEntity === "team") st.charFilters = [...teamCharFilters.values()];
+    if (isTeamEntity()) st.charFilters = [...teamCharFilters.values()];
   }
 
   function fmtValue(v) {
@@ -643,10 +756,60 @@
   // PINNED_FIRST_COLS (e.g. Versions_Count) right after it, then everything
   // else from summary_columns minus HIDDEN_COLS, in original order.
   function computeDisplayCols() {
-    const cols = currentSlice.summary_columns.filter(c => !HIDDEN_COLS.has(c));
+    const hidden = new Set(HIDDEN_COLS);
+    if (isByCostEntity()) {
+      // These dimensions are represented by dedicated controls/badges in the
+      // by-cost table, so keep them out of the generic summary column list.
+      ["at_eidolon_level", "up_to_eidolon_level", "estimated_min_cost", "estimated_max_cost", "max_eidolon", "has_sustain"].forEach(c => hidden.add(c));
+    }
+    const cols = currentSlice.summary_columns.filter(c => !hidden.has(c));
     const pinned = PINNED_FIRST_COLS.filter(c => cols.includes(c));
     const rest = cols.filter(c => !pinned.includes(c));
     return [...pinned, ...rest];
+  }
+
+  function updateByCostControls() {
+    const visible = isByCostEntity();
+    byCostTypeToggle.classList.toggle("visible", visible);
+    byCostControls.classList.toggle("visible", visible);
+    byCostCostPanel.classList.toggle("visible", visible);
+    byCostSustainGroup.classList.toggle("visible", currentEntity === "by_cost_team");
+    eidolonCtrlGroup.style.display = visible ? "none" : "";
+    byCostTypeToggle.querySelectorAll("button").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.byCostEntity === currentEntity);
+    });
+    byCostMeidFilters.querySelectorAll("button").forEach(btn => {
+      btn.classList.toggle("active", byCostMeids.has(Number(btn.dataset.meid)));
+    });
+  }
+
+  function byCostSummary(e, col) {
+    return e.summary[col];
+  }
+
+  function sliderFill(s) {
+    const pct = ((parseFloat(s.value) - parseFloat(s.min)) / (parseFloat(s.max) - parseFloat(s.min)) * 100).toFixed(1);
+    s.style.setProperty("--fill", pct + "%");
+  }
+
+  function syncByCostRange() {
+    if (!currentSlice || !isByCostEntity() || !currentSlice.entities.length) return;
+    const mins = currentSlice.entities.map(e => Number(byCostSummary(e, "estimated_min_cost"))).filter(Number.isFinite);
+    const maxes = currentSlice.entities.map(e => Number(byCostSummary(e, "estimated_max_cost"))).filter(Number.isFinite);
+    if (!mins.length || !maxes.length) return;
+    const minGlobal = Math.min(...mins), maxGlobal = Math.max(...maxes);
+    byCostMin = Math.max(minGlobal, Math.min(byCostMin, maxGlobal - 4));
+    byCostMax = Math.min(maxGlobal, Math.max(byCostMax, minGlobal + 4));
+    byCostMinSlider.min = minGlobal;
+    byCostMinSlider.max = Math.max(minGlobal, maxGlobal - 4);
+    byCostMaxSlider.min = Math.min(maxGlobal, minGlobal + 4);
+    byCostMaxSlider.max = maxGlobal;
+    byCostMinSlider.value = byCostMin;
+    byCostMaxSlider.value = byCostMax;
+    document.getElementById("byCostMinLabel").textContent = byCostMin;
+    document.getElementById("byCostMaxLabel").textContent = byCostMax;
+    sliderFill(byCostMinSlider);
+    sliderFill(byCostMaxSlider);
   }
 
   // ── Manifest loading ──
@@ -683,6 +846,13 @@
   function populateEidolonSelect(desired) {
     const manifest = manifests[currentEntity];
     eidolonSelect.innerHTML = "";
+    if (isByCostEntity()) {
+      const opt = document.createElement("option");
+      opt.value = "all";
+      opt.textContent = "All eidolon rows";
+      eidolonSelect.appendChild(opt);
+      return;
+    }
     if (!manifest || !manifest[modeSelect.value]) return;
     const keys = Object.keys(manifest[modeSelect.value]).sort(
       (a, b) => eidolonSortKey(a) - eidolonSortKey(b)
@@ -716,12 +886,19 @@
     const range = eidolonSelect.value;
     if (!manifest || !mode || !range) return;
     const path = manifest[mode][range];
+    if (!path) {
+      statusLine.textContent = "No data for this game mode.";
+      currentSlice = null;
+      return;
+    }
     statusLine.textContent = "Loading slice…";
     const st = entityState[currentEntity];
     try {
       currentSlice = await loadSlice(path);
       statusLine.textContent = "";
       activeMode = mode; // slice has now actually loaded for this mode — safe to attribute state to it
+      updateByCostControls();
+      syncByCostRange();
       displayCols = computeDisplayCols();
       populateMetricSelect(st.metric);
 
@@ -747,7 +924,7 @@
       searchInput.value = st.search || "";
       selectedIds = st.selectedIds ? st.selectedIds.slice() : [];
 
-      if (currentEntity === "team") {
+      if (isTeamEntity()) {
         rebuildTeamRoster();
         teamCharFilters = new Map((st.charFilters || []).map(f => [f.base, f]));
         renderTeamPickerChips();
@@ -769,7 +946,9 @@
     if (!currentSlice) return;
     const cfg = ENTITY_CONFIG[currentEntity];
     tableTitle.textContent = `${MODE_LABELS[currentSlice.game_mode] || currentSlice.game_mode} — ${cfg.label}s`;
-    tableSub.textContent = eidolonLabel(`${currentSlice.at_eidolon_level}-${currentSlice.up_to_eidolon_level}`);
+    tableSub.textContent = isByCostEntity()
+      ? `${currentSlice.entities.length.toLocaleString()} cost/eidolon rows · cost ${byCostMin}–${byCostMax}`
+      : eidolonLabel(`${currentSlice.at_eidolon_level}-${currentSlice.up_to_eidolon_level}`);
 
     // Header
     tableHeadRow.innerHTML = "";
@@ -777,6 +956,14 @@
     idTh.textContent = cfg.label;
     idTh.dataset.col = "__id__";
     tableHeadRow.appendChild(idTh);
+    if (isByCostEntity()) {
+      for (const [col, label] of [["estimated_min_cost", "Cost Range"], ["max_eidolon", "Max Eidolon"]]) {
+        const th = document.createElement("th");
+        th.textContent = label;
+        th.dataset.col = col;
+        tableHeadRow.appendChild(th);
+      }
+    }
     for (const col of displayCols) {
       const th = document.createElement("th");
       th.textContent = col.replace(/_/g, " ");
@@ -812,14 +999,24 @@
   function computeRows() {
     if (!currentSlice) { currentRows = []; return; }
     const term = searchInput.value.trim().toLowerCase();
-    let rows = currentSlice.entities.filter(e => !term || String(e.id).toLowerCase().includes(term));
+    let rows = currentSlice.entities.filter(e => !term || String(entityLabel(e)).toLowerCase().includes(term));
+    if (isByCostEntity()) {
+      rows = rows.filter(e => {
+        const min = Number(byCostSummary(e, "estimated_min_cost"));
+        const max = Number(byCostSummary(e, "estimated_max_cost"));
+        const eid = Math.round(Number(byCostSummary(e, "max_eidolon")));
+        const sustain = byCostSummary(e, "has_sustain");
+        const sustainOk = !isTeamEntity() || !isByCostEntity() || (sustain ? byCostShowSustain : byCostShowNoSustain);
+        return byCostMeids.has(eid) && min >= byCostMin && max <= byCostMax && sustainOk;
+      });
+    }
     rows = applyTeamCharFilters(rows);
 
     if (sortCol) {
       const numeric = sortCol === "__id__" ? false : isNumericColumn(sortCol);
       rows = rows.slice().sort((a, b) => {
-        const va = sortCol === "__id__" ? a.id : a.summary[sortCol];
-        const vb = sortCol === "__id__" ? b.id : b.summary[sortCol];
+        const va = sortCol === "__id__" ? entityLabel(a) : a.summary[sortCol];
+        const vb = sortCol === "__id__" ? entityLabel(b) : b.summary[sortCol];
         if (va === null || va === undefined) return 1;
         if (vb === null || vb === undefined) return -1;
         if (numeric) return (va - vb) * sortDir;
@@ -855,23 +1052,36 @@
   // just emitted as a string so renderViewport() can assemble the entire
   // tbody in a single innerHTML assignment.
   function rowHtml(e) {
-    const selIndex = selectedIds.indexOf(e.id);
+    const key = entityKey(e);
+    const label = entityLabel(e);
+    const selIndex = selectedIds.indexOf(key);
     const swatch = selIndex !== -1
       ? `<span class="select-swatch" style="background:${colorFor(selIndex)}"></span>`
       : `<span class="select-swatch empty"></span>`;
-    let cells = `<td class="id-cell"><span class="id-cell-inner">${swatch}${iconStripHtml(e.id)}<span>${esc(e.id)}</span></span></td>`;
+    let cells = `<td class="id-cell"><span class="id-cell-inner">${swatch}${iconStripHtml(label)}<span>${esc(label)}</span></span></td>`;
+    if (isByCostEntity()) {
+      const min = byCostSummary(e, "estimated_min_cost");
+      const max = byCostSummary(e, "estimated_max_cost");
+      const eid = byCostSummary(e, "max_eidolon");
+      cells += `<td class="num-cell">${esc(fmtValue(min))}–${esc(fmtValue(max))}</td>`;
+      cells += `<td class="num-cell">E${esc(fmtValue(eid))}</td>`;
+    }
     for (const col of displayCols) {
       const v = e.summary[col];
       cells += `<td class="${typeof v === "number" ? "num-cell" : ""}">${esc(fmtValue(v))}</td>`;
     }
-    return `<tr data-id="${esc(e.id)}" class="${selIndex !== -1 ? "selected" : ""}">${cells}</tr>`;
+    return `<tr data-id="${esc(key)}" class="${selIndex !== -1 ? "selected" : ""}">${cells}</tr>`;
   }
 
   // Spacer <tr> stands in for the rows NOT rendered — it's what keeps the
   // native scrollbar's height/position correct without every row actually
   // existing in the DOM.
+  function tableColCount() {
+    return 1 + displayCols.length + (isByCostEntity() ? 2 : 0);
+  }
+
   function spacerRowHtml(heightPx) {
-    return `<tr class="table-spacer-row" style="height:${heightPx}px"><td colspan="${1 + displayCols.length}"></td></tr>`;
+    return `<tr class="table-spacer-row" style="height:${heightPx}px"><td colspan="${tableColCount()}"></td></tr>`;
   }
 
   // Paints only the rows of currentRows that intersect the current scroll
@@ -881,7 +1091,7 @@
   function renderViewport() {
     if (!currentSlice) return;
     const rows = currentRows;
-    const nCols = 1 + displayCols.length;
+    const nCols = tableColCount();
 
     if (!rows.length) {
       tableBody.innerHTML = `<tr class="table-empty-row"><td colspan="${nCols}">No rows match the current filters.</td></tr>`;
@@ -953,7 +1163,7 @@
 
     const metric = metricSelect.value;
     const entities = selectedIds
-      .map(id => currentSlice.entities.find(e => e.id === id))
+      .map(id => currentSlice.entities.find(e => entityKey(e) === id))
       .filter(Boolean);
 
     trendEmpty.style.display = "none";
@@ -1072,7 +1282,7 @@
         c.setAttribute("fill", s.color);
         c.addEventListener("mouseenter", () => {
           trendTooltip.style.opacity = "1";
-          trendTooltip.textContent = `${s.entity.id} · ${versions[i]}: ${Number.isInteger(v) ? v : v.toFixed(2)}`;
+          trendTooltip.textContent = `${entityLabel(s.entity)} · ${versions[i]}: ${Number.isInteger(v) ? v : v.toFixed(2)}`;
         });
         c.addEventListener("mousemove", (ev) => {
           const rect = document.getElementById("trend-svg").getBoundingClientRect();
@@ -1100,14 +1310,14 @@
       row.className = "legend-row";
       row.innerHTML = `
         <span class="swatch" style="background:${s.color}"></span>
-        ${iconStripHtml(s.entity.id)}
-        <span class="name">${s.entity.id}</span>
+        ${iconStripHtml(entityLabel(s.entity))}
+        <span class="name">${entityLabel(s.entity)}</span>
         <span class="val">${latestVal === null ? "—" : fmtValue(latestVal)}</span>
         <button class="remove-btn" title="Remove">✕</button>
       `;
       row.querySelector(".remove-btn").onclick = (ev) => {
         ev.stopPropagation();
-        toggleSelect(s.entity.id);
+        toggleSelect(entityKey(s.entity));
       };
       legendList.appendChild(row);
     }
@@ -1122,6 +1332,8 @@
     toggleArchetype.classList.toggle("active", entity === "archetype");
     toggleCharacter.classList.toggle("active", entity === "character");
     toggleTeam.classList.toggle("active", entity === "team");
+    toggleByCost.classList.toggle("active", isByCostEntity());
+    updateByCostControls();
     updateTeamPickerVisibility();
 
     const st = entityState[entity];
@@ -1133,6 +1345,10 @@
   toggleArchetype.onclick = () => setEntity("archetype");
   toggleCharacter.onclick = () => setEntity("character");
   toggleTeam.onclick = () => setEntity("team");
+  toggleByCost.onclick = () => setEntity("by_cost_team");
+  byCostTypeToggle.querySelectorAll("button").forEach(btn => {
+    btn.onclick = () => setEntity(btn.dataset.byCostEntity);
+  });
   modeSelect.onchange = () => {
     persistState();
     const st = entityState[currentEntity];
@@ -1141,6 +1357,68 @@
   };
   eidolonSelect.onchange = () => { persistState(); loadCurrentSlice(); };
   metricSelect.onchange = () => { drawTrend(); persistState(); };
+
+  byCostSustainOn.onclick = () => {
+    byCostShowSustain = !byCostShowSustain;
+    byCostSustainOn.classList.toggle("active", byCostShowSustain);
+    renderTableBody();
+  };
+  byCostSustainOff.onclick = () => {
+    byCostShowNoSustain = !byCostShowNoSustain;
+    byCostSustainOff.classList.toggle("active", byCostShowNoSustain);
+    renderTableBody();
+  };
+
+  byCostMeidFilters.querySelectorAll("button").forEach(btn => {
+    btn.onclick = () => {
+      const eid = Number(btn.dataset.meid);
+      if (byCostMeids.has(eid)) {
+        if (byCostMeids.size > 1) byCostMeids.delete(eid);
+      } else {
+        byCostMeids.add(eid);
+      }
+      updateByCostControls();
+      renderTableBody();
+    };
+  });
+
+  function updateByCostSlider(slider, labelId, value) {
+    slider.value = value;
+    document.getElementById(labelId).textContent = value;
+    sliderFill(slider);
+    renderTableBody();
+  }
+  byCostMinSlider.oninput = () => {
+    const next = Math.min(Number(byCostMinSlider.value), byCostMax - 4);
+    byCostMin = Math.max(Number(byCostMinSlider.min), next);
+    updateByCostSlider(byCostMinSlider, "byCostMinLabel", byCostMin);
+  };
+  byCostMaxSlider.oninput = () => {
+    const next = Math.max(Number(byCostMaxSlider.value), byCostMin + 4);
+    byCostMax = Math.min(Number(byCostMaxSlider.max), next);
+    updateByCostSlider(byCostMaxSlider, "byCostMaxLabel", byCostMax);
+  };
+  document.querySelectorAll(".by-cost-preset[data-min]").forEach(btn => {
+    btn.onclick = () => {
+      byCostMin = Number(btn.dataset.min);
+      byCostMax = Number(btn.dataset.max);
+      syncByCostRange();
+      document.querySelectorAll(".by-cost-preset").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderTableBody();
+    };
+  });
+  document.getElementById("byCostReset").onclick = () => {
+    if (currentSlice) {
+      const mins = currentSlice.entities.map(e => Number(byCostSummary(e, "estimated_min_cost"))).filter(Number.isFinite);
+      const maxes = currentSlice.entities.map(e => Number(byCostSummary(e, "estimated_max_cost"))).filter(Number.isFinite);
+      if (mins.length && maxes.length) { byCostMin = Math.min(...mins); byCostMax = Math.max(...maxes); }
+    }
+    syncByCostRange();
+    document.querySelectorAll(".by-cost-preset").forEach(b => b.classList.remove("active"));
+    document.getElementById("byCostReset").classList.add("active");
+    renderTableBody();
+  };
   searchInput.oninput = () => { renderTableBody(); persistState(); };
 
   // Teams-only character picker wiring.

@@ -1,0 +1,20 @@
+{
+  "MOC": {
+    "all": "./by_cost_characters/moc.json.br"
+  },
+  "APOC": {
+    "all": "./by_cost_characters/apoc.json.br"
+  },
+  "PURE_FICTION": {
+    "all": "./by_cost_characters/pure_fiction.json.br"
+  },
+  "ANOMALY_F0": {
+    "all": "./by_cost_characters/anomaly_f0.json.br"
+  },
+  "ANOMALY_F4": {
+    "all": "./by_cost_characters/anomaly_f4.json.br"
+  },
+  "ANOMALY_F5": {
+    "all": "./by_cost_characters/anomaly_f5.json.br"
+  }
+}

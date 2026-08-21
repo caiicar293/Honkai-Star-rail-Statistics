@@ -189,7 +189,7 @@ if __name__ == "__main__":
     parser.add_argument('--icons', default='character_icons.json', help='Path to the character icons JSON file')
     parser.add_argument('--template', default='archetype_tier_list_e0_template.html', help='Path to the HTML template')
     parser.add_argument('--output', default='docs/archetype_tierlist_interactive.html', help='Path for the final generated HTML file')
-    parser.add_argument('--version', default='4.4.1', help='Game version (e.g., 4.3.2)')
+    parser.add_argument('--version', default='4.4.3', help='Game version (e.g., 4.3.2)')
     parser.add_argument('--eidolon', default='E0', help='Eidolon level (e.g., E0)')
     
     args = parser.parse_args()

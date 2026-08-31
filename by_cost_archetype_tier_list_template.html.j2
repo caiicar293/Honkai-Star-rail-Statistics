@@ -407,6 +407,10 @@
         <button class="cost-preset-btn active" id="costResetBtn">All</button>
       </div>
     </div>
+    <div style="display:flex;flex-direction:column;gap:5px;">
+      <div class="ctrl-label">Variants</div>
+      <button class="btn-toggle dedupe-variant" id="dedupeVariantBtnTier" title="For each archetype/character, keep only its cheapest eidolon variant within the currently selected cost range">🔻 Cheapest Variant Only</button>
+    </div>
   </div>
 
   <div class="efficiency-panel" id="efficiencyPanel" style="display:none;">
@@ -528,7 +532,7 @@ function assignCostTierIndex(cost) {
 const DEFAULT_EFFICIENCY_TARGET = {{ efficiency_target_json }};
 let efficiencyTarget = JSON.parse(JSON.stringify(DEFAULT_EFFICIENCY_TARGET));
 let rankingMode = 'tier'; // 'tier' | 'efficiency'
-let dedupeVariants = false; // Cost Efficiency mode: collapse eidolon variants of the same archetype/character down to just its cheapest one
+let dedupeVariants = false; // Tier List & Cost Efficiency modes: collapse eidolon variants of the same archetype/character down to just its cheapest one (scoped to whichever cost range/bracket is currently selected)
 // Cost range remembered from Tier List mode, restored when leaving efficiency mode.
 let _savedCostMin = null, _savedCostMax = null;
 
@@ -716,11 +720,13 @@ document.getElementById('resetEfficiencyBtn').addEventListener('click', () => {
   syncEfficiencyInputs();
   recompute();
 });
-document.getElementById('dedupeVariantBtn').addEventListener('click', function() {
+function toggleDedupeVariants() {
   dedupeVariants = !dedupeVariants;
-  this.classList.toggle('active', dedupeVariants);
+  document.querySelectorAll('.dedupe-variant').forEach(btn => btn.classList.toggle('active', dedupeVariants));
   recompute();
-});
+}
+document.getElementById('dedupeVariantBtn').addEventListener('click', toggleDedupeVariants);
+document.getElementById('dedupeVariantBtnTier').addEventListener('click', toggleDedupeVariants);
 
 // Locks the Cost Range panel to the dataset's full bounds while Cost
 // Efficiency mode is active -- efficiency ranking is meant to search the
@@ -962,10 +968,19 @@ function recompute() {
 
   candidate = applySearchFilter(candidate);
 
-  const ranked = [];
   let hidden = 0;
-  candidate.forEach(r => {
-    if ((r.Simple_Avg_Appearance || 0) < minAppearance) { hidden++; return; }
+  let eligible = candidate.filter(r => {
+    if ((r.Simple_Avg_Appearance || 0) < minAppearance) { hidden++; return false; }
+    return true;
+  });
+  // "Cheapest Variant Only" (Variants toggle next to Quick Presets): collapse
+  // eidolon variants of the same archetype/character down to just its cheapest
+  // one, scoped to whatever's currently passed the cost range + other filters
+  // above -- i.e. per the currently-selected cost section(s).
+  if (dedupeVariants) eligible = dedupeToLowestCostVariant(eligible, cfg);
+
+  const ranked = [];
+  eligible.forEach(r => {
     const tier = assignTier(r[scoreMetric], cfg);
     if (tier) ranked.push({ ...r, _tier: tier });
   });

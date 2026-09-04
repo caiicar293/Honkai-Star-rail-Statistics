@@ -20,10 +20,10 @@ def assign_tier(row):
     # PF and APOC use Points (Higher = Better)
     
     if mode == 'MOC':
-        if score < 5.5: return 'T0'
-        elif score < 6.5: return 'T0.5'
-        elif score < 7.5: return 'T1'
-        elif score < 8.5: return 'T1.5'
+        if score < 8.5: return 'T0'
+        elif score < 9.5: return 'T0.5'
+        elif score < 10.5: return 'T1'
+        elif score < 11.5: return 'T1.5'
         else: return 'T2'
     elif mode == 'ANOMALY_F0':
         if score < 2.0: return 'T0'
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     parser.add_argument('--icons', default='character_icons.json', help='Path to the character icons JSON file')
     parser.add_argument('--template', default='archetype_tier_list_e0_template.html', help='Path to the HTML template')
     parser.add_argument('--output', default='docs/archetype_tierlist_interactive.html', help='Path for the final generated HTML file')
-    parser.add_argument('--version', default='4.4.3', help='Game version (e.g., 4.3.2)')
+    parser.add_argument('--version', default='4.5.1', help='Game version (e.g., 4.3.2)')
     parser.add_argument('--eidolon', default='E0', help='Eidolon level (e.g., E0)')
     
     args = parser.parse_args()

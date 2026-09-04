@@ -89,7 +89,7 @@ _COMMON_COLUMNS = """
 DEFAULT_TIER_CONFIG = {
     "MOC": {
         "direction": "asc",
-        "thresholds": {"T0": 2.0, "T0_5": 3.5, "T1": 5.0, "T1_5": 7.0},
+        "thresholds": {"T0": 8.5, "T0_5": 9.5, "T1": 10.5, "T1_5": 11.5},
     },
     "ANOMALY_F0": {
         "direction": "asc",

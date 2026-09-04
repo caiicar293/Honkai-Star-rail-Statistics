@@ -3059,5 +3059,73 @@
       "Dataset Versions",
       "Latest Version"
     ]
+  },
+  {
+    "character_name": "Robin • Summeretto ",
+    "element": "Wind",
+    "path": "Rememberance",
+    "subtitle": "Halovian Singer",
+    "theme_c1": "#4ecfa0",
+    "theme_c2": "#a0f0d0",
+    "theme_c3": "#20a070",
+    "theme_p1": "#4ecfa0",
+    "theme_p2": "#a0f0d0",
+    "theme_glow": "rgba(78,207,160,0.4)",
+    "defining_stats": [
+      "SPD",
+      "HP"
+    ],
+    "supporting_stats": [
+      "CRIT Rate",
+      "ATK",
+      "DEF",
+      "CRIT DMG",
+      "DMG Boost",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "HP",
+      "CRIT Rate"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
+  },
+  {
+    "character_name": "Aventurine • Waveflair",
+    "element": "Quantum",
+    "path": "Elation",
+    "subtitle": "IPC Strategic Investment Department",
+    "theme_c1": "#8b6eff",
+    "theme_c2": "#c8a8ff",
+    "theme_c3": "#6040cc",
+    "theme_p1": "#8b6eff",
+    "theme_p2": "#c8a8ff",
+    "theme_glow": "rgba(139,110,255,0.4)",
+    "defining_stats": [
+      "SPD",
+      "CRIT Rate"
+    ],
+    "supporting_stats": [
+      "CRIT DMG",
+      "ATK",
+      "DEF",
+      "HP",
+      "DMG Boost",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "CRIT Rate",
+      "CRIT DMG"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
   }
 ]

@@ -369,11 +369,7 @@ function searchIndex(query) {
 
 // ── State ─────────────────────────────────────────────────────────────────
 let activeDims   = new Set();
-let activeRanges = new Set([
-    '0_0','0_1','0_2','0_6',
-    '1_1','1_2','1_6',
-    '2_2','2_6','6_6'
-]);
+let activeRanges = new Set(['0_6']); // E0–E6 only by default (full set is built from data in prepareData)
 let searchTerm   = '';
 let sortCol      = 'Appearance_Rate_pct';
 let sortAsc      = false;
@@ -644,12 +640,14 @@ function prepareData(savedState) {
         });
     });
 
-    // Defaults for a fresh page load: all nodes + all eidolon ranges.
+    // Defaults for a fresh page load: E0–E6 only + individual nodes (N1/N2/N3),
+    // with N0 ("All Nodes / Both Halves" catch-all) off.
     const validDims   = new Set(RAW_DATA.map(r => r.dim_key));
     const validRanges = new Set(RAW_DATA.map(r => r.eid_range_key));
 
-    const defaultDims   = new Set(validDims);
-    const defaultRanges = new Set(['0_0','0_1','0_2','0_6','1_1','1_2','1_6','2_2','2_6','6_6']);
+    const defaultDims = new Set(validDims);
+    if (/node|both|all/i.test(String(DIM_GROUP_LABELS['0'] || ''))) defaultDims.delete(0);
+    const defaultRanges = validRanges.has('0_6') ? new Set(['0_6']) : new Set(validRanges);
 
     activeDims   = new Set(defaultDims);
     activeRanges = new Set(defaultRanges);

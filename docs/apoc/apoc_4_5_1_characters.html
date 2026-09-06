@@ -254,10 +254,29 @@
 
   .col-filter-popover {
     position: fixed; z-index: 900; background: var(--panel2); border: 1px solid var(--border2);
-    border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); width: 240px;
+    border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); width: 264px;
     display: flex; flex-direction: column; font-family: 'Exo 2', sans-serif; overflow: hidden;
     text-transform: none; letter-spacing: normal;
   }
+  .col-filter-popover .cf-section-label {
+    font-size: 9.5px; color: var(--text3); letter-spacing: 0.12em; font-weight: 700;
+    font-family: 'Rajdhani', sans-serif; margin-bottom: 4px; text-transform: uppercase;
+  }
+  .col-filter-popover .cf-or, .col-filter-popover .cf-range { padding: 7px 8px 6px; border-bottom: 1px solid var(--border); }
+  .col-filter-popover .cf-or-row, .col-filter-popover .cf-range-row { display: flex; align-items: center; gap: 6px; }
+  .col-filter-popover .cf-or-row select {
+    flex: 0 0 auto; max-width: 118px; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; font-size: 11.5px; padding: 5px 4px; outline: none; font-family: 'Exo 2', sans-serif;
+  }
+  .col-filter-popover .cf-or-row select:focus { border-color: var(--accent); }
+  .col-filter-popover .cf-or-row input, .col-filter-popover .cf-range-row input {
+    flex: 1; min-width: 0; width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; font-size: 11.5px; padding: 5px 8px; outline: none; font-family: 'Exo 2', sans-serif;
+  }
+  .col-filter-popover .cf-or-row input:focus, .col-filter-popover .cf-range-row input:focus { border-color: var(--accent); }
+  .col-filter-popover .cf-range-row input::-webkit-outer-spin-button,
+  .col-filter-popover .cf-range-row input::-webkit-inner-spin-button { margin: 0; }
+  .col-filter-popover .cf-range-sep { color: var(--text3); font-size: 12px; flex-shrink: 0; }
   .col-filter-popover .cf-search { padding: 8px; border-bottom: 1px solid var(--border); }
   .col-filter-popover .cf-search input {
     width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
@@ -294,6 +313,7 @@
   }
   .af-chip button { background: none; border: none; color: var(--gold); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 2px; opacity: 0.75; }
   .af-chip button:hover { opacity: 1; }
+  .af-chip .af-chip-desc { opacity: 0.75; font-weight: 400; }
   .af-chip-clearall {
     background: var(--panel); border: 1px solid var(--border); color: var(--text2); border-radius: 5px;
     padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 10.5px; cursor: pointer;
@@ -829,23 +849,45 @@ async function initializeApp() {
 <script>
 // ── Column value filter (DuckDB VS Code extension style) ───────────────────
 // Click the small funnel icon in any filterable <th data-col="..."> to open
-// a checkbox list of that column's distinct values (with counts), search,
-// and apply/clear. Selected exclusions are combined with every other active
-// filter (dim/eidolon/search/etc.) via ColumnFilter.passes(row) — each page
-// wires that into its own recompute() filter chain, and calls
+// a filter popover for that column with three cooperating controls:
+//   1. Checkbox list  — uncheck values to EXCLUDE them (classic behavior)
+//   2. OR FILTER BY   — one value rule: Equals / Not equals / Contains / ...
+//   3. RANGE          — numeric Min–Max bounds
+// All active rules for a column are ANDed together, and combined with every
+// other active filter (dim/eidolon/search/etc.) via ColumnFilter.passes(row).
+// Each page wires that into its own recompute() filter chain, and calls
 // ColumnFilter.attach('#mainTable', () => RAW_DATA, recompute) once.
 const ColumnFilter = (() => {
   let getData   = () => [];
   let onChange  = () => {};
   let table     = null;
-  const state   = new Map(); // col -> Set of EXCLUDED formatted-value labels
+  const state   = new Map(); // col -> { excluded: Set<label>, valueRule: {op,value}, range: {min,max} }
   let openPopover = null;
   let openCol      = null;
+
+  const OPTS = [
+    ['equals',        'Equals'],
+    ['not_equals',    'Not equals'],
+    ['contains',      'Contains'],
+    ['not_contains',  'Not contains'],
+    ['starts_with',   'Starts with'],
+    ['ends_with',     'Ends with'],
+    ['gt',            'Greater than'],
+    ['lt',            'Less than'],
+    ['is_empty',      'Is empty'],
+    ['is_not_empty',  'Is not empty'],
+  ];
 
   function fmtVal(v) {
     if (v === null || v === undefined || v === '') return '(blank)';
     if (typeof v === 'boolean') return v ? 'true' : 'false';
     if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(2);
+    return String(v);
+  }
+
+  // Raw string form used by the OR-filter value rules (no float rounding).
+  function rawLabel(v) {
+    if (v === null || v === undefined || v === '') return '(blank)';
     return String(v);
   }
 
@@ -859,17 +901,47 @@ const ColumnFilter = (() => {
     return [...counts.entries()].sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]));
   }
 
+  function valueRulePasses(v, rule) {
+    if (rule.op === 'is_empty')     return v === null || v === undefined || v === '';
+    if (rule.op === 'is_not_empty') return v !== null && v !== undefined && v !== '';
+    const label  = rawLabel(v).toLowerCase();
+    const needle = String(rule.value).toLowerCase();
+    switch (rule.op) {
+      case 'equals':       return label === needle;
+      case 'not_equals':   return label !== needle;
+      case 'contains':     return label.includes(needle);
+      case 'not_contains': return !label.includes(needle);
+      case 'starts_with':  return label.startsWith(needle);
+      case 'ends_with':    return label.endsWith(needle);
+      case 'gt': { const n = Number(v); return !isNaN(n) && n > Number(rule.value); }
+      case 'lt': { const n = Number(v); return !isNaN(n) && n < Number(rule.value); }
+    }
+    return true;
+  }
+
+  function rangePasses(v, range) {
+    if (v === null || v === undefined || v === '') return false;
+    const n = Number(v);
+    if (isNaN(n)) return false;
+    if (range.min !== null && n < range.min) return false;
+    if (range.max !== null && n > range.max) return false;
+    return true;
+  }
+
   function passes(row) {
-    for (const [col, excluded] of state.entries()) {
-      if (!excluded || excluded.size === 0) continue;
-      if (excluded.has(fmtVal(row[col]))) return false;
+    for (const [col, f] of state.entries()) {
+      if (!f) continue;
+      const v = row[col];
+      if (f.excluded && f.excluded.size > 0 && f.excluded.has(fmtVal(v))) return false;
+      if (f.valueRule && !valueRulePasses(v, f.valueRule)) return false;
+      if (f.range && !rangePasses(v, f.range)) return false;
     }
     return true;
   }
 
   function isActive(col) {
-    const s = state.get(col);
-    return !!(s && s.size > 0);
+    const f = state.get(col);
+    return !!(f && ((f.excluded && f.excluded.size > 0) || f.valueRule || f.range));
   }
 
   function labelForCol(col) {
@@ -885,14 +957,31 @@ const ColumnFilter = (() => {
     if (th) th.classList.toggle('has-filter', isActive(col));
   }
 
+  function ruleDesc(f) {
+    const parts = [];
+    if (f.excluded && f.excluded.size > 0) parts.push(`${f.excluded.size} excluded`);
+    if (f.valueRule) {
+      const opLabel = OPTS.find(([k]) => k === f.valueRule.op)?.[1] || f.valueRule.op;
+      parts.push((f.valueRule.op === 'is_empty' || f.valueRule.op === 'is_not_empty')
+        ? opLabel
+        : `${opLabel} "${f.valueRule.value}"`);
+    }
+    if (f.range) {
+      const lo = f.range.min === null ? '−∞' : f.range.min;
+      const hi = f.range.max === null ? '∞' : f.range.max;
+      parts.push(`[${lo}, ${hi}]`);
+    }
+    return parts.join(' · ');
+  }
+
   function renderActiveBar() {
     const bar = document.getElementById('activeFiltersBar');
     if (!bar) return;
     const cols = [...state.keys()].filter(c => isActive(c));
     if (cols.length === 0) { bar.innerHTML = ''; return; }
     let html = cols.map(col => {
-      const excludedCount = state.get(col).size;
-      return `<span class="af-chip" data-col="${col}">${labelForCol(col)} (${excludedCount} excluded)<button data-clear-col="${col}" title="Clear this filter">×</button></span>`;
+      const desc = ruleDesc(state.get(col));
+      return `<span class="af-chip" data-col="${col}">${labelForCol(col)}<span class="af-chip-desc">${desc}</span><button data-clear-col="${col}" title="Clear this filter">×</button></span>`;
     }).join('');
     html += `<button class="af-chip-clearall" id="afClearAll">Clear all filters</button>`;
     bar.innerHTML = html;
@@ -934,11 +1023,29 @@ const ColumnFilter = (() => {
     btn.classList.add('open');
 
     const entries  = valuesFor(col);
-    const excluded = state.get(col) || new Set();
+    const f        = state.get(col) || {};
+    const excluded = f.excluded || new Set();
 
     const pop = document.createElement('div');
     pop.className = 'col-filter-popover';
     pop.innerHTML = `
+      <div class="cf-or">
+        <div class="cf-section-label">OR FILTER BY</div>
+        <div class="cf-or-row">
+          <select class="cf-op">
+            ${OPTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}
+          </select>
+          <input type="text" class="cf-or-value" placeholder="Enter value..." />
+        </div>
+      </div>
+      <div class="cf-range">
+        <div class="cf-section-label">RANGE</div>
+        <div class="cf-range-row">
+          <input type="number" class="cf-range-min" placeholder="Min" step="any" />
+          <span class="cf-range-sep">–</span>
+          <input type="number" class="cf-range-max" placeholder="Max" step="any" />
+        </div>
+      </div>
       <div class="cf-search"><input type="text" placeholder="Search values…" /></div>
       <div class="cf-actions">
         <button type="button" data-act="all">Select All</button>
@@ -950,17 +1057,40 @@ const ColumnFilter = (() => {
     document.body.appendChild(pop);
 
     const rect = btn.getBoundingClientRect();
-    const popW = 240;
+    const popW = 264;
     const left = Math.max(8, Math.min(rect.left, window.innerWidth - popW - 12));
     const top  = Math.min(rect.bottom + 4, window.innerHeight - 60);
     pop.style.left = left + 'px';
     pop.style.top  = top + 'px';
-    pop.style.maxHeight = Math.min(340, window.innerHeight - top - 12) + 'px';
+    pop.style.maxHeight = Math.min(360, window.innerHeight - top - 12) + 'px';
 
     const listEl       = pop.querySelector('.cf-list');
-    const searchEl      = pop.querySelector('.cf-search input');
-    const footerCount   = pop.querySelector('.cf-footer span');
-    const checkedState  = new Map(entries.map(([label]) => [label, !excluded.has(label)]));
+    const searchEl     = pop.querySelector('.cf-search input');
+    const footerCount  = pop.querySelector('.cf-footer span');
+    const opSelect     = pop.querySelector('.cf-op');
+    const orValueEl    = pop.querySelector('.cf-or-value');
+    const minEl        = pop.querySelector('.cf-range-min');
+    const maxEl        = pop.querySelector('.cf-range-max');
+    const checkedState = new Map(entries.map(([label]) => [label, !excluded.has(label)]));
+
+    // Restore any existing rule/range for this column.
+    if (f.valueRule) {
+      opSelect.value = f.valueRule.op;
+      orValueEl.value = f.valueRule.value;
+    }
+    if (f.range) {
+      if (f.range.min !== null) minEl.value = f.range.min;
+      if (f.range.max !== null) maxEl.value = f.range.max;
+    }
+
+    function syncOrValueVisibility() {
+      const noValue = opSelect.value === 'is_empty' || opSelect.value === 'is_not_empty';
+      orValueEl.style.display = noValue ? 'none' : '';
+      orValueEl.placeholder = (opSelect.value === 'gt' || opSelect.value === 'lt')
+        ? 'Enter number...' : 'Enter value...';
+    }
+    syncOrValueVisibility();
+    opSelect.addEventListener('change', syncOrValueVisibility);
 
     function updateFooter() {
       const checkedCount = [...checkedState.values()].filter(Boolean).length;
@@ -998,15 +1128,34 @@ const ColumnFilter = (() => {
       entries.forEach(([label]) => checkedState.set(label, false));
       renderList(searchEl.value);
     });
-    pop.querySelector('[data-act="apply"]').addEventListener('click', () => {
+
+    function applyRule() {
       const newExcluded = new Set();
       checkedState.forEach((isChecked, label) => { if (!isChecked) newExcluded.add(label); });
-      if (newExcluded.size === 0) state.delete(col); else state.set(col, newExcluded);
+      const op  = opSelect.value;
+      const raw = orValueEl.value.trim();
+      const valueRule = (op === 'is_empty' || op === 'is_not_empty')
+        ? { op, value: '' }
+        : (raw !== '' ? { op, value: raw } : null);
+      const minRaw = minEl.value.trim();
+      const maxRaw = maxEl.value.trim();
+      const range = (minRaw !== '' || maxRaw !== '')
+        ? { min: minRaw === '' ? null : Number(minRaw), max: maxRaw === '' ? null : Number(maxRaw) }
+        : null;
+      const next = {};
+      if (newExcluded.size > 0) next.excluded = newExcluded;
+      if (valueRule) next.valueRule = valueRule;
+      if (range) next.range = range;
+      if (Object.keys(next).length === 0) state.delete(col); else state.set(col, next);
       syncButtonState(col);
       renderActiveBar();
       closePopover();
       onChange();
-    });
+    }
+    pop.querySelector('[data-act="apply"]').addEventListener('click', applyRule);
+    orValueEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyRule(); } });
+    minEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyRule(); } });
+    maxEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyRule(); } });
 
     openPopover = pop;
     setTimeout(() => document.addEventListener('mousedown', outsideClick, true), 0);

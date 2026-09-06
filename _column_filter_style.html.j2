@@ -14,10 +14,29 @@
 
   .col-filter-popover {
     position: fixed; z-index: 900; background: var(--panel2); border: 1px solid var(--border2);
-    border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); width: 240px;
+    border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); width: 264px;
     display: flex; flex-direction: column; font-family: 'Exo 2', sans-serif; overflow: hidden;
     text-transform: none; letter-spacing: normal;
   }
+  .col-filter-popover .cf-section-label {
+    font-size: 9.5px; color: var(--text3); letter-spacing: 0.12em; font-weight: 700;
+    font-family: 'Rajdhani', sans-serif; margin-bottom: 4px; text-transform: uppercase;
+  }
+  .col-filter-popover .cf-or, .col-filter-popover .cf-range { padding: 7px 8px 6px; border-bottom: 1px solid var(--border); }
+  .col-filter-popover .cf-or-row, .col-filter-popover .cf-range-row { display: flex; align-items: center; gap: 6px; }
+  .col-filter-popover .cf-or-row select {
+    flex: 0 0 auto; max-width: 118px; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; font-size: 11.5px; padding: 5px 4px; outline: none; font-family: 'Exo 2', sans-serif;
+  }
+  .col-filter-popover .cf-or-row select:focus { border-color: var(--accent); }
+  .col-filter-popover .cf-or-row input, .col-filter-popover .cf-range-row input {
+    flex: 1; min-width: 0; width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; font-size: 11.5px; padding: 5px 8px; outline: none; font-family: 'Exo 2', sans-serif;
+  }
+  .col-filter-popover .cf-or-row input:focus, .col-filter-popover .cf-range-row input:focus { border-color: var(--accent); }
+  .col-filter-popover .cf-range-row input::-webkit-outer-spin-button,
+  .col-filter-popover .cf-range-row input::-webkit-inner-spin-button { margin: 0; }
+  .col-filter-popover .cf-range-sep { color: var(--text3); font-size: 12px; flex-shrink: 0; }
   .col-filter-popover .cf-search { padding: 8px; border-bottom: 1px solid var(--border); }
   .col-filter-popover .cf-search input {
     width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
@@ -54,6 +73,7 @@
   }
   .af-chip button { background: none; border: none; color: var(--gold); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 2px; opacity: 0.75; }
   .af-chip button:hover { opacity: 1; }
+  .af-chip .af-chip-desc { opacity: 0.75; font-weight: 400; }
   .af-chip-clearall {
     background: var(--panel); border: 1px solid var(--border); color: var(--text2); border-radius: 5px;
     padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 10.5px; cursor: pointer;

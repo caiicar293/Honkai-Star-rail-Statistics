@@ -480,9 +480,9 @@ function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
 function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
 function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
 
-function cellHtml(r, key) {
+function cellHtml(r, key, rank) {
   switch (key) {
-    case 'Rank': return `<td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>`;
+    case 'Rank': return `<td class="rank-cell${rank<=3?' top3':''}">${rank}</td>`;
     case 'dim_key': return `<td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>`;
     case 'cost_key': return `<td><span class="cost-badge">${r.estimated_min_cost}<span class="cost-sep">→</span>${r.estimated_max_cost}</span></td>`;
     case 'max_eidolon': return `<td class="num"><span class="meid-badge e${Math.round(r.max_eidolon)}">E${Math.round(r.max_eidolon)}</span></td>`;
@@ -507,14 +507,15 @@ function cellHtml(r, key) {
   }
 }
 
-function rowHTML(r) {
-  return `<tr>${cols().map(([key]) => cellHtml(r, key)).join('')}</tr>`;
+function rowHTML(r, rank) {
+  return `<tr>${cols().map(([key]) => cellHtml(r, key, rank)).join('')}</tr>`;
 }
 
 function renderHeader() {
   const thead = document.getElementById('tableHead');
   thead.innerHTML = `<tr>${cols().map(([key, label, cls]) => {
     const activeCls = key === sortCol ? ` sorted${sortAsc ? ' asc' : ''}` : '';
+    if (key === 'Rank') return `<th class="${cls}">${label}</th>`;
     return `<th data-col="${key}" class="${cls}${activeCls}">${label}</th>`;
   }).join('')}</tr>`;
   thead.querySelectorAll('th[data-col]').forEach(th => {
@@ -564,7 +565,7 @@ function renderViewport() {
       html += `<tr class="group-sep"><td colspan="${colCount}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
       lastDim = r.dim_key;
     }
-    html += rowHTML(r);
+    html += rowHTML(r, i + 1);
   }
 
   if (padBot > 0) html += `<tr style="height:${padBot}px"><td colspan="${colCount}" style="padding:0;border:none"></td></tr>`;

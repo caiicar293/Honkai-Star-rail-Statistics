@@ -651,7 +651,7 @@
       <table id="mainTable">
         <thead>
           <tr>
-            <th data-col="Rank" class="num">#</th>
+            <th class="num">#</th>
             <th data-col="dim_key">{{ dim_label }}</th>
             <th data-col="cost_key">Cost Range</th>
             <th data-col="max_eidolon" class="num">Max Eid.</th>
@@ -919,7 +919,7 @@ function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
 function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
 function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
 
-function rowHTML(r, attrs) {
+function rowHTML(r, attrs, rank) {
   const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
   const eid     = Math.round(r.max_eidolon);
   const sustHtml = r.has_sustain
@@ -929,7 +929,7 @@ function rowHTML(r, attrs) {
     ? `<span class="arch-pill" title="${r.Archetype_Core}">${r.Archetype_Core}</span>`
     : `<span class="score-num" style="color:var(--text3)">—</span>`;
   return `<tr${attrs ? ' ' + attrs : ''}>
-    <td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>
+    <td class="rank-cell${rank<=3?' top3':''}">${rank}</td>
     <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
     <td><span class="cost-badge">${r.estimated_min_cost}<span class="cost-sep">→</span>${r.estimated_max_cost}</span></td>
     <td class="num"><span class="meid-badge e${eid}">E${eid}</span></td>
@@ -1339,7 +1339,10 @@ function renderViewport() {
 
   let html = '';
   if (pinnedList.length) {
-    pinnedList.forEach(r => html += rowHTML(r, `class="pinned-row" data-dim="${r.dim_key}"`));
+    pinnedList.forEach(r => {
+      const pr = filteredData.indexOf(r) + 1 || r.Rank;
+      html += rowHTML(r, `class="pinned-row" data-dim="${r.dim_key}"`, pr);
+    });
     html += `<tr class="pinned-sep"><td colspan="${COLS}">📌 Pinned teams — click a pinned row to unpin it</td></tr>`;
   }
   if (padTop > 0) html += `<tr style="height:${padTop}px"><td colspan="${COLS}" style="padding:0;border:none"></td></tr>`;
@@ -1356,7 +1359,7 @@ function renderViewport() {
     const pinTitle = pinnable
       ? 'Click to pin this team — teams on the other nodes/floors that reuse its characters are excluded'
       : `${DIM_LABEL} ${r.dim_key} can't be pinned — only ${DIM_LABEL.toLowerCase()}s 1–3 are pinnable`;
-    html += rowHTML(r, `class="${pinnable ? 'pinnable' : 'not-pinnable'}" data-idx="${i}" title="${pinTitle}"`);
+    html += rowHTML(r, `class="${pinnable ? 'pinnable' : 'not-pinnable'}" data-idx="${i}" title="${pinTitle}"`, i + 1);
   }
 
   if (!filteredData.length && pinnedList.length) {

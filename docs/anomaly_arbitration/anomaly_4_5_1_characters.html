@@ -409,7 +409,7 @@
       <table id="mainTable">
         <thead>
           <tr>
-            <th data-col="Rank" class="num">#</th>
+            <th class="num">#</th>
             <th data-col="dim_key">Floor</th>
             <th data-col="eid_range_key">Eid. Range</th>
             <th data-col="Character">Character</th>
@@ -552,7 +552,7 @@ function fullStarCls(v)  { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullsta
 function eidLabel(at, upto) { return at === upto ? `E${at}` : `E${at}→${upto}`; }
 function eidCls(at, upto)   { return `eid-range-badge at${at}${at === upto ? ' exact' : ''}`; }
 
-function rowHTML(r) {
+function rowHTML(r, rank) {
   const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
   const at = r.at_eidolon_level, upto = r.up_to_eidolon_level;
   const eidRangeCell = IS_LEGACY ? '' : `<td><span class="${eidCls(at,upto)}">${eidLabel(at,upto)}</span></td>`;
@@ -562,7 +562,7 @@ function rowHTML(r) {
     <td class="num"><span class="score-num">${fmtPct(r['Eidolon_6_pct'])}</span></td>`;
 
   return `<tr>
-    <td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>
+    <td class="rank-cell${rank<=3?' top3':''}">${rank}</td>
     <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
     ${eidRangeCell}
     <td><div class="char-cell">${r._iconHtml}<div class="char-info"><span class="char-name">${r.Character}</span><div class="char-tags">${rarityTag(r.rarity)}${elTag(r.element)}${pathTag(r.path)}${roleTag(r.role)}</div></div></div></td>
@@ -616,7 +616,7 @@ function renderViewport() {
       html += `<tr class="group-sep"><td colspan="${COL_COUNT}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
       lastDim = r.dim_key;
     }
-    html += rowHTML(r);
+    html += rowHTML(r, i + 1);
   }
 
   if (padBottom > 0) html += `<tr style="height:${padBottom}px"><td colspan="${COL_COUNT}" style="padding:0;border:none"></td></tr>`;

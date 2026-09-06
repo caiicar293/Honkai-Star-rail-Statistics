@@ -339,7 +339,7 @@
       <table id="mainTable">
         <thead>
           <tr>
-            <th data-col="Rank" class="num">#</th>
+            <th class="num">#</th>
             <th data-col="dim_key">{{ dim_label }}</th>
             <th data-col="eid_range_key">Eid. Range</th>
             <th data-col="Team">Team</th>
@@ -497,7 +497,7 @@ function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar
 function eidLabel(at, upto) { return at === upto ? `E${at}` : `E${at}→${upto}`; }
 function eidCls(at, upto)   { return `eid-range-badge at${at}${at === upto ? ' exact' : ''}`; }
 
-function rowHTML(r) {
+function rowHTML(r, rank) {
   const ratePct    = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
   const at         = r.at_eidolon_level, upto = r.up_to_eidolon_level;
   const sustainHtml = r.Sustain
@@ -507,7 +507,7 @@ function rowHTML(r) {
     ? `<span class="arch-pill" title="${r.Archetype_Core}">${r.Archetype_Core}</span>`
     : `<span class="score-num" style="color:var(--text3)">—</span>`;
   return `<tr>
-    <td class="rank-cell${r.Rank<=3?' top3':''}">${r.Rank}</td>
+    <td class="rank-cell${rank<=3?' top3':''}">${rank}</td>
     <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
     <td><span class="${eidCls(at,upto)}">${eidLabel(at,upto)}</span></td>
     <td><div class="team-cell"><div class="team-icons">${r._iconsHtml}</div><span class="team-name" title="${r.Team}">${r.Team}</span></div></td>
@@ -562,7 +562,7 @@ function renderViewport() {
       html += `<tr class="group-sep"><td colspan="17"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
       lastDim = r.dim_key;
     }
-    html += rowHTML(r);
+    html += rowHTML(r, i + 1);
   }
 
   if (paddingBottom > 0) {

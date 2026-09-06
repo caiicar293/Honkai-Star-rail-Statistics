@@ -241,6 +241,7 @@
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
 {% include "_version_switch_style.html.j2" %}
+  {% include "_column_filter_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -331,6 +332,7 @@
   </div>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
+  <div class="active-filters-bar" id="activeFiltersBar"></div>
 
   <div class="table-wrap">
     <div class="table-scroll">
@@ -431,7 +433,8 @@ function recompute() {
   candidate = candidate.filter(r =>
     activeDims.has(r.dim_key) &&
     activeRanges.has(r.eid_range_key) &&
-    (r.Sustain ? showSustain : showNoSustain)
+    (r.Sustain ? showSustain : showNoSustain) &&
+    ColumnFilter.passes(r)
   );
 
   const activeFilters = [...charFilters.values()];
@@ -940,6 +943,10 @@ async function initializeApp() {
     }
 }
 
+</script>
+{% include "_column_filter_script.html.j2" %}
+<script>
+ColumnFilter.attach('#mainTable', () => RAW_DATA, recompute);
 initializeApp();
 </script>
 {% include "_version_switch_script.html.j2" %}

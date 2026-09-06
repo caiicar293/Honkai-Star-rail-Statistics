@@ -211,6 +211,7 @@
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
 {% include "_version_switch_style.html.j2" %}
+  {% include "_column_filter_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -300,6 +301,7 @@
   </div>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
+  <div class="active-filters-bar" id="activeFiltersBar"></div>
 
   <div class="table-wrap">
     <div class="table-scroll">
@@ -434,7 +436,7 @@ function recompute() {
     candidate = rows.filter(r => searchMatch(r, tokens, eidTag));
   }
 
-  candidate = candidate.filter(r => activeDims.has(r.dim_key));
+  candidate = candidate.filter(r => activeDims.has(r.dim_key) && ColumnFilter.passes(r));
   if (key === 'cost') {
     candidate = candidate.filter(r =>
       activeMeids.has(Math.round(r.max_eidolon)) &&
@@ -523,6 +525,9 @@ function renderHeader() {
       recompute();
     });
   });
+  // Header cells are rebuilt from scratch on every render (tab switch or
+  // sort), so re-attach the column-filter buttons every time too.
+  ColumnFilter.attach('#mainTable', () => RAW[activeTab], recompute);
 }
 
 (function setupVirtualScroll() {
@@ -572,6 +577,7 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 function setTab(tab) {
   if (activeTab === tab) return;
   activeTab = tab;
+  ColumnFilter.reset(); // cost/eid tabs have different columns — stale filters don't carry over
   document.getElementById('tabCostBtn').classList.toggle('active', tab === 'cost');
   document.getElementById('tabEidBtn').classList.toggle('active', tab === 'eid');
   document.getElementById('costPanel').style.display = tab === 'cost' ? '' : 'none';
@@ -822,8 +828,6 @@ async function initializeApp() {
   }
 }
 
-initializeApp();
-
 // ---- Custom version switcher (drives BOTH cost + eidolon datasets together) ----
 (function() {
   const VS_FILE_PREFIX  = '{{ file_prefix }}';
@@ -930,6 +934,10 @@ initializeApp();
     vsInit();
   }
 })();
+</script>
+{% include "_column_filter_script.html.j2" %}
+<script>
+initializeApp();
 </script>
 </body>
 </html>

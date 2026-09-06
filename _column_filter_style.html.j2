@@ -1,0 +1,61 @@
+  /* ── Column value filter (DuckDB-extension style) ─────────────────────── */
+  th[data-col] { position: relative; }
+  .col-filter-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; margin-left: 5px; padding: 0;
+    background: transparent; border: none; color: var(--text3);
+    cursor: pointer; vertical-align: -2px; opacity: 0.55; transition: opacity 0.15s, color 0.15s;
+  }
+  .col-filter-btn:hover { opacity: 1; color: var(--accent); }
+  .col-filter-btn.open   { opacity: 1; color: var(--accent); }
+  .col-filter-btn.active { opacity: 1; color: var(--gold); }
+  .col-filter-btn svg { width: 10px; height: 10px; pointer-events: none; }
+  th.has-filter { color: var(--gold) !important; }
+
+  .col-filter-popover {
+    position: fixed; z-index: 900; background: var(--panel2); border: 1px solid var(--border2);
+    border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); width: 240px;
+    display: flex; flex-direction: column; font-family: 'Exo 2', sans-serif; overflow: hidden;
+    text-transform: none; letter-spacing: normal;
+  }
+  .col-filter-popover .cf-search { padding: 8px; border-bottom: 1px solid var(--border); }
+  .col-filter-popover .cf-search input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); font-size: 12px; padding: 5px 8px; outline: none; font-family: 'Exo 2', sans-serif;
+  }
+  .col-filter-popover .cf-search input:focus { border-color: var(--accent); }
+  .col-filter-popover .cf-actions { display: flex; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .col-filter-popover .cf-actions button {
+    flex: 1; background: var(--panel); border: 1px solid var(--border); color: var(--text2);
+    font-size: 11px; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-family: 'Share Tech Mono', monospace;
+  }
+  .col-filter-popover .cf-actions button:hover { border-color: var(--accent); color: var(--accent); }
+  .col-filter-popover .cf-list { overflow-y: auto; flex: 1; padding: 4px 0; min-height: 40px; }
+  .col-filter-popover .cf-item {
+    display: flex; align-items: center; gap: 7px; padding: 5px 10px; cursor: pointer; font-size: 12px;
+    color: var(--text); font-weight: 400;
+  }
+  .col-filter-popover .cf-item:hover { background: rgba(56,189,248,0.06); }
+  .col-filter-popover .cf-item input[type=checkbox] { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .col-filter-popover .cf-item .cf-val { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col-filter-popover .cf-item .cf-count { color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 10px; flex-shrink: 0; }
+  .col-filter-popover .cf-empty { padding: 16px; text-align: center; color: var(--text3); font-size: 11px; font-family: 'Share Tech Mono', monospace; }
+  .col-filter-popover .cf-footer { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; }
+  .col-filter-popover .cf-footer button {
+    background: var(--accent); color: var(--bg); border: none; padding: 4px 10px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; cursor: pointer; font-family: 'Rajdhani', sans-serif; letter-spacing: 0.04em;
+  }
+  .active-filters-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: -8px 0 12px; }
+  .active-filters-bar:empty { display: none; margin: 0; }
+  .af-chip {
+    display: inline-flex; align-items: center; gap: 6px; background: rgba(251,191,36,0.09);
+    border: 1px solid rgba(251,191,36,0.3); color: var(--gold); border-radius: 5px; padding: 3px 8px 3px 10px;
+    font-family: 'Share Tech Mono', monospace; font-size: 10.5px; letter-spacing: 0.04em;
+  }
+  .af-chip button { background: none; border: none; color: var(--gold); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 2px; opacity: 0.75; }
+  .af-chip button:hover { opacity: 1; }
+  .af-chip-clearall {
+    background: var(--panel); border: 1px solid var(--border); color: var(--text2); border-radius: 5px;
+    padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 10.5px; cursor: pointer;
+  }
+  .af-chip-clearall:hover { border-color: var(--red); color: var(--red); }

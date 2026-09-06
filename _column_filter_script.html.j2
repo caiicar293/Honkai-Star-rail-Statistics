@@ -1,0 +1,220 @@
+<script>
+// ── Column value filter (DuckDB VS Code extension style) ───────────────────
+// Click the small funnel icon in any filterable <th data-col="..."> to open
+// a checkbox list of that column's distinct values (with counts), search,
+// and apply/clear. Selected exclusions are combined with every other active
+// filter (dim/eidolon/search/etc.) via ColumnFilter.passes(row) — each page
+// wires that into its own recompute() filter chain, and calls
+// ColumnFilter.attach('#mainTable', () => RAW_DATA, recompute) once.
+const ColumnFilter = (() => {
+  let getData   = () => [];
+  let onChange  = () => {};
+  let table     = null;
+  const state   = new Map(); // col -> Set of EXCLUDED formatted-value labels
+  let openPopover = null;
+  let openCol      = null;
+
+  function fmtVal(v) {
+    if (v === null || v === undefined || v === '') return '(blank)';
+    if (typeof v === 'boolean') return v ? 'true' : 'false';
+    if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(2);
+    return String(v);
+  }
+
+  function valuesFor(col) {
+    const counts = new Map();
+    getData().forEach(r => {
+      const label = fmtVal(r[col]);
+      const entry = counts.get(label);
+      if (entry) entry.count++; else counts.set(label, { count: 1 });
+    });
+    return [...counts.entries()].sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]));
+  }
+
+  function passes(row) {
+    for (const [col, excluded] of state.entries()) {
+      if (!excluded || excluded.size === 0) continue;
+      if (excluded.has(fmtVal(row[col]))) return false;
+    }
+    return true;
+  }
+
+  function isActive(col) {
+    const s = state.get(col);
+    return !!(s && s.size > 0);
+  }
+
+  function labelForCol(col) {
+    const th = table && table.querySelector(`th[data-col="${col}"]`);
+    if (!th) return col;
+    return th.textContent.replace(/[⚲▾↓↑]/g, '').trim();
+  }
+
+  function syncButtonState(col) {
+    const btn = table.querySelector(`.col-filter-btn[data-filter-col="${col}"]`);
+    if (btn) btn.classList.toggle('active', isActive(col));
+    const th = btn && btn.closest('th');
+    if (th) th.classList.toggle('has-filter', isActive(col));
+  }
+
+  function renderActiveBar() {
+    const bar = document.getElementById('activeFiltersBar');
+    if (!bar) return;
+    const cols = [...state.keys()].filter(c => isActive(c));
+    if (cols.length === 0) { bar.innerHTML = ''; return; }
+    let html = cols.map(col => {
+      const excludedCount = state.get(col).size;
+      return `<span class="af-chip" data-col="${col}">${labelForCol(col)} (${excludedCount} excluded)<button data-clear-col="${col}" title="Clear this filter">×</button></span>`;
+    }).join('');
+    html += `<button class="af-chip-clearall" id="afClearAll">Clear all filters</button>`;
+    bar.innerHTML = html;
+    bar.querySelectorAll('[data-clear-col]').forEach(b => {
+      b.addEventListener('click', () => {
+        state.delete(b.dataset.clearCol);
+        syncButtonState(b.dataset.clearCol);
+        renderActiveBar();
+        onChange();
+      });
+    });
+    const clearAllBtn = document.getElementById('afClearAll');
+    if (clearAllBtn) clearAllBtn.addEventListener('click', () => {
+      [...state.keys()].forEach(syncButtonState);
+      state.clear();
+      renderActiveBar();
+      onChange();
+    });
+  }
+
+  function closePopover() {
+    if (openPopover) { openPopover.remove(); openPopover = null; }
+    if (openCol) {
+      const btn = table.querySelector(`.col-filter-btn[data-filter-col="${openCol}"]`);
+      if (btn) btn.classList.remove('open');
+    }
+    openCol = null;
+    document.removeEventListener('mousedown', outsideClick, true);
+  }
+
+  function outsideClick(e) {
+    if (openPopover && !openPopover.contains(e.target) && !e.target.closest('.col-filter-btn')) closePopover();
+  }
+
+  function openPopoverFor(col, btn) {
+    if (openCol === col) { closePopover(); return; }
+    closePopover();
+    openCol = col;
+    btn.classList.add('open');
+
+    const entries  = valuesFor(col);
+    const excluded = state.get(col) || new Set();
+
+    const pop = document.createElement('div');
+    pop.className = 'col-filter-popover';
+    pop.innerHTML = `
+      <div class="cf-search"><input type="text" placeholder="Search values…" /></div>
+      <div class="cf-actions">
+        <button type="button" data-act="all">Select All</button>
+        <button type="button" data-act="clear">Clear</button>
+      </div>
+      <div class="cf-list"></div>
+      <div class="cf-footer"><span></span><button type="button" data-act="apply">Apply</button></div>
+    `;
+    document.body.appendChild(pop);
+
+    const rect = btn.getBoundingClientRect();
+    const popW = 240;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - popW - 12));
+    const top  = Math.min(rect.bottom + 4, window.innerHeight - 60);
+    pop.style.left = left + 'px';
+    pop.style.top  = top + 'px';
+    pop.style.maxHeight = Math.min(340, window.innerHeight - top - 12) + 'px';
+
+    const listEl       = pop.querySelector('.cf-list');
+    const searchEl      = pop.querySelector('.cf-search input');
+    const footerCount   = pop.querySelector('.cf-footer span');
+    const checkedState  = new Map(entries.map(([label]) => [label, !excluded.has(label)]));
+
+    function updateFooter() {
+      const checkedCount = [...checkedState.values()].filter(Boolean).length;
+      footerCount.textContent = `${checkedCount}/${entries.length} selected`;
+    }
+
+    function renderList(q) {
+      q = (q || '').toLowerCase();
+      const shown = entries.filter(([label]) => label.toLowerCase().includes(q));
+      listEl.innerHTML = shown.length === 0
+        ? `<div class="cf-empty">No matching values</div>`
+        : shown.map(([label, info]) => `
+            <label class="cf-item">
+              <input type="checkbox" data-label="${label.replace(/"/g, '&quot;')}" ${checkedState.get(label) ? 'checked' : ''}/>
+              <span class="cf-val">${label}</span>
+              <span class="cf-count">${info.count.toLocaleString()}</span>
+            </label>
+          `).join('');
+      updateFooter();
+    }
+    renderList('');
+
+    searchEl.addEventListener('input', () => renderList(searchEl.value));
+    listEl.addEventListener('change', e => {
+      const cb = e.target.closest('input[type=checkbox]');
+      if (!cb) return;
+      checkedState.set(cb.dataset.label, cb.checked);
+      updateFooter();
+    });
+    pop.querySelector('[data-act="all"]').addEventListener('click', () => {
+      entries.forEach(([label]) => checkedState.set(label, true));
+      renderList(searchEl.value);
+    });
+    pop.querySelector('[data-act="clear"]').addEventListener('click', () => {
+      entries.forEach(([label]) => checkedState.set(label, false));
+      renderList(searchEl.value);
+    });
+    pop.querySelector('[data-act="apply"]').addEventListener('click', () => {
+      const newExcluded = new Set();
+      checkedState.forEach((isChecked, label) => { if (!isChecked) newExcluded.add(label); });
+      if (newExcluded.size === 0) state.delete(col); else state.set(col, newExcluded);
+      syncButtonState(col);
+      renderActiveBar();
+      closePopover();
+      onChange();
+    });
+
+    openPopover = pop;
+    setTimeout(() => document.addEventListener('mousedown', outsideClick, true), 0);
+  }
+
+  function attach(tableSelector, dataGetter, changeCallback) {
+    table    = document.querySelector(tableSelector);
+    getData  = dataGetter;
+    onChange = changeCallback;
+    if (!table) return;
+    table.querySelectorAll('th[data-col]').forEach(th => {
+      if (th.querySelector('.col-filter-btn')) return;
+      const col = th.dataset.col;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'col-filter-btn';
+      btn.dataset.filterCol = col;
+      btn.title = 'Filter by value';
+      btn.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 2h14l-5.5 6.5V14l-3-1.5V8.5z"/></svg>`;
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        openPopoverFor(col, btn);
+      });
+      th.appendChild(btn);
+    });
+  }
+
+  // Clear all active filters — used when the underlying column set changes
+  // (e.g. a tab switch to a table with a different schema) so stale filters
+  // don't silently hide rows on columns that no longer mean the same thing.
+  function reset() {
+    closePopover();
+    state.clear();
+    renderActiveBar();
+  }
+
+  return { attach, passes, isActive, reset };
+})();
+</script>

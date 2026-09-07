@@ -92,6 +92,79 @@
     max-width: 260px; opacity: 0; transition: opacity 0.1s ease; z-index: 10;
   }
 
+  /* ── Click-to-focus synergy chart panel (left column, non-blocking) ─
+     Opening a node's focus pushes the graph right and slides this panel in
+     to its left; the graph stays fully interactive (no overlay), and
+     clicking empty space / the × clears it again. */
+  .synergy-panel {
+    display: none;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; flex-direction: column; gap: 10px; min-height: 0;
+  }
+  .dashboard-grid.synergy-open { grid-template-columns: 320px minmax(0, 1fr) 340px; }
+  .dashboard-grid.synergy-open .synergy-panel { display: flex; }
+  .synergy-panel-header { position: relative; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .synergy-panel-title-row { display: flex; align-items: center; gap: 8px; padding-right: 30px; }
+  .synergy-panel-icon { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); flex: none; }
+  .synergy-panel-icon[hidden] { display: none; }
+  .synergy-panel-title { font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; color: var(--accent2); }
+  .synergy-panel-sub { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .synergy-panel-close {
+    position: absolute; top: 0; right: 0;
+    background: none; border: 1px solid var(--border); color: var(--text2);
+    width: 26px; height: 26px; border-radius: 5px; cursor: pointer;
+    font-size: 15px; line-height: 1;
+  }
+  .synergy-panel-close:hover { color: var(--text); border-color: var(--accent); }
+  .synergy-panel-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; }
+
+  /* ── Hide the right sidebar only (search + charts on the right) ────
+     The Hide button lives at the top of the sidebar itself. Collapsing
+     shrinks the sidebar to a slim strip holding a Show button, and never
+     touches the synergy panel on the left. */
+  .dashboard-grid.sidebar-collapsed { grid-template-columns: minmax(0, 1fr) 40px; }
+  .dashboard-grid.synergy-open.sidebar-collapsed { grid-template-columns: 320px minmax(0, 1fr) 40px; }
+  .dashboard-grid.sidebar-collapsed .sidebar {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 8px 4px;
+  }
+  .dashboard-grid.sidebar-collapsed .sidebar-header,
+  .dashboard-grid.sidebar-collapsed .sidebar-section { display: none; }
+
+  /* Sidebar header with the Hide button */
+  .sidebar-header { display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-hide-btn {
+    background: none; border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 4px 12px; border-radius: 4px; cursor: pointer;
+  }
+  .sidebar-hide-btn:hover { color: var(--text); border-color: var(--accent); }
+  .sidebar-show-btn { display: none; }
+  .dashboard-grid.sidebar-collapsed .sidebar-show-btn {
+    display: block;
+    writing-mode: vertical-rl; text-orientation: mixed;
+    background: var(--panel); border: 1px solid var(--border); color: var(--accent2);
+    font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 12px 5px; border-radius: 5px; cursor: pointer;
+  }
+  .dashboard-grid.sidebar-collapsed .sidebar-show-btn:hover { border-color: var(--accent); color: var(--text); }
+  .synergy-row {
+    display: grid; grid-template-columns: 28px 22px 1fr 58px;
+    gap: 8px; align-items: center;
+    padding: 4px 6px; border-radius: 4px; cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .synergy-row:hover { background: rgba(56,189,248,0.07); border-color: rgba(56,189,248,0.25); }
+  .synergy-row .synergy-rank { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text3); text-align: right; }
+  .synergy-row .synergy-icon { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); }
+  .synergy-row .synergy-icon-ph { width: 20px; height: 20px; border-radius: 50%; background: var(--panel); border: 1px solid var(--border); color: var(--text2); font-size: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .synergy-row .synergy-mid { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .synergy-row .synergy-name { font-family: 'Exo 2', sans-serif; font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .synergy-row .synergy-bar-track { height: 8px; background: var(--panel); border-radius: 4px; overflow: hidden; }
+  .synergy-row .synergy-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(to right, var(--purple), var(--accent)); }
+  .synergy-row .synergy-value { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent2); text-align: right; }
+
   #network-status { text-align: center; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px 0; }
 
   /* ── Two-column dashboard: graph + sidebar ────────────────────────── */
@@ -192,9 +265,12 @@
 
   /* Responsive: stack columns on narrower viewports */
   @media (max-width: 1024px) {
-    .dashboard-grid { grid-template-columns: 1fr; }
-    .sidebar { height: auto; }
-    .chart-container { max-height: 50vh; }
+    .dashboard-grid, .dashboard-grid.synergy-open,
+    .dashboard-grid.sidebar-collapsed, .dashboard-grid.synergy-open.sidebar-collapsed {
+      grid-template-columns: 1fr;
+    }
+    .sidebar, .synergy-panel { height: auto; }
+    .chart-container, .synergy-panel-list { max-height: 50vh; }
   }
 </style>
 </head>
@@ -231,7 +307,19 @@
     </div>
   </div>
 
-  <div class="dashboard-grid">
+  <div class="dashboard-grid" id="dashboard-grid">
+    <aside class="synergy-panel" id="synergy-panel" aria-label="Top synergies">
+      <div class="synergy-panel-header">
+        <div class="synergy-panel-title-row">
+          <img class="synergy-panel-icon" id="synergy-popup-icon" alt=""/>
+          <div class="synergy-panel-title" id="synergy-popup-title"></div>
+        </div>
+        <div class="synergy-panel-sub" id="synergy-popup-sub"></div>
+        <button class="synergy-panel-close" id="synergy-popup-close" title="Close (clear focus)">×</button>
+      </div>
+      <div class="synergy-panel-list" id="synergy-popup-list"></div>
+    </aside>
+
     <div class="left-col">
       <div class="network-wrap">
         <div class="network-title">
@@ -257,6 +345,8 @@
         </div>
 
         <div id="network-tooltip"></div>
+
+        <div id="network-tooltip"></div>
       </div>
 
       <div class="legend-caption">
@@ -265,6 +355,11 @@
     </div>
 
     <aside class="sidebar" aria-label="Network filters and analysis">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Analysis</span>
+        <button id="sidebar-hide-btn" class="sidebar-hide-btn" title="Hide the search bar and charts on the right">Hide</button>
+      </div>
+      <button id="sidebar-show-btn" class="sidebar-show-btn" title="Show the search bar and charts on the right">Show</button>
       <div class="sidebar-section">
         <div class="sidebar-title">Search Characters</div>
         <input type="text" id="search-input" class="search-input" placeholder="Type a name…" autocomplete="off" spellcheck="false"/>
@@ -395,10 +490,23 @@
   let currentMaxDegree = 0;
   // Tooltip perf state — see showTooltip()/scheduleTooltip() below
   let lastHoverName = null;
-  let wrapRect = null;
-  function updateWrapRect() { wrapRect = svg.parentElement.getBoundingClientRect(); }
-  updateWrapRect();
-  window.addEventListener("resize", updateWrapRect);
+  let tooltipW = 0, tooltipH = 0; // cached tooltip size (rebuilt when content changes)
+
+  // ── State persistence across Game Mode / Eidolon Range / Meta Window ──
+  // Mirrors trends_template.html.j2's entityState pattern: selections are
+  // remembered per game mode, so hopping MOC -> APOC -> MOC restores MOC's
+  // own eidolon range and meta window instead of resetting to the first
+  // option every time. metric is a global color preference; focusBySlice
+  // remembers which character was click-to-isolated for each exact
+  // mode/eidolon/recency combination so switching away and back restores it.
+  let activeMode = null; // mode of the currently LOADED slice (see persistState)
+  const savedState = {
+    mode: null,           // last-used game mode
+    eidolonByMode: {},    // mode -> eidolon range key
+    recencyByMode: {},    // mode -> 'recent' | 'all'
+    metric: null,         // color-by metric
+    cameraBySlice: {},    // "mode/eidolon/recency" -> {scale, panX, panY}
+  };
 
   // Manifest paths are written repo-relative (e.g. "docs/network/moc_recent_e0-6.json.br")
   // by network_export.py, but this page and every slice file live in the same
@@ -413,21 +521,46 @@
     manifest = await res.json();
   }
 
-  function populateModeSelect() {
+  function populateModeSelect(preferred) {
     const present = MODE_ORDER.filter(k => manifest[k]);
     modeSelect.innerHTML = present.map(k => `<option value="${k}">${MODE_LABELS[k] || k}</option>`).join("");
+    if (preferred && present.includes(preferred)) modeSelect.value = preferred;
   }
 
-  function populateEidolonSelect(mode) {
+  function populateEidolonSelect(mode, preferred) {
     const keys = Object.keys(manifest[mode] || {}).sort((a, b) => eidolonSortKey(a) - eidolonSortKey(b));
     eidolonSelect.innerHTML = keys.map(k => `<option value="${k}">${eidolonLabel(k)}</option>`).join("");
+    // Restore the mode's remembered eidolon range rather than the first option.
+    if (preferred && keys.includes(preferred)) eidolonSelect.value = preferred;
   }
 
-  function populateRecencySelect(mode, eidolonKey) {
+  function populateRecencySelect(mode, eidolonKey, preferred) {
     const entry = manifest[mode]?.[eidolonKey] || {};
     const order = ["recent", "all"].filter(r => entry[r]);
     const labels = { recent: "Most Recent 3 Versions", all: "All Versions" };
     recencySelect.innerHTML = order.map(r => `<option value="${r}">${labels[r]}</option>`).join("");
+    if (preferred && order.includes(preferred)) recencySelect.value = preferred;
+  }
+
+  // Snapshot the live selections into savedState. Use activeMode (the mode
+  // the LOADED slice belongs to) rather than modeSelect.value when
+  // attributing eidolon/recency: by the time modeSelect's change handler
+  // runs, the dropdown has already flipped to the new mode, so reading
+  // modeSelect.value there would mislabel the outgoing mode's selections
+  // under the new mode's key. activeMode only updates once a slice for the
+  // new mode has actually finished loading (see loadCurrentSlice).
+  function persistState() {
+    const mode = activeMode || modeSelect.value;
+    savedState.mode = modeSelect.value;
+    if (mode && eidolonSelect.value) savedState.eidolonByMode[mode] = eidolonSelect.value;
+    if (mode && recencySelect.value) savedState.recencyByMode[mode] = recencySelect.value;
+    savedState.metric = metricSelect.value;
+  }
+
+  // Unique key for the exact slice combo — used to attribute click-to-focus
+  // selections (savedState.focusBySlice) so they survive mode switches.
+  function sliceKey() {
+    return `${modeSelect.value}/${eidolonSelect.value}/${recencySelect.value}`;
   }
 
   // ── Layout mapping with spread factor ──
@@ -680,6 +813,15 @@
   const rangeCurrent = document.getElementById("range-current");
   const rangeMax = document.getElementById("range-max");
   const chartContainer = document.getElementById("chart-container");
+  // Synergy panel (click-to-focus chart) refs + right-sidebar hide/show
+  const dashboardGrid = document.getElementById("dashboard-grid");
+  const sidebarHideBtn = document.getElementById("sidebar-hide-btn");
+  const sidebarShowBtn = document.getElementById("sidebar-show-btn");
+  const synergyPopupTitle = document.getElementById("synergy-popup-title");
+  const synergyPopupSub = document.getElementById("synergy-popup-sub");
+  const synergyPopupList = document.getElementById("synergy-popup-list");
+  const synergyPopupClose = document.getElementById("synergy-popup-close");
+  const synergyPopupIcon = document.getElementById("synergy-popup-icon");
 
   // ── Sorted "total synergy weight per node" chart (sidebar) ──
   // Reads weighted_degree straight off the slice (it IS the sum of edge
@@ -804,6 +946,55 @@
     return map;
   }
 
+  // ── Synergy chart popup (shown when a node is clicked) ─────────────
+  // Renders the focused character's strongest synergy links ranked by edge
+  // weight, reusing focusRankMap (1 = strongest) so the popup, the tooltip,
+  // and the graph highlighting can never disagree. Clicking a neighbor row
+  // jumps the focus to that character; the × / backdrop dismisses it.
+  function renderSynergyPopup(name) {
+    if (!name || focusRankMap.size === 0) { hideSynergyPopup(); return; }
+    const links = [...focusRankMap.entries()]; // already sorted, rank 1 = strongest
+    const maxWeight = links[0][1].weight || 1;
+    const node = currentSlice ? currentSlice.nodes.find(n => n.name === name) : null;
+    const totalWeight = node ? (node.weighted_degree ?? 0) : 0;
+    synergyPopupTitle.textContent = name;
+    synergyPopupSub.textContent =
+      `${links.length} direct link${links.length === 1 ? "" : "s"} · total synergy weight ${totalWeight.toFixed(1)}`;
+    // Icon for the focused character in the panel header.
+    const headerIconUrl = lookupIconUrl(name);
+    if (headerIconUrl) {
+      synergyPopupIcon.src = headerIconUrl;
+      synergyPopupIcon.hidden = false;
+    } else {
+      synergyPopupIcon.hidden = true;
+    }
+    synergyPopupList.innerHTML = links.slice(0, 25).map(([neighbor, info]) => {
+      const pct = (info.weight / maxWeight) * 100;
+      const safeName = neighbor.replace(/"/g, '&quot;');
+      const iconUrl = lookupIconUrl(neighbor);
+      const iconHtml = iconUrl
+        ? `<img class="synergy-icon" src="${iconUrl}" alt="" onerror="this.style.display='none'"/>`
+        : `<span class="synergy-icon-ph">${neighbor.slice(0, 2).toUpperCase()}</span>`;
+      return `<div class="synergy-row" data-name="${safeName}" title="${safeName} — click to focus">` +
+        `<span class="synergy-rank">#${info.rank}</span>` +
+        iconHtml +
+        `<span class="synergy-mid">` +
+          `<span class="synergy-name">${neighbor}</span>` +
+          `<span class="synergy-bar-track"><span class="synergy-bar-fill" style="width: ${pct.toFixed(1)}%"></span></span>` +
+        `</span>` +
+        `<span class="synergy-value">${info.weight.toFixed(2)}</span>` +
+        `</div>`;
+    }).join("");
+    synergyPopupList.querySelectorAll(".synergy-row").forEach(row => {
+      row.addEventListener("click", () => toggleFocus(row.dataset.name));
+    });
+    dashboardGrid.classList.add("synergy-open");
+  }
+
+  function hideSynergyPopup() {
+    dashboardGrid.classList.remove("synergy-open");
+  }
+
   function applyFocusStyles() {
     const edgeEls = edgesLayer.querySelectorAll("line");
     const nodeEls = nodesLayer.querySelectorAll(".node-group");
@@ -838,6 +1029,9 @@
     // row's .focused class, and keeps a search-dimmed focused character from
     // hiding behind its own ring (search-dim wins over node-dim in source order).
     applyFilters();
+    // Show the top-synergy chart popup for the newly focused character.
+    if (selectedNode) renderSynergyPopup(selectedNode);
+    else hideSynergyPopup();
   }
 
   function clearFocus() {
@@ -847,6 +1041,7 @@
       lastHoverName = null;
       applyFocusStyles();
       applyFilters();
+      hideSynergyPopup();
     }
   }
 
@@ -885,15 +1080,27 @@
         `Weighted Degree: ${node.weighted_degree.toFixed(1)}<br>` +
         `Betweenness: ${node.betweenness.toFixed(4)}` +
         focusSection;
+      // Cache the tooltip's size (only changes when its content does) so
+      // the edge-flip clamp below can keep it inside the graph area.
+      tooltipW = tooltip.offsetWidth;
+      tooltipH = tooltip.offsetHeight;
     }
-    // wrapRect is cached (see updateWrapRect above) instead of read fresh on
-    // every mousemove — getBoundingClientRect() forces a synchronous layout,
-    // and doing that dozens of times a second while hovering was the main
-    // reason clicking felt laggier on desktop than on mobile (touch has no
-    // hover state at all, so it never paid this cost).
-    if (!wrapRect) updateWrapRect();
-    tooltip.style.left = `${ev.clientX - wrapRect.left + 14}px`;
-    tooltip.style.top = `${ev.clientY - wrapRect.top + 14}px`;
+    // Measure the graph area fresh on each hover. scheduleTooltip() already
+    // coalesces mousemoves to once per animation frame, so a single
+    // getBoundingClientRect here is cheap — and measuring per call is what
+    // keeps the tooltip pinned to the cursor when the graph area moves
+    // (synergy panel open/close, sidebar collapse, page scroll). A cached
+    // rect left it drifting far away from the node.
+    const wr = svg.parentElement.getBoundingClientRect();
+    // Anchor just past the cursor, flipping to the other side (and clamping
+    // inside the wrap) near the edges so the tooltip hugs the node instead
+    // of drifting off the visible area.
+    let left = ev.clientX - wr.left + 12;
+    let top = ev.clientY - wr.top + 12;
+    if (tooltipW > 0 && left + tooltipW > wr.width - 4) left = ev.clientX - wr.left - tooltipW - 12;
+    if (tooltipH > 0 && top + tooltipH > wr.height - 4) top = ev.clientY - wr.top - tooltipH - 12;
+    tooltip.style.left = `${Math.max(4, left)}px`;
+    tooltip.style.top = `${Math.max(4, top)}px`;
     tooltip.style.opacity = 1;
   }
 
@@ -917,7 +1124,12 @@
   let dragMoved = false, dragStartX = 0, dragStartY = 0;
   const DRAG_CLICK_THRESHOLD = 4; // px — below this, mouseup/touchend counts as a tap, not a pan
   const MIN_SCALE = 0.4, MAX_SCALE = 4;
-  function applyTransform() { viewport.setAttribute("transform", `translate(${panX},${panY}) scale(${scale})`); }
+  function applyTransform() {
+    viewport.setAttribute("transform", `translate(${panX},${panY}) scale(${scale})`);
+    // Remember the camera for this exact slice combo whenever it changes,
+    // so returning to the slice after switching modes restores the view.
+    if (currentSlice) savedState.cameraBySlice[sliceKey()] = { scale, panX, panY };
+  }
 
   // Mouse: wheel zoom, drag pan
   svg.addEventListener("wheel", (ev) => {
@@ -1028,9 +1240,30 @@
     statusEl.textContent = "Loading network slice…";
     try {
       currentSlice = await loadCompressedJson(resolveFetchPath(manifestPath));
-      selectedNode = null; // a new slice may not contain the previously focused character
-      focusRankMap = new Map();
+      activeMode = mode; // slice loaded — safe to attribute state to this mode
+      // Restore the click-to-focus selection remembered for this exact
+      // mode/eidolon/recency combination, if that character still exists
+      // in the freshly loaded slice (rosters differ slightly slice to slice).
+      // Carry the selected node across mode/eidolon/recency switches: keep
+      // the current selection when the character still exists in the newly
+      // loaded slice; only clear it if it's not present there at all.
+      if (selectedNode && !currentSlice.nodes.some(n => n.name === selectedNode)) {
+        selectedNode = null;
+      }
+      focusRankMap = selectedNode ? computeFocusRanks(selectedNode) : new Map();
       render(currentSlice, metricSelect.value);
+      // Restore this slice's remembered camera (scale/pan). Slices never
+      // viewed before inherit the current camera as their starting view.
+      const savedCam = savedState.cameraBySlice[sliceKey()];
+      if (savedCam) {
+        scale = savedCam.scale;
+        panX = savedCam.panX;
+        panY = savedCam.panY;
+      }
+      applyTransform();
+      // Sync the synergy popup with the (possibly restored) focus.
+      if (selectedNode) renderSynergyPopup(selectedNode);
+      else hideSynergyPopup();
       statusEl.textContent = "";
     } catch (err) {
       console.error("Network slice load error:", err);
@@ -1039,18 +1272,26 @@
   }
 
   metricSelect.addEventListener("change", () => {
+    savedState.metric = metricSelect.value;
     if (currentSlice) render(currentSlice, metricSelect.value);
   });
   modeSelect.addEventListener("change", () => {
-    populateEidolonSelect(modeSelect.value);
-    populateRecencySelect(modeSelect.value, eidolonSelect.value);
+    persistState(); // attribute the outgoing mode's eidolon/recency via activeMode
+    // Restore THIS mode's own remembered eidolon range and meta window,
+    // not just the first option.
+    populateEidolonSelect(modeSelect.value, savedState.eidolonByMode[modeSelect.value]);
+    populateRecencySelect(modeSelect.value, eidolonSelect.value, savedState.recencyByMode[modeSelect.value]);
     loadCurrentSlice();
   });
   eidolonSelect.addEventListener("change", () => {
-    populateRecencySelect(modeSelect.value, eidolonSelect.value);
+    persistState(); // remember the new eidolon range under the current mode
+    populateRecencySelect(modeSelect.value, eidolonSelect.value, savedState.recencyByMode[modeSelect.value]);
     loadCurrentSlice();
   });
-  recencySelect.addEventListener("change", loadCurrentSlice);
+  recencySelect.addEventListener("change", () => {
+    persistState();
+    loadCurrentSlice();
+  });
 
   // ── Sidebar: search box filters by character name as you type ──
   searchInput.addEventListener("input", (ev) => {
@@ -1078,12 +1319,22 @@
     applyFilters();
   });
 
+  // ── Synergy panel: dismiss via the × button; right-sidebar hide/show ──
+  synergyPopupClose.addEventListener("click", clearFocus);
+  sidebarHideBtn.addEventListener("click", () => dashboardGrid.classList.add("sidebar-collapsed"));
+  sidebarShowBtn.addEventListener("click", () => dashboardGrid.classList.remove("sidebar-collapsed"));
+
   (async () => {
     try {
       await loadManifest();
-      populateModeSelect();
-      populateEidolonSelect(modeSelect.value);
-      populateRecencySelect(modeSelect.value, eidolonSelect.value);
+      // Populate with the remembered selections (empty on first load, so
+      // the defaults apply) — keeps reloads landing where the user left off.
+      populateModeSelect(savedState.mode);
+      populateEidolonSelect(modeSelect.value, savedState.eidolonByMode[modeSelect.value]);
+      populateRecencySelect(modeSelect.value, eidolonSelect.value, savedState.recencyByMode[modeSelect.value]);
+      if (savedState.metric && [...metricSelect.options].some(o => o.value === savedState.metric)) {
+        metricSelect.value = savedState.metric;
+      }
       await loadCurrentSlice();
     } catch (err) {
       console.error("Manifest load error:", err);

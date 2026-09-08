@@ -11,7 +11,7 @@ from itertools import chain, combinations_with_replacement
 import matplotlib.pyplot as plt
 import polars.selectors as cs
 from dotenv import load_dotenv
-import duckdb
+import duckdb
 
 load_dotenv()
 
@@ -743,19 +743,13 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
             (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
             (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
-            pl.col("Points").list.median().round(2).alias("Median Points"),
-            pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
-            pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
-            pl.col("Points").list.min().alias("Min Points"),
-            pl.col("Points").list.mean().round(2).alias("Average Points"),
-            pl.col("Points").list.max().alias("Max Points")
+            *list_stats_exprs("Points", "Points"),
         ]).sort(["version", "Samples"], descending=[True, True])
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Team","Archetype Core" ,"Appearance Rate (%)", "Samples",
             "Min Points", "25th Percentile Points", "Median Points",
-            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points", "Sustain?","Total_Full_Clears","Full_Clear_Rate"
+            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points", "Sustain?","Total_Full_Clears","Full_Clear_Rate","Points Distributions"
         ])
 
     def get_archetype_df(self):
@@ -766,19 +760,13 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Usage %"),
             (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
             (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Points").list.min().alias("Min Points"),
-            pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th %"),
-            pl.col("Points").list.median().round(2).alias("Median"),
-            pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th %"),
-            pl.col("Points").list.mean().round(2).alias("Avg Points"),
-            pl.col("Points").list.max().alias("Max Points"),
-            pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
+            *list_stats_exprs("Points", "Points", style="short"),
         ]).sort(["version", "Samples"], descending=[True, True])
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Archetype Core", "Usage %", "Samples", "Sustain_Percentage",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Full_Clear_Rate", "Total_Full_Clears",
-            "Min Points", "25th %", "Median", "75th %", "Avg Points", "Max Points", "Std Dev Points"
+            "Min Points", "25th %", "Median", "75th %", "Avg Points", "Max Points", "Std Dev Points", "Points Distributions"
         ])
 
     def get_char_df(self):
@@ -788,13 +776,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             (pl.col("Total_Samples") / pl.col("version_total_samples") * 100).round(3).alias("Appearance Rate (%)"),
             (pl.col("Total_Sustains") / pl.col("Total_Samples") * 100).round(2).alias("Sustain_Percentage"),
             (pl.col("Total_Full_Clears")/pl.col("Total_Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Total_Points").list.min().alias("Min Points"),
-            pl.col("Total_Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
-            pl.col("Total_Points").list.median().round(2).alias("Median Points"),
-            pl.col("Total_Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
-            pl.col("Total_Points").list.mean().round(2).alias("Average Points"),
-            pl.col("Total_Points").list.eval(pl.element().std()).list.first().round(2).alias("Std Dev Points"),
-            pl.col("Total_Points").list.max().alias("Max Points"),
+            *list_stats_exprs("Total_Points", "Points"),
             *[
                 ((pl.col(c) / pl.col("Total_Samples")) * 100).round(2).alias(f"{c.replace('Samples_', '')} %")
                 for c in eidolon_sample_cols
@@ -808,7 +790,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Appearance Rate (%)",
             pl.col("Total_Samples").alias("Samples"),
             "Min Points", "25th Percentile Points", "Median Points",
-            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points",
+            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points", "Points Distributions",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Sustain_Percentage",
             "Total_Full_Clears", "Full_Clear_Rate",
             *eidolon_perc_cols
@@ -927,7 +909,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             pl.col("Total_Full_Clears"),
             full_clear_rate_expr("Total_Full_Clears", "Samples"),
             "25th Percentile Points", "Median Points", "75th Percentile Points",
-            "Std Dev Points", "Min Points", "Average Points", "Max Points",
+            "Std Dev Points", "Min Points", "Average Points", "Max Points", "Points Distributions",
         ]).sort(["version", "node", "Lift"], descending=[True, False, True]).collect()
 
     def get_combined_team_df(self):
@@ -957,13 +939,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             
             pl.col("Total_Full_Clears"),
             (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
-            pl.col("Points").list.median().round(2).alias("Median Points"),
-            pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
-            pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
-            pl.col("Points").list.min().alias("Min Points"),
-            pl.col("Points").list.mean().round(2).alias("Average Points"),
-            pl.col("Points").list.max().alias("Max Points")
+            *list_stats_exprs("Points", "Points"),
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level", "Samples"], descending=[True, False, False, True])
 
         team_label_cols = [f"Team Node {i+1}" for i in range(len(node_char_cols))]
@@ -975,7 +951,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             "Total_Full_Clears", "Full_Clear_Rate",
             "Appearance Rate (%)", "Samples",
             "Min Points", "25th Percentile Points", "Median Points",
-            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points"
+            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points", "Points Distributions"
         ])
 
     def get_combined_archetype_df(self):
@@ -1001,13 +977,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
             pl.col("Total_Full_Clears"),
             (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
-            pl.col("Points").list.median().round(2).alias("Median Points"),
-            pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
-            pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
-            pl.col("Points").list.min().alias("Min Points"),
-            pl.col("Points").list.mean().round(2).alias("Average Points"),
-            pl.col("Points").list.max().alias("Max Points")
+            *list_stats_exprs("Points", "Points"),
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level", "Samples"], descending=[True, False, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -1017,7 +987,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             *sustain_label_cols,
             "Appearance Rate (%)", "Samples","Total_Full_Clears", "Full_Clear_Rate",
             "Min Points", "25th Percentile Points", "Median Points",
-            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points"
+            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points", "Points Distributions"
         ])
 
     def get_combined_char_df(self):
@@ -1029,13 +999,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
         ).with_columns([
             *[pl.col(node_char_cols[i]).alias(char_label_cols[i]) for i in range(len(node_char_cols))],
             (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-            pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
-            pl.col("Points").list.median().round(2).alias("Median Points"),
-            pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
-            pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
-            pl.col("Points").list.min().alias("Min Points"),
-            pl.col("Points").list.mean().round(2).alias("Average Points"),
-            pl.col("Points").list.max().alias("Max Points")
+            *list_stats_exprs("Points", "Points"),
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level", "Samples"], descending=[True, False, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -1043,7 +1007,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             *char_label_cols,
             "Samples", "Appearance Rate (%)",
             "Min Points", "25th Percentile Points", "Median Points",
-            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points"
+            "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points", "Points Distributions"
         ])
 
     def display_top_gear(self):
@@ -1078,13 +1042,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
                     ])
                     .with_columns([
                         (pl.col("Usage") / pl.col("_total_filtered_usage")).alias("Usage_Rate"),
-                        pl.col("_Points_list").list.mean().round(2).alias("Avg_Points"),
-                        pl.col("_Points_list").list.median().alias("Median_Points"),
-                        pl.col("_Points_list").list.min().alias("Min_Points"),
-                        pl.col("_Points_list").list.max().alias("Max_Points"),
-                        pl.col("_Points_list").list.std().round(2).alias("Std_Points"),
-                        pl.col("_Points_list").list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile Points"),
-                        pl.col("_Points_list").list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile Points"),
+                        *gear_stats_exprs("_Points_list", "Points"),
                     ])
                 )
 
@@ -1097,7 +1055,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
                     "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Eidolon", "Category", "Gear_Name",
                     "Usage", "Usage_Rate", "Avg_Points", "25th Percentile Points",
                     "Median_Points", "75th Percentile Points", "Min_Points",
-                    "Max_Points", "Std_Points"
+                    "Max_Points", "Std_Points", "Points Distributions"
                 ]))
 
         if not results:

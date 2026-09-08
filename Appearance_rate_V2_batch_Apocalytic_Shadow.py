@@ -747,19 +747,13 @@ class HonkaiStatistics_V2_APOC_Batch:
             (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
             (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
              (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
-            pl.col("Scores").list.median().round(2).alias("Median Scores"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
-            pl.col("Scores").list.min().alias("Min Scores"),
-            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
-            pl.col("Scores").list.max().alias("Max Scores")
+            *list_stats_exprs("Scores", "Scores"),
         ]).sort(["version", "Samples"], descending=[True, True])
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Team","Archetype Core" , "Appearance Rate (%)", "Samples",
             "Min Scores", "25th Percentile Scores", "Median Scores",
-            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores", "Sustain?","Total_Full_Clears","Full_Clear_Rate"
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores", "Sustain?","Total_Full_Clears","Full_Clear_Rate","Scores Distributions"
         ])
 
     def get_archetype_df(self):
@@ -770,19 +764,13 @@ class HonkaiStatistics_V2_APOC_Batch:
             (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Usage %"),
             (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
             (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Scores").list.min().alias("Min Scores"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th %"),
-            pl.col("Scores").list.median().round(2).alias("Median"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th %"),
-            pl.col("Scores").list.mean().round(2).alias("Avg Scores"),
-            pl.col("Scores").list.max().alias("Max Scores"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
+            *list_stats_exprs("Scores", "Scores", style="short"),
         ]).sort(["version", "Samples"], descending=[True, True])
 
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Archetype Core", "Usage %", "Samples", "Sustain_Percentage",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Full_Clear_Rate", "Total_Full_Clears",
-            "Min Scores", "25th %", "Median", "75th %", "Avg Scores", "Max Scores", "Std Dev Scores"
+            "Min Scores", "25th %", "Median", "75th %", "Avg Scores", "Max Scores", "Std Dev Scores", "Scores Distributions"
         ])
 
     def get_char_df(self):
@@ -792,13 +780,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             (pl.col("Total_Samples") / pl.col("version_total_samples") * 100).round(3).alias("Appearance Rate (%)"),
             (pl.col("Total_Sustains") / pl.col("Total_Samples") * 100).round(2).alias("Sustain_Percentage"),
             (pl.col("Total_Full_Clears")/pl.col("Total_Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Total_Scores").list.min().alias("Min Scores"),
-            pl.col("Total_Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
-            pl.col("Total_Scores").list.median().round(2).alias("Median Scores"),
-            pl.col("Total_Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
-            pl.col("Total_Scores").list.mean().round(2).alias("Average Scores"),
-            pl.col("Total_Scores").list.eval(pl.element().std()).list.first().round(2).alias("Std Dev Scores"),
-            pl.col("Total_Scores").list.max().alias("Max Scores"),
+            *list_stats_exprs("Total_Scores", "Scores"),
             *[
                 ((pl.col(c) / pl.col("Total_Samples")) * 100).round(2).alias(f"{c.replace('Samples_', '')} %")
                 for c in eidolon_sample_cols
@@ -812,7 +794,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Appearance Rate (%)",
             pl.col("Total_Samples").alias("Samples"),
             "Min Scores", "25th Percentile Scores", "Median Scores",
-            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores",
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores", "Scores Distributions",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Sustain_Percentage",
             "Total_Full_Clears", "Full_Clear_Rate",
             *eidolon_perc_cols
@@ -931,7 +913,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             pl.col("Total_Full_Clears"),
             full_clear_rate_expr("Total_Full_Clears", "Samples"),
             "25th Percentile Scores", "Median Scores", "75th Percentile Scores",
-            "Std Dev Scores", "Min Scores", "Average Scores", "Max Scores",
+            "Std Dev Scores", "Min Scores", "Average Scores", "Max Scores", "Scores Distributions",
         ]).sort(["version", "node", "Lift"], descending=[True, False, True]).collect()
 
     def get_combined_team_df(self):
@@ -962,13 +944,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             pl.col("Total_Full_Clears"),
             (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
             
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
-            pl.col("Scores").list.median().round(2).alias("Median Scores"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
-            pl.col("Scores").list.min().alias("Min Scores"),
-            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
-            pl.col("Scores").list.max().alias("Max Scores")
+            *list_stats_exprs("Scores", "Scores"),
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level", "Samples"], descending=[True, False, False, True])
 
         team_label_cols = [f"Team Node {i+1}" for i in range(len(node_char_cols))]
@@ -980,7 +956,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             "Total_Full_Clears", "Full_Clear_Rate",
             "Appearance Rate (%)", "Samples",
             "Min Scores", "25th Percentile Scores", "Median Scores",
-            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores", "Scores Distributions"
         ])
 
     def get_combined_archetype_df(self):
@@ -1008,13 +984,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             pl.col("Total_Full_Clears"),
             (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
             
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
-            pl.col("Scores").list.median().round(2).alias("Median Scores"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
-            pl.col("Scores").list.min().alias("Min Scores"),
-            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
-            pl.col("Scores").list.max().alias("Max Scores")
+            *list_stats_exprs("Scores", "Scores"),
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level", "Samples"], descending=[True, False, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -1024,7 +994,7 @@ class HonkaiStatistics_V2_APOC_Batch:
              *sustain_label_cols,
             "Appearance Rate (%)", "Samples","Total_Full_Clears", "Full_Clear_Rate",
             "Min Scores", "25th Percentile Scores", "Median Scores",
-            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores", "Scores Distributions"
         ])
 
     def get_combined_char_df(self):
@@ -1036,13 +1006,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         ).with_columns([
             *[pl.col(node_char_cols[i]).alias(char_label_cols[i]) for i in range(len(node_char_cols))],
             (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Scores"),
-            pl.col("Scores").list.median().round(2).alias("Median Scores"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Scores"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Scores"),
-            pl.col("Scores").list.min().alias("Min Scores"),
-            pl.col("Scores").list.mean().round(2).alias("Average Scores"),
-            pl.col("Scores").list.max().alias("Max Scores")
+            *list_stats_exprs("Scores", "Scores"),
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level", "Samples"], descending=[True, False, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -1050,7 +1014,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             *char_label_cols,
             "Samples", "Appearance Rate (%)",
             "Min Scores", "25th Percentile Scores", "Median Scores",
-            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores"
+            "75th Percentile Scores", "Average Scores", "Std Dev Scores", "Max Scores", "Scores Distributions"
         ])
 
     def display_top_gear(self):
@@ -1085,13 +1049,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                     ])
                     .with_columns([
                         (pl.col("Usage") / pl.col("_total_filtered_usage")).alias("Usage_Rate"),
-                        pl.col("_Scores_list").list.mean().round(2).alias("Avg_Scores"),
-                        pl.col("_Scores_list").list.median().alias("Median_Scores"),
-                        pl.col("_Scores_list").list.min().alias("Min_Scores"),
-                        pl.col("_Scores_list").list.max().alias("Max_Scores"),
-                        pl.col("_Scores_list").list.std().round(2).alias("Std_Scores"),
-                        pl.col("_Scores_list").list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile Scores"),
-                        pl.col("_Scores_list").list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile Scores"),
+                        *gear_stats_exprs("_Scores_list", "Scores"),
                     ])
                 )
 
@@ -1104,7 +1062,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                     "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Eidolon", "Category", "Gear_Name",
                     "Usage", "Usage_Rate", "Avg_Scores", "25th Percentile Scores",
                     "Median_Scores", "75th Percentile Scores", "Min_Scores",
-                    "Max_Scores", "Std_Scores"
+                    "Max_Scores", "Std_Scores", "Scores Distributions"
                 ]))
 
         if not results:

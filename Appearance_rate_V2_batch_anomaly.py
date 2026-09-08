@@ -3,14 +3,14 @@ from appearance_stats_helpers import (
     list_stats_exprs, gear_stats_exprs,
     appearance_rate_expr, usage_rate_expr,    sustain_pct_expr, full_clear_rate_expr, sustain_flag_expr,
     eidolon_pct_exprs,
-)
+)
 import os
 import orjson
 from itertools import chain, combinations_with_replacement
 import matplotlib.pyplot as plt
 import polars.selectors as cs
 from dotenv import load_dotenv
-import duckdb
+import duckdb
 
 load_dotenv()
 
@@ -750,7 +750,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "floor", "Team","Archetype Core" , "Appearance Rate (%)", "Samples",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Sustain?","Total_Full_Clears","Full_Clear_Rate"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Sustain?","Total_Full_Clears","Full_Clear_Rate","Cycles Distributions"
         ])
 
     def get_archetype_df(self):
@@ -767,7 +767,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
       return df.with_row_index("Rank", offset=1).select([
           "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "floor", "Archetype Core", "Usage %", "Samples", "Sustain_Percentage",
           pl.col("Total_Sustains").alias("Sustain Samples"), "Full_Clear_Rate", "Total_Full_Clears",
-          "Min Cycles", "25th %", "Median", "75th %", "Avg Cycles", "Max Cycles", "Std Dev Cycles"
+          "Min Cycles", "25th %", "Median", "75th %", "Avg Cycles", "Max Cycles", "Std Dev Cycles", "Cycles Distributions"
       ])
 
     def get_char_df(self):
@@ -788,7 +788,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "floor", "Character", "Appearance Rate (%)", 
             pl.col("Total_Samples").alias("Samples"),
             "Min Cycles", "25th Percentile Cycles", "Median Cycles", 
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles",
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Cycles Distributions",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Sustain_Percentage",
             "Total_Full_Clears", "Full_Clear_Rate",
             *eidolon_perc_cols 
@@ -907,7 +907,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
             pl.col("Total_Full_Clears"),
             full_clear_rate_expr("Total_Full_Clears", "Samples"),
             "25th Percentile Cycles", "Median Cycles", "75th Percentile Cycles",
-            "Std Dev Cycles", "Min Cycles", "Average Cycles", "Max Cycles",
+            "Std Dev Cycles", "Min Cycles", "Average Cycles", "Max Cycles", "Cycles Distributions",
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level","floor", "Lift"], descending=[True, False, False, False, True]).collect()
     
     def get_combined_team_df(self):
@@ -951,7 +951,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
             *full_clear_label_cols,
             "Appearance Rate (%)", "Samples",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Cycles Distributions"
         ])
 
     def get_combined_archetype_df(self):
@@ -989,7 +989,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
             *full_clear_label_cols,
             "Appearance Rate (%)", "Samples",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Cycles Distributions"
         ])
 
     def get_combined_char_df(self):
@@ -1004,7 +1004,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "Character floor 1", "Character floor 2", "Character Floor 3","Samples", "Appearance Rate (%)",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Cycles Distributions"
         ])
         
     def display_top_gear(self):
@@ -1049,10 +1049,9 @@ class HonkaiStatistics_V2_Anomaly_Batch:
                 ])
                 
                 results.append(full_list.select([
-                    "version", "at_eidolon_level", "up_to_eidolon_level", "floor", "Character", "Eidolon", "Category", "Gear_Name", 
-                    "Usage", "Usage_Rate", "Avg_Cycles", "25th Percentile Cycles", 
-                    "Median_Cycles", "75th Percentile Cycles", "Min_Cycles", 
-                    "Max_Cycles", "Std_Cycles"
+                    "version", "at_eidolon_level", "up_to_eidolon_level", "floor", "Character", "Eidolon", "Category", "Gear_Name",                    "Usage", "Usage_Rate", "Avg_Cycles", "25th Percentile Cycles",
+                    "Median_Cycles", "75th Percentile Cycles", "Min_Cycles",
+                    "Max_Cycles", "Std_Cycles", "Cycles Distributions"
                 ]))
 
         if not results:

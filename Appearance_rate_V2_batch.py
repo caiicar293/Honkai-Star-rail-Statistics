@@ -747,11 +747,10 @@ class HonkaiStatistics_V2_Batch:
             full_clear_rate_expr("Total_Full_Clears", "Samples"),
             *list_stats_exprs("Cycles", "Cycles"),
         ]).sort(["version", "Samples"], descending=[True, True])
-
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Team","Archetype Core", "Appearance Rate (%)", "Samples",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Sustain?","Total_Full_Clears","Full_Clear_Rate"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Sustain?","Total_Full_Clears","Full_Clear_Rate","Cycles Distributions"
         ])
 
     def get_archetype_df(self):
@@ -767,7 +766,7 @@ class HonkaiStatistics_V2_Batch:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Archetype Core", "Usage %", "Samples", "Sustain_Percentage",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Full_Clear_Rate", "Total_Full_Clears",
-            "Min Cycles", "25th %", "Median", "75th %", "Avg Cycles", "Max Cycles", "Std Dev Cycles"
+            "Min Cycles", "25th %", "Median", "75th %", "Avg Cycles", "Max Cycles", "Std Dev Cycles", "Cycles Distributions"
         ])
 
     def get_char_df(self):
@@ -788,7 +787,7 @@ class HonkaiStatistics_V2_Batch:
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Appearance Rate (%)",
             pl.col("Total_Samples").alias("Samples"),
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles",
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Cycles Distributions",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Sustain_Percentage",
             "Total_Full_Clears", "Full_Clear_Rate",
             *eidolon_perc_cols
@@ -908,7 +907,7 @@ class HonkaiStatistics_V2_Batch:
             pl.col("Total_Full_Clears"),
             full_clear_rate_expr("Total_Full_Clears", "Samples"),
             "25th Percentile Cycles", "Median Cycles", "75th Percentile Cycles",
-            "Std Dev Cycles", "Min Cycles", "Average Cycles", "Max Cycles",
+            "Std Dev Cycles", "Min Cycles", "Average Cycles", "Max Cycles", "Cycles Distributions",
         ]).sort(["version", "node", "Lift"], descending=[True, False, True]).collect()
 
     def get_combined_team_df(self):
@@ -950,7 +949,7 @@ class HonkaiStatistics_V2_Batch:
             "Total_Full_Clears", "Full_Clear_Rate",
             "Appearance Rate (%)", "Samples",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Cycles Distributions"
         ])
 
     def get_combined_archetype_df(self):
@@ -986,7 +985,7 @@ class HonkaiStatistics_V2_Batch:
             *sustain_label_cols,
             "Appearance Rate (%)", "Samples",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Cycles Distributions"
         ])
 
     def get_combined_char_df(self):
@@ -1006,7 +1005,7 @@ class HonkaiStatistics_V2_Batch:
             *char_label_cols,
             "Samples", "Appearance Rate (%)",
             "Min Cycles", "25th Percentile Cycles", "Median Cycles",
-            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles"
+            "75th Percentile Cycles", "Average Cycles", "Std Dev Cycles", "Max Cycles", "Cycles Distributions"
         ])
 
     def display_top_gear(self):
@@ -1054,7 +1053,7 @@ class HonkaiStatistics_V2_Batch:
                     "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Eidolon", "Category", "Gear_Name",
                     "Usage", "Usage_Rate", "Avg_Cycles", "25th Percentile Cycles",
                     "Median_Cycles", "75th Percentile Cycles", "Min_Cycles",
-                    "Max_Cycles", "Std_Cycles"
+                    "Max_Cycles", "Std_Cycles", "Cycles Distributions"
                 ]))
 
         if not results:

@@ -222,7 +222,9 @@ class HonkaiDataPlatform:
             'Average':                   'Average_Score',
             'Points':                    'Scores',
             'Cycles':                    'Scores',
-            'Full_Clear_Rate':           'Full_Clear_Rate_pct'
+            'Full_Clear_Rate':           'Full_Clear_Rate_pct',
+            'Cycles Distributions':      'Scores_Distributions',
+            'Points Distributions':      'Scores_Distributions',
         }
 
     # ------------------------------------------------------------------

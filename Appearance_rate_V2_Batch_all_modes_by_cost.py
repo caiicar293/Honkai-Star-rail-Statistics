@@ -585,7 +585,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             "Team", "Archetype Core", "has_sustain",
             "Appearance Rate (%)", "Samples", "Total_Full_Clears", "Full_Clear_Rate",
             f"Min {self.metric_name}", f"25th Percentile {self.metric_name}", f"Median {self.metric_name}",
-            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}"
+            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}", f"{self.metric_name} Distributions"
         ])
 
     def get_archetypes_df(self):
@@ -603,7 +603,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             "Rank", "version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "max_eidolon",
             "Archetype Core", "Usage %", "Samples", "Total_Full_Clears", "Full_Clear_Rate", pl.col("Total_Sustains").alias("Sustain_Samples"), "Sustain_Percentage",
             f"Min {self.metric_name}", f"25th Percentile {self.metric_name}", f"Median {self.metric_name}",
-            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}"
+            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}", f"{self.metric_name} Distributions"
         ])
         
         
@@ -621,7 +621,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             pl.col("char_cons_zipped_sorted").alias("Character"),
             "Appearance Rate (%)", "Samples", "Total_Full_Clears", "Full_Clear_Rate", pl.col("Total_Sustains").alias("Sustain_Samples"), "Sustain_Percentage",
             f"Min {self.metric_name}", f"25th Percentile {self.metric_name}", f"Median {self.metric_name}",
-            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}"
+            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}", f"{self.metric_name} Distributions"
         ])
 
     def get_chars_by_individual_eidolons_df(self):
@@ -638,7 +638,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             pl.col("char_cons_zipped_sorted").alias("Character (Eidolon)"),
             "Appearance Rate (%)", "Samples", "Total_Full_Clears", "Full_Clear_Rate", pl.col("Total_Sustains").alias("Sustain_Samples"), "Sustain_Percentage",
             f"Min {self.metric_name}", f"25th Percentile {self.metric_name}", f"Median {self.metric_name}",
-            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}"
+            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}", f"{self.metric_name} Distributions"
         ])
 
     def get_duos_stats(self):
@@ -699,7 +699,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             pl.col("certainty").round(3).alias("Certainty"),
             pl.col("jaccard").round(3).alias("Jaccard"),
             f"Min {self.metric_name}", f"25th Percentile {self.metric_name}", f"Median {self.metric_name}",
-            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}"
+            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}", f"{self.metric_name} Distributions"
         ]).sort(["version", self.node_or_floor_col, "Lift"], descending=[True, False, True]).collect()
 
     def get_combined_team_df(self):
@@ -769,7 +769,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             *mode_specific_select,
             "Appearance Rate (%)", "Samples",
             f"Min {self.metric_name}", f"25th Percentile {self.metric_name}", f"Median {self.metric_name}",
-            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}"
+            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}", f"{self.metric_name} Distributions"
         ]
 
         return df.with_row_index("Rank", offset=1).select(final_selection)
@@ -841,7 +841,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             *mode_specific_select, 
             *sustain_display,
             f"Min {self.metric_name}", f"25th Percentile {self.metric_name}", f"Median {self.metric_name}",
-            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}"
+            f"75th Percentile {self.metric_name}", f"Average {self.metric_name}", f"Std Dev {self.metric_name}", f"Max {self.metric_name}", f"{self.metric_name} Distributions"
         ]
 
         return df.with_row_index("Rank", offset=1).select(final_selection)

@@ -31,6 +31,11 @@ def list_stats_exprs(col: str, label: str, style: str = "full") -> list[pl.Expr]
             pl.col(col).list.mean().round(2).alias(f"Avg {label}"),
             pl.col(col).list.max().alias(f"Max {label}"),
             pl.col(col).list.eval(pl.element().std(ddof=1)).list.first().round(2).alias(f"Std Dev {label}"),
+            pl.col(col).list.eval(
+                            pl.element()
+                            .value_counts(sort=True)
+                            .struct.rename_fields([f"{label}", "count"])
+                        ).alias(f"{label} Distributions")
         ]
     if style == "bare":
         return [
@@ -41,6 +46,11 @@ def list_stats_exprs(col: str, label: str, style: str = "full") -> list[pl.Expr]
             pl.col(col).list.mean().round(2).alias(f"Average {label}"),
             pl.col(col).list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev"),
             pl.col(col).list.max().alias("Max"),
+            pl.col(col).list.eval(
+                            pl.element()
+                            .value_counts(sort=True)
+                            .struct.rename_fields([f"{label}", "count"])
+                        ).alias(f"{label} Distributions")
         ]
     return [
         pl.col(col).list.min().alias(f"Min {label}"),
@@ -50,7 +60,12 @@ def list_stats_exprs(col: str, label: str, style: str = "full") -> list[pl.Expr]
         pl.col(col).list.mean().round(2).alias(f"Average {label}"),
         pl.col(col).list.eval(pl.element().std(ddof=1)).list.first().round(2).alias(f"Std Dev {label}"),
         pl.col(col).list.max().alias(f"Max {label}"),
-    ]
+        pl.col(col).list.eval(
+                pl.element()
+                .value_counts(sort=True)
+                .struct.rename_fields([f"{label}", "count"])
+            ).alias(f"{label} Distributions")
+        ]
 
 
 def gear_stats_exprs(col: str, label: str, style: str = "snake") -> list[pl.Expr]:
@@ -74,6 +89,11 @@ def gear_stats_exprs(col: str, label: str, style: str = "snake") -> list[pl.Expr
             pl.col(col).list.min().alias(f"Min_{label}"),
             pl.col(col).list.max().alias(f"Max_{label}"),
             pl.col(col).list.std(ddof=1).round(2).alias(f"Std_{label}"),
+            pl.col(col).list.eval(
+                            pl.element()
+                            .value_counts(sort=True)
+                            .struct.rename_fields([f"{label}", "count"])
+                        ).alias(f"{label} Distributions")
         ]
     if style == "legacy_bare":
         return [
@@ -84,6 +104,11 @@ def gear_stats_exprs(col: str, label: str, style: str = "snake") -> list[pl.Expr
             pl.col(col).list.std().round(2).alias("Std"),
             pl.col(col).list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile"),
             pl.col(col).list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile"),
+            pl.col(col).list.eval(
+                            pl.element()
+                            .value_counts(sort=True)
+                            .struct.rename_fields([f"{label}", "count"])
+                        ).alias(f"{label} Distributions")
         ]
     return [
         pl.col(col).list.mean().round(2).alias(f"Avg_{label}"),
@@ -93,6 +118,11 @@ def gear_stats_exprs(col: str, label: str, style: str = "snake") -> list[pl.Expr
         pl.col(col).list.std().round(2).alias(f"Std_{label}"),
         pl.col(col).list.eval(pl.element().quantile(0.25)).list.first().alias(f"25th Percentile {label}"),
         pl.col(col).list.eval(pl.element().quantile(0.75)).list.first().alias(f"75th Percentile {label}"),
+        pl.col(col).list.eval(
+                        pl.element()
+                        .value_counts(sort=True)
+                        .struct.rename_fields([f"{label}", "count"])
+                    ).alias(f"{label} Distributions")
     ]
 
 

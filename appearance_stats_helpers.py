@@ -92,7 +92,7 @@ def gear_stats_exprs(col: str, label: str, style: str = "snake") -> list[pl.Expr
             pl.col(col).list.eval(
                             pl.element()
                             .value_counts(sort=True)
-                            .struct.rename_fields([f"{label}", "count"])
+                            .struct.rename_fields([f"Scores", "count"])
                         ).alias(f"Scores Distributions")
         ]
     if style == "legacy_bare":

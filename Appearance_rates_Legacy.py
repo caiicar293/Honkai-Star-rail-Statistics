@@ -585,7 +585,7 @@ class HonkaiStatistics_Legacy:
                 "Rank", "Character", "Appearance Rate (%)",
                 pl.col("Total_Samples").alias("Samples"),
                 "Min", "25th Percentile", "Median", "75th Percentile",
-                f"Average {self.metric}", "Std Dev", "Max",
+                f"Average {self.metric}", "Std Dev", "Max", f"{self.metric} Distributions",
                 pl.col("Total_Sustains").alias("Sustain Samples"),
                 "Sustain_Percentage",
             ])
@@ -602,7 +602,7 @@ class HonkaiStatistics_Legacy:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Team", "Appearance Rate (%)", "Samples",
             "Min", "25th Percentile", "Median", "75th Percentile",
-            f"Average {self.metric}", "Std Dev", "Max", "Sustain?",
+            f"Average {self.metric}", "Std Dev", "Max", f"{self.metric} Distributions", "Sustain?",
         ])
 
     def get_archetype_df(self):
@@ -618,7 +618,7 @@ class HonkaiStatistics_Legacy:
             "Rank", "Archetype Core", "Usage %", "Samples", "Sustain_Percentage",
             pl.col("Total_Sustains").alias("Sustain Samples"),
             "Min", "25th Percentile", "Median", "75th Percentile",
-            f"Average {self.metric}", "Max", "Std Dev",
+            f"Average {self.metric}", "Max", "Std Dev", f"{self.metric} Distributions",
         ])
 
     def get_duos_stats(self):
@@ -689,7 +689,7 @@ class HonkaiStatistics_Legacy:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Team Node 1", "Team Node 2", "Appearance Rate (%)", "Samples",
             "Min", "25th Percentile", "Median", "75th Percentile",
-            f"Average {self.metric}", "Std Dev", "Max",
+            f"Average {self.metric}", "Std Dev", "Max", f"{self.metric} Distributions",
         ])
 
     def get_combined_archetype_df(self):
@@ -707,7 +707,7 @@ class HonkaiStatistics_Legacy:
         return df.with_row_index("Rank", offset=1).select([
             "Rank", "Core Node 1", "Core Node 2", "Appearance Rate (%)", "Samples",
             "Min", "25th Percentile", "Median", "75th Percentile",
-            f"Average {self.metric}", "Std Dev", "Max",
+            f"Average {self.metric}", "Std Dev", "Max", f"{self.metric} Distributions",
         ])
 
     def get_combined_char_df(self):
@@ -722,7 +722,7 @@ class HonkaiStatistics_Legacy:
             "Rank", "Character Node 1", "Character Node 2",
             "Samples", "Appearance Rate (%)",
             "Min", "25th Percentile", "Median", "75th Percentile",
-            f"Average {self.metric}", "Std Dev", "Max",
+            f"Average {self.metric}", "Std Dev", "Max", f"{self.metric} Distributions",
         ])
 
     # -----------------------------------------------------------------------
@@ -770,7 +770,7 @@ class HonkaiStatistics_Legacy:
                 results.append(processed.select([
                     "Character", "Eidolon", "Category", "Gear_Name",
                     "Usage", "Usage_Rate", f"Avg {self.metric}", "25th Percentile",
-                    "Median", "75th Percentile", f"Min_{self.metric}", f"Max_{self.metric}", "Std",
+                    "Median", "75th Percentile", f"Min_{self.metric}", f"Max_{self.metric}", "Std", f"{self.metric} Distributions",
                 ]))
 
         if not results:
@@ -1561,7 +1561,7 @@ class HonkaiStatistics_Legacy_Batch:
             "Rank", *vk, "Character", "Appearance Rate (%)",
             pl.col("Total_Samples").alias("Samples"),
             f"Min {m}", f"25th Percentile {m}", f"Median {m}",
-            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}",
+            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}", f"{m} Distributions",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Sustain_Percentage",
             "Total_Full_Clears", "Full_Clear_Rate",
         ])
@@ -1589,7 +1589,7 @@ class HonkaiStatistics_Legacy_Batch:
         return df.select([
             "Rank", *vk, "Team","Archetype Core", "Appearance Rate (%)", "Samples",
             f"Min {m}", f"25th Percentile {m}", f"Median {m}",
-            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}", "Sustain?"
+            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}", f"{m} Distributions", "Sustain?"
             ,"Total_Full_Clears","Full_Clear_Rate"
         ])
 
@@ -1615,7 +1615,7 @@ class HonkaiStatistics_Legacy_Batch:
             "Rank", *vk, "Archetype Core", "Usage %", "Samples",
             "Sustain_Percentage", pl.col("Total_Sustains").alias("Sustain Samples"), "Full_Clear_Rate", "Total_Full_Clears",
             f"Min {m}", f"25th Percentile {m}", f"Median {m}",
-            f"75th Percentile {m}", f"Average {m}", f"Max {m}", f"Std Dev {m}",
+            f"75th Percentile {m}", f"Average {m}", f"Max {m}", f"Std Dev {m}", f"{m} Distributions",
         ])
 
     def get_duos_stats(self) -> pl.DataFrame:
@@ -1747,7 +1747,7 @@ class HonkaiStatistics_Legacy_Batch:
                         "Character", "Eidolon", "Category", "Gear_Name",
                         "Usage", "Usage_Rate",
                         f"Avg_{m}", f"25th Percentile {m}", f"Median_{m}",
-                        f"75th Percentile {m}", f"Min_{m}", f"Max_{m}", f"Std_{m}",
+                        f"75th Percentile {m}", f"Min_{m}", f"Max_{m}", f"Std_{m}", f"{m} Distributions",
                     ]
                 ))
 
@@ -1826,7 +1826,7 @@ class HonkaiStatistics_Legacy_Batch:
                             *sustain_cols,
                             "Total_Full_Clears", "Full_Clear_Rate", "Appearance Rate (%)", "Samples",
                             f"Min {m}", f"25th Percentile {m}", f"Median {m}",
-                            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}"])
+                            f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}", f"{m} Distributions"])
 
     def get_combined_archetype_df(self) -> pl.DataFrame:
         self._assert_combined()
@@ -1866,7 +1866,7 @@ class HonkaiStatistics_Legacy_Batch:
             *sustain_cols,
             *sustain_label_cols, "Appearance Rate (%)", "Samples",
                           f"Min {m}", f"25th Percentile {m}", f"Median {m}",
-                          f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}"])
+                          f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}", f"{m} Distributions"])
 
     def get_combined_char_df(self) -> pl.DataFrame:
         self._assert_combined()
@@ -1887,7 +1887,7 @@ class HonkaiStatistics_Legacy_Batch:
         return df.select(["Rank", *ck, "Character Node 1", "Character Node 2",
                           "Samples", "Appearance Rate (%)",
                           f"Min {m}", f"25th Percentile {m}", f"Median {m}",
-                          f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}"])
+                          f"75th Percentile {m}", f"Average {m}", f"Std Dev {m}", f"Max {m}", f"{m} Distributions"])
 
     def plot_statistics_all(self, output: bool = True):
         return self._plot_score_distribution(

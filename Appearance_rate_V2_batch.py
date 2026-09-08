@@ -1,4 +1,10 @@
 import polars as pl
+from appearance_stats_helpers import (
+    list_stats_exprs, gear_stats_exprs,
+    appearance_rate_expr, usage_rate_expr,
+    sustain_pct_expr, full_clear_rate_expr, sustain_flag_expr,
+    eidolon_pct_exprs,
+)
 import os
 import orjson
 from itertools import chain, combinations_with_replacement
@@ -736,16 +742,10 @@ class HonkaiStatistics_V2_Batch:
             pl.col("archetype_key").list.join(" + ")
                 .map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
                 .alias("Archetype Core"),
-            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-            (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
-            pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
-            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
-            pl.col("Cycles").list.min().alias("Min Cycles"),
-            pl.col("Cycles").list.mean().round(2).alias("Average Cycles"),
-            pl.col("Cycles").list.max().alias("Max Cycles")
+            appearance_rate_expr("Samples", "version_total_samples"),
+            sustain_flag_expr("Total_Sustains", "Samples"),
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            *list_stats_exprs("Cycles", "Cycles"),
         ]).sort(["version", "Samples"], descending=[True, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -758,17 +758,10 @@ class HonkaiStatistics_V2_Batch:
         df = self.archetypes_stats.join(self.total_samples_df, on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left").with_columns([
             pl.col("archetype_key").list.join(" + ")
                 .map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
-                .alias("Archetype Core"),
-            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Usage %"),
-            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Cycles").list.min().alias("Min Cycles"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th %"),
-            pl.col("Cycles").list.median().round(2).alias("Median"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th %"),
-            pl.col("Cycles").list.mean().round(2).alias("Avg Cycles"),
-            pl.col("Cycles").list.max().alias("Max Cycles"),
-            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
+                .alias("Archetype Core"),            usage_rate_expr("Samples", "version_total_samples"),
+            sustain_pct_expr("Total_Sustains", "Samples"),
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            *list_stats_exprs("Cycles", "Cycles", style="short"),
         ]).sort(["version", "Samples"], descending=[True, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -781,20 +774,11 @@ class HonkaiStatistics_V2_Batch:
         eidolon_sample_cols = [c for c in self.char_stats.columns if "Samples_Eidolon" in c]
 
         df = self.char_stats.join(self.total_samples_df, on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left").with_columns([
-            (pl.col("Total_Samples") / pl.col("version_total_samples") * 100).round(3).alias("Appearance Rate (%)"),
-            (pl.col("Total_Sustains") / pl.col("Total_Samples") * 100).round(2).alias("Sustain_Percentage"),
-            (pl.col("Total_Full_Clears")/pl.col("Total_Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Total_Cycles").list.min().alias("Min Cycles"),
-            pl.col("Total_Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
-            pl.col("Total_Cycles").list.median().round(2).alias("Median Cycles"),
-            pl.col("Total_Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
-            pl.col("Total_Cycles").list.mean().round(2).alias("Average Cycles"),
-            pl.col("Total_Cycles").list.eval(pl.element().std()).list.first().round(2).alias("Std Dev Cycles"),
-            pl.col("Total_Cycles").list.max().alias("Max Cycles"),
-            *[
-                ((pl.col(c) / pl.col("Total_Samples")) * 100).round(2).alias(f"{c.replace('Samples_', '')} %")
-                for c in eidolon_sample_cols
-            ]
+            appearance_rate_expr("Total_Samples", "version_total_samples", ndigits=3),
+            sustain_pct_expr("Total_Sustains", "Total_Samples"),
+            full_clear_rate_expr("Total_Full_Clears", "Total_Samples"),
+            *list_stats_exprs("Total_Cycles", "Cycles"),
+            *eidolon_pct_exprs(eidolon_sample_cols),
         ])
 
         df = df.sort(["version", "Total_Samples"], descending=[True, True]).with_row_index("Rank", offset=1)
@@ -907,10 +891,11 @@ class HonkaiStatistics_V2_Batch:
             ).alias("certainty"),
             (
                 pl.col("support") / (pl.col("support_A") + pl.col("support_C") - pl.col("support") + 1e-7)
-            ).alias("jaccard")
+            ).alias("jaccard"),
+            *list_stats_exprs("Cycles", "Cycles"),
         ]).select([
             "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", "Samples",
-            (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
+            appearance_rate_expr("Samples", "version_total_samples"),
             pl.col("confidence").round(3).alias("Confidence"),
             pl.col("lift").round(3).alias("Lift"),
             pl.col("leverage").round(4).alias("Leverage"),
@@ -919,16 +904,11 @@ class HonkaiStatistics_V2_Batch:
             pl.col("certainty").round(3).alias("Certainty"),
             pl.col("jaccard").round(3).alias("Jaccard"),
             pl.col("Total_Sustains"),
-            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+            sustain_pct_expr("Total_Sustains", "Samples"),
             pl.col("Total_Full_Clears"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
-            pl.col("Cycles").list.eval(pl.element().median()).list.first().round(2).alias("Median Cycles"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
-            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
-            pl.col("Cycles").list.min().alias("Min Cycles"),
-            pl.col("Cycles").list.mean().round(2).alias("Average Cycles"),
-            pl.col("Cycles").list.max().alias("Max Cycles")
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            "25th Percentile Cycles", "Median Cycles", "75th Percentile Cycles",
+            "Std Dev Cycles", "Min Cycles", "Average Cycles", "Max Cycles",
         ]).sort(["version", "node", "Lift"], descending=[True, False, True]).collect()
 
     def get_combined_team_df(self):
@@ -953,19 +933,12 @@ class HonkaiStatistics_V2_Batch:
             *[
                 (pl.col(c) == pl.col("Samples"))
                 for c in sustain_cols
-            ],
-            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            ],            appearance_rate_expr("Samples", "combined_version_total_samples"),
             
             pl.col("Total_Full_Clears"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
            
-            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
-            pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
-            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
-            pl.col("Cycles").list.min().alias("Min Cycles"),
-            pl.col("Cycles").list.mean().round(2).alias("Average Cycles"),
-            pl.col("Cycles").list.max().alias("Max Cycles")
+            *list_stats_exprs("Cycles", "Cycles"),
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level", "Samples"], descending=[True, False, False, True])
 
         team_label_cols = [f"Team Node {i+1}" for i in range(len(node_char_cols))]
@@ -1000,17 +973,10 @@ class HonkaiStatistics_V2_Batch:
             *[
                 (pl.col(c) /pl.col("Samples")* 100).round(2).alias(sustain_label_cols[i])
                 for i, c in enumerate(sustain_cols)
-            ],
-            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            ],            appearance_rate_expr("Samples", "combined_version_total_samples"),
             pl.col("Total_Full_Clears"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
-            pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
-            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
-            pl.col("Cycles").list.min().alias("Min Cycles"),
-            pl.col("Cycles").list.mean().round(2).alias("Average Cycles"),
-            pl.col("Cycles").list.max().alias("Max Cycles")
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            *list_stats_exprs("Cycles", "Cycles"),
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level", "Samples"], descending=[True, False, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -1031,14 +997,8 @@ class HonkaiStatistics_V2_Batch:
             self.combined_total_samples_df, on=["version", "at_eidolon_level", "up_to_eidolon_level"], how="left"
         ).with_columns([
             *[pl.col(node_char_cols[i]).alias(char_label_cols[i]) for i in range(len(node_char_cols))],
-            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Cycles"),
-            pl.col("Cycles").list.median().round(2).alias("Median Cycles"),
-            pl.col("Cycles").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Cycles"),
-            pl.col("Cycles").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Cycles"),
-            pl.col("Cycles").list.min().alias("Min Cycles"),
-            pl.col("Cycles").list.mean().round(2).alias("Average Cycles"),
-            pl.col("Cycles").list.max().alias("Max Cycles")
+            appearance_rate_expr("Samples", "combined_version_total_samples"),
+            *list_stats_exprs("Cycles", "Cycles"),
         ]).sort(["version", "at_eidolon_level", "up_to_eidolon_level", "Samples"], descending=[True, False, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -1081,13 +1041,7 @@ class HonkaiStatistics_V2_Batch:
                     ])
                     .with_columns([
                         (pl.col("Usage") / pl.col("_total_filtered_usage")).alias("Usage_Rate"),
-                        pl.col("_cycles_list").list.mean().round(2).alias("Avg_Cycles"),
-                        pl.col("_cycles_list").list.median().alias("Median_Cycles"),
-                        pl.col("_cycles_list").list.min().alias("Min_Cycles"),
-                        pl.col("_cycles_list").list.max().alias("Max_Cycles"),
-                        pl.col("_cycles_list").list.std().round(2).alias("Std_Cycles"),
-                        pl.col("_cycles_list").list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile Cycles"),
-                        pl.col("_cycles_list").list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile Cycles"),
+                        *gear_stats_exprs("_cycles_list", "Cycles"),
                     ])
                 )
 

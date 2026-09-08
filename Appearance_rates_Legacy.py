@@ -22,6 +22,11 @@ Key properties
 """
 
 import polars as pl
+from appearance_stats_helpers import (
+    list_stats_exprs, gear_stats_exprs,
+    appearance_rate_expr, usage_rate_expr,
+    sustain_pct_expr, full_clear_rate_expr, sustain_flag_expr,
+)
 import os
 import orjson
 import matplotlib.pyplot as plt
@@ -565,20 +570,12 @@ class HonkaiStatistics_Legacy:
 
     def _score_stats_exprs(self, col: str) -> list[pl.Expr]:
         """Standard set of score-distribution expressions for a list column."""
-        return [
-            pl.col(col).list.min().alias("Min"),
-            pl.col(col).list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile"),
-            pl.col(col).list.median().round(2).alias("Median"),
-            pl.col(col).list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile"),
-            pl.col(col).list.mean().round(2).alias(f"Average {self.metric}"),
-            pl.col(col).list.eval(pl.element().std()).list.first().round(2).alias("Std Dev"),
-            pl.col(col).list.max().alias("Max"),
-        ]
+        return list_stats_exprs(col, self.metric, style="bare")
 
     def get_char_df(self):
         df = self.char_stats.with_columns([
-            (pl.col("Total_Samples") / self.total_samples * 100).round(3).alias("Appearance Rate (%)"),
-            (pl.col("Total_Sustains") / pl.col("Total_Samples") * 100).round(2).alias("Sustain_Percentage"),
+            appearance_rate_expr("Total_Samples", self.total_samples, ndigits=3),
+            sustain_pct_expr("Total_Sustains", "Total_Samples"),
             *self._score_stats_exprs("Total_Scores"),
         ])
         return (
@@ -598,8 +595,8 @@ class HonkaiStatistics_Legacy:
         df = self.team_stats.with_columns([
             pl.col("team_key").list.join(", ")
               .map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
-            (pl.col("Samples") / self.total_samples * 100).round(2).alias("Appearance Rate (%)"),
-            (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
+            appearance_rate_expr("Samples", self.total_samples),
+            sustain_flag_expr("Total_Sustains", "Samples"),
             *self._score_stats_exprs("Scores"),
         ]).sort("Samples", descending=True)
         return df.with_row_index("Rank", offset=1).select([
@@ -613,8 +610,8 @@ class HonkaiStatistics_Legacy:
             pl.col("archetype_key").list.join(" + ")
               .map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
               .alias("Archetype Core"),
-            (pl.col("Samples") / self.total_samples * 100).round(2).alias("Usage %"),
-            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+            usage_rate_expr("Samples", self.total_samples),
+            sustain_pct_expr("Total_Sustains", "Samples"),
             *self._score_stats_exprs("Scores"),
         ]).sort("Samples", descending=True)
         return df.with_row_index("Rank", offset=1).select([
@@ -663,7 +660,7 @@ class HonkaiStatistics_Legacy:
             ])
             .select([
                 "Antecedent", "Consequent", "Samples",
-                (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
+                appearance_rate_expr("Samples", self.total_samples),
                 pl.col("confidence").round(3).alias("Confidence"),
                 pl.col("lift").round(3).alias("Lift"),
                 pl.col("leverage").round(4).alias("Leverage"),
@@ -671,7 +668,7 @@ class HonkaiStatistics_Legacy:
                 pl.col("zhang").round(3).alias("Zhang"),
                 pl.col("certainty").round(3).alias("Certainty"),
                 pl.col("jaccard").round(3).alias("Jaccard"),
-                (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+                sustain_pct_expr("Total_Sustains", "Samples"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort("Lift", descending=True)
@@ -686,7 +683,7 @@ class HonkaiStatistics_Legacy:
               .map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team Node 1"),
             pl.col("n2_chars").list.join(", ")
               .map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team Node 2"),
-            (pl.col("Samples") / total * 100).round(2).alias("Appearance Rate (%)"),
+            appearance_rate_expr("Samples", total),
             *self._score_stats_exprs("Scores"),
         ]).sort("Samples", descending=True)
         return df.with_row_index("Rank", offset=1).select([
@@ -704,7 +701,7 @@ class HonkaiStatistics_Legacy:
             pl.col("n2_archetype").list.join(" + ")
               .map_elements(lambda s: f"[{s}]" if s != "" else "[Other]", return_dtype=pl.String)
               .alias("Core Node 2"),
-            (pl.col("Samples") / total * 100).round(2).alias("Appearance Rate (%)"),
+            appearance_rate_expr("Samples", total),
             *self._score_stats_exprs("Scores"),
         ]).sort("Samples", descending=True)
         return df.with_row_index("Rank", offset=1).select([
@@ -718,7 +715,7 @@ class HonkaiStatistics_Legacy:
         df = self.combined_char_stats.with_columns([
             pl.col("n1_chars").alias("Character Node 1"),
             pl.col("n2_chars").alias("Character Node 2"),
-            (pl.col("Samples") / total * 100).round(2).alias("Appearance Rate (%)"),
+            appearance_rate_expr("Samples", total),
             *self._score_stats_exprs("Scores"),
         ]).sort("Samples", descending=True)
         return df.with_row_index("Rank", offset=1).select([
@@ -765,13 +762,7 @@ class HonkaiStatistics_Legacy:
                     .with_columns(pl.col("Usage").sum().over("Character").alias("_total_usage"))
                     .with_columns([
                         (pl.col("Usage") / pl.col("_total_usage")).alias("Usage_Rate"),
-                        pl.col("_scores").list.mean().round(2).alias(f"Avg {self.metric}"),
-                        pl.col("_scores").list.median().alias("Median"),
-                        pl.col("_scores").list.min().alias(f"Min_{self.metric}"),
-                        pl.col("_scores").list.max().alias(f"Max_{self.metric}"),
-                        pl.col("_scores").list.std().round(2).alias("Std"),
-                        pl.col("_scores").list.eval(pl.element().quantile(0.25)).list.first().alias("25th Percentile"),
-                        pl.col("_scores").list.eval(pl.element().quantile(0.75)).list.first().alias("75th Percentile"),
+                        *gear_stats_exprs("_scores", self.metric, style="legacy_bare"),
                         pl.lit(level).alias("Eidolon"),
                         pl.lit(gear_type).alias("Category"),
                     ])
@@ -1542,16 +1533,7 @@ class HonkaiStatistics_Legacy_Batch:
     # ------------------------------------------------------------------
 
     def _score_stats_exprs(self, col: str) -> list[pl.Expr]:
-        m = self.metric
-        return [
-            pl.col(col).list.min().alias(f"Min {m}"),
-            pl.col(col).list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {m}"),
-            pl.col(col).list.median().round(2).alias(f"Median {m}"),
-            pl.col(col).list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {m}"),
-            pl.col(col).list.mean().round(2).alias(f"Average {m}"),
-            pl.col(col).list.eval(pl.element().std()).list.first().round(2).alias(f"Std Dev {m}"),
-            pl.col(col).list.max().alias(f"Max {m}"),
-        ]
+        return list_stats_exprs(col, self.metric, style="full")
 
     # ------------------------------------------------------------------
     # Public getters
@@ -1567,9 +1549,9 @@ class HonkaiStatistics_Legacy_Batch:
             self.char_stats
             .join(self.total_samples_df, on=vk, how="left")
             .with_columns([
-                (pl.col("Total_Samples") / pl.col("version_total_samples") * 100).round(3).alias("Appearance Rate (%)"),
-                (pl.col("Total_Sustains") / pl.col("Total_Samples") * 100).round(2).alias("Sustain_Percentage"),
-                (pl.col("Total_Full_Clears")/pl.col("Total_Samples")* 100).round(2).alias("Full_Clear_Rate"),
+                appearance_rate_expr("Total_Samples", "version_total_samples", ndigits=3),
+                sustain_pct_expr("Total_Sustains", "Total_Samples"),
+                full_clear_rate_expr("Total_Full_Clears", "Total_Samples"),
                 *self._score_stats_exprs("Total_Scores"),
             ])
             .sort(vk + ["Total_Samples"], descending=[True, True, False, True])
@@ -1596,9 +1578,9 @@ class HonkaiStatistics_Legacy_Batch:
                   pl.col("archetype_key").list.join(" + ")
                 .map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
                 .alias("Archetype Core"),
-                (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-                (pl.col("Total_Sustains") == pl.col("Samples")).alias("Sustain?"),
-                (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
+                appearance_rate_expr("Samples", "version_total_samples"),
+                sustain_flag_expr("Total_Sustains", "Samples"),
+                full_clear_rate_expr("Total_Full_Clears", "Samples"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(vk + ["Samples"], descending=[True, True, False, True])
@@ -1621,9 +1603,9 @@ class HonkaiStatistics_Legacy_Batch:
                 pl.col("archetype_key").list.join(" + ")
                   .map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String)
                   .alias("Archetype Core"),
-                (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Usage %"),
-                (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
-                (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
+                usage_rate_expr("Samples", "version_total_samples"),
+                sustain_pct_expr("Total_Sustains", "Samples"),
+                full_clear_rate_expr("Total_Full_Clears", "Samples"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(vk + ["Samples"], descending=[True, True, False, True])
@@ -1681,7 +1663,7 @@ class HonkaiStatistics_Legacy_Batch:
             ])
             .select(vk + [
                 "Antecedent", "Consequent", "Samples",
-                (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
+                appearance_rate_expr("Samples", "version_total_samples"),
                 pl.col("confidence").round(3).alias("Confidence"),
                 pl.col("lift").round(3).alias("Lift"),
                 pl.col("leverage").round(4).alias("Leverage"),
@@ -1690,9 +1672,9 @@ class HonkaiStatistics_Legacy_Batch:
                 pl.col("certainty").round(3).alias("Certainty"),
                 pl.col("jaccard").round(3).alias("Jaccard"),
                  pl.col("Total_Sustains"),
-                (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+                sustain_pct_expr("Total_Sustains", "Samples"),
                 pl.col("Total_Full_Clears"),
-                (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
+                full_clear_rate_expr("Total_Full_Clears", "Samples"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(vk + ["Lift"], descending=[True, True, False, True])
@@ -1753,13 +1735,7 @@ class HonkaiStatistics_Legacy_Batch:
                     )
                     .with_columns([
                         (pl.col("Usage") / pl.col("_total_usage")).alias("Usage_Rate"),
-                        pl.col("_scores").list.mean().round(2).alias(f"Avg_{m}"),
-                        pl.col("_scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {m}"),
-                        pl.col("_scores").list.median().round(2).alias(f"Median_{m}"),
-                        pl.col("_scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {m}"),
-                        pl.col("_scores").list.min().alias(f"Min_{m}"),
-                        pl.col("_scores").list.max().alias(f"Max_{m}"),
-                        pl.col("_scores").list.std(ddof=1).round(2).alias(f"Std_{m}"),
+                        *gear_stats_exprs("_scores", m, style="legacy"),
                         pl.lit(f"Eidolon {level}").alias("Eidolon"),
                         pl.lit(gear_type).alias("Category"),
                     ])
@@ -1832,10 +1808,10 @@ class HonkaiStatistics_Legacy_Batch:
                 (pl.col(c) == pl.col("Samples"))
                 for c in sustain_cols
             ],
-            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            appearance_rate_expr("Samples", "combined_version_total_samples"),
             
             pl.col("Total_Full_Clears"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(ck + ["Samples"], descending=[True, True, True])
@@ -1878,9 +1854,9 @@ class HonkaiStatistics_Legacy_Batch:
                 (pl.col(c) /pl.col("Samples")* 100).round(2).alias(sustain_label_cols[i])
                 for i, c in enumerate(sustain_cols)
             ],
-            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+            appearance_rate_expr("Samples", "combined_version_total_samples"),
             pl.col("Total_Full_Clears"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(ck + ["Samples"], descending=[True, True, True])
@@ -1902,7 +1878,7 @@ class HonkaiStatistics_Legacy_Batch:
             .with_columns([
                 pl.col("n1_chars").alias("Character Node 1"),
                 pl.col("n2_chars").alias("Character Node 2"),
-                (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
+                appearance_rate_expr("Samples", "combined_version_total_samples"),
                 *self._score_stats_exprs("Scores"),
             ])
             .sort(ck + ["Samples"], descending=[True, True, True])

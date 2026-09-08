@@ -1,11 +1,17 @@
 import polars as pl
+from appearance_stats_helpers import (
+    list_stats_exprs, gear_stats_exprs,
+    appearance_rate_expr, usage_rate_expr,
+    sustain_pct_expr, full_clear_rate_expr, sustain_flag_expr,
+    eidolon_pct_exprs,
+)
 import os
 import orjson
 from itertools import chain, combinations_with_replacement
 import matplotlib.pyplot as plt
 import polars.selectors as cs
 from dotenv import load_dotenv
-import duckdb
+import duckdb
 
 load_dotenv()
 
@@ -904,10 +910,11 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             ).alias("certainty"),
             (
                 pl.col("support") / (pl.col("support_A") + pl.col("support_C") - pl.col("support") + 1e-7)
-            ).alias("jaccard")
+            ).alias("jaccard"),
+            *list_stats_exprs("Points", "Points"),
         ]).select([
             "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", "Samples",
-            (pl.col("support") * 100).round(2).alias("Appearance Rate (%)"),
+            appearance_rate_expr("Samples", "version_total_samples"),
             pl.col("confidence").round(3).alias("Confidence"),
             pl.col("lift").round(3).alias("Lift"),
             pl.col("leverage").round(4).alias("Leverage"),
@@ -916,16 +923,11 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             pl.col("certainty").round(3).alias("Certainty"),
             pl.col("jaccard").round(3).alias("Jaccard"),
             pl.col("Total_Sustains"),
-            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+            sustain_pct_expr("Total_Sustains", "Samples"),
             pl.col("Total_Full_Clears"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Points").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias("25th Percentile Points"),
-            pl.col("Points").list.eval(pl.element().median()).list.first().round(2).alias("Median Points"),
-            pl.col("Points").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias("75th Percentile Points"),
-            pl.col("Points").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias("Std Dev Points"),
-            pl.col("Points").list.min().alias("Min Points"),
-            pl.col("Points").list.mean().round(2).alias("Average Points"),
-            pl.col("Points").list.max().alias("Max Points")
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            "25th Percentile Points", "Median Points", "75th Percentile Points",
+            "Std Dev Points", "Min Points", "Average Points", "Max Points",
         ]).sort(["version", "node", "Lift"], descending=[True, False, True]).collect()
 
     def get_combined_team_df(self):

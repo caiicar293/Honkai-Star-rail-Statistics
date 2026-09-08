@@ -1,4 +1,9 @@
 import polars as pl
+from appearance_stats_helpers import (
+    list_stats_exprs,
+    appearance_rate_expr, usage_rate_expr,
+    sustain_pct_expr, full_clear_rate_expr, sustain_flag_expr,
+)
 import os
 import orjson
 from itertools import chain, combinations_with_replacement
@@ -569,16 +574,10 @@ class HonkaiStatistics_V2_eidolon_batch:
         ).with_columns([
             pl.col("char_cons_zipped_sorted").list.join(", ").map_elements(lambda s: f"({s})", return_dtype=pl.String).alias("Team"),
             pl.col("archetypes_pairs_zipped_sorted").list.join(" + ").map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String).alias("Archetype Core"),
-            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-           (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
+            appearance_rate_expr("Samples", "version_total_samples"),
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
             (pl.col("Total_Sustains") == pl.col("Samples")).alias("has_sustain"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {self.metric_name}"),
-            pl.col("Scores").list.median().round(2).alias(f"Median {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias(f"Std Dev {self.metric_name}"),
-            pl.col("Scores").list.min().alias(f"Min {self.metric_name}"),
-            pl.col("Scores").list.mean().round(2).alias(f"Average {self.metric_name}"),
-            pl.col("Scores").list.max().alias(f"Max {self.metric_name}")
+            *list_stats_exprs("Scores", self.metric_name),
         ]).sort(["version", self.node_or_floor_col, "Samples"], descending=[True, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -594,16 +593,10 @@ class HonkaiStatistics_V2_eidolon_batch:
             self.total_samples_df, on=["version", self.node_or_floor_col], how="left"
         ).with_columns([
             pl.col("archetypes_pairs_zipped_sorted").list.join(" + ").map_elements(lambda s: s if s != "" else "Other / No DPS", return_dtype=pl.String).alias("Archetype Core"),
-            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Usage %"),
-            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {self.metric_name}"),
-            pl.col("Scores").list.median().round(2).alias(f"Median {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias(f"Std Dev {self.metric_name}"),
-            pl.col("Scores").list.min().alias(f"Min {self.metric_name}"),
-            pl.col("Scores").list.mean().round(2).alias(f"Average {self.metric_name}"),
-            pl.col("Scores").list.max().alias(f"Max {self.metric_name}")
+            usage_rate_expr("Samples", "version_total_samples"),
+            sustain_pct_expr("Total_Sustains", "Samples"),
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            *list_stats_exprs("Scores", self.metric_name),
         ]).sort(["version", self.node_or_floor_col, "Samples"], descending=[True, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -617,18 +610,10 @@ class HonkaiStatistics_V2_eidolon_batch:
     def get_chars_by_cost_df(self):
         df = self.chars_by_cost_individual_eidolon.join(
             self.total_samples_df, on=["version", self.node_or_floor_col], how="left"
-        ).with_columns([
-            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-            
-            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {self.metric_name}"),
-            pl.col("Scores").list.median().round(2).alias(f"Median {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias(f"Std Dev {self.metric_name}"),
-            pl.col("Scores").list.min().alias(f"Min {self.metric_name}"),
-            pl.col("Scores").list.mean().round(2).alias(f"Average {self.metric_name}"),
-            pl.col("Scores").list.max().alias(f"Max {self.metric_name}")
+        ).with_columns([            appearance_rate_expr("Samples", "version_total_samples"),
+                        sustain_pct_expr("Total_Sustains", "Samples"),
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            *list_stats_exprs("Scores", self.metric_name),
         ]).sort(["version", self.node_or_floor_col, "Samples"], descending=[True, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -642,18 +627,10 @@ class HonkaiStatistics_V2_eidolon_batch:
     def get_chars_by_individual_eidolons_df(self):
         df = self.chars_by_individual_eidolons.join(
             self.total_samples_df, on=["version", self.node_or_floor_col], how="left"
-        ).with_columns([
-            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-           
-            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {self.metric_name}"),
-            pl.col("Scores").list.median().round(2).alias(f"Median {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias(f"Std Dev {self.metric_name}"),
-            pl.col("Scores").list.min().alias(f"Min {self.metric_name}"),
-            pl.col("Scores").list.mean().round(2).alias(f"Average {self.metric_name}"),
-            pl.col("Scores").list.max().alias(f"Max {self.metric_name}")
+        ).with_columns([            appearance_rate_expr("Samples", "version_total_samples"),
+                       sustain_pct_expr("Total_Sustains", "Samples"),
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            *list_stats_exprs("Scores", self.metric_name),
         ]).sort(["version", self.node_or_floor_col, "Samples"], descending=[True, False, True])
 
         return df.with_row_index("Rank", offset=1).select([
@@ -706,19 +683,11 @@ class HonkaiStatistics_V2_eidolon_batch:
             ).alias("certainty"),
             (
                 pl.col("support") / (pl.col("support_A") + pl.col("support_C") - pl.col("support") + 1e-7)
-            ).alias("jaccard"),
-            (pl.col("Samples") / pl.col("version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-            pl.col("Total_Sustains"),
-            (pl.col("Total_Sustains") / pl.col("Samples") * 100).round(2).alias("Sustain_Percentage"),
+            ).alias("jaccard"),            appearance_rate_expr("Samples", "version_total_samples"),
+            pl.col("Total_Sustains"),            sustain_pct_expr("Total_Sustains", "Samples"),
             pl.col("Total_Full_Clears"),
-            (pl.col("Total_Full_Clears")/pl.col("Samples")* 100).round(2).alias("Full_Clear_Rate"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {self.metric_name}"),
-            pl.col("Scores").list.median().round(2).alias(f"Median {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias(f"Std Dev {self.metric_name}"),
-            pl.col("Scores").list.min().alias(f"Min {self.metric_name}"),
-            pl.col("Scores").list.mean().round(2).alias(f"Average {self.metric_name}"),
-            pl.col("Scores").list.max().alias(f"Max {self.metric_name}")
+            full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            *list_stats_exprs("Scores", self.metric_name),
         ]).select([
             "version", self.node_or_floor_col, "Antecedent", "Consequent", "Samples", "Appearance Rate (%)", 
             "Total_Full_Clears", "Full_Clear_Rate", "Total_Sustains", "Sustain_Percentage",
@@ -775,16 +744,9 @@ class HonkaiStatistics_V2_eidolon_batch:
                 # FIX: Convert the boolean check back to UInt32 (or Int32) so it displays perfectly
                 (pl.col(c) == pl.col("Samples")).cast(pl.UInt32).alias(c)
                 for c in sustain_cols
-            ],
-            *mode_specific_expressions,
-            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {self.metric_name}"),
-            pl.col("Scores").list.median().round(2).alias(f"Median {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias(f"Std Dev {self.metric_name}"),
-            pl.col("Scores").list.min().alias(f"Min {self.metric_name}"),
-            pl.col("Scores").list.mean().round(2).alias(f"Average {self.metric_name}"),
-            pl.col("Scores").list.max().alias(f"Max {self.metric_name}")
+            ],            *mode_specific_expressions,
+            appearance_rate_expr("Samples", "combined_version_total_samples"),
+            *list_stats_exprs("Scores", self.metric_name),
         ]
 
         df = (
@@ -850,16 +812,9 @@ class HonkaiStatistics_V2_eidolon_batch:
             *[
                 (pl.col(c) / pl.col("Samples") * 100).round(2).alias(f"Sustain {label_prefix} {c.split('_')[0][1:]} (%)")
                 for c in sustain_cols
-            ],
-            *mode_specific_expressions,
-            (pl.col("Samples") / pl.col("combined_version_total_samples") * 100).round(2).alias("Appearance Rate (%)"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.25)).list.first().round(2).alias(f"25th Percentile {self.metric_name}"),
-            pl.col("Scores").list.median().round(2).alias(f"Median {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().quantile(0.75)).list.first().round(2).alias(f"75th Percentile {self.metric_name}"),
-            pl.col("Scores").list.eval(pl.element().std(ddof=1)).list.first().round(2).alias(f"Std Dev {self.metric_name}"),
-            pl.col("Scores").list.min().alias(f"Min {self.metric_name}"),
-            pl.col("Scores").list.mean().round(2).alias(f"Average {self.metric_name}"),
-            pl.col("Scores").list.max().alias(f"Max {self.metric_name}")
+            ],            *mode_specific_expressions,
+            appearance_rate_expr("Samples", "combined_version_total_samples"),
+            *list_stats_exprs("Scores", self.metric_name),
         ]
 
         df = (

@@ -510,6 +510,23 @@
   .version-switch-older { display: none; margin-top: 4px; }
   .version-switch-older.open { display: flex; }
   .version-switch-loading { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 6px 2px; }
+
+  /* ── Distribution re-open gateway ───────────────────────────────────── */
+  .dist-reopen-btn {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--panel); border: 1px solid var(--border);
+    color: var(--accent); font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700;
+    padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    letter-spacing: 0.03em; white-space: nowrap;
+  }
+  .dist-reopen-btn:hover { border-color: var(--accent); background: rgba(56,189,248,0.08); }
+  .dist-reopen-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .dist-reopen-btn.has-data { border-color: rgba(56,189,248,0.45); background: rgba(56,189,248,0.12); }
+  .dist-reopen-count {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+    padding: 0 5px; border-radius: 9px; background: var(--accent); color: #06121f;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; line-height: 1;
+  }
+  .dist-reopen-count[hidden] { display: none; }
     /* ── Column value filter (DuckDB-extension style) ─────────────────────── */
   th[data-col] { position: relative; }
   .col-filter-btn {
@@ -591,6 +608,108 @@
     padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 10.5px; cursor: pointer;
   }
   .af-chip-clearall:hover { border-color: var(--red); color: var(--red); }
+    /* ── Distribution Modal ─────────────────────────────────────────────── */
+  .dist-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.3);
+    color: var(--accent); font-family: 'Share Tech Mono', monospace; font-size: 10.5px;
+    border-radius: 5px; padding: 4px 8px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .dist-btn:hover { background: rgba(56,189,248,0.16); border-color: var(--accent); color: var(--accent2); }
+  .dist-btn svg { width: 11px; height: 11px; display: block; }
+  .dist-btn.disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
+  .dist-btn.disabled:hover { background: rgba(56,189,248,0.08); border-color: rgba(56,189,248,0.3); color: var(--accent); }
+
+  .dist-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(5,8,14,0.82); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .dist-modal-overlay.open { display: flex; }
+  .dist-modal {
+    width: min(1100px, 100%); max-height: min(820px, 92vh); display: flex; flex-direction: column;
+    background: var(--panel); border: 1px solid var(--border2); border-radius: 12px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6); overflow: hidden;
+  }
+  .dist-modal-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 16px 18px 12px; border-bottom: 1px solid var(--border);
+  }
+  .dist-modal-head-left { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+  .dist-modal-title { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.03em; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .dist-modal-title span { color: var(--accent); }
+  .dist-modal-title .dist-modal-row {
+    color: var(--text2); font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px;
+  }
+  .dist-modal-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dist-modal-meta .dist-meta-chip {
+    min-width: 0; padding: 3px 10px; border-radius: 5px;
+    display: inline-flex; align-items: baseline; gap: 7px; text-align: left;
+  }
+  .dist-modal-meta .dist-meta-chip .v { font-size: 12px; display: inline; }
+  .dist-modal-meta .dist-meta-chip .l { font-size: 9px; margin-top: 0; display: inline; }
+  .dist-modal-close {
+    background: var(--panel2); border: 1px solid var(--border2); color: var(--text2);
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0;
+  }
+  .dist-modal-close:hover { border-color: var(--red); color: var(--red); }
+
+  .dist-tabs {
+    display: flex; gap: 4px; padding: 8px 12px 0; overflow-x: auto; flex-shrink: 0;
+    border-bottom: 1px solid var(--border); background: var(--bg2);
+  }
+  .dist-tab {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--panel2);
+    border: 1px solid var(--border2); border-bottom: none; border-radius: 6px 6px 0 0; padding: 6px 8px 6px 12px;
+    font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--text2);
+    cursor: pointer; white-space: nowrap; max-width: 220px; transition: all 0.12s; position: relative; top: 1px;
+  }
+  .dist-tab .tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+  .dist-tab:hover { color: var(--text); }
+  .dist-tab.active { background: var(--panel); border-color: var(--border2); color: var(--accent); }
+  .dist-tab-close {
+    background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer;
+    font-size: 13px; line-height: 1; padding: 1px 3px; border-radius: 50%; transition: all 0.12s;
+  }
+  .dist-tab-close:hover { opacity: 1; background: rgba(248,113,113,0.18); color: var(--red); }
+
+  .dist-modal-body { flex: 1; overflow-y: auto; padding: 16px 20px 20px; }
+  .dist-meta-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .dist-meta-chip {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 12px; min-width: 84px; text-align: center;
+  }
+  .dist-meta-chip .v { font-family: 'Share Tech Mono', monospace; font-size: 14px; font-weight: 700; color: var(--accent2); display: block; }
+  .dist-meta-chip .l { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+
+  .dist-chart-wrap { position: relative; overflow-x: auto; }
+  .dist-chart {
+    display: flex; align-items: flex-end; gap: 3px; height: 280px; padding: 10px 4px 0;
+    border-bottom: 1px solid var(--border2); width: max-content; min-width: 100%;
+  }
+  .dist-bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 22px; flex: 1 0 auto; cursor: pointer; }
+  .dist-bar { width: 100%; max-width: 34px; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, var(--accent2), var(--accent)); transition: filter 0.12s, transform 0.12s; min-height: 2px; }
+  .dist-bar-col:hover .dist-bar { filter: brightness(1.25); transform: scaleX(1.08); }
+  .dist-bar-col.is-best .dist-bar { background: linear-gradient(180deg, #86efac, var(--green)); }
+  .dist-axis-row { display: flex; gap: 3px; padding: 6px 4px 0; width: max-content; min-width: 100%; }
+  .dist-axis-label {
+    flex: 1 0 auto; min-width: 22px; text-align: center; font-family: 'Share Tech Mono', monospace;
+    font-size: 9.5px; color: var(--text3); overflow: visible; white-space: nowrap;
+  }
+  .dist-axis-note { font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text3); margin-top: 10px; letter-spacing: 0.03em; }
+
+  .dist-tooltip {
+    position: fixed; z-index: 1010; pointer-events: none; background: var(--panel2);
+    border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none; line-height: 1.5; white-space: nowrap;
+  }
+  .dist-tooltip b { color: var(--accent2); }
+  .dist-tooltip .pct { color: var(--gold); }
+
+  .dist-empty { text-align: center; padding: 60px 20px; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -623,6 +742,10 @@
         <div class="version-switch-list version-switch-older" id="versionSwitchOlder"></div>
       </div>
     </div>
+    <button class="dist-reopen-btn" id="distReopenBtn" type="button" title="Re-open the distributions you've already viewed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Distributions
+      <span class="dist-reopen-count" id="distReopenCount" hidden>0</span>
+    </button>
     </div>
   </div>
 
@@ -803,6 +926,7 @@
             <th data-col="Average_Score" class="num">Avg</th>
             <th data-col="Max_Score" class="num">Max</th>
             <th data-col="Std_Dev" class="num">σ</th>
+            <th class="num">Dist</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -856,6 +980,20 @@
     </div>
   </div>
 </div>
+<div class="dist-modal-overlay" id="distModalOverlay">
+  <div class="dist-modal">
+    <div class="dist-modal-head">
+      <div class="dist-modal-head-left">
+        <div class="dist-modal-title">Score <span>Distribution</span> <span class="dist-modal-row" id="distModalRowLabel"></span></div>
+        <div class="dist-modal-meta" id="distModalMeta"></div>
+      </div>
+      <button class="dist-modal-close" id="distModalClose" type="button" title="Close (Esc)">✕</button>
+    </div>
+    <div class="dist-tabs" id="distTabs"></div>
+    <div class="dist-modal-body" id="distModalBody"></div>
+  </div>
+</div>
+<div class="dist-tooltip" id="distTooltip"></div>
 <script>
 const ICONS            = {"The Herta": "assets/icons/the_herta.webp", "Lightning Trailblazer": "assets/icons/lightning_trailblazer.webp", "Ice Trailblazer": "assets/icons/ice_trailblazer.webp", "Imaginary Trailblazer": "assets/icons/imaginary_trailblazer.webp", "Physical Trailblazer": "assets/icons/physical_trailblazer.webp", "Fire Trailblazer": "assets/icons/fire_trailblazer.webp", "Hyacine": "assets/icons/hyacine.webp", "Phainon": "assets/icons/phainon.webp", "Castorice": "assets/icons/castorice.webp", "Cipher": "assets/icons/cipher.webp", "Anaxa": "assets/icons/anaxa.webp", "Mydei": "assets/icons/mydei.webp", "Tribbie": "assets/icons/tribbie.webp", "Hysilens": "assets/icons/hysilens.webp", "The Dahlia": "assets/icons/the_dahlia.webp", "Ruan Mei": "assets/icons/ruan_mei.webp", "Sunday": "assets/icons/sunday.webp", "Robin": "assets/icons/robin.webp", "Acheron": "assets/icons/acheron.webp", "Black Swan": "assets/icons/black_swan.webp", "Sparkle": "assets/icons/sparkle.webp", "Aglaea": "assets/icons/aglaea.webp", "Boothill": "assets/icons/boothill.webp", "Jade": "assets/icons/jade.webp", "Firefly": "assets/icons/firefly.webp", "Rappa": "assets/icons/rappa.webp", "Jingliu": "assets/icons/jingliu.webp", "Yunli": "assets/icons/yunli.webp", "Kafka": "assets/icons/kafka.webp", "Dan Heng • Permansor Terrae": "assets/icons/dan_heng_permansor_terrae.webp", "Cerydra": "assets/icons/cerydra.webp", "Guinaifen": "assets/icons/guinaifen.webp", "Feixiao": "assets/icons/feixiao.webp", "Dr. Ratio": "assets/icons/dr_ratio.webp", "Aventurine": "assets/icons/aventurine.webp", "Fu Xuan": "assets/icons/fu_xuan.webp", "Luocha": "assets/icons/luocha.webp", "Topaz & Numby": "assets/icons/topaz_numby.webp", "Seele": "assets/icons/seele.webp", "Bronya": "assets/icons/bronya.webp", "Silver Wolf": "assets/icons/silver_wolf.webp", "Jing Yuan": "assets/icons/jing_yuan.webp", "Gepard": "assets/icons/gepard.webp", "Yanqing": "assets/icons/yanqing.webp", "Cyrene": "assets/icons/cyrene.webp", "Evernight": "assets/icons/evernight.webp", "Huohuo": "assets/icons/huohuo.webp", "Blade": "assets/icons/blade.webp", "Dan Heng • Imbibitor Lunae": "assets/icons/dan_heng_imbibitor_lunae.webp", "Argenti": "assets/icons/argenti.webp", "Lingsha": "assets/icons/lingsha.webp", "Fugue": "assets/icons/fugue.webp", "Clara": "assets/icons/clara.webp", "Dan Heng": "assets/icons/dan_heng.webp", "Sparxie": "assets/icons/sparxie.webp", "Himeko": "assets/icons/himeko.webp", "Jiaoqiu": "assets/icons/jiaoqiu.webp", "Sampo": "assets/icons/sampo.webp", "Luka": "assets/icons/luka.webp", "Imaginary March 7th": "assets/icons/imaginary_march_7th.webp", "Tingyun": "assets/icons/tingyun.webp", "Xueyi": "assets/icons/xueyi.webp", "Welt": "assets/icons/welt.webp", "Bailu": "assets/icons/bailu.webp", "Herta": "assets/icons/herta.webp", "Pela": "assets/icons/pela.webp", "Yukong": "assets/icons/yukong.webp", "Asta": "assets/icons/asta.webp", "Hook": "assets/icons/hook.webp", "Gallagher": "assets/icons/gallagher.webp", "Saber": "assets/icons/saber.webp", "Archer": "assets/icons/archer.webp", "Yao Guang": "assets/icons/yao_guang.webp", "Ashveil": "assets/icons/ashveil.webp", "Qingque": "assets/icons/qingque.webp", "Lynx": "assets/icons/lynx.webp", "Silver Wolf LV.999": "assets/icons/silver_wolf_lv999.webp", "Natasha": "assets/icons/natasha.webp", "Evanescia": "assets/icons/evanescia.webp", "Arlan": "assets/icons/arlan.webp", "Serval": "assets/icons/serval.webp", "Moze": "assets/icons/moze.webp", "Misha": "assets/icons/misha.webp", "Sushang": "assets/icons/sushang.webp", "Hanya": "assets/icons/hanya.webp", "Mortenax Blade": "assets/icons/mortenax_blade.webp", "Ice March 7th": "assets/icons/ice_march_7th.webp", "Himeko • Nova": "assets/icons/himeko_nova.webp", "Rin Tohsaka": "assets/icons/rin_tohsaka.webp", "Gilgamesh": "assets/icons/gilgamesh.webp", "Robin • Summeretto": "assets/icons/robin_summeretto.webp", "Aventurine • Waveflair": "assets/icons/aventurine_waveflair.webp"};
 const DIM_FIELD        = 'node';
@@ -1053,6 +1191,11 @@ function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
 function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
 function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
 
+function distBtnHTML(r) {
+  const hasDist = r && Array.isArray(r.Scores_Distributions) && r.Scores_Distributions.length > 0;
+  return `<td class="num"><button class="dist-btn${hasDist ? '' : ' disabled'}" type="button" title="View score distribution"${hasDist ? '' : ' disabled'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
+}
+
 function rowHTML(r, attrs, rank) {
   const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
   const eid     = Math.round(r.max_eidolon);
@@ -1081,6 +1224,7 @@ function rowHTML(r, attrs, rank) {
     <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
     <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
     <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+    ${distBtnHTML(r)}
   </tr>`;
 }
 
@@ -1450,7 +1594,7 @@ function updatePlannerBanner() {
 function renderViewport() {
   const tbody = document.getElementById('tableBody');
   const ts    = document.querySelector('.table-scroll');
-  const COLS  = 18;
+  const COLS  = 19;
 
   const pinnedList = [...plannerPins.values()];
   if (!filteredData.length && !pinnedList.length) {
@@ -2235,6 +2379,18 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 document.getElementById('tableBody').addEventListener('click', (e) => {
   const tr = e.target.closest('tr');
   if (!tr) return;
+  if (e.target.closest('.dist-btn')) {
+    e.stopPropagation();
+    const r = tr.classList.contains('pinned-row')
+      ? plannerPins.get(parseInt(tr.dataset.dim, 10))
+      : filteredData[parseInt(tr.dataset.idx, 10)];
+    if (r && typeof window.openDistribution === 'function') {
+      const eid = Math.round(r.max_eidolon);
+      const meta = `<div class="dist-meta-chip"><span class="v">E${eid}</span><div class="l">Max Eid.</div></div><div class="dist-meta-chip"><span class="v">${r.estimated_min_cost}→${r.estimated_max_cost}</span><div class="l">Cost</div></div><div class="dist-meta-chip"><span class="v">${DIM_LABEL} ${r.dim_key}</span><div class="l">${DIM_LABEL}</div></div>`;
+      window.openDistribution(r, r.Team, meta);
+    }
+    return;
+  }
   if (tr.classList.contains('pinned-row')) {
     // route through togglePin so auto-removed include filters are restored
     const pin = plannerPins.get(parseInt(tr.dataset.dim, 10));
@@ -2493,7 +2649,7 @@ async function initializeApp() {
         const info = document.getElementById('resultsInfo');
         if (info) info.textContent = '⚠️ Failed to load data. Check console.';
         const tbody = document.getElementById('tableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="19"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
     }
 }
 
@@ -2845,6 +3001,244 @@ const ColumnFilter = (() => {
   }
 
   return { attach, passes, isActive, reset };
+})();
+</script>
+<script>
+// ── Distribution modal ───────────────────────────────────────────────────
+// Renders per-row Scores_Distributions (STRUCT(Scores, count)[]) as a
+// frequency histogram, opened via a per-row "Dist" button. Multiple rows
+// can be open at once, switchable via tabs — re-clicking an already-open
+// row just re-activates its tab instead of stacking a duplicate.
+//
+// Exposes: window.openDistribution(row, label, metaHtml)
+//   row      - the data row object (must carry Scores_Distributions)
+//   label    - short text shown on the tab
+//   metaHtml - optional extra <div class="dist-meta-chip">...</div> markup
+//              appended to the meta row (e.g. dim/eidolon context)
+(function() {
+  // MOC & Anomaly are cycle-based (fewer cycles = better) — bars sort
+  // highest → lowest so the best (minimum) value sits on the right.
+  // Apoc & Pure Fiction are point-based — bars sort lowest → highest.
+  const DIST_DESCENDING = true;
+  const DIST_UNIT = 'Cycles';
+  // Point modes (Apoc/PF) arrive pre-binned into fixed-width buckets, so
+  // their axis labels read as ranges ("0 - 50", "50 - 100", …) with the top
+  // bin stopping at its own value. Cycle modes keep single-value labels.
+  const DIST_RANGED = DIST_UNIT === 'Points';
+
+  const overlay   = document.getElementById('distModalOverlay');
+  const tabsEl    = document.getElementById('distTabs');
+  const bodyEl    = document.getElementById('distModalBody');
+  const closeBtn  = document.getElementById('distModalClose');
+  const tooltipEl = document.getElementById('distTooltip');
+  const reopenBtn = document.getElementById('distReopenBtn');
+  const countEl   = document.getElementById('distReopenCount');
+  const rowLabelEl = document.getElementById('distModalRowLabel');
+  const metaEl     = document.getElementById('distModalMeta');
+  if (!overlay) return;
+
+  // tabs: [{ id, key, label, meta, bins, total }]
+  let tabs = [];
+  let activeId = null;
+  let seq = 0;
+  const MAX_TABS = 8;
+
+  function computeBins(raw) {
+    const arr = Array.isArray(raw) ? raw.slice() : [];
+    // Always establish the true ascending-by-score order first — percentile
+    // (% of samples at-or-below / at-or-above this score) is defined on that
+    // axis regardless of which direction the bars are ultimately displayed in.
+    arr.sort((a, b) => a.Scores - b.Scores);
+    const total = arr.reduce((s, b) => s + (b.count || 0), 0);
+    let cum = 0;
+    let bins = arr.map((b, i) => {
+      const count = b.count || 0;
+      const cumBefore = cum;
+      cum += count;
+      return {
+        score: b.Scores,
+        count: count,
+        label: binLabel(arr, i),
+        pctOfTotal: total ? (count / total) * 100 : 0,
+        // Ascending modes: % of samples at-or-below this score.
+        // Descending (cycle) modes: reversed — % at-or-above, so the best
+        // (lowest) score carries the highest percentile.
+        percentile: total
+          ? (DIST_DESCENDING ? ((total - cumBefore) / total) * 100 : (cum / total) * 100)
+          : 0,
+      };
+    });
+    if (DIST_DESCENDING) bins = bins.reverse(); // display order: max → min, min on the right
+    return { bins, total };
+  }
+
+  // Label for bin i of the ascending-sorted array. Point modes show the bin
+  // as a range up to the next bin; the top bin just stops at its own value.
+  function binLabel(sorted, i) {
+    if (!DIST_RANGED) return fmtScore(sorted[i].Scores);
+    const next = sorted[i + 1];
+    return next ? `${fmtScore(sorted[i].Scores)} - ${fmtScore(next.Scores)}` : fmtScore(sorted[i].Scores);
+  }
+
+  window.openDistribution = function(row, label, metaHtml) {
+    const raw = row && row.Scores_Distributions;
+    const { bins, total } = computeBins(raw || []);
+    const key = (label || 'Row') + '¦' + (metaHtml || '');
+    const existing = tabs.find(t => t.key === key);
+    if (existing) {
+      // Row already open — refresh its data and jump back to it.
+      existing.bins = bins;
+      existing.total = total;
+      existing.meta = metaHtml || '';
+      activeId = existing.id;
+    } else {
+      const id = 'dt' + (++seq);
+      tabs.push({ id, key, label: label || 'Row', meta: metaHtml || '', bins, total });
+      if (tabs.length > MAX_TABS) tabs.shift();
+      activeId = id;
+    }
+    overlay.classList.add('open');
+    syncBadge();
+    render();
+  };
+
+  // Second gateway: the header "Distributions" button re-opens the modal
+  // with every tab that's still open (rows already viewed are preserved — no
+  // need to re-select an entry). If nothing has been opened yet, it shows a hint.
+  window.reopenDistribution = function() {
+    syncBadge();
+    if (tabs.length === 0) {
+      overlay.classList.add('open');
+      if (rowLabelEl) rowLabelEl.textContent = '';
+      if (metaEl) metaEl.innerHTML = '';
+      tabsEl.innerHTML = '';
+      bodyEl.innerHTML = `<div class="dist-empty">Nothing to show yet — click the <b>Dist</b> button on any row to open its distribution, then come back here to re-view them.</div>`;
+      return;
+    }
+    overlay.classList.add('open');
+    render();
+  };
+
+  // Keep the header button's badge in sync with the number of open tabs.
+  function syncBadge() {
+    if (!reopenBtn) return;
+    reopenBtn.classList.toggle('has-data', tabs.length > 0);
+    if (countEl) {
+      countEl.textContent = tabs.length;
+      countEl.hidden = tabs.length === 0;
+    }
+  }
+
+  function closeTab(id, e) {
+    if (e) e.stopPropagation();
+    tabs = tabs.filter(t => t.id !== id);
+    if (activeId === id) activeId = tabs.length ? tabs[tabs.length - 1].id : null;
+    if (tabs.length === 0) { closeModal(); syncBadge(); return; }
+    syncBadge();
+    render();
+  }
+
+  function activate(id) { activeId = id; render(); }
+
+  function closeModal() {
+    overlay.classList.remove('open');
+    tooltipEl.style.display = 'none';
+  }
+
+  function fmtScore(v) { return Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1); }
+
+  function render() {
+    tabsEl.innerHTML = tabs.map(t => `
+      <div class="dist-tab${t.id === activeId ? ' active' : ''}" data-tab="${t.id}">
+        <span class="tab-label" title="${t.label}">${t.label}</span>
+        <button class="dist-tab-close" data-close="${t.id}" title="Close">×</button>
+      </div>`).join('');
+
+    tabsEl.querySelectorAll('.dist-tab').forEach(el => {
+      el.addEventListener('click', () => activate(el.dataset.tab));
+    });
+    tabsEl.querySelectorAll('.dist-tab-close').forEach(el => {
+      el.addEventListener('click', (e) => closeTab(el.dataset.close, e));
+    });
+
+    const t = tabs.find(x => x.id === activeId);
+    if (!t) {
+      if (rowLabelEl) rowLabelEl.textContent = '';
+      if (metaEl) metaEl.innerHTML = '';
+      bodyEl.innerHTML = '';
+      return;
+    }
+    if (rowLabelEl) rowLabelEl.textContent = t.label;
+    if (metaEl) metaEl.innerHTML = t.meta || '';
+
+    if (!t.bins.length) {
+      bodyEl.innerHTML = `<div class="dist-empty">No distribution data available for this row.</div>`;
+      return;
+    }
+
+    const maxCount = Math.max(...t.bins.map(b => b.count));
+    // The last bin in *display* order is always the best-performing end,
+    // whichever direction that is (see computeBins).
+    const bestIdx  = t.bins.length - 1;
+    const minScore = DIST_DESCENDING ? t.bins[t.bins.length - 1].score : t.bins[0].score;
+    const maxScore = DIST_DESCENDING ? t.bins[0].score : t.bins[t.bins.length - 1].score;
+
+    // Size columns to the widest axis label so range labels ("3950 - 4000")
+    // always fit — bars and labels share the same column width to stay aligned.
+    const widestLabel = Math.max(...t.bins.map(b => b.label.length));
+    const colW = Math.max(22, Math.ceil(widestLabel * 5.9) + 8);
+
+    const barsHtml = t.bins.map((b, i) => {
+      const h = maxCount ? Math.max(2, Math.round((b.count / maxCount) * 100)) : 2;
+      return `<div class="dist-bar-col${i === bestIdx ? ' is-best' : ''}" data-i="${i}" style="min-width:${colW}px">
+        <div class="dist-bar" style="height:${h}%"></div>
+      </div>`;
+    }).join('');
+
+    const axisHtml = t.bins.map(b => `<div class="dist-axis-label" style="min-width:${colW}px">${b.label}</div>`).join('');
+
+    const pctNote = DIST_DESCENDING
+      ? 'percentile = % of samples at-or-above (fewer cycles = better)'
+      : 'percentile = % of samples at-or-below';
+
+    bodyEl.innerHTML = `
+      <div class="dist-meta-row">
+        <div class="dist-meta-chip"><span class="v">${t.total.toLocaleString()}</span><div class="l">Samples</div></div>
+        <div class="dist-meta-chip"><span class="v">${t.bins.length}</span><div class="l">Bins</div></div>
+        <div class="dist-meta-chip"><span class="v">${fmtScore(minScore)}</span><div class="l">Min ${DIST_UNIT}</div></div>
+        <div class="dist-meta-chip"><span class="v">${fmtScore(maxScore)}</span><div class="l">Max ${DIST_UNIT}</div></div>
+        ${t.meta}
+      </div>
+      <div class="dist-chart-wrap">
+        <div class="dist-chart">${barsHtml}</div>
+        <div class="dist-axis-row">${axisHtml}</div>
+        <div class="dist-axis-note">${DIST_UNIT} (x-axis, ${DIST_DESCENDING ? 'highest → lowest — best on the right' : 'lowest → highest'}) · bar height = frequency · hover a bar for its percentile (${pctNote})</div>
+      </div>
+    `;
+
+    bodyEl.querySelectorAll('.dist-bar-col').forEach(col => {
+      const i = parseInt(col.dataset.i, 10);
+      const b = t.bins[i];
+      col.addEventListener('mousemove', (e) => {
+        tooltipEl.style.display = 'block';
+        tooltipEl.style.left = (e.clientX + 14) + 'px';
+        tooltipEl.style.top  = (e.clientY + 14) + 'px';
+        tooltipEl.innerHTML = `<b>${b.label}</b> ${DIST_UNIT}<br>Count: ${b.count.toLocaleString()} (${b.pctOfTotal.toFixed(1)}% of samples)<br><span class="pct">Percentile: ${b.percentile.toFixed(1)}</span>`;
+      });
+      col.addEventListener('mouseleave', () => { tooltipEl.style.display = 'none'; });
+    });
+  }
+
+  if (reopenBtn) {
+    reopenBtn.addEventListener('click', () => {
+      window.reopenDistribution();
+      syncBadge();
+    });
+  }
+
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
 })();
 </script>
 <script>

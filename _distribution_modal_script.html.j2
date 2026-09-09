@@ -1,0 +1,151 @@
+<script>
+// ── Distribution modal ───────────────────────────────────────────────────
+// Renders per-row Scores_Distributions (STRUCT(Scores, count)[]) as a
+// frequency histogram, opened via a per-row "Dist" button. Multiple rows
+// can be open at once, switchable via tabs.
+//
+// Exposes: window.openDistribution(row, label, metaHtml)
+//   row      - the data row object (must carry Scores_Distributions)
+//   label    - short text shown on the tab
+//   metaHtml - optional extra <div class="dist-meta-chip">...</div> markup
+//              appended to the meta row (e.g. dim/eidolon context)
+(function() {
+  // MOC & Anomaly are cycle-based (fewer cycles = better) — bars sort
+  // highest → lowest so the best (minimum) value sits on the right.
+  // Apoc & Pure Fiction are point-based — bars sort lowest → highest.
+  const DIST_DESCENDING = {{ 'true' if file_prefix in ['moc', 'anomaly'] else 'false' }};
+  const DIST_UNIT = '{{ "Cycles" if file_prefix in ["moc", "anomaly"] else "Points" }}';
+
+  const overlay   = document.getElementById('distModalOverlay');
+  const tabsEl    = document.getElementById('distTabs');
+  const bodyEl    = document.getElementById('distModalBody');
+  const closeBtn  = document.getElementById('distModalClose');
+  const tooltipEl = document.getElementById('distTooltip');
+  if (!overlay) return;
+
+  // tabs: [{ id, label, meta, bins, total }]
+  let tabs = [];
+  let activeId = null;
+  let seq = 0;
+  const MAX_TABS = 8;
+
+  function computeBins(raw) {
+    const arr = Array.isArray(raw) ? raw.slice() : [];
+    // Always establish the true ascending-by-score order first — percentile
+    // (% of samples at-or-below this score) is defined on that axis regardless
+    // of which direction the bars are ultimately displayed in.
+    arr.sort((a, b) => a.Scores - b.Scores);
+    const total = arr.reduce((s, b) => s + (b.count || 0), 0);
+    let cum = 0;
+    let bins = arr.map(b => {
+      cum += (b.count || 0);
+      return {
+        score: b.Scores,
+        count: b.count || 0,
+        pctOfTotal: total ? (b.count / total) * 100 : 0,
+        percentile: total ? (cum / total) * 100 : 0,
+      };
+    });
+    if (DIST_DESCENDING) bins = bins.reverse(); // display order: max → min, min on the right
+    return { bins, total };
+  }
+
+  window.openDistribution = function(row, label, metaHtml) {
+    const raw = row && row.Scores_Distributions;
+    const { bins, total } = computeBins(raw || []);
+    const id = 'dt' + (++seq);
+    tabs.push({ id, label: label || 'Row', meta: metaHtml || '', bins, total });
+    if (tabs.length > MAX_TABS) tabs.shift();
+    activeId = id;
+    overlay.classList.add('open');
+    render();
+  };
+
+  function closeTab(id, e) {
+    if (e) e.stopPropagation();
+    tabs = tabs.filter(t => t.id !== id);
+    if (activeId === id) activeId = tabs.length ? tabs[tabs.length - 1].id : null;
+    if (tabs.length === 0) { closeModal(); return; }
+    render();
+  }
+
+  function activate(id) { activeId = id; render(); }
+
+  function closeModal() {
+    overlay.classList.remove('open');
+    tooltipEl.style.display = 'none';
+  }
+
+  function fmtScore(v) { return Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1); }
+
+  function render() {
+    tabsEl.innerHTML = tabs.map(t => `
+      <div class="dist-tab${t.id === activeId ? ' active' : ''}" data-tab="${t.id}">
+        <span class="tab-label" title="${t.label}">${t.label}</span>
+        <button class="dist-tab-close" data-close="${t.id}" title="Close">×</button>
+      </div>`).join('');
+
+    tabsEl.querySelectorAll('.dist-tab').forEach(el => {
+      el.addEventListener('click', () => activate(el.dataset.tab));
+    });
+    tabsEl.querySelectorAll('.dist-tab-close').forEach(el => {
+      el.addEventListener('click', (e) => closeTab(el.dataset.close, e));
+    });
+
+    const t = tabs.find(x => x.id === activeId);
+    if (!t) { bodyEl.innerHTML = ''; return; }
+
+    if (!t.bins.length) {
+      bodyEl.innerHTML = `<div class="dist-empty">No distribution data available for this row.</div>`;
+      return;
+    }
+
+    const maxCount = Math.max(...t.bins.map(b => b.count));
+    // The last bin in *display* order is always the best-performing end,
+    // whichever direction that is (see computeBins).
+    const bestIdx  = t.bins.length - 1;
+    const minScore = DIST_DESCENDING ? t.bins[t.bins.length - 1].score : t.bins[0].score;
+    const maxScore = DIST_DESCENDING ? t.bins[0].score : t.bins[t.bins.length - 1].score;
+
+    const barsHtml = t.bins.map((b, i) => {
+      const h = maxCount ? Math.max(2, Math.round((b.count / maxCount) * 100)) : 2;
+      return `<div class="dist-bar-col${i === bestIdx ? ' is-best' : ''}" data-i="${i}">
+        <div class="dist-bar" style="height:${h}%"></div>
+      </div>`;
+    }).join('');
+
+    const axisHtml = t.bins.map(b => `<div class="dist-axis-label">${fmtScore(b.score)}</div>`).join('');
+
+    bodyEl.innerHTML = `
+      <div class="dist-meta-row">
+        <div class="dist-meta-chip"><span class="v">${t.total.toLocaleString()}</span><div class="l">Samples</div></div>
+        <div class="dist-meta-chip"><span class="v">${t.bins.length}</span><div class="l">Bins</div></div>
+        <div class="dist-meta-chip"><span class="v">${fmtScore(minScore)}</span><div class="l">Min ${DIST_UNIT}</div></div>
+        <div class="dist-meta-chip"><span class="v">${fmtScore(maxScore)}</span><div class="l">Max ${DIST_UNIT}</div></div>
+        ${t.meta}
+      </div>
+      <div class="dist-chart-wrap">
+        <div class="dist-chart">${barsHtml}</div>
+        <div class="dist-axis-row">${axisHtml}</div>
+        <div class="dist-axis-note">${DIST_UNIT} (x-axis, ${DIST_DESCENDING ? 'highest → lowest — best on the right' : 'lowest → highest'}) · bar height = frequency · hover a bar for its percentile</div>
+      </div>
+    `;
+
+    bodyEl.querySelectorAll('.dist-bar-col').forEach(col => {
+      const i = parseInt(col.dataset.i, 10);
+      const b = t.bins[i];
+      col.addEventListener('mousemove', (e) => {
+        tooltipEl.style.display = 'block';
+        tooltipEl.style.left = (e.clientX + 14) + 'px';
+        tooltipEl.style.top  = (e.clientY + 14) + 'px';
+        tooltipEl.innerHTML = `<b>${fmtScore(b.score)}</b> ${DIST_UNIT}<br>Count: ${b.count.toLocaleString()} (${b.pctOfTotal.toFixed(1)}% of samples)<br><span class="pct">Percentile: ${b.percentile.toFixed(1)}</span>`;
+      });
+      col.addEventListener('mouseleave', () => { tooltipEl.style.display = 'none'; });
+    });
+  }
+
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
+})();
+</script>

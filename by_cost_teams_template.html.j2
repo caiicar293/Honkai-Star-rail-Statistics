@@ -474,6 +474,7 @@
 
 {% include "_version_switch_style.html.j2" %}
   {% include "_column_filter_style.html.j2" %}
+  {% include "_distribution_modal_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -669,6 +670,7 @@
             <th data-col="Average_Score" class="num">Avg</th>
             <th data-col="Max_Score" class="num">Max</th>
             <th data-col="Std_Dev" class="num">σ</th>
+            <th class="num">Dist</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -722,6 +724,7 @@
     </div>
   </div>
 </div>
+{% include "_distribution_modal_html.html.j2" %}
 <script>
 const ICONS            = {{ icons_json }};
 const DIM_FIELD        = '{{ dim_field }}';
@@ -919,6 +922,10 @@ function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
 function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
 function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
 
+function distBtnHTML() {
+  return `<td class="num"><button class="dist-btn" type="button" title="View score distribution"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
+}
+
 function rowHTML(r, attrs, rank) {
   const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
   const eid     = Math.round(r.max_eidolon);
@@ -947,6 +954,7 @@ function rowHTML(r, attrs, rank) {
     <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
     <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
     <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+    ${distBtnHTML()}
   </tr>`;
 }
 
@@ -1316,7 +1324,7 @@ function updatePlannerBanner() {
 function renderViewport() {
   const tbody = document.getElementById('tableBody');
   const ts    = document.querySelector('.table-scroll');
-  const COLS  = 18;
+  const COLS  = 19;
 
   const pinnedList = [...plannerPins.values()];
   if (!filteredData.length && !pinnedList.length) {
@@ -2101,6 +2109,18 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 document.getElementById('tableBody').addEventListener('click', (e) => {
   const tr = e.target.closest('tr');
   if (!tr) return;
+  if (e.target.closest('.dist-btn')) {
+    e.stopPropagation();
+    const r = tr.classList.contains('pinned-row')
+      ? plannerPins.get(parseInt(tr.dataset.dim, 10))
+      : filteredData[parseInt(tr.dataset.idx, 10)];
+    if (r && typeof window.openDistribution === 'function') {
+      const eid = Math.round(r.max_eidolon);
+      const meta = `<div class="dist-meta-chip"><span class="v">E${eid}</span><div class="l">Max Eid.</div></div><div class="dist-meta-chip"><span class="v">${r.estimated_min_cost}→${r.estimated_max_cost}</span><div class="l">Cost</div></div><div class="dist-meta-chip"><span class="v">${DIM_LABEL} ${r.dim_key}</span><div class="l">${DIM_LABEL}</div></div>`;
+      window.openDistribution(r, r.Team, meta);
+    }
+    return;
+  }
   if (tr.classList.contains('pinned-row')) {
     // route through togglePin so auto-removed include filters are restored
     const pin = plannerPins.get(parseInt(tr.dataset.dim, 10));
@@ -2359,12 +2379,13 @@ async function initializeApp() {
         const info = document.getElementById('resultsInfo');
         if (info) info.textContent = '⚠️ Failed to load data. Check console.';
         const tbody = document.getElementById('tableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="19"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
     }
 }
 
 </script>
 {% include "_column_filter_script.html.j2" %}
+{% include "_distribution_modal_script.html.j2" %}
 <script>
 ColumnFilter.attach('#mainTable', () => RAW_DATA, recompute);
 initializeApp();

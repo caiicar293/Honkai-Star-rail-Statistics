@@ -251,7 +251,7 @@ class DashboardGenerator:
                 "Average_Score", "Std_Dev", "Max_Score", "Sustain_Samples",
                 "Sustain_Percentage", "Total_Full_Clears", "Full_Clear_Rate_pct",
                 "rarity", "path", "element", "role",
-                {eid_select}
+                {eid_select}, Scores_Distributions
             FROM {self.CHAR_TABLE}
             WHERE "version" = ? AND "mode" = ? AND "{dim_field}" IN ({placeholders})
             ORDER BY "{dim_field}", "at_eidolon_level", "up_to_eidolon_level", "Rank"
@@ -268,7 +268,7 @@ class DashboardGenerator:
                 {dim_field}, Archetype_Core, Usage_pct, Samples,
                 Sustain_Percentage, Sustain_Samples, Full_Clear_Rate_pct, Total_Full_Clears,
                 Min_Score, Percentile_25,
-                Median_Score, Percentile_75, Average_Score, Max_Score, Std_Dev
+                Median_Score, Percentile_75, Average_Score, Max_Score, Std_Dev, Scores_Distributions
             FROM {cfg['arch_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})
             ORDER BY {dim_field}, at_eidolon_level, up_to_eidolon_level, Rank
@@ -285,7 +285,7 @@ class DashboardGenerator:
                 {dim_field}, max_eidolon, Team, Archetype_Core, has_sustain,
                 Appearance_Rate_pct, Samples, Total_Full_Clears,
                 Full_Clear_Rate_pct, Min_Score, Percentile_25, Median_Score,
-                Percentile_75, Average_Score, Std_Dev, Max_Score
+                Percentile_75, Average_Score, Std_Dev, Max_Score, Scores_Distributions
             FROM {cfg['cost_team_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})
             ORDER BY {dim_field}, estimated_min_cost, max_eidolon, Rank
@@ -305,7 +305,7 @@ class DashboardGenerator:
                 {dim_field}, max_eidolon, Archetype_Core, Usage_pct,
                 Sustain_Samples, Sustain_Percentage, Samples, Total_Full_Clears,
                 Full_Clear_Rate_pct, Min_Score, Percentile_25, Median_Score,
-                Percentile_75, Average_Score, Std_Dev, Max_Score
+                Percentile_75, Average_Score, Std_Dev, Max_Score, Scores_Distributions
             FROM {cfg['cost_archetype_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})
             ORDER BY {dim_field}, estimated_min_cost, max_eidolon, Rank
@@ -325,7 +325,7 @@ class DashboardGenerator:
                 Appearance_Rate_pct, Samples, Total_Full_Clears,
                 Full_Clear_Rate_pct, Sustain_Samples, Sustain_Percentage,
                 Min_Score, Percentile_25, Median_Score,
-                Percentile_75, Average_Score, Std_Dev, Max_Score
+                Percentile_75, Average_Score, Std_Dev, Max_Score, Scores_Distributions
             FROM {cfg['cost_char_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders}) AND Character IS NOT NULL
             ORDER BY {dim_field}, estimated_min_cost, max_eidolon, Rank
@@ -345,7 +345,7 @@ class DashboardGenerator:
                 Appearance_Rate_pct, Samples, Total_Full_Clears,
                 Full_Clear_Rate_pct, Sustain_Samples, Sustain_Percentage,
                 Min_Score, Percentile_25, Median_Score,
-                Percentile_75, Average_Score, Std_Dev, Max_Score
+                Percentile_75, Average_Score, Std_Dev, Max_Score, Scores_Distributions
             FROM {cfg['cost_char_eidolon_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders}) AND Character_Eidolon IS NOT NULL
             ORDER BY {dim_field}, Rank
@@ -364,7 +364,7 @@ class DashboardGenerator:
                 Zhang, Certainty, Jaccard,
                 Total_Sustains, Sustain_Percentage, Total_Full_Clears, Full_Clear_Rate_pct,
                 Percentile_25, Median_Score, Percentile_75, Std_Dev,
-                Min_Score, Average_Score, Max_Score
+                Min_Score, Average_Score, Max_Score, Scores_Distributions
             FROM {cfg['duo_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})
             ORDER BY {dim_field}, at_eidolon_level, up_to_eidolon_level, Appearance_Rate_pct DESC
@@ -380,7 +380,7 @@ class DashboardGenerator:
                 Rank, version, at_eidolon_level, up_to_eidolon_level,
                 {dim_field}, Team, Archetype_Core, Appearance_Rate_pct, Samples, Min_Score,
                 Percentile_25, Median_Score, Percentile_75, Average_Score,
-                Std_Dev, Max_Score, Full_Clear_Rate_pct, Total_Full_Clears, "Sustain?" AS sustain
+                Std_Dev, Max_Score, Full_Clear_Rate_pct, Total_Full_Clears, "Sustain?" AS sustain, Scores_Distributions
             FROM {cfg['team_table']}
             WHERE version = ? AND {dim_field} IN ({placeholders})
             ORDER BY {dim_field}, at_eidolon_level, up_to_eidolon_level, Rank

@@ -195,6 +195,7 @@
 
 {% include "_version_switch_style.html.j2" %}
   {% include "_column_filter_style.html.j2" %}
+  {% include "_distribution_modal_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -299,6 +300,7 @@
             <th data-col="Average_Score" class="num">Avg</th>
             <th data-col="Max_Score" class="num">Max</th>
             <th data-col="Std_Dev" class="num">σ</th>
+            <th class="num">Dist</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -307,6 +309,7 @@
   </div>
 
 </div>
+{% include "_distribution_modal_html.html.j2" %}
 <script>
 const ICONS            = {{ icons_json }};
 const DIM_FIELD        = '{{ dim_field }}';
@@ -315,7 +318,7 @@ const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
 const ROW_H      = 46;
 const OVERSCAN   = 6;
 const VIEWPORT_H = 600;
-const COL_COUNT  = 18;
+const COL_COUNT  = 19;
 
 let RAW_DATA    = [];
 let MAX_RATE    = 1;
@@ -420,7 +423,11 @@ function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
 function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
 function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
 
-function rowHTML(r, rank) {
+function distBtnHTML(fIdx) {
+  return `<td class="num"><button class="dist-btn" data-fidx="${fIdx}" type="button" title="View score distribution"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
+}
+
+function rowHTML(r, rank, fIdx) {
   const ratePct = MAX_RATE > 0 ? Math.min(100, (r.Usage_pct / MAX_RATE) * 100) : 0;
   const eid     = Math.round(r.max_eidolon);
   return `<tr>
@@ -442,6 +449,7 @@ function rowHTML(r, rank) {
     <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
     <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
     <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+    ${distBtnHTML(fIdx)}
   </tr>`;
 }
 
@@ -478,12 +486,23 @@ function renderViewport() {
       html += `<tr class="group-sep"><td colspan="${COL_COUNT}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
       lastDim = r.dim_key;
     }
-    html += rowHTML(r, i + 1);
+    html += rowHTML(r, i + 1, i);
   }
 
   if (padBot > 0) html += `<tr style="height:${padBot}px"><td colspan="${COL_COUNT}" style="padding:0;border:none"></td></tr>`;
   tbody.innerHTML = html;
 }
+
+// ---- Distribution button (event-delegated) ----
+document.getElementById('tableBody').addEventListener('click', (e) => {
+  const btn = e.target.closest('.dist-btn');
+  if (!btn) return;
+  const r = filteredData[parseInt(btn.dataset.fidx, 10)];
+  if (!r || typeof window.openDistribution !== 'function') return;
+  const eid = Math.round(r.max_eidolon);
+  const meta = `<div class="dist-meta-chip"><span class="v">E${eid}</span><div class="l">Max Eid.</div></div><div class="dist-meta-chip"><span class="v">${r.estimated_min_cost}→${r.estimated_max_cost}</span><div class="l">Cost</div></div><div class="dist-meta-chip"><span class="v">${DIM_LABEL} ${r.dim_key}</span><div class="l">${DIM_LABEL}</div></div>`;
+  window.openDistribution(r, r.Archetype_Core, meta);
+});
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
@@ -745,6 +764,7 @@ async function initializeApp() {
 
 </script>
 {% include "_column_filter_script.html.j2" %}
+{% include "_distribution_modal_script.html.j2" %}
 <script>
 ColumnFilter.attach('#mainTable', () => RAW_DATA, recompute);
 initializeApp();

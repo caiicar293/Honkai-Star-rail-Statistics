@@ -1,0 +1,88 @@
+  /* ── Distribution Modal ─────────────────────────────────────────────── */
+  .dist-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.3);
+    color: var(--accent); font-family: 'Share Tech Mono', monospace; font-size: 10.5px;
+    border-radius: 5px; padding: 4px 8px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .dist-btn:hover { background: rgba(56,189,248,0.16); border-color: var(--accent); color: var(--accent2); }
+  .dist-btn svg { width: 11px; height: 11px; display: block; }
+
+  .dist-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(5,8,14,0.82); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .dist-modal-overlay.open { display: flex; }
+  .dist-modal {
+    width: min(1100px, 100%); max-height: min(820px, 92vh); display: flex; flex-direction: column;
+    background: var(--panel); border: 1px solid var(--border2); border-radius: 12px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6); overflow: hidden;
+  }
+  .dist-modal-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 16px 18px 12px; border-bottom: 1px solid var(--border);
+  }
+  .dist-modal-title { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.03em; }
+  .dist-modal-title span { color: var(--accent); }
+  .dist-modal-close {
+    background: var(--panel2); border: 1px solid var(--border2); color: var(--text2);
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0;
+  }
+  .dist-modal-close:hover { border-color: var(--red); color: var(--red); }
+
+  .dist-tabs {
+    display: flex; gap: 4px; padding: 8px 12px 0; overflow-x: auto; flex-shrink: 0;
+    border-bottom: 1px solid var(--border); background: var(--bg2);
+  }
+  .dist-tab {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--panel2);
+    border: 1px solid var(--border2); border-bottom: none; border-radius: 6px 6px 0 0; padding: 6px 8px 6px 12px;
+    font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--text2);
+    cursor: pointer; white-space: nowrap; max-width: 220px; transition: all 0.12s; position: relative; top: 1px;
+  }
+  .dist-tab .tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+  .dist-tab:hover { color: var(--text); }
+  .dist-tab.active { background: var(--panel); border-color: var(--border2); color: var(--accent); }
+  .dist-tab-close {
+    background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer;
+    font-size: 13px; line-height: 1; padding: 1px 3px; border-radius: 50%; transition: all 0.12s;
+  }
+  .dist-tab-close:hover { opacity: 1; background: rgba(248,113,113,0.18); color: var(--red); }
+
+  .dist-modal-body { flex: 1; overflow-y: auto; padding: 16px 20px 20px; }
+  .dist-meta-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .dist-meta-chip {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 12px; min-width: 84px; text-align: center;
+  }
+  .dist-meta-chip .v { font-family: 'Share Tech Mono', monospace; font-size: 14px; font-weight: 700; color: var(--accent2); display: block; }
+  .dist-meta-chip .l { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+
+  .dist-chart-wrap { position: relative; }
+  .dist-chart {
+    display: flex; align-items: flex-end; gap: 3px; height: 280px; padding: 10px 4px 0;
+    border-bottom: 1px solid var(--border2); overflow-x: auto;
+  }
+  .dist-bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 22px; flex: 1 0 auto; cursor: pointer; }
+  .dist-bar { width: 100%; max-width: 34px; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, var(--accent2), var(--accent)); transition: filter 0.12s, transform 0.12s; min-height: 2px; }
+  .dist-bar-col:hover .dist-bar { filter: brightness(1.25); transform: scaleX(1.08); }
+  .dist-bar-col.is-best .dist-bar { background: linear-gradient(180deg, #86efac, var(--green)); }
+  .dist-axis-row { display: flex; gap: 3px; padding: 6px 4px 0; }
+  .dist-axis-label {
+    flex: 1 0 auto; min-width: 22px; text-align: center; font-family: 'Share Tech Mono', monospace;
+    font-size: 9.5px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .dist-axis-note { font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text3); margin-top: 10px; letter-spacing: 0.03em; }
+
+  .dist-tooltip {
+    position: fixed; z-index: 1010; pointer-events: none; background: var(--panel2);
+    border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px;
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none; line-height: 1.5; white-space: nowrap;
+  }
+  .dist-tooltip b { color: var(--accent2); }
+  .dist-tooltip .pct { color: var(--gold); }
+
+  .dist-empty { text-align: center; padding: 60px 20px; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; }

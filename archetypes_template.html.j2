@@ -160,6 +160,7 @@
 
 {% include "_version_switch_style.html.j2" %}
   {% include "_column_filter_style.html.j2" %}
+  {% include "_distribution_modal_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -244,6 +245,7 @@
             <th data-col="Average_Score" class="num">Avg</th>
             <th data-col="Max_Score" class="num">Max</th>
             <th data-col="Std_Dev" class="num">σ</th>
+            <th class="num">Dist</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -252,6 +254,7 @@
   </div>
 
 </div>
+{% include "_distribution_modal_html.html.j2" %}
 <script>
 const ICONS            = {{ icons_json }};
 const DIM_FIELD        = '{{ dim_field }}';
@@ -263,7 +266,7 @@ const DIM_GROUP_LABELS = {{ dim_group_labels_json }};
 const ROW_H      = 44;   // px — matches td padding (9px×2 + ~26px content)
 const OVERSCAN   = 6;
 const VIEWPORT_H = 600;
-const COL_COUNT  = 17;
+const COL_COUNT  = 18;
 
 let RAW_DATA    = [];
 let MAX_USAGE   = 1;
@@ -367,7 +370,11 @@ function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar
 function eidLabel(at, upto) { return at === upto ? `E${at}` : `E${at}→${upto}`; }
 function eidCls(at, upto)   { return `eid-range-badge at${at}${at === upto ? ' exact' : ''}`; }
 
-function rowHTML(r, rank) {
+function distBtnHTML(fIdx) {
+  return `<td class="num"><button class="dist-btn" data-fidx="${fIdx}" type="button" title="View score distribution"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
+}
+
+function rowHTML(r, rank, fIdx) {
   const usagePct = Math.min(100, (r.Usage_pct / MAX_USAGE) * 100);
   const at = r.at_eidolon_level, upto = r.up_to_eidolon_level;
   return `<tr>
@@ -388,6 +395,7 @@ function rowHTML(r, rank) {
     <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
     <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
     <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+    ${distBtnHTML(fIdx)}
   </tr>`;
 }
 
@@ -426,7 +434,7 @@ function renderViewport() {
       html += `<tr class="group-sep"><td colspan="${COL_COUNT}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
       lastDim = r.dim_key;
     }
-    html += rowHTML(r, i + 1);
+    html += rowHTML(r, i + 1, i);
   }
 
   if (padBottom > 0)
@@ -434,6 +442,16 @@ function renderViewport() {
 
   tbody.innerHTML = html;
 }
+
+// ---- Distribution button (event-delegated) ----
+document.getElementById('tableBody').addEventListener('click', (e) => {
+  const btn = e.target.closest('.dist-btn');
+  if (!btn) return;
+  const r = filteredData[parseInt(btn.dataset.fidx, 10)];
+  if (!r || typeof window.openDistribution !== 'function') return;
+  const meta = `<div class="dist-meta-chip"><span class="v">${eidLabel(r.at_eidolon_level, r.up_to_eidolon_level)}</span><div class="l">${DIM_LABEL} ${r.dim_key}</div></div>`;
+  window.openDistribution(r, r.Archetype_Core, meta);
+});
 
 // ---- Debounce helper ----
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
@@ -652,12 +670,13 @@ async function initializeApp() {
         const info = document.getElementById('resultsInfo');
         if (info) info.textContent = '⚠️ Failed to load data. Check console.';
         const tbody = document.getElementById('tableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="17"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
     }
 }
 
 </script>
 {% include "_column_filter_script.html.j2" %}
+{% include "_distribution_modal_script.html.j2" %}
 <script>
 ColumnFilter.attach('#mainTable', () => RAW_DATA, recompute);
 initializeApp();

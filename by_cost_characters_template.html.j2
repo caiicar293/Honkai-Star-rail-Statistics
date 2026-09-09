@@ -212,6 +212,7 @@
 
 {% include "_version_switch_style.html.j2" %}
   {% include "_column_filter_style.html.j2" %}
+  {% include "_distribution_modal_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -313,6 +314,7 @@
   </div>
 
 </div>
+{% include "_distribution_modal_html.html.j2" %}
 <script>
 const ICONS      = {{ icons_json }};
 const DIM_FIELD  = '{{ dim_field }}';
@@ -342,6 +344,7 @@ const COLS_COST = [
   ['Average_Score','Avg','num', true],
   ['Max_Score','Max','num', true],
   ['Std_Dev','σ','num', true],
+  ['__dist','Dist','num', false],
 ];
 const COLS_EID = [
   ['Rank','#','num',false],
@@ -360,6 +363,7 @@ const COLS_EID = [
   ['Average_Score','Avg','num', true],
   ['Max_Score','Max','num', true],
   ['Std_Dev','σ','num', true],
+  ['__dist','Dist','num', false],
 ];
 
 let RAW      = { cost: [], eid: [] };
@@ -482,7 +486,7 @@ function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar
 
 function cellHtml(r, key, rank) {
   switch (key) {
-    case 'Rank': return `<td class="rank-cell${rank<=3?' top3':''}">${rank}</td>`;
+    case 'Rank': return `<td class="rank-cell${rank<=3?' top3':''}">${rank}</td>`; // note: 'rank' here is always the numeric rank (see rowHTML)
     case 'dim_key': return `<td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>`;
     case 'cost_key': return `<td><span class="cost-badge">${r.estimated_min_cost}<span class="cost-sep">→</span>${r.estimated_max_cost}</span></td>`;
     case 'max_eidolon': return `<td class="num"><span class="meid-badge e${Math.round(r.max_eidolon)}">E${Math.round(r.max_eidolon)}</span></td>`;
@@ -503,12 +507,13 @@ function cellHtml(r, key, rank) {
     case 'Average_Score': return `<td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>`;
     case 'Max_Score': return `<td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>`;
     case 'Std_Dev': return `<td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>`;
+    case '__dist': return `<td class="num"><button class="dist-btn" data-fidx="${rank.fIdx}" type="button" title="View score distribution"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
     default: return '<td>—</td>';
   }
 }
 
-function rowHTML(r, rank) {
-  return `<tr>${cols().map(([key]) => cellHtml(r, key, rank)).join('')}</tr>`;
+function rowHTML(r, rankNum, fIdx) {
+  return `<tr>${cols().map(([key]) => cellHtml(r, key, key === '__dist' ? { fIdx } : rankNum)).join('')}</tr>`;
 }
 
 function renderHeader() {
@@ -565,12 +570,26 @@ function renderViewport() {
       html += `<tr class="group-sep"><td colspan="${colCount}"><span class="group-label-${r.dim_key}">${lbl}</span></td></tr>`;
       lastDim = r.dim_key;
     }
-    html += rowHTML(r, i + 1);
+    html += rowHTML(r, i + 1, i);
   }
 
   if (padBot > 0) html += `<tr style="height:${padBot}px"><td colspan="${colCount}" style="padding:0;border:none"></td></tr>`;
   tbody.innerHTML = html;
 }
+
+// ---- Distribution button (event-delegated) ----
+document.getElementById('tableBody').addEventListener('click', (e) => {
+  const btn = e.target.closest('.dist-btn');
+  if (!btn) return;
+  const r = filteredData[parseInt(btn.dataset.fidx, 10)];
+  if (!r || typeof window.openDistribution !== 'function') return;
+  const label = r.__eid != null ? `${r.__base} (E${r.__eid})` : r.__base;
+  let meta = `<div class="dist-meta-chip"><span class="v">${DIM_LABEL} ${r.dim_key}</span><div class="l">${DIM_LABEL}</div></div>`;
+  if (activeTab === 'cost') {
+    meta += `<div class="dist-meta-chip"><span class="v">E${Math.round(r.max_eidolon)}</span><div class="l">Max Eid.</div></div><div class="dist-meta-chip"><span class="v">${r.estimated_min_cost}→${r.estimated_max_cost}</span><div class="l">Cost</div></div>`;
+  }
+  window.openDistribution(r, label, meta);
+});
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
@@ -825,7 +844,7 @@ async function initializeApp() {
     const info = document.getElementById('resultsInfo');
     if (info) info.textContent = '⚠️ Failed to load data. Check console.';
     const tbody = document.getElementById('tableBody');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="18"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="19"><div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Please refresh or check the network.</p></div></td></tr>`;
   }
 }
 
@@ -937,6 +956,7 @@ async function initializeApp() {
 })();
 </script>
 {% include "_column_filter_script.html.j2" %}
+{% include "_distribution_modal_script.html.j2" %}
 <script>
 initializeApp();
 </script>

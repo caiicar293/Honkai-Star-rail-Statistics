@@ -35,7 +35,7 @@ def list_stats_exprs(col: str, label: str, style: str = "full") -> list[pl.Expr]
                             pl.element()
                             .value_counts(sort=True)
                             .struct.rename_fields([f"Scores", "count"])
-                        ).alias(f"Scores Distributions")
+                        ).alias(f"{label} Distributions")
         ]
     if style == "bare":
         return [
@@ -50,7 +50,7 @@ def list_stats_exprs(col: str, label: str, style: str = "full") -> list[pl.Expr]
                             pl.element()
                             .value_counts(sort=True)
                             .struct.rename_fields([f"Scores", "count"])
-                        ).alias(f"Scores Distributions")
+                        ).alias(f"{label} Distributions")
         ]
     return [
         pl.col(col).list.min().alias(f"Min {label}"),
@@ -64,7 +64,7 @@ def list_stats_exprs(col: str, label: str, style: str = "full") -> list[pl.Expr]
                 pl.element()
                 .value_counts(sort=True)
                 .struct.rename_fields([f"Scores", "count"])
-            ).alias(f"Scores Distributions")
+            ).alias(f"{label} Distributions")
         ]
 
 
@@ -93,7 +93,7 @@ def gear_stats_exprs(col: str, label: str, style: str = "snake") -> list[pl.Expr
                             pl.element()
                             .value_counts(sort=True)
                             .struct.rename_fields([f"Scores", "count"])
-                        ).alias(f"Scores Distributions")
+                        ).alias(f"{label} Distributions")
         ]
     if style == "legacy_bare":
         return [
@@ -108,7 +108,7 @@ def gear_stats_exprs(col: str, label: str, style: str = "snake") -> list[pl.Expr
                             pl.element()
                             .value_counts(sort=True)
                             .struct.rename_fields([f"Scores", "count"])
-                        ).alias(f"Scores Distributions")
+                        ).alias(f"{label} Distributions")
         ]
     return [
         pl.col(col).list.mean().round(2).alias(f"Avg_{label}"),
@@ -122,7 +122,7 @@ def gear_stats_exprs(col: str, label: str, style: str = "snake") -> list[pl.Expr
                         pl.element()
                         .value_counts(sort=True)
                         .struct.rename_fields([f"Scores", "count"])
-                    ).alias(f"Scores Distributions")
+                    ).alias(f"{label} Distributions")
     ]
 
 

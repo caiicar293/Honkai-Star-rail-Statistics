@@ -7,6 +7,8 @@
   }
   .dist-btn:hover { background: rgba(56,189,248,0.16); border-color: var(--accent); color: var(--accent2); }
   .dist-btn svg { width: 11px; height: 11px; display: block; }
+  .dist-btn.disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
+  .dist-btn.disabled:hover { background: rgba(56,189,248,0.08); border-color: rgba(56,189,248,0.3); color: var(--accent); }
 
   .dist-modal-overlay {
     display: none; position: fixed; inset: 0; z-index: 1000;
@@ -23,8 +25,20 @@
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: 16px 18px 12px; border-bottom: 1px solid var(--border);
   }
-  .dist-modal-title { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.03em; }
+  .dist-modal-head-left { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+  .dist-modal-title { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.03em; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
   .dist-modal-title span { color: var(--accent); }
+  .dist-modal-title .dist-modal-row {
+    color: var(--text2); font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px;
+  }
+  .dist-modal-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dist-modal-meta .dist-meta-chip {
+    min-width: 0; padding: 3px 10px; border-radius: 5px;
+    display: inline-flex; align-items: baseline; gap: 7px; text-align: left;
+  }
+  .dist-modal-meta .dist-meta-chip .v { font-size: 12px; display: inline; }
+  .dist-modal-meta .dist-meta-chip .l { font-size: 9px; margin-top: 0; display: inline; }
   .dist-modal-close {
     background: var(--panel2); border: 1px solid var(--border2); color: var(--text2);
     width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 15px;
@@ -60,19 +74,19 @@
   .dist-meta-chip .v { font-family: 'Share Tech Mono', monospace; font-size: 14px; font-weight: 700; color: var(--accent2); display: block; }
   .dist-meta-chip .l { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
 
-  .dist-chart-wrap { position: relative; }
+  .dist-chart-wrap { position: relative; overflow-x: auto; }
   .dist-chart {
     display: flex; align-items: flex-end; gap: 3px; height: 280px; padding: 10px 4px 0;
-    border-bottom: 1px solid var(--border2); overflow-x: auto;
+    border-bottom: 1px solid var(--border2); width: max-content; min-width: 100%;
   }
   .dist-bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 22px; flex: 1 0 auto; cursor: pointer; }
   .dist-bar { width: 100%; max-width: 34px; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, var(--accent2), var(--accent)); transition: filter 0.12s, transform 0.12s; min-height: 2px; }
   .dist-bar-col:hover .dist-bar { filter: brightness(1.25); transform: scaleX(1.08); }
   .dist-bar-col.is-best .dist-bar { background: linear-gradient(180deg, #86efac, var(--green)); }
-  .dist-axis-row { display: flex; gap: 3px; padding: 6px 4px 0; }
+  .dist-axis-row { display: flex; gap: 3px; padding: 6px 4px 0; width: max-content; min-width: 100%; }
   .dist-axis-label {
     flex: 1 0 auto; min-width: 22px; text-align: center; font-family: 'Share Tech Mono', monospace;
-    font-size: 9.5px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 9.5px; color: var(--text3); overflow: visible; white-space: nowrap;
   }
   .dist-axis-note { font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text3); margin-top: 10px; letter-spacing: 0.03em; }
 

@@ -507,7 +507,10 @@ function cellHtml(r, key, rank) {
     case 'Average_Score': return `<td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>`;
     case 'Max_Score': return `<td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>`;
     case 'Std_Dev': return `<td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>`;
-    case '__dist': return `<td class="num"><button class="dist-btn" data-fidx="${rank.fIdx}" type="button" title="View score distribution"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
+    case '__dist': {
+      const hasDist = r && Array.isArray(r.Scores_Distributions) && r.Scores_Distributions.length > 0;
+      return `<td class="num"><button class="dist-btn${hasDist ? '' : ' disabled'}" data-fidx="${rank.fIdx}" type="button" title="View score distribution"${hasDist ? '' : ' disabled'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
+    }
     default: return '<td>—</td>';
   }
 }

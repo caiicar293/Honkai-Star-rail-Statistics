@@ -922,8 +922,9 @@ function fmtNum(v, d=2) { return v == null ? '—' : v.toFixed(d); }
 function fmtInt(v)      { return v == null ? '—' : v.toLocaleString(); }
 function fullStarCls(v) { return v >= 90 ? 'fullstar-high' : v >= 70 ? 'fullstar-mid' : 'fullstar-low'; }
 
-function distBtnHTML() {
-  return `<td class="num"><button class="dist-btn" type="button" title="View score distribution"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
+function distBtnHTML(r) {
+  const hasDist = r && Array.isArray(r.Scores_Distributions) && r.Scores_Distributions.length > 0;
+  return `<td class="num"><button class="dist-btn${hasDist ? '' : ' disabled'}" type="button" title="View score distribution"${hasDist ? '' : ' disabled'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
 }
 
 function rowHTML(r, attrs, rank) {
@@ -954,7 +955,7 @@ function rowHTML(r, attrs, rank) {
     <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
     <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
     <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
-    ${distBtnHTML()}
+    ${distBtnHTML(r)}
   </tr>`;
 }
 

@@ -2,7 +2,8 @@
 // ── Distribution modal ───────────────────────────────────────────────────
 // Renders per-row Scores_Distributions (STRUCT(Scores, count)[]) as a
 // frequency histogram, opened via a per-row "Dist" button. Multiple rows
-// can be open at once, switchable via tabs.
+// can be open at once, switchable via tabs — re-clicking an already-open
+// row just re-activates its tab instead of stacking a duplicate.
 //
 // Exposes: window.openDistribution(row, label, metaHtml)
 //   row      - the data row object (must carry Scores_Distributions)
@@ -15,15 +16,23 @@
   // Apoc & Pure Fiction are point-based — bars sort lowest → highest.
   const DIST_DESCENDING = {{ 'true' if file_prefix in ['moc', 'anomaly'] else 'false' }};
   const DIST_UNIT = '{{ "Cycles" if file_prefix in ["moc", "anomaly"] else "Points" }}';
+  // Point modes (Apoc/PF) arrive pre-binned into fixed-width buckets, so
+  // their axis labels read as ranges ("0 - 50", "50 - 100", …) with the top
+  // bin stopping at its own value. Cycle modes keep single-value labels.
+  const DIST_RANGED = DIST_UNIT === 'Points';
 
   const overlay   = document.getElementById('distModalOverlay');
   const tabsEl    = document.getElementById('distTabs');
   const bodyEl    = document.getElementById('distModalBody');
   const closeBtn  = document.getElementById('distModalClose');
   const tooltipEl = document.getElementById('distTooltip');
+  const reopenBtn = document.getElementById('distReopenBtn');
+  const countEl   = document.getElementById('distReopenCount');
+  const rowLabelEl = document.getElementById('distModalRowLabel');
+  const metaEl     = document.getElementById('distModalMeta');
   if (!overlay) return;
 
-  // tabs: [{ id, label, meta, bins, total }]
+  // tabs: [{ id, key, label, meta, bins, total }]
   let tabs = [];
   let activeId = null;
   let seq = 0;
@@ -32,40 +41,95 @@
   function computeBins(raw) {
     const arr = Array.isArray(raw) ? raw.slice() : [];
     // Always establish the true ascending-by-score order first — percentile
-    // (% of samples at-or-below this score) is defined on that axis regardless
-    // of which direction the bars are ultimately displayed in.
+    // (% of samples at-or-below / at-or-above this score) is defined on that
+    // axis regardless of which direction the bars are ultimately displayed in.
     arr.sort((a, b) => a.Scores - b.Scores);
     const total = arr.reduce((s, b) => s + (b.count || 0), 0);
     let cum = 0;
-    let bins = arr.map(b => {
-      cum += (b.count || 0);
+    let bins = arr.map((b, i) => {
+      const count = b.count || 0;
+      const cumBefore = cum;
+      cum += count;
       return {
         score: b.Scores,
-        count: b.count || 0,
-        pctOfTotal: total ? (b.count / total) * 100 : 0,
-        percentile: total ? (cum / total) * 100 : 0,
+        count: count,
+        label: binLabel(arr, i),
+        pctOfTotal: total ? (count / total) * 100 : 0,
+        // Ascending modes: % of samples at-or-below this score.
+        // Descending (cycle) modes: reversed — % at-or-above, so the best
+        // (lowest) score carries the highest percentile.
+        percentile: total
+          ? (DIST_DESCENDING ? ((total - cumBefore) / total) * 100 : (cum / total) * 100)
+          : 0,
       };
     });
     if (DIST_DESCENDING) bins = bins.reverse(); // display order: max → min, min on the right
     return { bins, total };
   }
 
+  // Label for bin i of the ascending-sorted array. Point modes show the bin
+  // as a range up to the next bin; the top bin just stops at its own value.
+  function binLabel(sorted, i) {
+    if (!DIST_RANGED) return fmtScore(sorted[i].Scores);
+    const next = sorted[i + 1];
+    return next ? `${fmtScore(sorted[i].Scores)} - ${fmtScore(next.Scores)}` : fmtScore(sorted[i].Scores);
+  }
+
   window.openDistribution = function(row, label, metaHtml) {
     const raw = row && row.Scores_Distributions;
     const { bins, total } = computeBins(raw || []);
-    const id = 'dt' + (++seq);
-    tabs.push({ id, label: label || 'Row', meta: metaHtml || '', bins, total });
-    if (tabs.length > MAX_TABS) tabs.shift();
-    activeId = id;
+    const key = (label || 'Row') + '¦' + (metaHtml || '');
+    const existing = tabs.find(t => t.key === key);
+    if (existing) {
+      // Row already open — refresh its data and jump back to it.
+      existing.bins = bins;
+      existing.total = total;
+      existing.meta = metaHtml || '';
+      activeId = existing.id;
+    } else {
+      const id = 'dt' + (++seq);
+      tabs.push({ id, key, label: label || 'Row', meta: metaHtml || '', bins, total });
+      if (tabs.length > MAX_TABS) tabs.shift();
+      activeId = id;
+    }
+    overlay.classList.add('open');
+    syncBadge();
+    render();
+  };
+
+  // Second gateway: the header "Distributions" button re-opens the modal
+  // with every tab that's still open (rows already viewed are preserved — no
+  // need to re-select an entry). If nothing has been opened yet, it shows a hint.
+  window.reopenDistribution = function() {
+    syncBadge();
+    if (tabs.length === 0) {
+      overlay.classList.add('open');
+      if (rowLabelEl) rowLabelEl.textContent = '';
+      if (metaEl) metaEl.innerHTML = '';
+      tabsEl.innerHTML = '';
+      bodyEl.innerHTML = `<div class="dist-empty">Nothing to show yet — click the <b>Dist</b> button on any row to open its distribution, then come back here to re-view them.</div>`;
+      return;
+    }
     overlay.classList.add('open');
     render();
   };
+
+  // Keep the header button's badge in sync with the number of open tabs.
+  function syncBadge() {
+    if (!reopenBtn) return;
+    reopenBtn.classList.toggle('has-data', tabs.length > 0);
+    if (countEl) {
+      countEl.textContent = tabs.length;
+      countEl.hidden = tabs.length === 0;
+    }
+  }
 
   function closeTab(id, e) {
     if (e) e.stopPropagation();
     tabs = tabs.filter(t => t.id !== id);
     if (activeId === id) activeId = tabs.length ? tabs[tabs.length - 1].id : null;
-    if (tabs.length === 0) { closeModal(); return; }
+    if (tabs.length === 0) { closeModal(); syncBadge(); return; }
+    syncBadge();
     render();
   }
 
@@ -93,7 +157,14 @@
     });
 
     const t = tabs.find(x => x.id === activeId);
-    if (!t) { bodyEl.innerHTML = ''; return; }
+    if (!t) {
+      if (rowLabelEl) rowLabelEl.textContent = '';
+      if (metaEl) metaEl.innerHTML = '';
+      bodyEl.innerHTML = '';
+      return;
+    }
+    if (rowLabelEl) rowLabelEl.textContent = t.label;
+    if (metaEl) metaEl.innerHTML = t.meta || '';
 
     if (!t.bins.length) {
       bodyEl.innerHTML = `<div class="dist-empty">No distribution data available for this row.</div>`;
@@ -107,14 +178,23 @@
     const minScore = DIST_DESCENDING ? t.bins[t.bins.length - 1].score : t.bins[0].score;
     const maxScore = DIST_DESCENDING ? t.bins[0].score : t.bins[t.bins.length - 1].score;
 
+    // Size columns to the widest axis label so range labels ("3950 - 4000")
+    // always fit — bars and labels share the same column width to stay aligned.
+    const widestLabel = Math.max(...t.bins.map(b => b.label.length));
+    const colW = Math.max(22, Math.ceil(widestLabel * 5.9) + 8);
+
     const barsHtml = t.bins.map((b, i) => {
       const h = maxCount ? Math.max(2, Math.round((b.count / maxCount) * 100)) : 2;
-      return `<div class="dist-bar-col${i === bestIdx ? ' is-best' : ''}" data-i="${i}">
+      return `<div class="dist-bar-col${i === bestIdx ? ' is-best' : ''}" data-i="${i}" style="min-width:${colW}px">
         <div class="dist-bar" style="height:${h}%"></div>
       </div>`;
     }).join('');
 
-    const axisHtml = t.bins.map(b => `<div class="dist-axis-label">${fmtScore(b.score)}</div>`).join('');
+    const axisHtml = t.bins.map(b => `<div class="dist-axis-label" style="min-width:${colW}px">${b.label}</div>`).join('');
+
+    const pctNote = DIST_DESCENDING
+      ? 'percentile = % of samples at-or-above (fewer cycles = better)'
+      : 'percentile = % of samples at-or-below';
 
     bodyEl.innerHTML = `
       <div class="dist-meta-row">
@@ -127,7 +207,7 @@
       <div class="dist-chart-wrap">
         <div class="dist-chart">${barsHtml}</div>
         <div class="dist-axis-row">${axisHtml}</div>
-        <div class="dist-axis-note">${DIST_UNIT} (x-axis, ${DIST_DESCENDING ? 'highest → lowest — best on the right' : 'lowest → highest'}) · bar height = frequency · hover a bar for its percentile</div>
+        <div class="dist-axis-note">${DIST_UNIT} (x-axis, ${DIST_DESCENDING ? 'highest → lowest — best on the right' : 'lowest → highest'}) · bar height = frequency · hover a bar for its percentile (${pctNote})</div>
       </div>
     `;
 
@@ -138,9 +218,16 @@
         tooltipEl.style.display = 'block';
         tooltipEl.style.left = (e.clientX + 14) + 'px';
         tooltipEl.style.top  = (e.clientY + 14) + 'px';
-        tooltipEl.innerHTML = `<b>${fmtScore(b.score)}</b> ${DIST_UNIT}<br>Count: ${b.count.toLocaleString()} (${b.pctOfTotal.toFixed(1)}% of samples)<br><span class="pct">Percentile: ${b.percentile.toFixed(1)}</span>`;
+        tooltipEl.innerHTML = `<b>${b.label}</b> ${DIST_UNIT}<br>Count: ${b.count.toLocaleString()} (${b.pctOfTotal.toFixed(1)}% of samples)<br><span class="pct">Percentile: ${b.percentile.toFixed(1)}</span>`;
       });
       col.addEventListener('mouseleave', () => { tooltipEl.style.display = 'none'; });
+    });
+  }
+
+  if (reopenBtn) {
+    reopenBtn.addEventListener('click', () => {
+      window.reopenDistribution();
+      syncBadge();
     });
   }
 

@@ -122,6 +122,8 @@ class DashboardGenerator:
             "dim_group_labels": {0: "NODE 0 — All Nodes", 1: "NODE 1 — First Half", 2: "NODE 2 — Second Half", 3: "NODE 3 — Third Half"},
             "dim_btn_label": lambda d: f"N{d}",
             "is_legacy": False,
+            "dist_bin_width": 50,
+            "dist_max_bins": 80,
         },
         "pf": {
             "folder": "pure_fiction",
@@ -145,6 +147,8 @@ class DashboardGenerator:
             "dim_group_labels": {0: "NODE 0 — All Nodes", 1: "NODE 1 — First Half", 2: "NODE 2 — Second Half", 3: "NODE 3 — Third Half"},
             "dim_btn_label": lambda d: f"N{d}",
             "is_legacy": False,
+            "dist_bin_width": 500,
+            "dist_max_bins": 80,
         },
         "pf_legacy": {
             "folder": "pure_fiction",
@@ -163,6 +167,8 @@ class DashboardGenerator:
             "dim_group_labels": {0: "NODE 0 — All Nodes", 1: "NODE 1 — First Half", 2: "NODE 2 — Second Half", 3: "NODE 3 — Third Half"},
             "dim_btn_label": lambda d: f"N{d}",
             "is_legacy": True,
+            "dist_bin_width": 500,
+            "dist_max_bins": 80,
         },
         "anomaly": {
             "folder": "anomaly_arbitration",
@@ -229,6 +235,36 @@ class DashboardGenerator:
             rows.append(row)
         return rows
 
+    def _bin_distributions(self, rows: list[dict], cfg: dict) -> list[dict]:
+        """Rebins each row's Scores_Distributions into fixed-width bins whose
+        labels are the bin's MIN value (e.g. 0, 50, 100, 150, ... for APOC at
+        width 50; 0, 500, 1000, 1500, ... for Pure Fiction at width 500). Counts
+        from distinct scores landing in the same bin are summed, and anything
+        above the last bin is clamped into it. Modes without dist_bin_width
+        pass through untouched."""
+        width = cfg.get("dist_bin_width")
+        if not width:
+            return rows
+        max_val = width * cfg.get("dist_max_bins", 80)
+        for row in rows:
+            dist = row.get("Scores_Distributions")
+            if not dist:
+                continue
+            bins: dict[int, int] = {}
+            for item in dist:
+                score = item.get("Scores")
+                count = item.get("count") or 0
+                if score is None:
+                    continue
+                b = int(math.floor(score / width)) * width
+                if b > max_val:
+                    b = max_val
+                bins[b] = bins.get(b, 0) + count
+            row["Scores_Distributions"] = [
+                {"Scores": b, "count": c} for b, c in sorted(bins.items())
+            ]
+        return rows
+
     def _has_data(self, table: str, version: str, mode_col: str = None, mode_val: str = None) -> bool:
         if mode_col:
             res = self.conn.execute(f'SELECT COUNT(*) FROM {table} WHERE "version" = ? AND "{mode_col}" = ?', [version, mode_val]).fetchone()
@@ -257,7 +293,7 @@ class DashboardGenerator:
             ORDER BY "{dim_field}", "at_eidolon_level", "up_to_eidolon_level", "Rank"
         """
         params = [version, cfg["char_db_mode"]] + cfg["dim_values"]
-        return self._clean_rows(self.conn.execute(sql, params))
+        return self._bin_distributions(self._clean_rows(self.conn.execute(sql, params)), cfg)
 
     def fetch_archetypes(self, cfg: dict, version: str) -> list[dict]:
         dim_field = cfg["dim_field"]
@@ -274,7 +310,7 @@ class DashboardGenerator:
             ORDER BY {dim_field}, at_eidolon_level, up_to_eidolon_level, Rank
         """
         params = [version] + cfg["dim_values"]
-        return self._clean_rows(self.conn.execute(sql, params))
+        return self._bin_distributions(self._clean_rows(self.conn.execute(sql, params)), cfg)
 
     def fetch_cost_teams(self, cfg: dict, version: str) -> list[dict]:
         dim_field = cfg["dim_field"]
@@ -294,7 +330,7 @@ class DashboardGenerator:
         rows = self._clean_rows(self.conn.execute(sql, params))
         for row in rows:
             row["has_sustain"] = bool(row.get("has_sustain") or False)
-        return rows
+        return self._bin_distributions(rows, cfg)
     
     def fetch_cost_archetypes(self, cfg: dict, version: str) -> list[dict]:
         dim_field = cfg["dim_field"]
@@ -311,7 +347,7 @@ class DashboardGenerator:
             ORDER BY {dim_field}, estimated_min_cost, max_eidolon, Rank
         """
         params = [version] + cfg["dim_values"]
-        return self._clean_rows(self.conn.execute(sql, params))
+        return self._bin_distributions(self._clean_rows(self.conn.execute(sql, params)), cfg)
 
     def fetch_cost_chars(self, cfg: dict, version: str) -> list[dict]:
         """By-cost characters: one row per (Character, cost bracket, max_eidolon)
@@ -331,7 +367,7 @@ class DashboardGenerator:
             ORDER BY {dim_field}, estimated_min_cost, max_eidolon, Rank
         """
         params = [version] + cfg["dim_values"]
-        return self._clean_rows(self.conn.execute(sql, params))
+        return self._bin_distributions(self._clean_rows(self.conn.execute(sql, params)), cfg)
 
     def fetch_cost_chars_by_eidolon(self, cfg: dict, version: str) -> list[dict]:
         """By-cost characters aggregated purely by (Character, Eidolon) — ignores
@@ -351,7 +387,7 @@ class DashboardGenerator:
             ORDER BY {dim_field}, Rank
         """
         params = [version] + cfg["dim_values"]
-        return self._clean_rows(self.conn.execute(sql, params))
+        return self._bin_distributions(self._clean_rows(self.conn.execute(sql, params)), cfg)
 
     def fetch_duos(self, cfg: dict, version: str) -> list[dict]:
         dim_field = cfg["dim_field"]
@@ -370,7 +406,7 @@ class DashboardGenerator:
             ORDER BY {dim_field}, at_eidolon_level, up_to_eidolon_level, Appearance_Rate_pct DESC
         """
         params = [version] + cfg["dim_values"]
-        return self._clean_rows(self.conn.execute(sql, params))
+        return self._bin_distributions(self._clean_rows(self.conn.execute(sql, params)), cfg)
 
     def fetch_teams(self, cfg: dict, version: str) -> list[dict]:
         dim_field = cfg["dim_field"]
@@ -389,7 +425,7 @@ class DashboardGenerator:
         rows = self._clean_rows(self.conn.execute(sql, params))
         for row in rows:
             row["Sustain?"] = bool(row.pop("sustain", False) or False)
-        return rows
+        return self._bin_distributions(rows, cfg)
 
     # -- Rendering ------------------------------------------------------------
 

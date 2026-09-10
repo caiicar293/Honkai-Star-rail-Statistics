@@ -1,5 +1,5 @@
 import duckdb
-import pandas as pd
+import polars as pl
 import os
 from dotenv import load_dotenv
 
@@ -148,6 +148,48 @@ class HonkaiGearEidolonSummaryAnalyzer:
             f"ORDER BY version DESC LIMIT 3)"
         )
 
+    # -- Concatenation ------------------------------------------------------------
+
+    _NUM_RANK = {
+        pl.UInt8: 0, pl.UInt16: 1, pl.UInt32: 2, pl.UInt64: 3,
+        pl.Int8:  4, pl.Int16:  5, pl.Int32:  6, pl.Int64:  7,
+        pl.Float32: 8, pl.Float64: 9,
+    }
+
+    @classmethod
+    def _concat_frames(cls, frames: list) -> pl.DataFrame:
+        """pl.concat requires identical dtypes across frames, but the per-mode
+        frames disagree on some numerics (e.g. MOC's Max_Cycles is Int64 while
+        APOC's Max_Scores is Float64). Unify each column to its widest dtype
+        first — pandas' old pd.concat did this silently, polars does not."""
+        if len(frames) == 1:
+            return frames[0]
+
+        target: dict = {}
+        for f in frames:
+            for name, dtype in f.schema.items():
+                cur = target.get(name)
+                if cur is None or cur == dtype:
+                    target[name] = dtype
+                else:
+                    target[name] = cls._wider(cur, dtype)
+
+        unified = [
+            f.with_columns(
+                [pl.col(c).cast(t) for c, t in target.items() if f.schema.get(c) != t]
+            )
+            for f in frames
+        ]
+        return pl.concat(unified)
+
+    @classmethod
+    def _wider(cls, a: pl.DataType, b: pl.DataType) -> pl.DataType:
+        """Widest numeric dtype of two; keeps the first for non-numeric pairs."""
+        ra, rb = cls._NUM_RANK.get(a), cls._NUM_RANK.get(b)
+        if ra is not None and rb is not None:
+            return a if ra >= rb else b
+        return a
+
     # ── Gear query ───────────────────────────────────────────────────────────────
 
     def _gear_query(self, task: dict, limit_recent: bool = False) -> str:
@@ -210,11 +252,11 @@ class HonkaiGearEidolonSummaryAnalyzer:
         eidolon_cols = "\n".join([
             f"""
                 ROUND(
-                    SUM("Eidolon_{i}.0_{score_col}" * Total_Samples)
-                    / NULLIF(SUM(CASE WHEN "Eidolon_{i}.0_{score_col}" IS NOT NULL THEN Total_Samples END), 0),
+                    SUM("Eidolon_{i}_{score_col}" * Total_Samples)
+                    / NULLIF(SUM(CASE WHEN "Eidolon_{i}_{score_col}" IS NOT NULL THEN Total_Samples END), 0),
                     2
                 )                                                                       AS E{i}_Weighted_Avg_Score,
-                SUM("Eidolon_{i}.0_Samples")                                      AS E{i}_Total_Samples,
+                SUM("Eidolon_{i}_Samples")                                      AS E{i}_Total_Samples,
                 ROUND(AVG("Eidolon_{i}_Sustain_pct_pct"), 2)                           AS E{i}_Avg_Sustain_pct,
                 ROUND(AVG("Eidolon_{i}_Full_Clear_pct_pct"), 2)                         AS E{i}_Avg_Full_Star_pct,"""
             for i in range(7)
@@ -250,12 +292,12 @@ class HonkaiGearEidolonSummaryAnalyzer:
         all_history, all_recent = [], []
         for task in tasks:
             try:
-                df_h = con.execute(query_fn(task, limit_recent=False)).df()
-                if not df_h.empty:
+                df_h = con.execute(query_fn(task, limit_recent=False)).pl()
+                if not df_h.is_empty():
                     all_history.append(df_h)
 
-                df_r = con.execute(query_fn(task, limit_recent=True)).df()
-                if not df_r.empty:
+                df_r = con.execute(query_fn(task, limit_recent=True)).pl()
+                if not df_r.is_empty():
                     all_recent.append(df_r)
 
                 print(f"  + {task['mode']}")
@@ -283,7 +325,7 @@ class HonkaiGearEidolonSummaryAnalyzer:
                 ]
                 for frames, table_name in pairs:
                     if frames:
-                        df = pd.concat(frames, ignore_index=True)
+                        df = self._concat_frames(frames)
                         con.execute(f"DROP TABLE IF EXISTS {table_name}")
                         con.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")
                         print(f"  Wrote {table_name} ({len(df):,} rows)")

@@ -1,5 +1,5 @@
 import duckdb
-import pandas as pd
+import polars as pl
 import os
 from dotenv import load_dotenv
 
@@ -148,12 +148,12 @@ class HonkaiMetaAnalyzer:
 
         for task in self.tasks:
             try:
-                df_h = con.execute(self._generate_query(task, limit_recent=False)).df()
-                if not df_h.empty:
+                df_h = con.execute(self._generate_query(task, limit_recent=False)).pl()
+                if not df_h.is_empty():
                     all_history.append(df_h)
 
-                df_r = con.execute(self._generate_query(task, limit_recent=True)).df()
-                if not df_r.empty:
+                df_r = con.execute(self._generate_query(task, limit_recent=True)).pl()
+                if not df_r.is_empty():
                     all_recent.append(df_r)
 
                 print(f"  + Successfully aggregated {task['mode']}")
@@ -163,13 +163,13 @@ class HonkaiMetaAnalyzer:
         con.execute("BEGIN TRANSACTION")
         try:
             if all_history:
-                full_df = pd.concat(all_history, ignore_index=True)
+                full_df = pl.concat(all_history)
                 con.execute("DROP TABLE IF EXISTS archetype_meta_summary")
                 con.execute("CREATE TABLE archetype_meta_summary AS SELECT * FROM full_df")
                 print(f"\n  Wrote archetype_meta_summary ({len(full_df):,} rows)")
 
             if all_recent:
-                recent_df = pd.concat(all_recent, ignore_index=True)
+                recent_df = pl.concat(all_recent)
                 con.execute("DROP TABLE IF EXISTS archetype_recent_meta_summary")
                 con.execute("CREATE TABLE archetype_recent_meta_summary AS SELECT * FROM recent_df")
                 print(f"  Wrote archetype_recent_meta_summary ({len(recent_df):,} rows)")

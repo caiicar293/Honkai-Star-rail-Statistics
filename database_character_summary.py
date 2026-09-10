@@ -1,5 +1,5 @@
 import duckdb
-import pandas as pd
+import polars as pl
 import os
 from dotenv import load_dotenv
 
@@ -241,21 +241,21 @@ class CharacterMetaAnalyzer:
 
     def run_analysis(self):
         con = duckdb.connect(self.db_path)
-        all_history: list[pd.DataFrame] = []
-        all_recent:  list[pd.DataFrame] = []
+        all_history: list[pl.DataFrame] = []
+        all_recent:  list[pl.DataFrame] = []
 
         for task in self.tasks:
             label = task["display"]
             try:
-                df_h = con.execute(self._generate_query(task, limit_recent=False)).df()
-                if not df_h.empty:
+                df_h = con.execute(self._generate_query(task, limit_recent=False)).pl()
+                if not df_h.is_empty():
                     all_history.append(df_h)
                     print(f"  + History  {label}: {len(df_h):,} rows")
                 else:
                     print(f"  - History  {label}: 0 rows (skipped)")
 
-                df_r = con.execute(self._generate_query(task, limit_recent=True)).df()
-                if not df_r.empty:
+                df_r = con.execute(self._generate_query(task, limit_recent=True)).pl()
+                if not df_r.is_empty():
                     all_recent.append(df_r)
                     print(f"  + Recent   {label}: {len(df_r):,} rows")
                 else:
@@ -268,13 +268,13 @@ class CharacterMetaAnalyzer:
         con.execute("BEGIN TRANSACTION")
         try:
             if all_history:
-                full_df = pd.concat(all_history, ignore_index=True)
+                full_df = pl.concat(all_history)
                 con.execute("DROP TABLE IF EXISTS character_meta_summary")
                 con.execute("CREATE TABLE character_meta_summary AS SELECT * FROM full_df")
                 print(f"\n  Wrote character_meta_summary        ({len(full_df):,} rows)")
 
             if all_recent:
-                recent_df = pd.concat(all_recent, ignore_index=True)
+                recent_df = pl.concat(all_recent)
                 con.execute("DROP TABLE IF EXISTS character_recent_meta_summary")
                 con.execute("CREATE TABLE character_recent_meta_summary AS SELECT * FROM recent_df")
                 print(f"  Wrote character_recent_meta_summary ({len(recent_df):,} rows)")

@@ -438,7 +438,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
         per_eidolon = (
             get_performance_stats(base_data, ["Character", "cons"])
             # OPTIMIZATION: pl.format is vastly faster than cast + concat
-            .with_columns(pl.format("Eidolon {}", pl.col("cons")).alias("Eidolon_Level"))
+            .with_columns(pl.format("Eidolon {}", pl.col("cons").cast(pl.Int64)).alias("Eidolon_Level"))
            
         )
 

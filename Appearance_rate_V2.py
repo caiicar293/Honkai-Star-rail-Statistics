@@ -206,7 +206,7 @@ class HonkaiStatistics_V2:
                 right_on=["uid", 'name'], 
                 how="left"
             )
-            .drop(['phase', 'cons_right', 'level'])
+            .drop([ 'cons_right', 'level'])
             .with_columns([
                 pl.col("weapon").fill_null("Info_not_found"),
                 pl.col("artifacts").fill_null("Info_not_found"),

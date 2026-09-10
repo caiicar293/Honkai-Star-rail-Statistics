@@ -439,8 +439,8 @@ class HonkaiStatistics_V2_APOC_Batch:
         )
 
         # 1. Define the exact string representations in your Eidolon_Level column
-        eidolon_levels = [f"Eidolon {float(i)}" for i in range(7)]  
-        # Generates: ['Eidolon 0.0', 'Eidolon 1.0', ..., 'Eidolon 6.0']
+        eidolon_levels = [f"Eidolon {i}" for i in range(7)]
+        # Generates: ['Eidolon 0', 'Eidolon 1', ..., 'Eidolon 6']
 
         # 2. Target columns (handles primitive, list, and list[struct] types seamlessly)
         values_to_pivot = [
@@ -802,8 +802,8 @@ class HonkaiStatistics_V2_APOC_Batch:
 
     def get_eidolon_performance_df(self):
         
-        # 1. Split 'Samples_Eidolon 0.0' by '_' -> ['Samples', 'Eidolon 0.0']
-        # Then rearrange into 'Eidolon 0.0 Samples' using single quotes inside the f-string
+        # 1. Split 'Samples_Eidolon 0' by '_' -> ['Samples', 'Eidolon 0']
+        # Then rearrange into 'Eidolon 0 Samples' using single quotes inside the f-string
         eid_samples = [
             pl.col(c).alias(f"{c.split('_')[1]} {c.split('_')[0]}") 
             for c in self.char_stats.columns if "Samples_Eidolon" in c

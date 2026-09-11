@@ -1,0 +1,365 @@
+name: Build Frontend
+
+# Regenerates the static site in docs/ from the DuckDB published on Hugging Face.
+#
+# Three ways to run it:
+#   1. Actions -> "Build Frontend" -> Run workflow            (manual, standalone)
+#   2. Called by an orchestrator workflow, in order after the DB build:
+#        jobs:
+#          build-database:
+#            uses: ./.github/workflows/build-database.yml
+#            secrets: inherit
+#          build-frontend:
+#            needs: build-database
+#            uses: ./.github/workflows/build-frontend.yml
+#            secrets: inherit
+#   3. Auto-run when the DB workflow finishes (no orchestrator needed) -- uncomment.
+#      Note: workflow_run is read from the DEFAULT branch, not the triggering one,
+#      and it fires on failure too unless you add the conclusion guard below.
+# on:
+#   workflow_run:
+#     workflows: ["Build Database"]
+#     types: [completed]
+#   (and, at the job level:)
+#   if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+#
+# ---------------------------------------------------------------------------
+# Repository settings this workflow expects
+# (Settings -> Secrets and variables -> Actions)
+#
+# Variables:
+#   HF_DB_REPO         required  dataset repo holding the .duckdb files,
+#                                e.g. "your-user/Honkai-starrail-statistics"
+#   HF_DB_FILE         optional  pin one exact file (e.g. for a rollback);
+#                                default is the highest *_v<N>.duckdb in the repo
+#   MOC, Pure_fiction, anomaly, apoc   optional  per-mode docs strategy;
+#                                defaults below are MOC/Pure_fiction=replace,
+#                                anomaly/apoc=add
+#   MOC_VERSIONS, PF_VERSIONS, APOC_VERSIONS, ANOMALY_VERSIONS
+#                      optional  comma-separated version lists. Only needed when
+#                                the `version` input is left blank, so the
+#                                pipeline can derive the newest version itself.
+#
+# Secrets:
+#   ENV_FILE           optional  full contents of your local .env. Takes
+#                                precedence over the variables above; DB_File is
+#                                always overwritten with the downloaded DB.
+#   HF_TOKEN           optional  only if the HF dataset repo is private
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Game version (blank = newest across the .env version lists)"
+        type: string
+        required: false
+        default: ""
+      dry_run:
+        description: "Print the pipeline steps without running them"
+        type: boolean
+        required: false
+        default: false
+      no_delete:
+        description: "Skip step 1 (delete/replace of the newest docs version)"
+        type: boolean
+        required: false
+        default: false
+      skip_e0:
+        description: "Skip archetype_tier_list_e0_generator.py"
+        type: boolean
+        required: false
+        default: false
+
+  workflow_call:
+    inputs:
+      version:
+        description: "Game version (blank = newest across the .env version lists)"
+        type: string
+        required: false
+        default: ""
+      dry_run:
+        description: "Print the pipeline steps without running them"
+        type: boolean
+        required: false
+        default: false
+      no_delete:
+        description: "Skip step 1 (delete/replace of the newest docs version)"
+        type: boolean
+        required: false
+        default: false
+      skip_e0:
+        description: "Skip archetype_tier_list_e0_generator.py"
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      ENV_FILE:
+        required: false
+      HF_TOKEN:
+        required: false
+
+# Needed to commit the regenerated docs/. The default GITHUB_TOKEN is read-only
+# on newer repositories, so the push below would 403 without this.
+permissions:
+  contents: write
+  # Uncomment these two if you deploy Pages via Actions instead of
+  # "Deploy from a branch -> /docs" (see the commented job at the bottom):
+  # pages: write
+  # id-token: write
+
+# Shared with build-database.yml on purpose: the two workflows both pull from and
+# write to Hugging Face, so they must never overlap. Same group name => serialized.
+concurrency:
+  group: hsrs-pipeline
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.11"
+  DB_DIR: db
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  build-frontend:
+    name: Regenerate docs/
+    runs-on: ubuntu-latest
+    # The 6h cap is per job; this pipeline is minutes, the DB build is the long pole.
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Shallow on purpose: this repo's history is ~2.6 GB, and a single
+          # commit is all the push below needs.
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          # Deliberately no `cache: pip` -- there is no requirements file in the
+          # repo for it to key on (setup-python errors out otherwise).
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install duckdb polars jinja2 python-dotenv orjson brotli numpy pandas rustworkx huggingface_hub
+
+      # ---------------------------------------------------------------------
+      # The DuckDB lives on Hugging Face, not in the repo (`*.duckdb` is
+      # gitignored) and not on the runner (every job starts on a blank VM).
+      # ---------------------------------------------------------------------
+      - name: Download DuckDB from Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_DB_REPO: ${{ vars.HF_DB_REPO }}
+          HF_DB_FILE: ${{ vars.HF_DB_FILE }}
+        run: |
+          python - <<'PY'
+          import os, re, sys
+          from pathlib import Path
+          from huggingface_hub import HfApi, hf_hub_download
+
+          repo = (os.environ.get("HF_DB_REPO") or "").strip()
+          if not repo:
+              sys.exit("[ERROR] repository variable HF_DB_REPO is not set "
+                       "(Settings -> Secrets and variables -> Actions -> Variables).")
+          token = (os.environ.get("HF_TOKEN") or "").strip() or None
+          pinned = (os.environ.get("HF_DB_FILE") or "").strip()
+
+          files = HfApi().list_repo_files(repo_id=repo, repo_type="dataset", token=token)
+          candidates = [f for f in files if f.endswith(".duckdb") and "/" not in f]
+
+          if pinned:
+              if pinned not in files:
+                  sys.exit(f"[ERROR] HF_DB_FILE={pinned!r} is not in {repo}")
+              chosen = pinned
+          else:
+              if not candidates:
+                  sys.exit(f"[ERROR] no *.duckdb files found in {repo}")
+              # Newest by the *_v<N>.duckdb naming convention (v25 > v9 > unversioned).
+              def key(name):
+                  m = re.search(r"_v(\d+)\.duckdb$", name)
+                  return int(m.group(1)) if m else -1
+              chosen = max(candidates, key=key)
+              print(f"Files in repo: {sorted(candidates)}")
+
+          print(f"Downloading {chosen} from {repo} ...")
+          path = Path(hf_hub_download(
+              repo_id=repo, filename=chosen, repo_type="dataset",
+              local_dir=os.environ["DB_DIR"], token=token,
+          ))
+          rel = path.relative_to(Path.cwd()) if path.is_absolute() else path
+          print(f"Downloaded {rel} ({path.stat().st_size / 1024**3:.2f} GiB)")
+
+          # Hand the path to later steps (and to .env, further down).
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as fh:
+              fh.write(f"DB_LOCAL_PATH={rel.as_posix()}\n")
+          PY
+
+      - name: Write .env
+        # NB: the variable names below are the .env keys, so they match what you
+        # already have locally; the (upper-cased) env names are internal to this
+        # step and only feed the template written to .env.
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+          MOC: ${{ vars.MOC }}
+          PURE_FICTION: ${{ vars.Pure_fiction }}
+          ANOMALY: ${{ vars.anomaly }}
+          APOC: ${{ vars.apoc }}
+          MOC_VERSIONS: ${{ vars.MOC_VERSIONS }}
+          PF_VERSIONS: ${{ vars.PF_VERSIONS }}
+          APOC_VERSIONS: ${{ vars.APOC_VERSIONS }}
+          ANOMALY_VERSIONS: ${{ vars.ANOMALY_VERSIONS }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${ENV_FILE:-}" ]; then
+            # Full .env supplied as a secret -> use it verbatim.
+            printf '%s\n' "$ENV_FILE" > .env
+          else
+            # Otherwise synthesize a minimal one from the repository variables.
+            # The four strategy keys drive step 1 (docs delete/replace):
+            cat > .env <<EOF
+          MOC = ${MOC:-replace}
+          Pure_fiction = ${PURE_FICTION:-replace}
+          anomaly = ${ANOMALY:-add}
+          apoc = ${APOC:-add}
+          EOF
+            for pair in MOC_VERSIONS PF_VERSIONS APOC_VERSIONS ANOMALY_VERSIONS; do
+              value="${!pair:-}"
+              if [ -n "$value" ]; then
+                printf '%s=%s\n' "$pair" "$value" >> .env
+              fi
+            done
+          fi
+
+          # The local .env points at your local DB file; replace it with the one
+          # this runner actually downloaded.
+          grep -v -E '^[[:space:]]*DB_File[[:space:]]*=' .env > .env.tmp || true
+          mv .env.tmp .env
+          printf 'DB_File = %s\n' "$DB_LOCAL_PATH" >> .env
+
+          if [ -z "${VERSION:-}" ] && ! grep -q '_VERSIONS' .env; then
+            echo "::error::No 'version' input and no *_VERSIONS in .env -- nothing tells the pipeline which version to build. Pass the version input or set the *_VERSIONS repository variables."
+            exit 1
+          fi
+
+          echo "--- .env (DB_File + strategy keys) ---"
+          grep -v -E '^[[:space:]]*#' .env | sed -E 's/(_VERSIONS *= *).*/\1<list>/'
+
+      - name: Runner disk space
+        run: df -h /
+
+      - name: Run frontend pipeline
+        env:
+          VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          NO_DELETE: ${{ inputs.no_delete }}
+          SKIP_E0: ${{ inputs.skip_e0 }}
+        run: |
+          set -euo pipefail
+          args=(frontend_orchestrator.py)
+          if [ -n "${VERSION:-}" ]; then
+            args+=(--version "$VERSION")
+          fi
+          if [ "${DRY_RUN:-false}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          if [ "${NO_DELETE:-false}" = "true" ]; then
+            args+=(--no-delete)
+          fi
+          if [ "${SKIP_E0:-false}" = "true" ]; then
+            args+=(--skip-e0)
+          fi
+
+          echo ">>> python ${args[*]}"
+          python "${args[@]}"
+
+      - name: Summarize docs changes
+        if: always()
+        run: |
+          set -euo pipefail
+          changed=$(git status --short -- docs | wc -l | tr -d ' ')
+          {
+            echo "### Frontend regeneration"
+            echo
+            echo "- Version: \`${{ inputs.version }}\` (blank = newest in .env)"
+            echo "- Dry run: \`${{ inputs.dry_run }}\`"
+            echo "- Files changed under docs/: **$changed**"
+            echo
+            if [ "$changed" -gt 0 ]; then
+              echo '```'
+              git status --short -- docs | head -100
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$changed" -eq 0 ] && [ "${{ inputs.dry_run }}" != "true" ]; then
+            echo "::warning::The pipeline produced no changes under docs/ -- check the step log for a silently failing stage (e.g. '!!! Failed to append' from the DB side)."
+          fi
+
+      - name: Commit and push docs/
+        if: ${{ inputs.dry_run != true }}
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A docs/
+          if git diff --staged --quiet; then
+            echo "No docs changes -- nothing to commit."
+            exit 0
+          fi
+
+          git commit -m "Regenerate dashboards${VERSION:+ (v$VERSION)}"
+
+      - name: Push
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          set -euo pipefail
+          # The concurrency group should prevent overlap, but retry anyway in case
+          # a human pushed to the same branch mid-run.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "Pushed."
+              exit 0
+            fi
+            echo "Push attempt $attempt failed -- rebasing onto the remote and retrying."
+            git pull --rebase --autostash
+            sleep 5
+          done
+          echo "::error::could not push docs/ after 3 attempts."
+          exit 1
+
+# ---------------------------------------------------------------------------
+# Optional: deploy GitHub Pages from Actions.
+#
+# If Pages is already set to "Deploy from a branch -> main /docs", a push to main
+# is all you need and this job stays off. If you switch Pages to "GitHub Actions"
+# as the source, uncomment this job plus `pages: write` / `id-token: write` in
+# `permissions` above -- that also sidesteps the fact that pushes made with
+# GITHUB_TOKEN don't trigger other workflows.
+#
+#   deploy-pages:
+#     needs: build-frontend
+#     if: ${{ !cancelled() && needs.build-frontend.result == 'success' && inputs.dry_run != true }}
+#     runs-on: ubuntu-latest
+#     environment:
+#       name: github-pages
+#       url: ${{ steps.deployment.outputs.page_url }}
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           ref: ${{ github.ref }}
+#       - uses: actions/configure-pages@v5
+#       - uses: actions/upload-pages-artifact@v3
+#         with:
+#           path: docs
+#       - id: deployment
+#         uses: actions/deploy-pages@v4
+# ---------------------------------------------------------------------------

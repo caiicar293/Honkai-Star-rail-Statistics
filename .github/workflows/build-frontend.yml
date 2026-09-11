@@ -280,6 +280,8 @@ jobs:
 
       - name: Summarize docs changes
         if: always()
+        # Pure reporting -- it must never be able to gate the commit/push below.
+        continue-on-error: true
         run: |
           set -euo pipefail
           changed=$(git status --short -- docs | wc -l | tr -d ' ')
@@ -292,7 +294,11 @@ jobs:
             echo
             if [ "$changed" -gt 0 ]; then
               echo '```'
-              git status --short -- docs | head -100
+              # Deliberately `sed -n '1,100p'`, not `| head -100`: head exits after
+              # the 100th line, SIGPIPEs git mid-write, and `set -o pipefail`
+              # turns that into exit 141 for the whole step (which then blocked
+              # the commit on the otherwise-successful 4.5.1 run).
+              git status --short -- docs | sed -n '1,100p'
               echo '```'
             fi
           } >> "$GITHUB_STEP_SUMMARY"

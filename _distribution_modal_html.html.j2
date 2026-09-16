@@ -2,13 +2,21 @@
   <div class="dist-modal">
     <div class="dist-modal-head">
       <div class="dist-modal-head-left">
-        <div class="dist-modal-title">Score <span>Distribution</span> <span class="dist-modal-row" id="distModalRowLabel"></span></div>
+        <div class="dist-modal-title">Score <span>Distribution</span> <span class="dist-modal-row-icons" id="distModalRowLabelIcons"></span><span class="dist-modal-row" id="distModalRowLabel"></span></div>
         <div class="dist-modal-meta" id="distModalMeta"></div>
       </div>
       <button class="dist-modal-close" id="distModalClose" type="button" title="Close (Esc)">✕</button>
     </div>
-    <div class="dist-tabs" id="distTabs"></div>
-    <div class="dist-modal-body" id="distModalBody"></div>
+    <div class="dist-modal-main">
+      <div class="dist-tabs-col">
+        <div class="dist-tabs-toolbar">
+          <span class="dist-tabs-toolbar-label">Open Rows</span>
+          <button class="dist-tabs-clear-all" id="distTabsClearAll" type="button" title="Close every open tab" disabled>Clear all</button>
+        </div>
+        <div class="dist-tabs" id="distTabs"></div>
+      </div>
+      <div class="dist-modal-body" id="distModalBody"></div>
+    </div>
   </div>
 </div>
 <div class="dist-tooltip" id="distTooltip"></div>

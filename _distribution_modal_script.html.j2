@@ -2,12 +2,16 @@
 // ── Distribution modal ───────────────────────────────────────────────────
 // Renders per-row Scores_Distributions (STRUCT(Scores, count)[]) as a
 // frequency histogram, opened via a per-row "Dist" button. Multiple rows
-// can be open at once, switchable via tabs — re-clicking an already-open
-// row just re-activates its tab instead of stacking a duplicate.
+// can be open at once, switchable via a vertical tab rail down the left
+// side of the modal — re-clicking an already-open row just re-activates
+// its tab instead of stacking a duplicate. There is no cap on how many
+// tabs can be open at once; a "Clear all" button in the tab rail closes
+// every open tab in one click (same idea as the trends page's "Clear all").
 //
 // Exposes: window.openDistribution(row, label, metaHtml)
 //   row      - the data row object (must carry Scores_Distributions)
-//   label    - short text shown on the tab
+//   label    - short text shown on the tab (also used to look up per-
+//              character icons — see iconTokensFor/iconStripHtml below)
 //   metaHtml - optional extra <div class="dist-meta-chip">...</div> markup
 //              appended to the meta row (e.g. dim/eidolon context)
 (function() {
@@ -17,32 +21,75 @@
   const DIST_DESCENDING = {{ 'true' if file_prefix in ['moc', 'anomaly'] else 'false' }};
   const DIST_UNIT = '{{ "Cycles" if file_prefix in ["moc", "anomaly"] else "Points" }}';
   // Point modes (Apoc/PF) arrive pre-binned into fixed-width buckets, so
-  // their axis labels read as ranges ("0 - 50", "50 - 100", …) with the top
-  // bin stopping at its own value. Cycle modes keep single-value labels.
+  // their axis labels read as ranges ("0 - 50", "50 - 100", …) — including
+  // the top bin, which reads as a range too (e.g. "3950 - 4000") by
+  // inferring the bucket width from the preceding gap rather than just
+  // stopping at its own value. Cycle modes keep single-value labels.
   const DIST_RANGED = DIST_UNIT === 'Points';
 
-  const overlay   = document.getElementById('distModalOverlay');
-  const tabsEl    = document.getElementById('distTabs');
-  const bodyEl    = document.getElementById('distModalBody');
-  const closeBtn  = document.getElementById('distModalClose');
-  const tooltipEl = document.getElementById('distTooltip');
-  const reopenBtn = document.getElementById('distReopenBtn');
-  const countEl   = document.getElementById('distReopenCount');
-  const rowLabelEl = document.getElementById('distModalRowLabel');
-  const metaEl     = document.getElementById('distModalMeta');
+  const overlay      = document.getElementById('distModalOverlay');
+  const tabsEl        = document.getElementById('distTabs');
+  const clearAllBtn   = document.getElementById('distTabsClearAll');
+  const bodyEl        = document.getElementById('distModalBody');
+  const closeBtn      = document.getElementById('distModalClose');
+  const tooltipEl     = document.getElementById('distTooltip');
+  const reopenBtn     = document.getElementById('distReopenBtn');
+  const countEl       = document.getElementById('distReopenCount');
+  const rowLabelEl    = document.getElementById('distModalRowLabel');
+  const rowLabelIcons = document.getElementById('distModalRowLabelIcons');
+  const metaEl        = document.getElementById('distModalMeta');
   if (!overlay) return;
 
-  // tabs: [{ id, key, label, meta, bins, total }]
+  // ── Character icons — same lookup convention as every other dashboard
+  //    on the site (see trends_template.html.j2 / teams_template.html.j2),
+  //    kept local to this IIFE so it never collides with a same-named
+  //    ICONS/lookupIconUrl the host page may already declare in its own
+  //    top-level script. Falls back to empty/no-op if the host page didn't
+  //    wire icons_json/path_prefix into this template's context. ──
+  const ICONS = {{ icons_json | default('{}') }};
+  const ICON_PATH_PREFIX = "{{ path_prefix | default('../') }}";
+
+  function lookupIconUrl(name) {
+    let url = ICONS[name];
+    if (!url) url = ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
+    if (!url) url = ICONS[name.replace(/\s*\(E\d+\)$/i, '').trim()];
+    if (!url) return null;
+    if (!url.startsWith('http')) url = ICON_PATH_PREFIX + url;
+    return url;
+  }
+
+  // Row labels come in a few shapes depending on which page opened the
+  // modal: a plain character name, a composite "A + B" (archetype cores),
+  // or a paren-wrapped team roster "(A, B, C, D)". Handle all three, same
+  // as trends_template.html.j2's iconTokensFor().
+  function iconTokensFor(id) {
+    const s = String(id).trim();
+    if (s.startsWith("(") && s.endsWith(")")) {
+      return s.slice(1, -1).split(/\s*,\s*/).map(t => t.trim()).filter(Boolean);
+    }
+    return s.split(" + ").map(t => t.trim()).filter(Boolean);
+  }
+
+  function iconStripHtml(id) {
+    const tokens = iconTokensFor(id);
+    const imgs = tokens.map(t => {
+      const url = lookupIconUrl(t);
+      return url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()"/>` : "";
+    }).filter(Boolean);
+    if (!imgs.length) return "";
+    return `<span class="dist-tab-icons">${imgs.join("")}</span>`;
+  }
+
+  // tabs: [{ id, key, label, meta, bins, total }] — unlimited, no cap.
   let tabs = [];
   let activeId = null;
   let seq = 0;
-  const MAX_TABS = 8;
 
   function computeBins(raw) {
     const arr = Array.isArray(raw) ? raw.slice() : [];
     // Always establish the true ascending-by-score order first — percentile
-    // (% of samples at-or-below / at-or-above this score) is defined on that
-    // axis regardless of which direction the bars are ultimately displayed in.
+    // is defined on that axis regardless of which direction the bars are
+    // ultimately displayed in.
     arr.sort((a, b) => a.Scores - b.Scores);
     const total = arr.reduce((s, b) => s + (b.count || 0), 0);
     let cum = 0;
@@ -50,17 +97,32 @@
       const count = b.count || 0;
       const cumBefore = cum;
       cum += count;
+      // Each bin spans a range of percentiles — from the cumulative total
+      // just below it (cumBefore) up to the cumulative total including it
+      // (cum). Report the MIDPOINT of that range rather than its upper
+      // edge, so a bin covering e.g. percentile 95–97 reports 96, not 97.
+      let percentile = 0;
+      if (total) {
+        if (DIST_DESCENDING) {
+          // Descending (cycle) modes: percentile = % of samples at-or-above
+          // this score, so the range runs from (total-cum)/total (excluding
+          // this bin's own samples) up to (total-cumBefore)/total
+          // (including them) — same midpoint logic, mirrored.
+          const pctHigh = ((total - cumBefore) / total) * 100;
+          const pctLow  = ((total - cum) / total) * 100;
+          percentile = (pctHigh + pctLow) / 2;
+        } else {
+          const pctHigh = (cum / total) * 100;
+          const pctLow  = (cumBefore / total) * 100;
+          percentile = (pctHigh + pctLow) / 2;
+        }
+      }
       return {
         score: b.Scores,
         count: count,
         label: binLabel(arr, i),
         pctOfTotal: total ? (count / total) * 100 : 0,
-        // Ascending modes: % of samples at-or-below this score.
-        // Descending (cycle) modes: reversed — % at-or-above, so the best
-        // (lowest) score carries the highest percentile.
-        percentile: total
-          ? (DIST_DESCENDING ? ((total - cumBefore) / total) * 100 : (cum / total) * 100)
-          : 0,
+        percentile: percentile,
       };
     });
     if (DIST_DESCENDING) bins = bins.reverse(); // display order: max → min, min on the right
@@ -68,11 +130,21 @@
   }
 
   // Label for bin i of the ascending-sorted array. Point modes show the bin
-  // as a range up to the next bin; the top bin just stops at its own value.
+  // as a range up to the next bin. The TOP bin (no "next" bin to borrow an
+  // upper edge from) infers its own width from the gap to the previous bin
+  // — since point-mode bins are fixed-width buckets, that gap IS the bucket
+  // width — so it reads as a range too (e.g. "3950 - 4000" for an Apoc max
+  // of 4000, or "39500 - 40000" for a Pure Fiction max of 40000) instead of
+  // just stopping at its own value, which misleadingly read as an exact cap.
   function binLabel(sorted, i) {
     if (!DIST_RANGED) return fmtScore(sorted[i].Scores);
     const next = sorted[i + 1];
-    return next ? `${fmtScore(sorted[i].Scores)} - ${fmtScore(next.Scores)}` : fmtScore(sorted[i].Scores);
+    if (next) return `${fmtScore(sorted[i].Scores)} - ${fmtScore(next.Scores)}`;
+    const prev = sorted[i - 1];
+    const step = prev ? (sorted[i].Scores - prev.Scores) : 0;
+    return step > 0
+      ? `${fmtScore(sorted[i].Scores)} - ${fmtScore(sorted[i].Scores + step)}`
+      : fmtScore(sorted[i].Scores);
   }
 
   window.openDistribution = function(row, label, metaHtml) {
@@ -87,9 +159,10 @@
       existing.meta = metaHtml || '';
       activeId = existing.id;
     } else {
+      // No MAX_TABS cap — every row a person opens stays open until they
+      // close its tab or hit "Clear all".
       const id = 'dt' + (++seq);
       tabs.push({ id, key, label: label || 'Row', meta: metaHtml || '', bins, total });
-      if (tabs.length > MAX_TABS) tabs.shift();
       activeId = id;
     }
     overlay.classList.add('open');
@@ -102,14 +175,6 @@
   // need to re-select an entry). If nothing has been opened yet, it shows a hint.
   window.reopenDistribution = function() {
     syncBadge();
-    if (tabs.length === 0) {
-      overlay.classList.add('open');
-      if (rowLabelEl) rowLabelEl.textContent = '';
-      if (metaEl) metaEl.innerHTML = '';
-      tabsEl.innerHTML = '';
-      bodyEl.innerHTML = `<div class="dist-empty">Nothing to show yet — click the <b>Dist</b> button on any row to open its distribution, then come back here to re-view them.</div>`;
-      return;
-    }
     overlay.classList.add('open');
     render();
   };
@@ -128,7 +193,18 @@
     if (e) e.stopPropagation();
     tabs = tabs.filter(t => t.id !== id);
     if (activeId === id) activeId = tabs.length ? tabs[tabs.length - 1].id : null;
-    if (tabs.length === 0) { closeModal(); syncBadge(); return; }
+    syncBadge();
+    render();
+  }
+
+  // "Clear all" — closes every open tab at once, mirroring the trends
+  // page's "Clear all" for its comparison selection. Leaves the modal open
+  // on an empty state rather than closing it outright, so re-opening a new
+  // row from the table right after feels like a fresh start, not a re-open.
+  function closeAllTabs(e) {
+    if (e) e.stopPropagation();
+    tabs = [];
+    activeId = null;
     syncBadge();
     render();
   }
@@ -145,9 +221,12 @@
   function render() {
     tabsEl.innerHTML = tabs.map(t => `
       <div class="dist-tab${t.id === activeId ? ' active' : ''}" data-tab="${t.id}">
+        ${iconStripHtml(t.label)}
         <span class="tab-label" title="${t.label}">${t.label}</span>
         <button class="dist-tab-close" data-close="${t.id}" title="Close">×</button>
       </div>`).join('');
+
+    if (clearAllBtn) clearAllBtn.disabled = tabs.length === 0;
 
     tabsEl.querySelectorAll('.dist-tab').forEach(el => {
       el.addEventListener('click', () => activate(el.dataset.tab));
@@ -159,11 +238,15 @@
     const t = tabs.find(x => x.id === activeId);
     if (!t) {
       if (rowLabelEl) rowLabelEl.textContent = '';
+      if (rowLabelIcons) rowLabelIcons.innerHTML = '';
       if (metaEl) metaEl.innerHTML = '';
-      bodyEl.innerHTML = '';
+      bodyEl.innerHTML = tabs.length
+        ? ''
+        : `<div class="dist-empty">Nothing to show yet — click the <b>Dist</b> button on any row to open its distribution, then come back here to re-view them.</div>`;
       return;
     }
     if (rowLabelEl) rowLabelEl.textContent = t.label;
+    if (rowLabelIcons) rowLabelIcons.innerHTML = iconStripHtml(t.label);
     if (metaEl) metaEl.innerHTML = t.meta || '';
 
     if (!t.bins.length) {
@@ -193,8 +276,8 @@
     const axisHtml = t.bins.map(b => `<div class="dist-axis-label" style="min-width:${colW}px">${b.label}</div>`).join('');
 
     const pctNote = DIST_DESCENDING
-      ? 'percentile = % of samples at-or-above (fewer cycles = better)'
-      : 'percentile = % of samples at-or-below';
+      ? 'percentile = midpoint of % of samples at-or-above this bin\u2019s range (fewer cycles = better)'
+      : 'percentile = midpoint of % of samples at-or-below this bin\u2019s range';
 
     bodyEl.innerHTML = `
       <div class="dist-meta-row">
@@ -230,6 +313,8 @@
       syncBadge();
     });
   }
+
+  if (clearAllBtn) clearAllBtn.addEventListener('click', closeAllTabs);
 
   closeBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });

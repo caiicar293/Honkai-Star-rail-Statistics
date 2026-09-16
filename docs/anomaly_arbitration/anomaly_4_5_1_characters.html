@@ -355,17 +355,20 @@
   }
   .dist-modal-overlay.open { display: flex; }
   .dist-modal {
-    width: min(1100px, 100%); max-height: min(820px, 92vh); display: flex; flex-direction: column;
+    width: min(1200px, 100%); max-height: min(820px, 92vh); display: flex; flex-direction: column;
     background: var(--panel); border: 1px solid var(--border2); border-radius: 12px;
     box-shadow: 0 24px 80px rgba(0,0,0,0.6); overflow: hidden;
   }
   .dist-modal-head {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 16px 18px 12px; border-bottom: 1px solid var(--border);
+    padding: 16px 18px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
   }
   .dist-modal-head-left { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
   .dist-modal-title { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.03em; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
   .dist-modal-title span { color: var(--accent); }
+  .dist-modal-title .dist-modal-row-icons { display: inline-flex; align-items: center; flex-shrink: 0; align-self: center; }
+  .dist-modal-title .dist-modal-row-icons img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border2); margin-right: -6px; background: var(--panel2); }
+  .dist-modal-title .dist-modal-row-icons img:last-child { margin-right: 0; }
   .dist-modal-title .dist-modal-row {
     color: var(--text2); font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px;
@@ -384,26 +387,53 @@
   }
   .dist-modal-close:hover { border-color: var(--red); color: var(--red); }
 
+  /* Body row: a vertical tab rail down the left + the chart panel on the
+     right, so any number of open rows can be switched between without the
+     tab strip ever needing to scroll horizontally or get squeezed. */
+  .dist-modal-main { display: flex; flex: 1; min-height: 0; }
+
+  .dist-tabs-col {
+    display: flex; flex-direction: column; width: 220px; flex-shrink: 0;
+    border-right: 1px solid var(--border); background: var(--bg2); min-height: 0;
+  }
+  .dist-tabs-toolbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 10px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .dist-tabs-toolbar-label {
+    font-family: 'Share Tech Mono', monospace; font-size: 9.5px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .dist-tabs-clear-all {
+    background: var(--panel); border: 1px solid var(--border2); color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.05em; padding: 4px 9px; border-radius: 5px; cursor: pointer; transition: all 0.15s;
+  }
+  .dist-tabs-clear-all:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+  .dist-tabs-clear-all:disabled { opacity: 0.35; cursor: not-allowed; }
+
   .dist-tabs {
-    display: flex; gap: 4px; padding: 8px 12px 0; overflow-x: auto; flex-shrink: 0;
-    border-bottom: 1px solid var(--border); background: var(--bg2);
+    display: flex; flex-direction: column; gap: 3px; padding: 8px; overflow-y: auto; flex: 1; min-height: 0;
   }
   .dist-tab {
-    display: inline-flex; align-items: center; gap: 7px; background: var(--panel2);
-    border: 1px solid var(--border2); border-bottom: none; border-radius: 6px 6px 0 0; padding: 6px 8px 6px 12px;
+    display: flex; align-items: center; gap: 7px; background: var(--panel2);
+    border: 1px solid var(--border2); border-radius: 6px; padding: 7px 8px 7px 10px;
     font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--text2);
-    cursor: pointer; white-space: nowrap; max-width: 220px; transition: all 0.12s; position: relative; top: 1px;
+    cursor: pointer; transition: all 0.12s;
   }
-  .dist-tab .tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
-  .dist-tab:hover { color: var(--text); }
-  .dist-tab.active { background: var(--panel); border-color: var(--border2); color: var(--accent); }
+  .dist-tab .dist-tab-icons { display: inline-flex; align-items: center; flex-shrink: 0; }
+  .dist-tab .dist-tab-icons img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border2); margin-right: -5px; background: var(--panel); }
+  .dist-tab .dist-tab-icons img:last-child { margin-right: 0; }
+  .dist-tab .tab-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dist-tab:hover { color: var(--text); border-color: var(--border2); }
+  .dist-tab.active { background: var(--panel); border-color: var(--accent); color: var(--accent); }
   .dist-tab-close {
-    background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer;
+    background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; flex-shrink: 0;
     font-size: 13px; line-height: 1; padding: 1px 3px; border-radius: 50%; transition: all 0.12s;
   }
   .dist-tab-close:hover { opacity: 1; background: rgba(248,113,113,0.18); color: var(--red); }
 
-  .dist-modal-body { flex: 1; overflow-y: auto; padding: 16px 20px 20px; }
+  .dist-modal-body { flex: 1; overflow-y: auto; padding: 16px 20px 20px; min-width: 0; }
   .dist-meta-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
   .dist-meta-chip {
     background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
@@ -438,6 +468,7 @@
   .dist-tooltip .pct { color: var(--gold); }
 
   .dist-empty { text-align: center; padding: 60px 20px; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+
 </style>
 </head>
 <body>
@@ -564,13 +595,21 @@
   <div class="dist-modal">
     <div class="dist-modal-head">
       <div class="dist-modal-head-left">
-        <div class="dist-modal-title">Score <span>Distribution</span> <span class="dist-modal-row" id="distModalRowLabel"></span></div>
+        <div class="dist-modal-title">Score <span>Distribution</span> <span class="dist-modal-row-icons" id="distModalRowLabelIcons"></span><span class="dist-modal-row" id="distModalRowLabel"></span></div>
         <div class="dist-modal-meta" id="distModalMeta"></div>
       </div>
       <button class="dist-modal-close" id="distModalClose" type="button" title="Close (Esc)">✕</button>
     </div>
-    <div class="dist-tabs" id="distTabs"></div>
-    <div class="dist-modal-body" id="distModalBody"></div>
+    <div class="dist-modal-main">
+      <div class="dist-tabs-col">
+        <div class="dist-tabs-toolbar">
+          <span class="dist-tabs-toolbar-label">Open Rows</span>
+          <button class="dist-tabs-clear-all" id="distTabsClearAll" type="button" title="Close every open tab" disabled>Clear all</button>
+        </div>
+        <div class="dist-tabs" id="distTabs"></div>
+      </div>
+      <div class="dist-modal-body" id="distModalBody"></div>
+    </div>
   </div>
 </div>
 <div class="dist-tooltip" id="distTooltip"></div>
@@ -1357,12 +1396,16 @@ const ColumnFilter = (() => {
 // ── Distribution modal ───────────────────────────────────────────────────
 // Renders per-row Scores_Distributions (STRUCT(Scores, count)[]) as a
 // frequency histogram, opened via a per-row "Dist" button. Multiple rows
-// can be open at once, switchable via tabs — re-clicking an already-open
-// row just re-activates its tab instead of stacking a duplicate.
+// can be open at once, switchable via a vertical tab rail down the left
+// side of the modal — re-clicking an already-open row just re-activates
+// its tab instead of stacking a duplicate. There is no cap on how many
+// tabs can be open at once; a "Clear all" button in the tab rail closes
+// every open tab in one click (same idea as the trends page's "Clear all").
 //
 // Exposes: window.openDistribution(row, label, metaHtml)
 //   row      - the data row object (must carry Scores_Distributions)
-//   label    - short text shown on the tab
+//   label    - short text shown on the tab (also used to look up per-
+//              character icons — see iconTokensFor/iconStripHtml below)
 //   metaHtml - optional extra <div class="dist-meta-chip">...</div> markup
 //              appended to the meta row (e.g. dim/eidolon context)
 (function() {
@@ -1372,32 +1415,75 @@ const ColumnFilter = (() => {
   const DIST_DESCENDING = true;
   const DIST_UNIT = 'Cycles';
   // Point modes (Apoc/PF) arrive pre-binned into fixed-width buckets, so
-  // their axis labels read as ranges ("0 - 50", "50 - 100", …) with the top
-  // bin stopping at its own value. Cycle modes keep single-value labels.
+  // their axis labels read as ranges ("0 - 50", "50 - 100", …) — including
+  // the top bin, which reads as a range too (e.g. "3950 - 4000") by
+  // inferring the bucket width from the preceding gap rather than just
+  // stopping at its own value. Cycle modes keep single-value labels.
   const DIST_RANGED = DIST_UNIT === 'Points';
 
-  const overlay   = document.getElementById('distModalOverlay');
-  const tabsEl    = document.getElementById('distTabs');
-  const bodyEl    = document.getElementById('distModalBody');
-  const closeBtn  = document.getElementById('distModalClose');
-  const tooltipEl = document.getElementById('distTooltip');
-  const reopenBtn = document.getElementById('distReopenBtn');
-  const countEl   = document.getElementById('distReopenCount');
-  const rowLabelEl = document.getElementById('distModalRowLabel');
-  const metaEl     = document.getElementById('distModalMeta');
+  const overlay      = document.getElementById('distModalOverlay');
+  const tabsEl        = document.getElementById('distTabs');
+  const clearAllBtn   = document.getElementById('distTabsClearAll');
+  const bodyEl        = document.getElementById('distModalBody');
+  const closeBtn      = document.getElementById('distModalClose');
+  const tooltipEl     = document.getElementById('distTooltip');
+  const reopenBtn     = document.getElementById('distReopenBtn');
+  const countEl       = document.getElementById('distReopenCount');
+  const rowLabelEl    = document.getElementById('distModalRowLabel');
+  const rowLabelIcons = document.getElementById('distModalRowLabelIcons');
+  const metaEl        = document.getElementById('distModalMeta');
   if (!overlay) return;
 
-  // tabs: [{ id, key, label, meta, bins, total }]
+  // ── Character icons — same lookup convention as every other dashboard
+  //    on the site (see trends_template.html.j2 / teams_template.html.j2),
+  //    kept local to this IIFE so it never collides with a same-named
+  //    ICONS/lookupIconUrl the host page may already declare in its own
+  //    top-level script. Falls back to empty/no-op if the host page didn't
+  //    wire icons_json/path_prefix into this template's context. ──
+  const ICONS = {"The Herta": "assets/icons/the_herta.webp", "Lightning Trailblazer": "assets/icons/lightning_trailblazer.webp", "Ice Trailblazer": "assets/icons/ice_trailblazer.webp", "Imaginary Trailblazer": "assets/icons/imaginary_trailblazer.webp", "Physical Trailblazer": "assets/icons/physical_trailblazer.webp", "Fire Trailblazer": "assets/icons/fire_trailblazer.webp", "Hyacine": "assets/icons/hyacine.webp", "Phainon": "assets/icons/phainon.webp", "Castorice": "assets/icons/castorice.webp", "Cipher": "assets/icons/cipher.webp", "Anaxa": "assets/icons/anaxa.webp", "Mydei": "assets/icons/mydei.webp", "Tribbie": "assets/icons/tribbie.webp", "Hysilens": "assets/icons/hysilens.webp", "The Dahlia": "assets/icons/the_dahlia.webp", "Ruan Mei": "assets/icons/ruan_mei.webp", "Sunday": "assets/icons/sunday.webp", "Robin": "assets/icons/robin.webp", "Acheron": "assets/icons/acheron.webp", "Black Swan": "assets/icons/black_swan.webp", "Sparkle": "assets/icons/sparkle.webp", "Aglaea": "assets/icons/aglaea.webp", "Boothill": "assets/icons/boothill.webp", "Jade": "assets/icons/jade.webp", "Firefly": "assets/icons/firefly.webp", "Rappa": "assets/icons/rappa.webp", "Jingliu": "assets/icons/jingliu.webp", "Yunli": "assets/icons/yunli.webp", "Kafka": "assets/icons/kafka.webp", "Dan Heng • Permansor Terrae": "assets/icons/dan_heng_permansor_terrae.webp", "Cerydra": "assets/icons/cerydra.webp", "Guinaifen": "assets/icons/guinaifen.webp", "Feixiao": "assets/icons/feixiao.webp", "Dr. Ratio": "assets/icons/dr_ratio.webp", "Aventurine": "assets/icons/aventurine.webp", "Fu Xuan": "assets/icons/fu_xuan.webp", "Luocha": "assets/icons/luocha.webp", "Topaz & Numby": "assets/icons/topaz_numby.webp", "Seele": "assets/icons/seele.webp", "Bronya": "assets/icons/bronya.webp", "Silver Wolf": "assets/icons/silver_wolf.webp", "Jing Yuan": "assets/icons/jing_yuan.webp", "Gepard": "assets/icons/gepard.webp", "Yanqing": "assets/icons/yanqing.webp", "Cyrene": "assets/icons/cyrene.webp", "Evernight": "assets/icons/evernight.webp", "Huohuo": "assets/icons/huohuo.webp", "Blade": "assets/icons/blade.webp", "Dan Heng • Imbibitor Lunae": "assets/icons/dan_heng_imbibitor_lunae.webp", "Argenti": "assets/icons/argenti.webp", "Lingsha": "assets/icons/lingsha.webp", "Fugue": "assets/icons/fugue.webp", "Clara": "assets/icons/clara.webp", "Dan Heng": "assets/icons/dan_heng.webp", "Sparxie": "assets/icons/sparxie.webp", "Himeko": "assets/icons/himeko.webp", "Jiaoqiu": "assets/icons/jiaoqiu.webp", "Sampo": "assets/icons/sampo.webp", "Luka": "assets/icons/luka.webp", "Imaginary March 7th": "assets/icons/imaginary_march_7th.webp", "Tingyun": "assets/icons/tingyun.webp", "Xueyi": "assets/icons/xueyi.webp", "Welt": "assets/icons/welt.webp", "Bailu": "assets/icons/bailu.webp", "Herta": "assets/icons/herta.webp", "Pela": "assets/icons/pela.webp", "Yukong": "assets/icons/yukong.webp", "Asta": "assets/icons/asta.webp", "Hook": "assets/icons/hook.webp", "Gallagher": "assets/icons/gallagher.webp", "Saber": "assets/icons/saber.webp", "Archer": "assets/icons/archer.webp", "Yao Guang": "assets/icons/yao_guang.webp", "Ashveil": "assets/icons/ashveil.webp", "Qingque": "assets/icons/qingque.webp", "Lynx": "assets/icons/lynx.webp", "Silver Wolf LV.999": "assets/icons/silver_wolf_lv999.webp", "Natasha": "assets/icons/natasha.webp", "Evanescia": "assets/icons/evanescia.webp", "Arlan": "assets/icons/arlan.webp", "Serval": "assets/icons/serval.webp", "Moze": "assets/icons/moze.webp", "Misha": "assets/icons/misha.webp", "Sushang": "assets/icons/sushang.webp", "Hanya": "assets/icons/hanya.webp", "Mortenax Blade": "assets/icons/mortenax_blade.webp", "Ice March 7th": "assets/icons/ice_march_7th.webp", "Himeko • Nova": "assets/icons/himeko_nova.webp", "Rin Tohsaka": "assets/icons/rin_tohsaka.webp", "Gilgamesh": "assets/icons/gilgamesh.webp", "Robin • Summeretto": "assets/icons/robin_summeretto.webp", "Aventurine • Waveflair": "assets/icons/aventurine_waveflair.webp"};
+  const ICON_PATH_PREFIX = "../";
+
+  function lookupIconUrl(name) {
+    let url = ICONS[name];
+    if (!url) url = ICONS[name.replace(/\s+LV\.\d+$/, '').trim()];
+    if (!url) url = ICONS[name.replace(/\s*\(E\d+\)$/i, '').trim()];
+    if (!url) return null;
+    if (!url.startsWith('http')) url = ICON_PATH_PREFIX + url;
+    return url;
+  }
+
+  // Row labels come in a few shapes depending on which page opened the
+  // modal: a plain character name, a composite "A + B" (archetype cores),
+  // or a paren-wrapped team roster "(A, B, C, D)". Handle all three, same
+  // as trends_template.html.j2's iconTokensFor().
+  function iconTokensFor(id) {
+    const s = String(id).trim();
+    if (s.startsWith("(") && s.endsWith(")")) {
+      return s.slice(1, -1).split(/\s*,\s*/).map(t => t.trim()).filter(Boolean);
+    }
+    return s.split(" + ").map(t => t.trim()).filter(Boolean);
+  }
+
+  function iconStripHtml(id) {
+    const tokens = iconTokensFor(id);
+    const imgs = tokens.map(t => {
+      const url = lookupIconUrl(t);
+      return url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()"/>` : "";
+    }).filter(Boolean);
+    if (!imgs.length) return "";
+    return `<span class="dist-tab-icons">${imgs.join("")}</span>`;
+  }
+
+  // tabs: [{ id, key, label, meta, bins, total }] — unlimited, no cap.
   let tabs = [];
   let activeId = null;
   let seq = 0;
-  const MAX_TABS = 8;
 
   function computeBins(raw) {
     const arr = Array.isArray(raw) ? raw.slice() : [];
     // Always establish the true ascending-by-score order first — percentile
-    // (% of samples at-or-below / at-or-above this score) is defined on that
-    // axis regardless of which direction the bars are ultimately displayed in.
+    // is defined on that axis regardless of which direction the bars are
+    // ultimately displayed in.
     arr.sort((a, b) => a.Scores - b.Scores);
     const total = arr.reduce((s, b) => s + (b.count || 0), 0);
     let cum = 0;
@@ -1405,17 +1491,32 @@ const ColumnFilter = (() => {
       const count = b.count || 0;
       const cumBefore = cum;
       cum += count;
+      // Each bin spans a range of percentiles — from the cumulative total
+      // just below it (cumBefore) up to the cumulative total including it
+      // (cum). Report the MIDPOINT of that range rather than its upper
+      // edge, so a bin covering e.g. percentile 95–97 reports 96, not 97.
+      let percentile = 0;
+      if (total) {
+        if (DIST_DESCENDING) {
+          // Descending (cycle) modes: percentile = % of samples at-or-above
+          // this score, so the range runs from (total-cum)/total (excluding
+          // this bin's own samples) up to (total-cumBefore)/total
+          // (including them) — same midpoint logic, mirrored.
+          const pctHigh = ((total - cumBefore) / total) * 100;
+          const pctLow  = ((total - cum) / total) * 100;
+          percentile = (pctHigh + pctLow) / 2;
+        } else {
+          const pctHigh = (cum / total) * 100;
+          const pctLow  = (cumBefore / total) * 100;
+          percentile = (pctHigh + pctLow) / 2;
+        }
+      }
       return {
         score: b.Scores,
         count: count,
         label: binLabel(arr, i),
         pctOfTotal: total ? (count / total) * 100 : 0,
-        // Ascending modes: % of samples at-or-below this score.
-        // Descending (cycle) modes: reversed — % at-or-above, so the best
-        // (lowest) score carries the highest percentile.
-        percentile: total
-          ? (DIST_DESCENDING ? ((total - cumBefore) / total) * 100 : (cum / total) * 100)
-          : 0,
+        percentile: percentile,
       };
     });
     if (DIST_DESCENDING) bins = bins.reverse(); // display order: max → min, min on the right
@@ -1423,11 +1524,21 @@ const ColumnFilter = (() => {
   }
 
   // Label for bin i of the ascending-sorted array. Point modes show the bin
-  // as a range up to the next bin; the top bin just stops at its own value.
+  // as a range up to the next bin. The TOP bin (no "next" bin to borrow an
+  // upper edge from) infers its own width from the gap to the previous bin
+  // — since point-mode bins are fixed-width buckets, that gap IS the bucket
+  // width — so it reads as a range too (e.g. "3950 - 4000" for an Apoc max
+  // of 4000, or "39500 - 40000" for a Pure Fiction max of 40000) instead of
+  // just stopping at its own value, which misleadingly read as an exact cap.
   function binLabel(sorted, i) {
     if (!DIST_RANGED) return fmtScore(sorted[i].Scores);
     const next = sorted[i + 1];
-    return next ? `${fmtScore(sorted[i].Scores)} - ${fmtScore(next.Scores)}` : fmtScore(sorted[i].Scores);
+    if (next) return `${fmtScore(sorted[i].Scores)} - ${fmtScore(next.Scores)}`;
+    const prev = sorted[i - 1];
+    const step = prev ? (sorted[i].Scores - prev.Scores) : 0;
+    return step > 0
+      ? `${fmtScore(sorted[i].Scores)} - ${fmtScore(sorted[i].Scores + step)}`
+      : fmtScore(sorted[i].Scores);
   }
 
   window.openDistribution = function(row, label, metaHtml) {
@@ -1442,9 +1553,10 @@ const ColumnFilter = (() => {
       existing.meta = metaHtml || '';
       activeId = existing.id;
     } else {
+      // No MAX_TABS cap — every row a person opens stays open until they
+      // close its tab or hit "Clear all".
       const id = 'dt' + (++seq);
       tabs.push({ id, key, label: label || 'Row', meta: metaHtml || '', bins, total });
-      if (tabs.length > MAX_TABS) tabs.shift();
       activeId = id;
     }
     overlay.classList.add('open');
@@ -1457,14 +1569,6 @@ const ColumnFilter = (() => {
   // need to re-select an entry). If nothing has been opened yet, it shows a hint.
   window.reopenDistribution = function() {
     syncBadge();
-    if (tabs.length === 0) {
-      overlay.classList.add('open');
-      if (rowLabelEl) rowLabelEl.textContent = '';
-      if (metaEl) metaEl.innerHTML = '';
-      tabsEl.innerHTML = '';
-      bodyEl.innerHTML = `<div class="dist-empty">Nothing to show yet — click the <b>Dist</b> button on any row to open its distribution, then come back here to re-view them.</div>`;
-      return;
-    }
     overlay.classList.add('open');
     render();
   };
@@ -1483,7 +1587,18 @@ const ColumnFilter = (() => {
     if (e) e.stopPropagation();
     tabs = tabs.filter(t => t.id !== id);
     if (activeId === id) activeId = tabs.length ? tabs[tabs.length - 1].id : null;
-    if (tabs.length === 0) { closeModal(); syncBadge(); return; }
+    syncBadge();
+    render();
+  }
+
+  // "Clear all" — closes every open tab at once, mirroring the trends
+  // page's "Clear all" for its comparison selection. Leaves the modal open
+  // on an empty state rather than closing it outright, so re-opening a new
+  // row from the table right after feels like a fresh start, not a re-open.
+  function closeAllTabs(e) {
+    if (e) e.stopPropagation();
+    tabs = [];
+    activeId = null;
     syncBadge();
     render();
   }
@@ -1500,9 +1615,12 @@ const ColumnFilter = (() => {
   function render() {
     tabsEl.innerHTML = tabs.map(t => `
       <div class="dist-tab${t.id === activeId ? ' active' : ''}" data-tab="${t.id}">
+        ${iconStripHtml(t.label)}
         <span class="tab-label" title="${t.label}">${t.label}</span>
         <button class="dist-tab-close" data-close="${t.id}" title="Close">×</button>
       </div>`).join('');
+
+    if (clearAllBtn) clearAllBtn.disabled = tabs.length === 0;
 
     tabsEl.querySelectorAll('.dist-tab').forEach(el => {
       el.addEventListener('click', () => activate(el.dataset.tab));
@@ -1514,11 +1632,15 @@ const ColumnFilter = (() => {
     const t = tabs.find(x => x.id === activeId);
     if (!t) {
       if (rowLabelEl) rowLabelEl.textContent = '';
+      if (rowLabelIcons) rowLabelIcons.innerHTML = '';
       if (metaEl) metaEl.innerHTML = '';
-      bodyEl.innerHTML = '';
+      bodyEl.innerHTML = tabs.length
+        ? ''
+        : `<div class="dist-empty">Nothing to show yet — click the <b>Dist</b> button on any row to open its distribution, then come back here to re-view them.</div>`;
       return;
     }
     if (rowLabelEl) rowLabelEl.textContent = t.label;
+    if (rowLabelIcons) rowLabelIcons.innerHTML = iconStripHtml(t.label);
     if (metaEl) metaEl.innerHTML = t.meta || '';
 
     if (!t.bins.length) {
@@ -1548,8 +1670,8 @@ const ColumnFilter = (() => {
     const axisHtml = t.bins.map(b => `<div class="dist-axis-label" style="min-width:${colW}px">${b.label}</div>`).join('');
 
     const pctNote = DIST_DESCENDING
-      ? 'percentile = % of samples at-or-above (fewer cycles = better)'
-      : 'percentile = % of samples at-or-below';
+      ? 'percentile = midpoint of % of samples at-or-above this bin\u2019s range (fewer cycles = better)'
+      : 'percentile = midpoint of % of samples at-or-below this bin\u2019s range';
 
     bodyEl.innerHTML = `
       <div class="dist-meta-row">
@@ -1585,6 +1707,8 @@ const ColumnFilter = (() => {
       syncBadge();
     });
   }
+
+  if (clearAllBtn) clearAllBtn.addEventListener('click', closeAllTabs);
 
   closeBtn.addEventListener('click', closeModal);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });

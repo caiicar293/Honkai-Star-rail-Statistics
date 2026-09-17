@@ -1796,6 +1796,23 @@ const ColumnFilter = (() => {
     render();
   };
 
+  // Called by the version switcher (_version_switch_script.html.j2) right
+  // after a new version's dataset has finished loading. Every open tab's
+  // bins were computed from THAT OLD version's row objects — carrying them
+  // over would silently keep showing a previous version's distribution
+  // under the new version's label, so a version switch always closes every
+  // tab and the modal itself, same as clicking "Clear all" but also
+  // dismissing the overlay since the whole page's data just changed out
+  // from under it.
+  window.resetDistributionModal = function() {
+    if (tabs.length === 0 && !overlay.classList.contains('open')) return;
+    tabs = [];
+    activeId = null;
+    closeModal();
+    syncBadge();
+    render();
+  };
+
   // Keep the header button's badge in sync with the number of open tabs.
   function syncBadge() {
     if (!reopenBtn) return;

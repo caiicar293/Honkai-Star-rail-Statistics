@@ -86,6 +86,10 @@
     try {
       await loadDataset(vsFilenameFor(safe));
       vsLiveSafe = safe;
+      // Any distribution tabs still open belong to the OLD version's row
+      // objects — close them (and the modal) rather than let them keep
+      // showing stale data under the new version's label.
+      if (typeof window.resetDistributionModal === 'function') window.resetDistributionModal();
       if (btnLabel) btnLabel.textContent = label;
       document.querySelectorAll('.version-item').forEach(el => {
         const tag = el.querySelector('.version-item-tag');

@@ -1,0 +1,114 @@
+name: Character Data Tests
+
+# Validates the hand-maintained character data:
+#   characters.json   -> DB-critical (role / availability / element / path /
+#                        release_phase); joined into character_stats, feeds the
+#                        appearance-rate scripts and archetype classification
+#   char_config.json  -> dashboard-only (theme colours, stat panels, roster)
+# plus the prompt palette char_config.json must follow, and the icon roster.
+#
+# The suite is stdlib-only -- no duckdb, no polars, no pytest, no database and
+# no Hugging Face download -- so the whole job is checkout + one command:
+# ~15 seconds, and deliberately no `pip install` step.
+#
+# ---------------------------------------------------------------------------
+# Why `paths` lists more than the two files this suite is named after
+#
+# `paths` is the workflow-level gate. If a push touches none of them the
+# workflow does not run at all -- no run, no minutes -- so the list has to
+# cover every file the suite READS, not just the two it is about. Change the
+# palette in the prompt and the theme tests fail; if that path were not listed,
+# CI would never even start and the failure would go unnoticed.
+#
+# `paths` and `paths-ignore` cannot both be used for the same event -- GitHub
+# rejects the workflow.
+#
+# If this ever becomes a REQUIRED status check on pull requests, mind the trap:
+# a workflow skipped by path filtering leaves its checks "Pending" and blocks
+# the merge forever (GitHub's own advice is to avoid requiring workflows that
+# can be skipped). See the note at the bottom of this file.
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_dispatch:              # manual run; event filters don't apply to it
+
+  push:
+    paths:
+      - characters.json
+      - char_config.json
+      - character_icons.json                      # roster / icon coverage test
+      - char_metadata_coverage.py                 # imported by the suite
+      - Dashboards/character_dashboard_prompt_v2.md   # the theme palette
+      - tests/**
+
+  pull_request:
+    paths:
+      - characters.json
+      - char_config.json
+      - character_icons.json
+      - char_metadata_coverage.py
+      - Dashboards/character_dashboard_prompt_v2.md
+      - tests/**
+
+# Read-only: this workflow only reads the repo.
+permissions:
+  contents: read
+
+jobs:
+  character-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # This repo's history is multi-GB; the suite needs no history.
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          # No `cache: pip`: there is nothing to install, so nothing to key on.
+
+      # `-s tests -t .` is required: a bare `unittest discover` also picks up
+      # the scratch test_mcp_client.py / testing_agg.py and errors on them.
+      - name: Run the character-data suite
+        run: python -m unittest discover -s tests -t . -v
+
+# ---------------------------------------------------------------------------
+# Making this a required check (only if you switch to PRs)
+#
+# A path-filtered workflow that doesn't run never reports, so if `character-data`
+# is marked required, any PR touching none of the listed files is stuck on
+# "Expected -- Waiting for status to be reported" and cannot be merged.
+#
+# Fix: drop the two `paths:` blocks, trigger on every push/PR, and do the
+# filtering inside the job instead. A job skipped by a conditional reports
+# Success (unlike a skipped workflow), so the required check is satisfied when
+# nothing relevant changed. Rough shape -- the same list as above:
+#
+#   jobs:
+#     changed:
+#       runs-on: ubuntu-latest
+#       outputs:
+#         relevant: ${{ steps.diff.outputs.relevant }}
+#       steps:
+#         - uses: actions/checkout@v4
+#           with:
+#             fetch-depth: 0
+#         - id: diff
+#           run: |
+#             base="${{ github.event.before }}"
+#             [ -n "$base" ] && [ "$base" != "0000000000000000000000000000000000000000" ] \
+#               || base="$(git rev-parse HEAD~1 2>/dev/null || echo HEAD)"
+#             if git diff --name-only "$base" "${{ github.sha }}" \
+#                 | grep -qE '^(characters|char_config|character_icons)\.json$|^char_metadata_coverage\.py$|^Dashboards/character_dashboard_prompt_v2\.md$|^tests/'; then
+#               echo "relevant=true" >> "$GITHUB_OUTPUT"
+#             else
+#               echo "relevant=false" >> "$GITHUB_OUTPUT"
+#             fi
+#
+#     character-data:
+#       needs: changed
+#       if: needs.changed.outputs.relevant == 'true'
+#       runs-on: ubuntu-latest
+#       ...
+# ---------------------------------------------------------------------------

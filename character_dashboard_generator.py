@@ -1,5 +1,7 @@
 import os
 import json
+from decimal import Decimal
+
 import duckdb
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
@@ -402,6 +404,18 @@ class CharacterDashboard:
 
         return '\n'.join(blocks)
 
+    @staticmethod
+    def _sanitize_json(value):
+        """Recursively convert duckdb-returned types (Decimal, ...) that are not
+        JSON-serializable so the template's |tojson filter can encode them."""
+        if isinstance(value, dict):
+            return {k: CharacterDashboard._sanitize_json(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [CharacterDashboard._sanitize_json(v) for v in value]
+        if isinstance(value, Decimal):
+            return float(value)
+        return value
+
     def _embed_with_jinja(self, output_path, template_vars):
         env = Environment(loader=FileSystemLoader(self.template_dir))
         template = env.get_template(self.template_name)
@@ -697,12 +711,12 @@ class CharacterDashboard:
             "AVG_SIDEBAR": avg_sidebar_html,
             "EIDOLON_DATA": eidolon_data_html,
 
-            # JavaScript Globals
-            "ICONS": icons_map,
-            "GEAR": gear_data,
-            "TEAMS": teams_data,
-            "ARCHETYPES": archetypes_data,
-            "DUOS": duos_data
+            # JavaScript Globals (duckdb rows can carry Decimal -> sanitize for tojson)
+            "ICONS": self._sanitize_json(icons_map),
+            "GEAR": self._sanitize_json(gear_data),
+            "TEAMS": self._sanitize_json(teams_data),
+            "ARCHETYPES": self._sanitize_json(archetypes_data),
+            "DUOS": self._sanitize_json(duos_data)
         }
 
         self._embed_with_jinja(output_file, master_template_vars)

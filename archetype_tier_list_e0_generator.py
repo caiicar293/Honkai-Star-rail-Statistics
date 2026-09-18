@@ -73,7 +73,8 @@ def extract_and_build_html(icons_path, template_path, output_path, version, eido
             'Saber', 'Rappa', 'Acheron', 'Seele', 'Silver Wolf LV.999 + Evanescia',
             'Sparxie + Evanescia', 'Welt + Silver Wolf LV.999', 'Welt + Sparxie + Silver Wolf LV.999',
             'Feixiao', 'Serval + The Herta', 'Yunli', 'Acheron + Ashveil', 'Welt + Ashveil', 'Sparxie + Evanescia','Himeko • Nova',
-            'Welt + Himeko • Nova','Archer + Rin Tohsaka' , 'Rin Tohsaka' , 'Saber + Gilgamesh' ,'Gilgamesh'
+            'Welt + Himeko • Nova','Archer + Rin Tohsaka' , 'Rin Tohsaka' , 'Saber + Gilgamesh' ,'Gilgamesh' ,'Aventurine • Waveflair'
+            
         )
     )
     ORDER BY Game_Mode, Weighted_Avg_Score;

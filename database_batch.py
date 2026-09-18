@@ -17,6 +17,78 @@ load_dotenv()
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
+# ---------------------------------------------------------------------
+# Per-gamemode ingest strategy — read from .env with the SAME keys the
+# frontend orchestrator uses (frontend_orchestrator.MODE_SLOTS):
+#
+#     MOC = replace
+#     Pure_fiction = add
+#     anomaly = replace
+#     apoc = replace
+#
+#   replace -> delete the version being added from that gamemode's tables
+#              first, so re-adding refreshes its rows instead of duplicating
+#   add     -> append only; nothing is deleted for that gamemode
+#
+# DB_STRATEGY, if set to 'replace' or 'add', still overrides every mode
+# (legacy single-key behaviour / CI smoke tests).
+# ---------------------------------------------------------------------
+MODE_STRATEGY_ENV_KEYS = {
+    # modern gamemodes
+    "MOC":                  "MOC",
+    "PURE_FICTION":         "Pure_fiction",
+    "APOC":                 "apoc",
+    "ANOMALY":              "anomaly",
+    "ANOMALY_HARD":         "anomaly",
+    # legacy gamemodes inherit their modern counterpart's strategy
+    "MOC_LEGACY":           "MOC",
+    "MOC_LATE_LEGACY":      "MOC",
+    "PURE_FICTION_LEGACY":  "Pure_fiction",
+    # cost-stratified tables, same gamemode mapping
+    "MOC_COST":             "MOC",
+    "PURE_FICTION_COST":    "Pure_fiction",
+    "APOC_COST":            "apoc",
+    "ANOMALY_COST":         "anomaly",
+    "ANOMALY_HARD_COST":    "anomaly",
+}
+
+
+# Sort key for the sort pass (PASS 4) — same order the polars implementation
+# used: version DESC, at_eidolon_level ASC, up_to_eidolon_level DESC, node
+# DESC, all NULLS LAST. Tables missing a column simply skip that key.
+SORT_SPEC = [
+    ("version", "DESC"),
+    ("at_eidolon_level", "ASC"),
+    ("up_to_eidolon_level", "DESC"),
+    ("node", "DESC"),
+]
+
+
+def sort_clause(columns):
+    """ORDER BY fragment for the present sort keys (NULLS LAST on each)."""
+    return ", ".join(f"{c} {d} NULLS LAST" for c, d in SORT_SPEC if c in columns)
+
+
+def get_mode_strategy(mode, default="add"):
+    """Resolve one config mode to 'replace' or 'add' from .env.
+
+    mode is a config key such as 'MOC', 'ANOMALY_HARD' or 'APOC_COST'.
+    Falls back to `default` (append-only) when the mode has no .env key or
+    the key is blank/unknown.
+    """
+    override = (os.getenv("DB_STRATEGY") or "").strip().lower()
+    if override in ("replace", "add"):
+        return override
+
+    key = MODE_STRATEGY_ENV_KEYS.get(str(mode).upper())
+    if key is None:
+        return default
+    value = (os.getenv(key) or "").strip().lower()
+    if value in ("replace", "add"):
+        return value
+    return default
+
+
 class HonkaiDataPlatform:
 
     def __init__(self, db_name=os.getenv("DB_File")):
@@ -329,26 +401,23 @@ class HonkaiDataPlatform:
 
     # ------------------------------------------------------------------
     def _sort_table(self, conn, table):
-        """Replace a table's contents with a version-sorted copy (polars).
+        """Replace a table's contents with a version-sorted copy (duckdb).
 
-        Reads the table through duckdb into a polars DataFrame, sorts it with
-        polars (version DESC, at_eidolon_level ASC, up_to_eidolon_level DESC,
-        node DESC), and writes the sorted frame back. Columns absent from a
-        table are skipped, so non-stats tables are left untouched.
+        One statement — CREATE OR REPLACE TABLE ... AS SELECT * FROM ... ORDER
+        BY ... — so the rows never leave the engine (no arrow -> polars -> arrow
+        round-trip, which bench_sort.py measures at ~2.4-2.9x slower end to end).
+        Columns absent from a table are skipped (see SORT_SPEC), so non-stats
+        tables are left untouched.
         """
         try:
-            df = conn.execute(f"SELECT * FROM {table}").pl()
-            if df.is_empty():
+            cols = {r[0] for r in conn.execute(f"DESCRIBE {table}").fetchall()}
+            clause = sort_clause(cols)
+            if not clause:
                 return
-            sort_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "node"]
-            present = [c for c in sort_cols if c in df.columns]
-            if not present:
-                return
-            descending = [c in ("version", "up_to_eidolon_level", "node") for c in present]
-            df = df.sort(present, descending=descending, nulls_last=True)
-            conn.register("temp_sort", df)
-            conn.execute(f"CREATE OR REPLACE TABLE {table} AS SELECT * FROM temp_sort")
-            conn.unregister("temp_sort")
+            conn.execute(
+                f"CREATE OR REPLACE TABLE {table} AS "
+                f"SELECT * FROM {table} ORDER BY {clause}"
+            )
         except Exception:
             pass
 
@@ -594,6 +663,17 @@ class HonkaiDataPlatform:
         run_builds=True,                # whether to run the builds pass at the end
         sort_tables=True,               # whether to re-sort every table at the end
     ):
+        """Ingest the given mode(s)/version(s).
+
+        Replace-vs-append is decided PER GAMEMODE from .env, using the same
+        keys as frontend_orchestrator.py:
+
+            MOC = replace / Pure_fiction = add / anomaly = replace / apoc = replace
+
+        A mode set to 'replace' has the version being added deleted from its
+        tables first; a mode set to 'add' is simply appended to. See
+        get_mode_strategy() — DB_STRATEGY still overrides all modes.
+        """
         conn = duckdb.connect(self.db_name)
         modes_to_run = [target_mode] if target_mode else list(self.config.keys())
         modern_modes = [m for m in modes_to_run if self.config[m]["era"] == "MODERN"]
@@ -607,36 +687,51 @@ class HonkaiDataPlatform:
         EIDOLONS = [0, 1, 2, 6]
 
         # ------------------------------------------------------------------
-        # REPLACE MODE — .env keyword: DB_STRATEGY=replace
-        # When set, the version being added is deleted from every gamemode
-        # table first (if present), so re-adding replaces the old rows instead
-        # of duplicating them. Without target_version, each gamemode's newest
-        # version is the one replaced.
+        # PER-MODE REPLACE / ADD — .env keys, same as frontend_orchestrator.py
+        #   MOC = replace / Pure_fiction = add / anomaly = replace / apoc = replace
+        # 'replace' modes have the version being added deleted from their tables
+        # first, so re-adding refreshes the rows instead of duplicating them.
+        # 'add' modes append only. Without target_version, each replaced
+        # gamemode's newest version is the one deleted.
         # ------------------------------------------------------------------
-        replace_mode = os.getenv("DB_STRATEGY", "").strip().lower() == "replace"
-        if replace_mode:
-            delete_modes = (modern_modes + legacy_modes) if do_legacy else modern_modes
-            for mode in delete_modes:
-                cfg = self.config[mode]
-                version_to_replace = target_version or self._latest_version(cfg)
-                if version_to_replace is None:
-                    continue
-                self._delete_version(conn, version_to_replace, [mode])
+        delete_modes = (modern_modes + legacy_modes) if do_legacy else modern_modes
+        replace_modes = [m for m in delete_modes if self._strategy_for(m) == "replace"]
+        add_modes = [m for m in delete_modes if m not in replace_modes]
 
-            # by-cost tables carry per-version rows — delete the replaced
-            # version's rows (or the whole mode when no target_version) so the
-            # cost pass re-adds them fresh instead of duplicating.
-            if run_cost:
-                if target_mode:
+        for mode in replace_modes:
+            cfg = self.config[mode]
+            version_to_replace = target_version or self._latest_version(cfg)
+            if version_to_replace is None:
+                continue
+            self._delete_version(conn, version_to_replace, [mode])
+
+        if replace_modes:
+            print(f"  [REPLACE] removing rows for version "
+                  f"{target_version or 'latest-per-gamemode'} in: {', '.join(replace_modes)}")
+        if add_modes:
+            print(f"  [ADD] appending without delete: {', '.join(add_modes)}")
+
+        # by-cost tables carry per-version rows — delete the replaced version's
+        # rows (or the whole mode when no target_version) for cost modes whose
+        # gamemode is set to 'replace', so the cost pass re-adds them fresh
+        # instead of duplicating.
+        if run_cost:
+            cost_modes_to_run = []
+            if target_mode:
+                # A legacy target mode owns no cost tables — skip rather than
+                # falling back to every cost mode (which would delete rows for
+                # gamemodes that were not part of this run).
+                if self.config[target_mode]["era"] != "LEGACY":
                     cost_key = target_mode + "_COST"
                     cost_modes_to_run = [cost_key] if cost_key in self.cost_config else list(self.cost_config.keys())
-                else:
-                    cost_modes_to_run = list(self.cost_config.keys())
-                for mode in cost_modes_to_run:
-                    self._delete_cost_rows(conn, mode, self.cost_config[mode], version=target_version)
-            conn.commit()
-            print(f"  [REPLACE] removed existing rows for version "
-                  f"{target_version or 'latest-per-gamemode'}")
+            else:
+                cost_modes_to_run = list(self.cost_config.keys())
+            for mode in cost_modes_to_run:
+                if self._strategy_for(mode) != "replace":
+                    print(f"  [ADD] {mode}: cost rows kept (strategy=add)")
+                    continue
+                self._delete_cost_rows(conn, mode, self.cost_config[mode], version=target_version)
+        conn.commit()
 
         # ------------------------------------------------------------------
         # PASS 1 — MODERN
@@ -682,11 +777,11 @@ class HonkaiDataPlatform:
                 conn.commit()
 
         # ------------------------------------------------------------------
-        # PASS 4 — Sort (polars)
+        # PASS 4 — Sort (duckdb ORDER BY)
         # ------------------------------------------------------------------
         print("=" * 60)
         if sort_tables:
-            print("PASS 4: Sorting all tables (polars)")
+            print("PASS 4: Sorting all tables (duckdb)")
             print("=" * 60)
             all_tables = conn.execute(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
@@ -725,6 +820,12 @@ class HonkaiDataPlatform:
                 return (0,)
 
         return max(versions, key=key) if versions else None
+
+    # ------------------------------------------------------------------
+    def _strategy_for(self, mode, default="add"):
+        """'replace' | 'add' for a config mode key, from .env (see
+        get_mode_strategy)."""
+        return get_mode_strategy(mode, default=default)
 
     # ------------------------------------------------------------------
     def _table_exists(self, conn, table):
@@ -816,10 +917,12 @@ class HonkaiDataPlatform:
         """Incremental addition — append only the newest version's rows instead
         of rebuilding the whole database.
 
-        - Reads .env: setting DB_STRATEGY=replace deletes the version being
-          added from every gamemode first, so re-adding refreshes those rows
-          instead of duplicating them (the same version's by-cost rows are
-          refreshed too).
+        - Replace-vs-append follows .env per gamemode, exactly like the
+          frontend orchestrator: a mode set to 'replace' (e.g. MOC, anomaly,
+          apoc) has the version being added deleted first so re-adding
+          refreshes those rows instead of duplicating them (the same version's
+          by-cost rows are refreshed too); a mode set to 'add' (e.g.
+          Pure_fiction) is appended to without deleting anything.
         - do_legacy=False (default) skips the slow legacy pass, which rarely
           changes once written.
         - The by-cost pass increments too: it loads only the target version's

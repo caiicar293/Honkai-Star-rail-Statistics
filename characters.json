@@ -1114,7 +1114,7 @@
     ]
   },
     "Robin • Summeretto": {
-    "id": "1510",
+    "id": "1512",
     "rarity": 5,
     "path": "Remembrance",
     "element": "Wind",
@@ -1126,13 +1126,13 @@
     ]
   },
     "Aventurine • Waveflair": {
-    "id": "1511",
+    "id": "1513",
     "rarity": 5,
     "path": "Elation",
     "element": "Quantum",
     "availability": "Limited 5*",
     "slug": "aventurine-waveflair",
-    "release_phase": "4.5.3",
+    "release_phase": "4.5.2",
     "role": [
       "dps,specialist"
     ]

@@ -10,6 +10,7 @@ from Appearance_rate_Pure_fiction_V2 import HonkaiStatistics_V2_Pure
 from Appearance_rate_Apocalytic_Shadow_V2 import HonkaiStatistics_V2_APOC
 from Appearance_rate_anomaly_V2 import HonkaiStatistics_Anomaly_V2
 from Appearance_rates_Legacy import HonkaiStatistics_Legacy
+from char_metadata_coverage import missing_char_metadata, describe_missing_char_metadata
 
 load_dotenv()
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -20,6 +21,8 @@ class HonkaiDataPlatform:
     def __init__(self, db_name=os.getenv("DB_File")):
         self.db_name = db_name
         self.char_metadata_pl = self._fetch_character_metadata_pl()
+        # Names already warned about, so a multi-mode/version run doesn't repeat itself.
+        self._missing_char_meta_reported = set()
 
         def get_env_list(key):
             val = os.getenv(key)
@@ -172,11 +175,32 @@ class HonkaiDataPlatform:
             return None
 
     # ------------------------------------------------------------------
+    def _check_char_metadata_coverage(self, df):
+        """Warn about dataset characters that have no characters.json entry.
+
+        The join in _standardize is how="left", so an unknown name doesn't
+        raise -- it just leaves role/availability/element/path/release_phase
+        NULL for every row of that character. Warn once per name per run.
+        """
+        if self.char_metadata_pl is None or "Character" not in df.columns:
+            return
+        missing = missing_char_metadata(
+            self.char_metadata_pl.get_column("Character").to_list(),
+            df.get_column("Character").unique().to_list(),
+        )
+        missing = [n for n in missing if n not in self._missing_char_meta_reported]
+        if not missing:
+            return
+        self._missing_char_meta_reported.update(missing)
+        print(describe_missing_char_metadata(missing))
+
+    # ------------------------------------------------------------------
     def _standardize(self, df, mode, v, e, f, n, era, is_char=False):
         if df is None or not isinstance(df, pl.DataFrame) or df.is_empty():
             return None
 
         if is_char and self.char_metadata_pl is not None:
+            self._check_char_metadata_coverage(df)
             df = df.join(self.char_metadata_pl, on="Character", how="left")
 
         # Normalise eidolon percentage column names

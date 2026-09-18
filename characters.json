@@ -1071,7 +1071,7 @@
     "path": "Nihility",
     "element": "Fire",
     "availability": "Limited 5*",
-    "slug": "bladе-mortenax",
+    "slug": "mortenax-bladе",
     "release_phase": "4.3.1",
     "role": [
       "amplifier"
@@ -1119,7 +1119,7 @@
     "path": "Remembrance",
     "element": "Wind",
     "availability": "Limited 5*",
-    "slug": "robinSummeretto",
+    "slug": "robin-summeretto",
     "release_phase": "4.5.1",
     "role": [
       "amplifier"

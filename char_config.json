@@ -35,7 +35,7 @@
   {
     "character_name": "Castorice",
     "element": "Quantum",
-    "path": "Rememberance",
+    "path": "Remembrance",
     "subtitle": "The Quantum Enigma",
     "theme_c1": "#8b6eff",
     "theme_c2": "#c8a8ff",
@@ -341,7 +341,7 @@
   {
     "character_name": "Hyacine",
     "element": "Wind",
-    "path": "Rememberance",
+    "path": "Remembrance",
     "subtitle": "The Wind Enigma",
     "theme_c1": "#4ecfa0",
     "theme_c2": "#a0f0d0",
@@ -647,7 +647,7 @@
   {
     "character_name": "Evernight",
     "element": "Ice",
-    "path": "Rememberance",
+    "path": "Remembrance",
     "subtitle": "The Ice Enigma",
     "theme_c1": "#6eb4f7",
     "theme_c2": "#a8d4ff",
@@ -749,7 +749,7 @@
   {
     "character_name": "Cyrene",
     "element": "Ice",
-    "path": "Rememberance",
+    "path": "Remembrance",
     "subtitle": "The Ice Enigma",
     "theme_c1": "#6eb4f7",
     "theme_c2": "#a8d4ff",
@@ -1123,7 +1123,7 @@
   {
     "character_name": "Aglaea",
     "element": "Lightning",
-    "path": "Destruction",
+    "path": "Remembrance",
     "subtitle": "Golden Fleece",
     "theme_c1": "#e8d44d",
     "theme_c2": "#c080ff",
@@ -2143,8 +2143,8 @@
   {
     "character_name": "Ashveil",
     "element": "Lightning",
-    "path": "The Ashen Detective",
-    "subtitle": "The Lightning Enigma",
+    "path": "Hunt",
+    "subtitle": "The Ashen Detective",
     "theme_c1": "#e8d44d",
     "theme_c2": "#c080ff",
     "theme_c3": "#f0e880",
@@ -3063,7 +3063,7 @@
   {
     "character_name": "Robin • Summeretto",
     "element": "Wind",
-    "path": "Rememberance",
+    "path": "Remembrance",
     "subtitle": "Halovian Singer",
     "theme_c1": "#4ecfa0",
     "theme_c2": "#a0f0d0",

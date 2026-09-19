@@ -374,9 +374,12 @@
   }
   .dist-modal-close:hover { border-color: var(--red); color: var(--red); }
 
-  /* Body row: a vertical tab rail down the left + the chart panel on the
-     right, so any number of open rows can be switched between without the
-     tab strip ever needing to scroll horizontally or get squeezed. */
+  /* Body row: by default a vertical tab rail down the left + the chart
+     panel on the right, so any number of open rows can be switched between
+     without the tab strip ever needing to scroll horizontally or get
+     squeezed. The "⬍/⬌" toggle in the tab toolbar flips this to a
+     horizontal strip along the top instead (.horizontal-tabs below) — a
+     matter of taste once several tabs are open side by side. */
   .dist-modal-main { display: flex; flex: 1; min-height: 0; }
 
   .dist-tabs-col {
@@ -391,6 +394,14 @@
     font-family: 'Share Tech Mono', monospace; font-size: 9.5px; color: var(--text3);
     text-transform: uppercase; letter-spacing: 0.08em;
   }
+  .dist-tabs-toolbar-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .dist-tabs-orientation-toggle {
+    background: var(--panel); border: 1px solid var(--border2); color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.05em; padding: 4px 9px; border-radius: 5px; cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .dist-tabs-orientation-toggle:hover { border-color: var(--accent); color: var(--accent); }
   .dist-tabs-clear-all {
     background: var(--panel); border: 1px solid var(--border2); color: var(--text2);
     font-family: 'Share Tech Mono', monospace; font-size: 10px; text-transform: uppercase;
@@ -419,6 +430,27 @@
     font-size: 13px; line-height: 1; padding: 1px 3px; border-radius: 50%; transition: all 0.12s;
   }
   .dist-tab-close:hover { opacity: 1; background: rgba(248,113,113,0.18); color: var(--red); }
+
+  /* Horizontal tab-strip layout — toggled via #distTabsOrientationToggle,
+     preference remembered in localStorage across pages/reloads. The rail
+     becomes a top bar: toolbar (label + actions) on the left, tabs
+     scrolling horizontally to its right, chart panel below. */
+  .dist-modal-main.horizontal-tabs { flex-direction: column; }
+  .dist-modal-main.horizontal-tabs .dist-tabs-col {
+    flex-direction: row; width: 100%; max-height: 108px; flex-shrink: 0;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  .dist-modal-main.horizontal-tabs .dist-tabs-toolbar {
+    flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px;
+    border-bottom: none; border-right: 1px solid var(--border);
+    padding: 10px 12px; flex-shrink: 0; width: 152px;
+  }
+  .dist-modal-main.horizontal-tabs .dist-tabs-toolbar-actions { flex-direction: column; align-items: stretch; width: 100%; }
+  .dist-modal-main.horizontal-tabs .dist-tabs {
+    flex-direction: row; flex-wrap: nowrap; align-items: flex-start;
+    overflow-x: auto; overflow-y: hidden; flex: 1; min-width: 0;
+  }
+  .dist-modal-main.horizontal-tabs .dist-tab { flex-shrink: 0; max-width: 220px; }
 
   .dist-modal-body { flex: 1; overflow-y: auto; padding: 16px 20px 20px; min-width: 0; }
   .dist-meta-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -455,7 +487,6 @@
   .dist-tooltip .pct { color: var(--gold); }
 
   .dist-empty { text-align: center; padding: 60px 20px; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; }
-
 </style>
 </head>
 <body>
@@ -586,11 +617,14 @@
       </div>
       <button class="dist-modal-close" id="distModalClose" type="button" title="Close (Esc)">✕</button>
     </div>
-    <div class="dist-modal-main">
+    <div class="dist-modal-main" id="distModalMain">
       <div class="dist-tabs-col">
         <div class="dist-tabs-toolbar">
           <span class="dist-tabs-toolbar-label">Open Rows</span>
-          <button class="dist-tabs-clear-all" id="distTabsClearAll" type="button" title="Close every open tab" disabled>Clear all</button>
+          <div class="dist-tabs-toolbar-actions">
+            <button class="dist-tabs-orientation-toggle" id="distTabsOrientationToggle" type="button" title="Switch tab layout (vertical rail / horizontal strip)">⬍ Vertical</button>
+            <button class="dist-tabs-clear-all" id="distTabsClearAll" type="button" title="Close every open tab" disabled>Clear all</button>
+          </div>
         </div>
         <div class="dist-tabs" id="distTabs"></div>
       </div>
@@ -1367,11 +1401,13 @@ const ColumnFilter = (() => {
 // ── Distribution modal ───────────────────────────────────────────────────
 // Renders per-row Scores_Distributions (STRUCT(Scores, count)[]) as a
 // frequency histogram, opened via a per-row "Dist" button. Multiple rows
-// can be open at once, switchable via a vertical tab rail down the left
-// side of the modal — re-clicking an already-open row just re-activates
-// its tab instead of stacking a duplicate. There is no cap on how many
-// tabs can be open at once; a "Clear all" button in the tab rail closes
-// every open tab in one click (same idea as the trends page's "Clear all").
+// can be open at once, switchable via a tab rail — vertical down the left
+// by default, or horizontal along the top (toggle in the tab toolbar,
+// remembered in localStorage) — re-clicking an already-open row just
+// re-activates its tab instead of stacking a duplicate. There is no cap on
+// how many tabs can be open at once; a "Clear all" button in the tab rail
+// closes every open tab in one click (same idea as the trends page's
+// "Clear all").
 //
 // Exposes: window.openDistribution(row, label, metaHtml)
 //   row      - the data row object (must carry Scores_Distributions)
@@ -1393,8 +1429,10 @@ const ColumnFilter = (() => {
   const DIST_RANGED = DIST_UNIT === 'Points';
 
   const overlay      = document.getElementById('distModalOverlay');
+  const mainEl        = document.getElementById('distModalMain');
   const tabsEl        = document.getElementById('distTabs');
   const clearAllBtn   = document.getElementById('distTabsClearAll');
+  const orientBtn     = document.getElementById('distTabsOrientationToggle');
   const bodyEl        = document.getElementById('distModalBody');
   const closeBtn      = document.getElementById('distModalClose');
   const tooltipEl     = document.getElementById('distTooltip');
@@ -1443,6 +1481,38 @@ const ColumnFilter = (() => {
     }).filter(Boolean);
     if (!imgs.length) return "";
     return `<span class="dist-tab-icons">${imgs.join("")}</span>`;
+  }
+
+  // ── Tab-rail orientation (vertical rail / horizontal strip) ────────────
+  // A per-browser preference, not per-row state, so it's kept in
+  // localStorage and applied on every page that includes this modal.
+  const ORIENTATION_KEY = 'distTabsOrientation';
+  let orientation = 'vertical';
+  try {
+    if (localStorage.getItem(ORIENTATION_KEY) === 'horizontal') orientation = 'horizontal';
+  } catch (e) { /* localStorage unavailable (private mode etc.) — default stands */ }
+
+  function applyOrientation() {
+    if (mainEl) mainEl.classList.toggle('horizontal-tabs', orientation === 'horizontal');
+    if (orientBtn) {
+      orientBtn.textContent = orientation === 'horizontal' ? '⬌ Horizontal' : '⬍ Vertical';
+      orientBtn.title = orientation === 'horizontal'
+        ? 'Switch to a vertical tab rail'
+        : 'Switch to a horizontal tab strip';
+    }
+  }
+  applyOrientation();
+
+  if (orientBtn) {
+    orientBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      orientation = orientation === 'horizontal' ? 'vertical' : 'horizontal';
+      try { localStorage.setItem(ORIENTATION_KEY, orientation); } catch (e) { /* ignore */ }
+      applyOrientation();
+      // The chart wrap's width just changed with the layout swap, so
+      // re-center whichever histogram is currently showing.
+      centerActiveChart();
+    });
   }
 
   // tabs: [{ id, key, label, meta, bins, total }] — unlimited, no cap.
@@ -1512,6 +1582,27 @@ const ColumnFilter = (() => {
       : fmtScore(sorted[i].Scores);
   }
 
+  // Scans the host page's own RAW_DATA for a row whose label-producing
+  // field exactly matches a tab's label. This works without this file ever
+  // declaring RAW_DATA itself because classic (non-module) <script> tags on
+  // the same page share one top-level lexical scope — every template that
+  // includes this modal also defines its own top-level `let RAW_DATA = []`,
+  // which is why plain `RAW_DATA` resolves here after the host page has
+  // loaded a version's data. Used to refresh open tabs after a version
+  // switch (see window.resetDistributionModal below) instead of just
+  // discarding them.
+  function findRowByLabel(label) {
+    let data;
+    try { data = RAW_DATA; } catch (e) { return null; }
+    if (!Array.isArray(data)) return null;
+    for (const r of data) {
+      for (const k in r) {
+        if (typeof r[k] === 'string' && r[k] === label) return r;
+      }
+    }
+    return null;
+  }
+
   window.openDistribution = function(row, label, metaHtml) {
     const raw = row && row.Scores_Distributions;
     const { bins, total } = computeBins(raw || []);
@@ -1545,18 +1636,31 @@ const ColumnFilter = (() => {
   };
 
   // Called by the version switcher (_version_switch_script.html.j2) right
-  // after a new version's dataset has finished loading. Every open tab's
-  // bins were computed from THAT OLD version's row objects — carrying them
-  // over would silently keep showing a previous version's distribution
-  // under the new version's label, so a version switch always closes every
-  // tab and the modal itself, same as clicking "Clear all" but also
-  // dismissing the overlay since the whole page's data just changed out
-  // from under it.
+  // after a new version's dataset has finished loading — by this point the
+  // host page's RAW_DATA has already been reassigned to the new version.
+  // Every open tab is carried over to the new version, the same way the
+  // character filter or the search box carry over: for each tab, the row
+  // is re-located by its label in the freshly loaded RAW_DATA and its bins
+  // are recomputed from THAT row, so the chart reflects the new version's
+  // data under the same tab. A tab whose row simply doesn't exist in the
+  // new version (e.g. a character/team that isn't present there) is
+  // dropped rather than left showing stale data. The active tab and
+  // whether the modal itself is open are both left exactly as they were.
   window.resetDistributionModal = function() {
-    if (tabs.length === 0 && !overlay.classList.contains('open')) return;
-    tabs = [];
-    activeId = null;
-    closeModal();
+    if (tabs.length === 0) { syncBadge(); return; }
+    const survivors = [];
+    tabs.forEach(t => {
+      const row = findRowByLabel(t.label);
+      if (!row) return; // dropped — no longer exists under this version
+      const { bins, total } = computeBins(row.Scores_Distributions || []);
+      t.bins = bins;
+      t.total = total;
+      survivors.push(t);
+    });
+    tabs = survivors;
+    if (!tabs.some(t => t.id === activeId)) {
+      activeId = tabs.length ? tabs[tabs.length - 1].id : null;
+    }
     syncBadge();
     render();
   };
@@ -1599,6 +1703,19 @@ const ColumnFilter = (() => {
   }
 
   function fmtScore(v) { return Number.isInteger(v) ? v.toLocaleString() : v.toFixed(1); }
+
+  // Re-centers the currently visible chart horizontally, so a wide
+  // histogram opens scrolled to its middle bars instead of pinned to the
+  // left edge. Runs one frame after the DOM update so scrollWidth/
+  // clientWidth are already settled (also used after an orientation swap,
+  // since that changes the wrap's available width).
+  function centerActiveChart() {
+    requestAnimationFrame(() => {
+      const wrap = bodyEl.querySelector('.dist-chart-wrap');
+      if (!wrap) return;
+      wrap.scrollLeft = Math.max(0, (wrap.scrollWidth - wrap.clientWidth) / 2);
+    });
+  }
 
   function render() {
     tabsEl.innerHTML = tabs.map(t => `
@@ -1687,6 +1804,11 @@ const ColumnFilter = (() => {
       });
       col.addEventListener('mouseleave', () => { tooltipEl.style.display = 'none'; });
     });
+
+    // Open the chart scrolled to its horizontal middle rather than pinned
+    // to the left edge — applies on every render (tab open, tab switch,
+    // and after a version-switch refresh), not just the first paint.
+    centerActiveChart();
   }
 
   if (reopenBtn) {

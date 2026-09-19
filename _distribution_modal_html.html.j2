@@ -7,11 +7,14 @@
       </div>
       <button class="dist-modal-close" id="distModalClose" type="button" title="Close (Esc)">✕</button>
     </div>
-    <div class="dist-modal-main">
+    <div class="dist-modal-main" id="distModalMain">
       <div class="dist-tabs-col">
         <div class="dist-tabs-toolbar">
           <span class="dist-tabs-toolbar-label">Open Rows</span>
-          <button class="dist-tabs-clear-all" id="distTabsClearAll" type="button" title="Close every open tab" disabled>Clear all</button>
+          <div class="dist-tabs-toolbar-actions">
+            <button class="dist-tabs-orientation-toggle" id="distTabsOrientationToggle" type="button" title="Switch tab layout (vertical rail / horizontal strip)">⬍ Vertical</button>
+            <button class="dist-tabs-clear-all" id="distTabsClearAll" type="button" title="Close every open tab" disabled>Clear all</button>
+          </div>
         </div>
         <div class="dist-tabs" id="distTabs"></div>
       </div>

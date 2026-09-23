@@ -177,6 +177,8 @@
   table.data-table tbody tr { height: 34px; cursor: pointer; transition: background 0.12s ease; }
   table.data-table tbody tr:hover { background: rgba(56,189,248,0.06); }
   table.data-table tbody tr.selected { background: rgba(56,189,248,0.14); }
+  /* Selected rows are pinned to the top of the table; the last pinned row gets a divider so the pinned block reads as its own group. */
+  table.data-table tbody tr.pin-end td { border-bottom: 2px solid var(--accent); }
   table.data-table tbody td.id-cell { font-weight: 700; color: var(--text); position: sticky; left: 0; background: inherit; }
   table.data-table tbody td.num-cell { font-family: 'Share Tech Mono', monospace; color: var(--accent2); text-align: right; }
   .table-empty-row td { text-align: center; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 30px 0 !important; cursor: default; }
@@ -254,7 +256,7 @@
       <select id="metric-select" class="ctrl-select"><option>—</option></select>
     </div>
     <div class="ctrl-group">
-      <span class="ctrl-hint">Click rows to add/remove them from the chart — no limit.</span>
+      <span class="ctrl-hint">Click rows to add/remove them from the chart — no limit. Selected rows pin to the top of the table.</span>
     </div>
   </div>
 
@@ -604,6 +606,7 @@
   // renderViewport() paints only the visible slice of it on every scroll
   // tick, same windowing technique as by_cost_teams_template.html.j2.
   let currentRows = [];
+  let pinnedCount = 0; // how many rows at the head of currentRows are pinned (= selected) rows
   const ROW_H = 34;   // must match the fixed `table.data-table tbody tr { height }` in CSS
   const OVERSCAN = 8; // extra rows rendered above/below the viewport to avoid blank flashes on fast scroll
   // The mode the CURRENTLY LOADED slice actually belongs to. Deliberately
@@ -1120,14 +1123,50 @@
         return String(va).localeCompare(String(vb)) * sortDir;
       });
     }
-    currentRows = rows;
+    // Pin every selected entity to the top, in click order (matches the
+    // legend / swatch colour order). Pinned rows are pulled from the whole
+    // slice, not just the filtered set, so a search / cost slider / picker
+    // filter can never hide something you've selected. Everything else keeps
+    // its normal filtered + sorted order below the pinned block.
+    if (selectedIds.length) {
+      const byKey = new Map(currentSlice.entities.map(e => [entityKey(e), e]));
+      const pinned = selectedIds.map(id => byKey.get(id)).filter(Boolean);
+      const pinnedSet = new Set(pinned.map(entityKey));
+      pinnedCount = pinned.length;
+      currentRows = pinned.concat(rows.filter(e => !pinnedSet.has(entityKey(e))));
+    } else {
+      pinnedCount = 0;
+      currentRows = rows;
+    }
+  }
+
+  function updateRowStatus() {
+    const total = currentSlice.entities.length;
+    const pinTxt = pinnedCount ? ` · ${pinnedCount} pinned` : "";
+    const counts = `${currentRows.length.toLocaleString()} of ${total.toLocaleString()} shown${pinTxt}`;
+    statusLine.textContent = counts;
+    // Also surface the count in the table panel header so it's always visible
+    // next to the table instead of only in the status line at the page bottom.
+    const base = isByCostEntity()
+      ? `cost ${byCostMin}–${byCostMax}`
+      : eidolonLabel(`${currentSlice.at_eidolon_level}-${currentSlice.up_to_eidolon_level}`);
+    tableSub.textContent = `${base} · ${counts}`;
   }
 
   function renderTableBody() {
     if (!currentSlice) return;
     computeRows();
-    statusLine.textContent = `${currentRows.length} of ${currentSlice.entities.length} shown`;
+    updateRowStatus();
     if (tableWrapEl) tableWrapEl.scrollTop = 0;
+    renderViewport();
+  }
+
+  // Selection changed: re-pin and repaint, but DON'T reset scroll — the user
+  // is mid-browse and shouldn't be thrown back to the top on every click.
+  function refreshRowsKeepScroll() {
+    if (!currentSlice) return;
+    computeRows();
+    updateRowStatus();
     renderViewport();
   }
 
@@ -1148,7 +1187,7 @@
   // Builds the <tr> markup for one entity — identical cell markup to before,
   // just emitted as a string so renderViewport() can assemble the entire
   // tbody in a single innerHTML assignment.
-  function rowHtml(e) {
+  function rowHtml(e, idx) {
     const key = entityKey(e);
     const label = entityLabel(e);
     const selIndex = selectedIds.indexOf(key);
@@ -1167,7 +1206,8 @@
       const v = e.summary[col];
       cells += `<td class="${typeof v === "number" ? "num-cell" : ""}">${esc(fmtValue(v))}</td>`;
     }
-    return `<tr data-id="${esc(key)}" class="${selIndex !== -1 ? "selected" : ""}">${cells}</tr>`;
+    const rowCls = selIndex !== -1 ? `selected pinned${idx === pinnedCount - 1 ? " pin-end" : ""}` : "";
+    return `<tr data-id="${esc(key)}" class="${rowCls}">${cells}</tr>`;
   }
 
   // Spacer <tr> stands in for the rows NOT rendered — it's what keeps the
@@ -1208,7 +1248,7 @@
 
     let html = "";
     if (startIdx > 0) html += spacerRowHtml(startIdx * ROW_H);
-    for (let i = startIdx; i < endIdx; i++) html += rowHtml(rows[i]);
+    for (let i = startIdx; i < endIdx; i++) html += rowHtml(rows[i], i);
     if (endIdx < rows.length) html += spacerRowHtml((rows.length - endIdx) * ROW_H);
     tableBody.innerHTML = html;
   }
@@ -1232,14 +1272,14 @@
     const idx = selectedIds.indexOf(id);
     if (idx === -1) selectedIds.push(id);
     else selectedIds.splice(idx, 1);
-    renderViewport();
+    refreshRowsKeepScroll();
     drawTrend();
     persistState();
   }
 
   clearSelectionBtn.onclick = () => {
     selectedIds = [];
-    renderViewport();
+    refreshRowsKeepScroll();
     drawTrend();
     persistState();
   };
@@ -1519,7 +1559,7 @@
         ev.stopPropagation();
         const ids = (s.removeIds && s.removeIds.length) ? s.removeIds : [s.label];
         selectedIds = selectedIds.filter(id => !ids.includes(id));
-        renderViewport();
+        refreshRowsKeepScroll();
         drawTrend();
         persistState();
       };

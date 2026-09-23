@@ -935,12 +935,19 @@
     efficiencyTargetInput.value = efficiencyTarget[mode] ?? 0;
   }
 
+  // Math.min(...arr) / Math.max(...arr) pass every element as a separate
+  // function argument, and engines cap that by stack size — a big by-cost
+  // slice (Pure Fiction teams) blows it with "Maximum call stack size
+  // exceeded". Plain loops have no such limit.
+  function arrMin(a) { let m = Infinity; for (let i = 0; i < a.length; i++) if (a[i] < m) m = a[i]; return m; }
+  function arrMax(a) { let m = -Infinity; for (let i = 0; i < a.length; i++) if (a[i] > m) m = a[i]; return m; }
+
   function syncByCostRange() {
     if (!currentSlice || !isByCostEntity() || !currentSlice.entities.length) return;
     const mins = currentSlice.entities.map(e => Number(byCostSummary(e, "estimated_min_cost"))).filter(Number.isFinite);
     const maxes = currentSlice.entities.map(e => Number(byCostSummary(e, "estimated_max_cost"))).filter(Number.isFinite);
     if (!mins.length || !maxes.length) return;
-    const minGlobal = Math.min(...mins), maxGlobal = Math.max(...maxes);
+    const minGlobal = arrMin(mins), maxGlobal = arrMax(maxes);
     byCostMin = Math.max(minGlobal, Math.min(byCostMin, maxGlobal - 4));
     byCostMax = Math.min(maxGlobal, Math.max(byCostMax, minGlobal + 4));
     byCostMinSlider.min = minGlobal;
@@ -1723,7 +1730,7 @@
     if (currentSlice) {
       const mins = currentSlice.entities.map(e => Number(byCostSummary(e, "estimated_min_cost"))).filter(Number.isFinite);
       const maxes = currentSlice.entities.map(e => Number(byCostSummary(e, "estimated_max_cost"))).filter(Number.isFinite);
-      if (mins.length && maxes.length) { byCostMin = Math.min(...mins); byCostMax = Math.max(...maxes); }
+      if (mins.length && maxes.length) { byCostMin = arrMin(mins); byCostMax = arrMax(maxes); }
     }
     syncByCostRange();
     document.querySelectorAll(".by-cost-preset").forEach(b => b.classList.remove("active"));

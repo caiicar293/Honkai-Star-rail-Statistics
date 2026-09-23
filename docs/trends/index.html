@@ -16,6 +16,8 @@
     --accent: #38bdf8; --accent2: #7dd3fc;
     --gold: #fbbf24; --teal: #2dd4bf;
     --purple: #a78bfa; --red: #f87171; --green: #4ade80;
+    --orange: #fb923c;
+    --e0: #94a3b8; --e1: #4ade80; --e2: #38bdf8; --e6: #fbbf24;
     --muted: #4a5d7a;
     --text: #e2eaf6; --text2: #8fa3c0; --text3: #506070;
   }
@@ -53,7 +55,22 @@
   }
   .by-cost-type-toggle button.active { color: var(--teal); border-color: var(--teal); background: rgba(45,212,191,0.08); }
   .by-cost-controls { display: none; }
-  .by-cost-controls.visible { display: flex; }
+  .by-cost-controls.visible { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
+
+  /* Standard toggle buttons — same styling as the other by-cost templates
+     (by_cost_teams / by_cost_characters / by_cost_archetypes). */
+  .btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
+  .btn-toggle { background: var(--panel); border: 1px solid var(--border); color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 5px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; white-space: nowrap; }
+  .btn-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-toggle.meid.e0.active { border-color: var(--e0);    color: var(--e0);    background: rgba(148,163,184,0.08); }
+  .btn-toggle.meid.e1.active { border-color: var(--e1);    color: var(--e1);    background: rgba(74,222,128,0.07); }
+  .btn-toggle.meid.e2.active { border-color: var(--e2);    color: var(--e2);    background: rgba(56,189,248,0.08); }
+  .btn-toggle.meid.e3.active { border-color: var(--purple); color: var(--purple); background: rgba(167,139,250,0.08); }
+  .btn-toggle.meid.e4.active { border-color: var(--orange); color: var(--orange); background: rgba(251,146,60,0.08); }
+  .btn-toggle.meid.e5.active { border-color: var(--red);   color: var(--red);   background: rgba(248,113,113,0.08); }
+  .btn-toggle.meid.e6.active { border-color: var(--e6);    color: var(--e6);    background: rgba(251,191,36,0.09); }
+  .btn-toggle.sustain-on.active  { background: rgba(74,222,128,0.10);  border-color: var(--green); color: var(--green); }
+  .btn-toggle.sustain-off.active { background: rgba(248,113,113,0.10); border-color: var(--red);   color: var(--red); }
   .by-cost-cost-panel {
     display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
     padding: 12px 14px; margin-bottom: 16px; gap: 16px; flex-wrap: wrap; align-items: flex-end;
@@ -68,9 +85,12 @@
   .by-cost-presets { display: flex; gap: 5px; flex-wrap: wrap; }
   .by-cost-preset { background: var(--bg2); border: 1px solid var(--border); color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
   .by-cost-preset:hover, .by-cost-preset.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.07); }
-  .by-cost-meid-label { width: 100%; }
-  .by-cost-sustain { display: none; }
-  .by-cost-sustain.visible { display: flex; }
+  /* Sustain only applies to By-Cost Teams. The selector is qualified with
+     .ctrl-group because .ctrl-group { display: flex } is declared further down
+     at the same specificity and would otherwise win, leaving the Sustain
+     buttons visible on the Characters and Archetypes sub-tabs too. */
+  .ctrl-group.by-cost-sustain { display: none; }
+  .ctrl-group.by-cost-sustain.visible { display: flex; }
 
   /* Cost Efficiency mode (by-cost only) — plot the minimum cost to reach a
      configurable target score over time, mirroring the Cost Efficiency panel
@@ -120,6 +140,21 @@
   .picker-chip img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.15); }
   .picker-chip .chip-icon-ph { width: 20px; height: 20px; border-radius: 50%; background: var(--panel2); display:flex; align-items:center; justify-content:center; font-size: 8px; color: var(--text3); }
   .picker-chip .chip-mode { font-size: 10px; opacity: 0.8; }
+  .picker-chip .chip-eid { font-size: 10px; opacity: 0.75; font-family: 'Share Tech Mono', monospace; }
+  .picker-chip.eid-clickable { cursor: pointer; }
+
+  /* Exact-eidolon row shown beneath the chips (By-Cost Teams only) — same as by_cost_teams_template */
+  .picker-eid-row { display: flex; flex-wrap: wrap; gap: 4px; margin: -2px 0 10px; padding-top: 8px; border-top: 1px dashed var(--border2); }
+  .picker-eid-row-label { width: 100%; font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; margin-bottom: 2px; }
+  .picker-eid-btn {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 10.5px; font-weight: 700;
+    border-radius: 4px; padding: 3px 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .picker-eid-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .picker-eid-btn.any { border-color: var(--accent2); color: var(--accent2); }
+  .picker-eid-btn.eid-active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .picker-eid-btn.eid-active.mode-exclude { background: var(--red); border-color: var(--red); color: var(--bg); }
   .picker-chip .chip-remove { background: none; border: none; color: inherit; cursor: pointer; font-size: 13px; line-height: 1; padding: 1px 3px; border-radius: 50%; opacity: 0.7; transition: opacity 0.15s, background 0.15s; }
   .picker-chip .chip-remove:hover { opacity: 1; background: rgba(255,255,255,0.12); }
   .picker-chips-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0; }
@@ -268,7 +303,7 @@
 
   <div class="by-cost-controls" id="byCostControls">
     <div class="ctrl-group">
-      <div class="ctrl-label by-cost-meid-label">Max Eidolon in Cost Row</div>
+      <div class="ctrl-label">Max Eidolon in Team</div>
       <div class="btn-group" id="byCostMeidFilters">
         <button class="btn-toggle meid e0 active" data-meid="0">E0</button>
         <button class="btn-toggle meid e1 active" data-meid="1">E1</button>
@@ -280,10 +315,10 @@
       </div>
     </div>
     <div class="ctrl-group by-cost-sustain" id="byCostSustainGroup">
-      <div class="ctrl-label">Sustain (Teams)</div>
+      <div class="ctrl-label">Sustain</div>
       <div class="btn-group">
-        <button class="btn-toggle active" id="byCostSustainOn">✦ Sustain</button>
-        <button class="btn-toggle active" id="byCostSustainOff">✕ No Sustain</button>
+        <button class="btn-toggle sustain-on active" id="byCostSustainOn">✦ Sustain</button>
+        <button class="btn-toggle sustain-off active" id="byCostSustainOff">✕ No Sustain</button>
       </div>
     </div>
   </div>
@@ -314,11 +349,12 @@
   <!-- Teams-only unified character picker: unlimited include/exclude, left-click=include, right-click=exclude. Hidden for non-team datasets. -->
   <div class="picker-panel" id="teamPickerPanel">
     <div class="picker-panel-title">Character Filters — unlimited include/exclude</div>
-    <div class="picker-panel-hint">Click a character to <b style="color:var(--green)">include</b> them in every team shown. Right-click to <b style="color:var(--red)">exclude</b> teams containing them. Eidolon is controlled by the Eidolon Range selector above, not per-character here.</div>
+    <div class="picker-panel-hint">Click a character to <b style="color:var(--green)">include</b> them in every team shown. Right-click to <b style="color:var(--red)">exclude</b> teams containing them. <span id="teamPickerEidHint">Eidolon is controlled by the Eidolon Range selector above, not per-character here.</span></div>
 
     <div class="picker-chips" id="teamPickerChips">
       <span class="picker-chips-empty" id="teamPickerChipsEmpty">No characters selected.</span>
     </div>
+    <div class="picker-eid-row" id="teamPickerEidRow" style="display:none;"></div>
 
     <div class="picker-search-row">
       <div class="picker-search-wrap">
@@ -570,6 +606,7 @@
   const teamPickerGridDropdown = document.getElementById("teamPickerGridDropdown");
   const teamPickerGrid = document.getElementById("teamPickerGrid");
   const teamPickerClearAll = document.getElementById("teamPickerClearAll");
+  const teamPickerEidRow = document.getElementById("teamPickerEidRow");
   const efficiencyPanel = document.getElementById("efficiencyPanel");
   const efficiencyModeBtn = document.getElementById("efficiencyModeBtn");
   const efficiencyStatSelect = document.getElementById("efficiencyStatSelect");
@@ -670,6 +707,8 @@
   let ALL_TEAM_CHAR_NAMES = [];        // display names, sorted
   let TEAM_CHAR_DISPLAY = new Map();   // baseLower -> display name
   let teamPickerOpen = false;
+  let teamOpenEidBase = null;          // which chip currently has its exact-eidolon row expanded (by-cost teams only)
+  let TEAM_CHAR_EIDS = new Map();      // baseLower -> Set('e0'..'e6') actually present in the loaded slice
 
   function parseTeamMembers(id) {
     const s = String(id).trim();
@@ -677,13 +716,34 @@
     return inner.split(/\s*,\s*/).map(t => t.replace(/\s*\(E\d\)/gi, "").trim()).filter(Boolean);
   }
 
+  // Per-member tokens: [{ name, base, eid }] where eid is 'e0'..'e6' when the
+  // label carries an eidolon tag (By-Cost Teams do, e.g. "Acheron(E2)") and
+  // null otherwise. Cached on the entity object since filtering re-reads every
+  // row on each keystroke / click.
+  function parseTeamMemberTokens(id) {
+    const s = String(id).trim();
+    const inner = (s.startsWith("(") && s.endsWith(")")) ? s.slice(1, -1) : s;
+    return inner.split(/\s*,\s*/).map(t => {
+      const em = t.match(/\((E\d)\)/i);
+      const name = t.replace(/\s*\(E\d\)/gi, "").trim();
+      return name ? { name, base: name.toLowerCase(), eid: em ? em[1].toLowerCase() : null } : null;
+    }).filter(Boolean);
+  }
+  function teamTokens(e) {
+    return e._tok || (e._tok = parseTeamMemberTokens(entityLabel(e)));
+  }
+
   function rebuildTeamRoster() {
     TEAM_CHAR_DISPLAY = new Map();
+    TEAM_CHAR_EIDS = new Map();
     if (currentSlice && currentSlice.entities) {
       for (const e of currentSlice.entities) {
-        for (const name of parseTeamMembers(entityLabel(e))) {
-          const base = name.toLowerCase();
-          if (!TEAM_CHAR_DISPLAY.has(base)) TEAM_CHAR_DISPLAY.set(base, name);
+        for (const tok of teamTokens(e)) {
+          if (!TEAM_CHAR_DISPLAY.has(tok.base)) TEAM_CHAR_DISPLAY.set(tok.base, tok.name);
+          if (tok.eid) {
+            if (!TEAM_CHAR_EIDS.has(tok.base)) TEAM_CHAR_EIDS.set(tok.base, new Set());
+            TEAM_CHAR_EIDS.get(tok.base).add(tok.eid);
+          }
         }
       }
     }
@@ -699,7 +759,7 @@
     if (existing && existing.mode === mode) {
       teamCharFilters.delete(base); // clicking the same mode again removes it
     } else {
-      teamCharFilters.set(base, { base, mode, display: TEAM_CHAR_DISPLAY.get(base) || base });
+      teamCharFilters.set(base, { base, mode, display: TEAM_CHAR_DISPLAY.get(base) || base, eids: null });
     }
     renderTeamPickerChips();
     renderTeamPickerGrid(teamPickerInput.value.trim());
@@ -710,6 +770,8 @@
   function renderTeamPickerChips() {
     if (teamCharFilters.size === 0) {
       teamPickerChips.innerHTML = `<span class="picker-chips-empty" id="teamPickerChipsEmpty">No characters selected.</span>`;
+      teamOpenEidBase = null;
+      renderTeamEidRow();
       return;
     }
     teamPickerChips.innerHTML = [...teamCharFilters.values()].map(f => {
@@ -718,14 +780,77 @@
         ? `<img src="${url}" alt="${f.display}" onerror="this.style.display='none'"/>`
         : `<span class="chip-icon-ph">${f.display.slice(0, 2).toUpperCase()}</span>`;
       const modeIcon = f.mode === "include" ? "✓" : "✕";
-      return `<span class="picker-chip ${f.mode}" data-base="${f.base}">${iconHtml}<span>${f.display}</span><span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${f.base}" title="Remove">×</button></span>`;
+      const eidText = (f.eids && f.eids.size) ? [...f.eids].sort().map(x => x.toUpperCase()).join(",") : "";
+      const eidLabel = eidText ? `<span class="chip-eid">${eidText}</span>` : "";
+      const clickable = isByCostEntity();
+      return `<span class="picker-chip ${f.mode}${clickable ? " eid-clickable" : ""}" data-base="${f.base}"${clickable ? ` title="Click to set exact eidolon(s)"` : ""}>${iconHtml}<span>${f.display}</span>${eidLabel}<span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${f.base}" title="Remove">×</button></span>`;
     }).join("");
 
     teamPickerChips.querySelectorAll(".chip-remove").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         teamCharFilters.delete(btn.dataset.remove);
+        if (teamOpenEidBase === btn.dataset.remove) teamOpenEidBase = null;
         renderTeamPickerChips();
+        renderTeamPickerGrid(teamPickerInput.value.trim());
+        renderTableBody();
+        persistState();
+      });
+    });
+
+    // By-Cost Teams only: clicking a chip expands its exact-eidolon row.
+    if (isByCostEntity()) {
+      teamPickerChips.querySelectorAll(".picker-chip").forEach(chip => {
+        chip.addEventListener("click", (e) => {
+          if (e.target.closest(".chip-remove")) return;
+          const base = chip.dataset.base;
+          teamOpenEidBase = (teamOpenEidBase === base) ? null : base;
+          renderTeamEidRow();
+        });
+      });
+    }
+    renderTeamEidRow();
+  }
+
+  // Exact-eidolon multi-select for the chip that's currently open. "Any" clears
+  // the narrowing; otherwise the filter only counts a member whose eidolon tag
+  // is one of the picked values (include = must have one of them, exclude =
+  // must not have any of them). Ported from by_cost_teams_template.html.j2.
+  function renderTeamEidRow() {
+    if (!teamPickerEidRow) return;
+    const hide = () => { teamPickerEidRow.style.display = "none"; teamPickerEidRow.innerHTML = ""; };
+    if (!teamOpenEidBase || !isByCostEntity()) return hide();
+    const f = teamCharFilters.get(teamOpenEidBase);
+    if (!f) return hide();
+
+    const seen = [...(TEAM_CHAR_EIDS.get(f.base) || [])].sort();
+    const anyActive = !f.eids || f.eids.size === 0;
+    const modeCls = f.mode === "exclude" ? "mode-exclude" : "";
+    const anyBtn = `<button class="picker-eid-btn any ${anyActive ? "eid-active " + modeCls : ""}" data-eid="any">Any</button>`;
+    const eidButtons = seen.map(eid =>
+      `<button class="picker-eid-btn ${f.eids && f.eids.has(eid) ? "eid-active " + modeCls : ""}" data-eid="${eid}">${eid.toUpperCase()}</button>`
+    ).join("");
+
+    teamPickerEidRow.style.display = "flex";
+    teamPickerEidRow.innerHTML = `<div class="picker-eid-row-label">${esc(f.display)} — exact eidolon(s) for this ${f.mode} filter (multi-select)</div>${anyBtn}${eidButtons}`;
+
+    teamPickerEidRow.querySelectorAll(".picker-eid-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const cur = teamCharFilters.get(teamOpenEidBase);
+        if (!cur) return;
+        const eid = btn.dataset.eid;
+        if (eid === "any") {
+          cur.eids = null;
+        } else {
+          if (!cur.eids) cur.eids = new Set();
+          if (cur.eids.has(eid)) {
+            cur.eids.delete(eid);
+            if (cur.eids.size === 0) cur.eids = null;
+          } else {
+            cur.eids.add(eid);
+          }
+        }
+        renderTeamPickerChips(); // re-renders chips and re-opens this row
         renderTeamPickerGrid(teamPickerInput.value.trim());
         renderTableBody();
         persistState();
@@ -766,9 +891,15 @@
     if (!isTeamEntity() || teamCharFilters.size === 0) return rows;
     const filters = [...teamCharFilters.values()];
     return rows.filter(e => {
-      const membersBase = parseTeamMembers(entityLabel(e)).map(m => m.toLowerCase());
+      const tokens = teamTokens(e);
       for (const f of filters) {
-        const present = membersBase.includes(f.base);
+        let present;
+        if (!f.eids || f.eids.size === 0) {
+          present = tokens.some(t => t.base === f.base);
+        } else {
+          // Exact eidolon(s): a member of this character must carry one of the picked tags.
+          present = tokens.some(t => t.base === f.base && t.eid && f.eids.has(t.eid));
+        }
         if (f.mode === "include" && !present) return false;
         if (f.mode === "exclude" && present) return false;
       }
@@ -779,6 +910,13 @@
   function updateTeamPickerVisibility() {
     teamPickerPanel.classList.toggle("visible", isTeamEntity());
     if (!isTeamEntity()) teamPickerGridDropdown.classList.remove("open");
+    const eidHint = document.getElementById("teamPickerEidHint");
+    if (eidHint) {
+      eidHint.textContent = isByCostEntity()
+        ? "Click a chip below to pick exact eidolon(s) — e.g. exclude E2, E3, E4, E5, E6 at once."
+        : "Eidolon is controlled by the Eidolon Range selector above, not per-character here.";
+    }
+    renderTeamEidRow();
   }
 
   // Snapshot the live UI/working state into entityState[currentEntity].
@@ -1632,12 +1770,16 @@
     drawTrend();
   };
 
+  // At least one of Sustain / No Sustain must stay on (same rule as the other
+  // by-cost templates), so the table can never be filtered to nothing here.
   byCostSustainOn.onclick = () => {
+    if (byCostShowSustain && !byCostShowNoSustain) return;
     byCostShowSustain = !byCostShowSustain;
     byCostSustainOn.classList.toggle("active", byCostShowSustain);
     renderTableBody();
   };
   byCostSustainOff.onclick = () => {
+    if (!byCostShowSustain && byCostShowNoSustain) return;
     byCostShowNoSustain = !byCostShowNoSustain;
     byCostSustainOff.classList.toggle("active", byCostShowNoSustain);
     renderTableBody();

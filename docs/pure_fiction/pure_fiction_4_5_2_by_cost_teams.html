@@ -1205,12 +1205,13 @@ const IS_PF      = true;
 // cheapest total cost first, exactly like MOC's ceiling.
 const SCORE_LOWER_BETTER = IS_MOC || IS_ANOMALY;
 const HAS_MIN_THRESHOLD  = IS_APOC || IS_PF;
-// Combined max/min threshold (Anomaly / Apoc / PF only): a cap or floor on the
+// Combined max/min threshold (all modes): a cap or floor on the
 // *combined* value the Combine buttons (Σ / Ø / ▼ / ▲) produce for a whole
 // combination — as opposed to the per-node threshold, which limits each team on
 // its own. Anomaly reads lower as better → combined max ceiling (≤); Apoc / PF
-// read higher as better → combined min floor (≥). MOC has no combine buttons.
-const HAS_COMBINED_THRESHOLD = IS_ANOMALY || IS_APOC || IS_PF;
+// read higher as better → combined min floor (≥). MOC also gets the combined max
+// ceiling; its Combine row leaves out Σ Sum (only Ø / ▼ / ▲).
+const HAS_COMBINED_THRESHOLD = IS_MOC || IS_ANOMALY || IS_APOC || IS_PF;
 
 let RAW_DATA = [];
 let MAX_RATE   = 1;
@@ -1831,7 +1832,7 @@ const AUTOPLAN_MAX_VISITED = 400000; // ...and on its visited-tuple memory
 
 let autoplanNodes   = new Set(PLANNER_DIMS);
 let autoplanStat    = (IS_ANOMALY || IS_MOC) ? 'Min_Score' : 'Max_Score'; // Anomaly and MOC rank on Min by default
-let autoplanOp      = 'sum';
+let autoplanOp      = IS_MOC ? 'average' : 'sum'; // MOC has no Σ Sum option
 let autoplanResults = [];
 let autoplanState   = null;
 
@@ -1906,14 +1907,14 @@ function findTopCombos() {
   const k    = Math.max(1, Math.min(1000, parseInt(document.getElementById('autoplanK').value, 10) || 100));
   const targetRaw = (document.getElementById('autoplanTarget')?.value || '').trim();
   const target = targetRaw !== '' ? parseFloat(targetRaw) : null;
-  // MOC always ranks cheapest-first. Every other mode does too once a threshold
-  // is set; without one they rank by the chosen combine op / score direction.
-  // Combined threshold (Anomaly / Apoc / PF): checked against the combined value
+  // Every mode (MOC included) ranks cheapest-first once a threshold is set;
+  // without one they rank by the chosen combine op / score direction.
+  // Combined threshold (all modes): checked against the combined value
   // of each candidate combination. Setting it also switches to cheapest-cost-first.
   const combRaw    = HAS_COMBINED_THRESHOLD ? (document.getElementById('autoplanCombTarget')?.value || '').trim() : '';
   const combParsed = combRaw !== '' ? parseFloat(combRaw) : NaN;
   const combTarget = Number.isFinite(combParsed) ? combParsed : null;
-  const rankByCost = IS_MOC || target != null || combTarget != null;
+  const rankByCost = target != null || combTarget != null;
 
   const base  = userFilteredRows();
   const pools = nodes.map(d => {
@@ -1969,7 +1970,7 @@ function findTopCombos() {
     }
   }
 
-  // Cost-ranked modes (MOC always; any mode once a threshold is set) go cheapest
+  // Cost-ranked modes (any mode once a threshold is set) go cheapest
   // total cost first. Otherwise the combine op over the chosen stat decides, in
   // the mode's score direction — PF/APOC highest first, MOC/Anomaly lowest
   // first. For ▼/▲ the metric is one node's value, so equal values fall back to
@@ -2031,7 +2032,7 @@ function renderAutoplanResults(res) {
     return;
   }
   const sym     = AUTOPLAN_OP_SYM[autoplanOp] || 'Σ';
-  const rankByCost = IS_MOC || res.target != null || res.combTarget != null;
+  const rankByCost = res.target != null || res.combTarget != null;
   const ranking = rankByCost
     ? 'cheapest total cost first'
     : `${sym} ${autoplanStatLabel(autoplanStat)} first (${SCORE_LOWER_BETTER ? 'lowest → highest' : 'highest → lowest'})`;
@@ -2098,9 +2099,7 @@ function updateAutoplanHint() {
   const picked  = [...autoplanNodes].filter(d => PLANNER_DIMS.includes(d)).sort((a, b) => a - b);
   const statLbl = autoplanStatLabel(autoplanStat);
   const nodes   = picked.join(' + ') || '—';
-  if (IS_MOC) {
-    el.textContent = `one team per selected ${DIM_LABEL.toLowerCase()}, every ${DIM_LABEL.toLowerCase()}'s ${statLbl} at or under the target → cheapest cost first`;
-  } else if (HAS_MIN_THRESHOLD) {
+  if (HAS_MIN_THRESHOLD) {
     el.textContent = `one team per selected ${DIM_LABEL.toLowerCase()} (${nodes}), no shared characters — set a min ${statLbl} threshold → cheapest cost first, otherwise ${autoplanOp} of ${statLbl} (highest → lowest)`;
   } else {
     el.textContent = `one team per selected ${DIM_LABEL.toLowerCase()} (${nodes}), no shared characters — ${autoplanOp} of ${statLbl} (lowest → highest); set a max threshold → cheapest cost first`;
@@ -2127,19 +2126,13 @@ function renderAutoplanHelp() {
   const cmp   = floor ? '≥' : '≤';
   const steps = [];
   steps.push(`<li><b>${DIM_LABEL}s</b> — pick which ${node}s to plan (at least two). The planner picks one team per ${node} and never reuses a character across them.</li>`);
-  if (IS_MOC) {
-    steps.push(`<li><b>Team Stat</b> — the column each team is judged on. MOC defaults to <b>Min</b>.</li>`);
-    steps.push(`<li><b>Threshold per ${DIM_LABEL}</b> (optional) — every team must be at or under this cycle count; combinations are then ranked cheapest total cost first.</li>`);
-  } else {
-    steps.push(`<li><b>Team Stat</b> — the score column each team is judged on (Min, P25, Avg, Median, P75, Max)${IS_ANOMALY ? '. Anomaly defaults to <b>Min</b>' : ''}.</li>`);
-    steps.push(`<li><b>Combine</b> — how the per-${node} stats become one number for the whole combination: <b>Σ Sum</b> adds them, <b>Ø Avg</b> averages them, <b>▼ Min</b> takes the weakest ${node}, <b>▲ Max</b> takes the strongest.</li>`);
-    steps.push(`<li><b>Threshold per ${DIM_LABEL}</b> (optional) — every individual team must be ${cmp} this value.</li>`);
-    steps.push(`<li><b>Combined ${floor ? 'min' : 'max'} threshold</b> (optional) — the ${floor ? 'floor' : 'ceiling'} applies to the <i>combined</i> number the Combine buttons produce, not to each team. Its label follows your Combine and Team Stat choices. Example: with <b>Σ Sum</b> and a combined ${floor ? 'min' : 'max'} of X, only combinations whose per-${node} stats add up to ${cmp} X are kept. It stacks with the per-${node} threshold when both are set.</li>`);
-  }
+  const statNote = IS_MOC ? '. MOC defaults to <b>Min</b>' : IS_ANOMALY ? '. Anomaly defaults to <b>Min</b>' : '';
+  steps.push(`<li><b>Team Stat</b> — the score column each team is judged on (Min, P25, Avg, Median, P75, Max)${statNote}.</li>`);
+  steps.push(`<li><b>Combine</b> — how the per-${node} stats become one number for the whole combination: ${IS_MOC ? '' : '<b>Σ Sum</b> adds them, '}<b>Ø Avg</b> averages them, <b>▼ Min</b> takes the lowest ${node} value, <b>▲ Max</b> takes the highest.</li>`);
+  steps.push(`<li><b>Threshold per ${DIM_LABEL}</b> (optional) — every individual team must be ${cmp} this value${IS_MOC ? ' (cycle count)' : ''}.</li>`);
+  steps.push(`<li><b>Combined ${floor ? 'min' : 'max'} threshold</b> (optional) — the ${floor ? 'floor' : 'ceiling'} applies to the <i>combined</i> number the Combine buttons produce, not to each team. Its label follows your Combine and Team Stat choices. Example: with <b>${IS_MOC ? 'Ø Avg' : 'Σ Sum'}</b> and a combined ${floor ? 'min' : 'max'} of X, only combinations whose per-${node} stats ${IS_MOC ? 'average' : 'add up'} ${cmp} X are kept. It stacks with the per-${node} threshold when both are set.</li>`);
   steps.push(`<li><b>Top K → Find Combinations</b> — shows the best K results and pins the top one. Click any result card to pin or unpin it; the table below then locks those ${node}s.</li>`);
-  const rankNote = IS_MOC
-    ? 'Ranking: cheapest total team cost first.'
-    : `Ranking: with no threshold, combinations are ordered by the combined value (${SCORE_LOWER_BETTER ? 'lowest first' : 'highest first'}). Setting either threshold switches the ordering to cheapest total cost first among combinations that pass.`;
+  const rankNote = `Ranking: with no threshold, combinations are ordered by the combined value (${SCORE_LOWER_BETTER ? 'lowest first' : 'highest first'}). Setting either threshold switches the ordering to cheapest total cost first among combinations that pass.`;
   el.innerHTML = `<ol>${steps.join('')}</ol><div class="autoplan-help-note">${rankNote} The filters above (${node}s, cost range, characters, roster) also shrink the pool the planner searches.</div>`;
 }
 
@@ -2191,9 +2184,12 @@ function setupAutoplan() {
     updateAutoplanHint();
   });
 
-  // MOC ranks by cost, so the Σ/Ø/▼/▲ combine buttons are meaningless there.
-  const opGroup = document.getElementById('autoplanOpGroup');
-  if (opGroup && IS_MOC) opGroup.style.display = 'none';
+  // MOC behaves like Anomaly here (lower is better, ranks by the combined value
+  // until a threshold is set), except Σ Sum is left out (Ø / ▼ / ▲ only).
+  if (IS_MOC) {
+    const sumBtn = opWrap.querySelector('button[data-op="sum"]');
+    if (sumBtn) sumBtn.style.display = 'none';
+  }
 
   const tg = document.getElementById('autoplanTargetGroup');
   if (tg) tg.style.display = '';

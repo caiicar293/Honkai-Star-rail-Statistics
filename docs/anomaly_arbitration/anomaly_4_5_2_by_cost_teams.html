@@ -484,6 +484,19 @@
   .autoplan-pin { background: none; border: 1px solid var(--border); color: var(--text3); font-family: 'Rajdhani', sans-serif; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
   .autoplan-card:hover .autoplan-pin, .autoplan-card.pinned .autoplan-pin { border-color: var(--green); color: var(--green); }
   .autoplan-warn { color: var(--gold); }
+  /* How-to-use help + combined-threshold note */
+  .autoplan-help { margin-bottom: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); }
+  .autoplan-help > summary { cursor: pointer; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent2); letter-spacing: 0.05em; user-select: none; list-style: none; }
+  .autoplan-help > summary::-webkit-details-marker { display: none; }
+  .autoplan-help > summary::before { content: '▸ '; }
+  .autoplan-help[open] > summary::before { content: '▾ '; }
+  .autoplan-help > summary:hover { color: var(--accent); }
+  .autoplan-help-body { padding: 4px 14px 10px; font-size: 12.5px; line-height: 1.55; color: var(--text2); }
+  .autoplan-help-body ol { margin: 4px 0 6px 18px; }
+  .autoplan-help-body li { margin-bottom: 4px; }
+  .autoplan-help-body b { color: var(--text); }
+  .autoplan-help-note { font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+  .autoplan-comb-note { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text3); margin-top: 2px; max-width: 250px; line-height: 1.35; }
   /* Pressed/active highlight for the combination-planner toggles — these have
      no dim-X class, so without this they only toggle a class with no visual. */
   #autoplanNodes .btn-toggle.active,
@@ -1019,6 +1032,10 @@
       <div class="autoplan-title">🧮 Combination Planner</div>
       <div class="autoplan-sub" id="autoplanHint"></div>
     </div>
+    <details class="autoplan-help" id="autoplanHelp">
+      <summary>How to use the combination planner</summary>
+      <div class="autoplan-help-body" id="autoplanHelpBody"></div>
+    </details>
     <div class="autoplan-controls">
       <div class="ctrl-group">
         <div class="ctrl-label">Floors</div>
@@ -1044,6 +1061,11 @@
       <div class="ctrl-group" id="autoplanTargetGroup" style="display:none;">
         <div class="ctrl-label" id="autoplanTargetLabel">Threshold per Floor</div>
         <input class="autoplan-input" id="autoplanTarget" type="number" step="any" placeholder="—"/>
+      </div>
+      <div class="ctrl-group" id="autoplanCombGroup" style="display:none;">
+        <div class="ctrl-label" id="autoplanCombLabel">Combined threshold</div>
+        <input class="autoplan-input" id="autoplanCombTarget" type="number" step="any" placeholder="—" title="Optional. Applies to the combined result of the Combine buttons for the whole combination, not to each team on its own. Leave blank for no limit."/>
+        <div class="autoplan-comb-note" id="autoplanCombNote"></div>
       </div>
       <button class="autoplan-run" id="autoplanRun" type="button">Find Combinations</button>
     </div>
@@ -1181,6 +1203,12 @@ const IS_PF      = false;
 // cheapest total cost first, exactly like MOC's ceiling.
 const SCORE_LOWER_BETTER = IS_MOC || IS_ANOMALY;
 const HAS_MIN_THRESHOLD  = IS_APOC || IS_PF;
+// Combined max/min threshold (Anomaly / Apoc / PF only): a cap or floor on the
+// *combined* value the Combine buttons (Σ / Ø / ▼ / ▲) produce for a whole
+// combination — as opposed to the per-node threshold, which limits each team on
+// its own. Anomaly reads lower as better → combined max ceiling (≤); Apoc / PF
+// read higher as better → combined min floor (≥). MOC has no combine buttons.
+const HAS_COMBINED_THRESHOLD = IS_ANOMALY || IS_APOC || IS_PF;
 
 let RAW_DATA = [];
 let MAX_RATE   = 1;
@@ -1800,7 +1828,7 @@ const AUTOPLAN_MAX_POPS    = 250000; // safety valve on the best-first walk
 const AUTOPLAN_MAX_VISITED = 400000; // ...and on its visited-tuple memory
 
 let autoplanNodes   = new Set(PLANNER_DIMS);
-let autoplanStat    = 'Max_Score';
+let autoplanStat    = IS_ANOMALY ? 'Min_Score' : 'Max_Score'; // Anomaly ranks on Min by default
 let autoplanOp      = 'sum';
 let autoplanResults = [];
 let autoplanState   = null;
@@ -1878,7 +1906,12 @@ function findTopCombos() {
   const target = targetRaw !== '' ? parseFloat(targetRaw) : null;
   // MOC always ranks cheapest-first. Every other mode does too once a threshold
   // is set; without one they rank by the chosen combine op / score direction.
-  const rankByCost = IS_MOC || target != null;
+  // Combined threshold (Anomaly / Apoc / PF): checked against the combined value
+  // of each candidate combination. Setting it also switches to cheapest-cost-first.
+  const combRaw    = HAS_COMBINED_THRESHOLD ? (document.getElementById('autoplanCombTarget')?.value || '').trim() : '';
+  const combParsed = combRaw !== '' ? parseFloat(combRaw) : NaN;
+  const combTarget = Number.isFinite(combParsed) ? combParsed : null;
+  const rankByCost = IS_MOC || target != null || combTarget != null;
 
   const base  = userFilteredRows();
   const pools = nodes.map(d => {
@@ -1895,6 +1928,43 @@ function findTopCombos() {
       ? `no ${DIM_LABEL.toLowerCase()} ${nodes[empty]} team ${HAS_MIN_THRESHOLD ? 'at or above' : 'at or under'} ${target}`
       : `no ${DIM_LABEL.toLowerCase()} ${nodes[empty]} teams match the current filters`;
     return { nodes, combos: [], reason: why };
+  }
+
+  // Necessary-condition pre-filter for the combined threshold. A row can only ever
+  // appear in a qualifying combination if it still qualifies when every *other*
+  // node contributes its best row (for a floor) or its worst row (for a ceiling).
+  // Rows that fail that test are dropped before the walk: the walk orders by cost,
+  // so otherwise it must enumerate a huge prefix of cheap, non-qualifying tuples
+  // before it reaches a combination that clears the threshold — and the safety
+  // caps then abort it with zero results. Only rows that can never qualify are
+  // dropped, so the top-K by cost stays exact.
+  if (combTarget != null) {
+    const maxStat = pools.map(p => p.reduce((m, r) => Math.max(m, r[stat]), -Infinity));
+    const minStat = pools.map(p => p.reduce((m, r) => Math.min(m, r[stat]),  Infinity));
+    const sumTarget = op === 'average' ? combTarget * nodes.length : combTarget; // Ø compares the mean
+    const canQualify = (v, p) => {
+      if (op === 'min') {
+        // floor: every node must clear it · ceiling: one node under it is enough
+        return HAS_MIN_THRESHOLD
+          ? v >= combTarget
+          : v <= combTarget || minStat.some((m, q) => q !== p && m <= combTarget);
+      }
+      if (op === 'max') {
+        // ceiling: every node must sit under it · floor: one node over it is enough
+        return HAS_MIN_THRESHOLD
+          ? v >= combTarget || maxStat.some((m, q) => q !== p && m >= combTarget)
+          : v <= combTarget;
+      }
+      // Σ / Ø: bound what the other nodes can contribute
+      const othersMax = maxStat.reduce((s, m, q) => q === p ? s : s + m, 0);
+      const othersMin = minStat.reduce((s, m, q) => q === p ? s : s + m, 0);
+      return HAS_MIN_THRESHOLD ? v + othersMax >= sumTarget : v + othersMin <= sumTarget;
+    };
+    pools.forEach((rows, p) => { pools[p] = rows.filter(r => canQualify(r[stat], p)); });
+    const gone = pools.findIndex(p => !p.length);
+    if (gone >= 0) {
+      return { nodes, combos: [], reason: `no combination can reach a combined ${AUTOPLAN_OP_SYM[op] || 'Σ'} ${autoplanStatLabel(stat)} ${HAS_MIN_THRESHOLD ? '≥' : '≤'} ${combTarget}` };
+    }
   }
 
   // Cost-ranked modes (MOC always; any mode once a threshold is set) go cheapest
@@ -1936,14 +2006,19 @@ function findTopCombos() {
   while (heap.size && combos.length < k) {
     if (pops++ > AUTOPLAN_MAX_POPS || visited.size > AUTOPLAN_MAX_VISITED) { truncated = true; break; }
     const t = heap.pop();
-    if (!comboConflicts(t.rows)) combos.push(t);
+    const passesCombined = combTarget == null || (HAS_MIN_THRESHOLD ? t.metric >= combTarget : t.metric <= combTarget);
+    if (passesCombined && !comboConflicts(t.rows)) combos.push(t);
     for (let j = 0; j < nodes.length; j++) {
       const ni = t.idx.slice();
       ni[j]++;
       if (ni[j] < pools[j].length) push(ni);
     }
   }
-  return { nodes, combos, truncated, target };
+  let reason;
+  if (!combos.length && combTarget != null) {
+    reason = `no combination reaches a combined ${AUTOPLAN_OP_SYM[op] || 'Σ'} ${autoplanStatLabel(stat)} ${HAS_MIN_THRESHOLD ? '≥' : '≤'} ${combTarget}` + (truncated ? ' before the search cap was hit' : '');
+  }
+  return { nodes, combos, truncated, target, combTarget, reason };
 }
 
 function renderAutoplanResults(res) {
@@ -1954,13 +2029,14 @@ function renderAutoplanResults(res) {
     return;
   }
   const sym     = AUTOPLAN_OP_SYM[autoplanOp] || 'Σ';
-  const rankByCost = IS_MOC || res.target != null;
+  const rankByCost = IS_MOC || res.target != null || res.combTarget != null;
   const ranking = rankByCost
     ? 'cheapest total cost first'
     : `${sym} ${autoplanStatLabel(autoplanStat)} first (${SCORE_LOWER_BETTER ? 'lowest → highest' : 'highest → lowest'})`;
-  const cap     = res.target != null
+  let cap = res.target != null
     ? ` · each ${DIM_LABEL.toLowerCase()} ${HAS_MIN_THRESHOLD ? '≥' : '≤'} ${res.target}`
     : '';
+  if (res.combTarget != null) cap += ` · combined ${sym} ${autoplanStatLabel(autoplanStat)} ${HAS_MIN_THRESHOLD ? '≥' : '≤'} ${res.combTarget}`;
   const warn    = res.truncated ? ' · <span class="autoplan-warn">⚠️ search capped</span>' : '';
   let html = `<div class="autoplan-empty">${res.combos.length} combination${res.combos.length === 1 ? '' : 's'} · ${ranking}${cap}${warn}</div>`;
   res.combos.forEach((c, i) => {
@@ -2029,6 +2105,42 @@ function updateAutoplanHint() {
   }
 }
 
+// Label + one-line note for the combined threshold input; follows the selected
+// Combine op and Team Stat so it always names exactly what is being limited.
+function syncCombLabel() {
+  const sym  = AUTOPLAN_OP_SYM[autoplanOp] || 'Σ';
+  const what = `${sym} ${autoplanStatLabel(autoplanStat)}`;
+  const lbl  = document.getElementById('autoplanCombLabel');
+  if (lbl) lbl.textContent = `Combined ${what} ${HAS_MIN_THRESHOLD ? 'min' : 'max'} threshold`;
+  const note = document.getElementById('autoplanCombNote');
+  if (note) note.textContent = `whole combination's ${what} must be ${HAS_MIN_THRESHOLD ? '≥' : '≤'} this`;
+}
+
+// Static how-to for the panel, worded for the current mode.
+function renderAutoplanHelp() {
+  const el = document.getElementById('autoplanHelpBody');
+  if (!el) return;
+  const node  = DIM_LABEL.toLowerCase();
+  const floor = HAS_MIN_THRESHOLD;
+  const cmp   = floor ? '≥' : '≤';
+  const steps = [];
+  steps.push(`<li><b>${DIM_LABEL}s</b> — pick which ${node}s to plan (at least two). The planner picks one team per ${node} and never reuses a character across them.</li>`);
+  if (IS_MOC) {
+    steps.push(`<li><b>Team Stat</b> — the column each team is judged on.</li>`);
+    steps.push(`<li><b>Threshold per ${DIM_LABEL}</b> (optional) — every team must be at or under this cycle count; combinations are then ranked cheapest total cost first.</li>`);
+  } else {
+    steps.push(`<li><b>Team Stat</b> — the score column each team is judged on (Min, P25, Avg, Median, P75, Max)${IS_ANOMALY ? '. Anomaly defaults to <b>Min</b>' : ''}.</li>`);
+    steps.push(`<li><b>Combine</b> — how the per-${node} stats become one number for the whole combination: <b>Σ Sum</b> adds them, <b>Ø Avg</b> averages them, <b>▼ Min</b> takes the weakest ${node}, <b>▲ Max</b> takes the strongest.</li>`);
+    steps.push(`<li><b>Threshold per ${DIM_LABEL}</b> (optional) — every individual team must be ${cmp} this value.</li>`);
+    steps.push(`<li><b>Combined ${floor ? 'min' : 'max'} threshold</b> (optional) — the ${floor ? 'floor' : 'ceiling'} applies to the <i>combined</i> number the Combine buttons produce, not to each team. Its label follows your Combine and Team Stat choices. Example: with <b>Σ Sum</b> and a combined ${floor ? 'min' : 'max'} of X, only combinations whose per-${node} stats add up to ${cmp} X are kept. It stacks with the per-${node} threshold when both are set.</li>`);
+  }
+  steps.push(`<li><b>Top K → Find Combinations</b> — shows the best K results and pins the top one. Click any result card to pin or unpin it; the table below then locks those ${node}s.</li>`);
+  const rankNote = IS_MOC
+    ? 'Ranking: cheapest total team cost first.'
+    : `Ranking: with no threshold, combinations are ordered by the combined value (${SCORE_LOWER_BETTER ? 'lowest first' : 'highest first'}). Setting either threshold switches the ordering to cheapest total cost first among combinations that pass.`;
+  el.innerHTML = `<ol>${steps.join('')}</ol><div class="autoplan-help-note">${rankNote} The filters above (${node}s, cost range, characters, roster) also shrink the pool the planner searches.</div>`;
+}
+
 function setupAutoplan() {
   const nodesWrap = document.getElementById('autoplanNodes');
   const statSel   = document.getElementById('autoplanStat');
@@ -2061,6 +2173,7 @@ function setupAutoplan() {
   };
   statSel.addEventListener('change', () => {
     autoplanStat = statSel.value;
+    syncCombLabel();
     syncTargetLabel();
     updateAutoplanHint();
   });
@@ -2071,6 +2184,7 @@ function setupAutoplan() {
     const btn = e.target.closest('button[data-op]');
     if (!btn) return;
     autoplanOp = btn.dataset.op;
+    syncCombLabel();
     syncOp();
     updateAutoplanHint();
   });
@@ -2081,6 +2195,10 @@ function setupAutoplan() {
 
   const tg = document.getElementById('autoplanTargetGroup');
   if (tg) tg.style.display = '';
+  const cg = document.getElementById('autoplanCombGroup');
+  if (cg && HAS_COMBINED_THRESHOLD) cg.style.display = '';
+  syncCombLabel();
+  renderAutoplanHelp();
   syncTargetLabel();
 
   document.getElementById('autoplanRun').addEventListener('click', runAutoplan);

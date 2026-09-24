@@ -455,6 +455,35 @@
   }
   .planner-total-chip.score { border-color: rgba(56,189,248,0.35); background: rgba(56,189,248,0.07); color: var(--accent2); }
   .planner-total-chip b { color: var(--text); font-weight: 700; margin-left: 2px; }
+
+  /* COMBINATION PLANNER — enumerate every node combination and rank the top K */
+  .autoplan { background: var(--panel); border: 1px solid var(--border2); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; }
+  .autoplan-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .autoplan-title { font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.04em; color: var(--accent2); }
+  .autoplan-sub { font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text3); }
+  .autoplan-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 18px; }
+  .autoplan-select, .autoplan-input { background: var(--bg2); border: 1px solid var(--border); color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 11.5px; border-radius: 5px; padding: 5px 7px; min-width: 76px; }
+  .autoplan-select:focus, .autoplan-input:focus { outline: none; border-color: var(--accent2); }
+  .autoplan-run { margin-left: auto; background: rgba(56,189,248,0.10); border: 1px solid rgba(56,189,248,0.45); color: var(--accent2); font-family: 'Rajdhani', sans-serif; font-size: 12.5px; font-weight: 700; border-radius: 5px; padding: 7px 16px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .autoplan-run:hover:not(:disabled) { background: rgba(56,189,248,0.20); }
+  .autoplan-run:disabled { opacity: 0.5; cursor: default; }
+  .autoplan-results { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow-y: auto; }
+  .autoplan-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 2px 0; }
+  .autoplan-card { display: flex; align-items: center; gap: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; cursor: pointer; transition: all 0.12s; }
+  .autoplan-card:hover { border-color: rgba(56,189,248,0.45); background: rgba(56,189,248,0.05); }
+  .autoplan-card.pinned { border-color: rgba(74,222,128,0.55); background: rgba(74,222,128,0.06); }
+  .autoplan-rank { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); min-width: 30px; }
+  .autoplan-card.pinned .autoplan-rank { color: var(--green); }
+  .autoplan-metric { font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: 700; color: var(--accent2); min-width: 104px; }
+  .autoplan-cost { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--teal); min-width: 76px; }
+  .autoplan-nodes { display: flex; flex-wrap: wrap; gap: 4px 14px; flex: 1; }
+  .autoplan-node { display: inline-flex; align-items: center; gap: 6px; font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text2); }
+  .autoplan-node .d { color: var(--muted); }
+  .autoplan-node .s { color: var(--text3); }
+  .autoplan-node .t { color: var(--text); }
+  .autoplan-pin { background: none; border: 1px solid var(--border); color: var(--text3); font-family: 'Rajdhani', sans-serif; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
+  .autoplan-card:hover .autoplan-pin, .autoplan-card.pinned .autoplan-pin { border-color: var(--green); color: var(--green); }
+  .autoplan-warn { color: var(--gold); }
   .picker-cell.is-locked { opacity: 0.35; cursor: not-allowed; }
   .picker-cell.is-locked:hover { background: none; }
   .picker-cell .cell-lock { position: absolute; top: 1px; right: 2px; font-size: 9px; }
@@ -962,6 +991,43 @@
     <div class="planner-totals" id="plannerTotals"></div>
   </div>
 
+  <!-- Combination planner — pin one team per node and rank every combination -->
+  <div class="autoplan" id="autoplanPanel">
+    <div class="autoplan-head">
+      <div class="autoplan-title">🧮 Combination Planner</div>
+      <div class="autoplan-sub" id="autoplanHint"></div>
+    </div>
+    <div class="autoplan-controls">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Nodes</div>
+        <div class="btn-group" id="autoplanNodes"></div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Team Stat</div>
+        <select class="autoplan-select" id="autoplanStat"></select>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Combine</div>
+        <div class="btn-group" id="autoplanOp">
+          <button class="btn-toggle" type="button" data-op="sum">Σ Sum</button>
+          <button class="btn-toggle" type="button" data-op="average">Ø Avg</button>
+          <button class="btn-toggle" type="button" data-op="min">▼ Min</button>
+          <button class="btn-toggle" type="button" data-op="max">▲ Max</button>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Top K</div>
+        <input class="autoplan-input" id="autoplanK" type="number" min="1" max="1000" step="1" value="100"/>
+      </div>
+      <div class="ctrl-group" id="autoplanTargetGroup" style="display:none;">
+        <div class="ctrl-label" id="autoplanTargetLabel">Max ceiling per Node</div>
+        <input class="autoplan-input" id="autoplanTarget" type="number" step="any" placeholder="—"/>
+      </div>
+      <button class="autoplan-run" id="autoplanRun" type="button">Find Combinations</button>
+    </div>
+    <div class="autoplan-results" id="autoplanResults"></div>
+  </div>
+
   <div class="results-info" id="resultsInfo">Loading…</div>
   <div class="active-filters-bar" id="activeFiltersBar"></div>
 
@@ -1153,7 +1219,11 @@ let NON_PLANNER_DIMS   = new Set(); // dims that can never be planned (node 0, A
 let _dimsBeforePlanner = null;      // snapshot of activeDims taken at the first pin
 let PLANNER_EXCLUDED   = 0;         // rows removed by planner mode in the last recompute
 
-function recompute() {
+// Every user-facing filter (search, dims, eidolons, sustain, cost, column
+// filters, character include/exclude, owned roster) *without* the planner-mode
+// exclusions — the combination planner searches this pool from scratch, so an
+// existing pin must not shrink it.
+function userFilteredRows() {
   let candidate;
   if (searchTerm.length >= 2) {
     const hits = searchIndex(searchTerm);
@@ -1207,6 +1277,12 @@ function recompute() {
       })
     );
   }
+
+  return candidate;
+}
+
+function recompute() {
+  let candidate = userFilteredRows();
 
   // Planner mode: remove rows on locked dims (non-planner dims + dims that
   // already have a pinned team) and any team reusing a pinned team's characters.
@@ -1348,6 +1424,33 @@ function restoreRemovedFilters(pin) {
   });
 }
 
+// Pin one row: the pinned team satisfies these characters by itself, so drop
+// any include filters on them (and on Trailblazer / March 7th variant siblings,
+// which share the same roster slot) — otherwise every row containing the
+// character is conflict-excluded and the table collapses to zero teams. The
+// characters stay locked (greyed out) in the picker until the team is unpinned,
+// and the removed filters are restored on unpin.
+function absorbPinnedRow(row) {
+  const removed = [];
+  row._membersBase.forEach(m => variantSiblings(m).forEach(s => {
+    const f = charFilters.get(s);
+    if (f && f.mode === 'include') {
+      charFilters.delete(s);
+      removed.push(f);
+    }
+  }));
+  if (removed.length) {
+    row._removedFilters = removed;
+    removed.forEach(f => { if (!AUTO_REMOVED.includes(f.base)) AUTO_REMOVED.push(f.base); });
+  }
+}
+
+function clearPinsWithRestore() {
+  const pins = [...plannerPins.values()];
+  plannerPins.clear();
+  pins.forEach(pin => restoreRemovedFilters(pin));
+}
+
 function togglePin(row) {
   // Only the planner dims (nodes/floors 1–3) are pinnable — node 0 / floor 0
   // and Anomaly's floors 4+5 can't be planned, so clicking them does nothing.
@@ -1358,24 +1461,7 @@ function togglePin(row) {
     restoreRemovedFilters(pin);
   } else {
     plannerPins.set(row.dim_key, row);
-    // The pinned team satisfies these characters by itself, so drop any include
-    // filters on them (and on Trailblazer / March 7th variant siblings, which
-    // share the same roster slot) — otherwise every row containing the character
-    // is conflict-excluded and the table collapses to zero teams. The characters
-    // stay locked (greyed out) in the picker until the team is unpinned, and the
-    // removed filters are restored on unpin.
-    const removed = [];
-    row._membersBase.forEach(m => variantSiblings(m).forEach(s => {
-      const f = charFilters.get(s);
-      if (f && f.mode === 'include') {
-        charFilters.delete(s);
-        removed.push(f);
-      }
-    }));
-    if (removed.length) {
-      row._removedFilters = removed;
-      removed.forEach(f => { if (!AUTO_REMOVED.includes(f.base)) AUTO_REMOVED.push(f.base); });
-    }
+    absorbPinnedRow(row);
   }
   applyPlannerState();
   recompute();
@@ -1655,6 +1741,305 @@ function updatePlannerBanner() {
     html += ` · <span class="warn">include filter auto-removed for ${names}</span>`;
   }
   status.innerHTML = html;
+}
+
+// ── Combination planner (rank every node combination automatically) ──────
+// A "combination" picks one team per selected node — exactly what pinning a row
+// on each node does by hand. This walks the combinations in rank order and
+// returns the top K that don't reuse a character (Trailblazer / March 7th
+// variant siblings folded together, the same conflict rule as pinning).
+//
+// Pure Fiction / Apocalyptic Shadow / Anomaly score points (higher is better):
+// combos are ranked by the chosen combine op (Σ sum / Ø average / ▼ weakest /
+// ▲ best) over each team's chosen stat.
+// MOC reports cycles (lower is better) and is special: it takes a per-node
+// ceiling, keeps only combos where *every* selected node sits at or under it,
+// then ranks that slice by cheapest total team cost.
+const AUTOPLAN_STATS = [
+  { col: 'Max_Score',     label: 'Max'    },
+  { col: 'Average_Score', label: 'Avg'    },
+  { col: 'Median_Score',  label: 'Median' },
+  { col: 'Percentile_75', label: 'P75'    },
+  { col: 'Percentile_25', label: 'P25'    },
+  { col: 'Min_Score',     label: 'Min'    },
+];
+const AUTOPLAN_OP_SYM    = { sum: 'Σ', average: 'Ø', min: '▼', max: '▲' };
+const AUTOPLAN_MAX_POPS    = 250000; // safety valve on the best-first walk
+const AUTOPLAN_MAX_VISITED = 400000; // ...and on its visited-tuple memory
+
+let autoplanNodes   = new Set(PLANNER_DIMS);
+let autoplanStat    = 'Max_Score';
+let autoplanOp      = 'sum';
+let autoplanResults = [];
+let autoplanState   = null;
+
+function autoplanStatLabel(col) {
+  const s = AUTOPLAN_STATS.find(x => x.col === col);
+  return s ? s.label : col;
+}
+
+// Ranking value for one combination's per-node stats.
+function combineStats(stats, op) {
+  if (!stats.length) return 0;
+  if (op === 'min') return Math.min(...stats);
+  if (op === 'max') return Math.max(...stats);
+  const sum = stats.reduce((a, b) => a + b, 0);
+  return op === 'average' ? sum / stats.length : sum;
+}
+
+// Two teams conflict when they share a roster slot — compare base names after
+// folding Trailblazer / March 7th variants together.
+function comboConflicts(rows) {
+  const used = new Set();
+  for (const r of rows) {
+    for (const m of r._membersBase) {
+      for (const s of variantSiblings(m)) {
+        if (used.has(s)) return true;
+        used.add(s);
+      }
+    }
+  }
+  return false;
+}
+
+// Minimal binary heap; cmp(a, b) < 0 means a pops first.
+function makeHeap(cmp) {
+  const a = [];
+  function up(i) {
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (cmp(a[i], a[p]) < 0) { const t = a[i]; a[i] = a[p]; a[p] = t; i = p; } else break;
+    }
+  }
+  function down(i) {
+    for (;;) {
+      const l = 2 * i + 1, r = l + 1;
+      let m = i;
+      if (l < a.length && cmp(a[l], a[m]) < 0) m = l;
+      if (r < a.length && cmp(a[r], a[m]) < 0) m = r;
+      if (m === i) break;
+      const t = a[i]; a[i] = a[m]; a[m] = t; i = m;
+    }
+  }
+  return {
+    get size() { return a.length; },
+    push(x) { a.push(x); up(a.length - 1); },
+    pop() { const top = a[0], last = a.pop(); if (a.length) { a[0] = last; down(0); } return top; },
+  };
+}
+
+function comboCostMin(r) { return r.estimated_min_cost || 0; }
+function comboCostMax(r) { return r.estimated_max_cost || 0; }
+
+// Best-first walk over the node combinations. Each step only raises one node's
+// index, and every pool is sorted so its value can only get worse — so a
+// tuple's ranking key is an upper bound for everything reachable from it, and
+// the first K valid tuples popped are exactly the top K.
+function findTopCombos() {
+  const nodes = [...autoplanNodes].filter(d => PLANNER_DIMS.includes(d)).sort((a, b) => a - b);
+  if (nodes.length < 2) return { nodes, combos: [], reason: 'select at least two ' + DIM_LABEL.toLowerCase() + 's' };
+
+  const stat = autoplanStat;
+  const op   = autoplanOp;
+  const k    = Math.max(1, Math.min(1000, parseInt(document.getElementById('autoplanK').value, 10) || 100));
+  const targetRaw = (document.getElementById('autoplanTarget')?.value || '').trim();
+  const target = IS_MOC && targetRaw !== '' ? parseFloat(targetRaw) : null;
+
+  const base  = userFilteredRows();
+  const pools = nodes.map(d => {
+    let rows = base.filter(r => r.dim_key === d && r[stat] != null);
+    if (target != null) rows = rows.filter(r => r[stat] <= target);
+    if (IS_MOC) rows.sort((a, b) => comboCostMin(a) - comboCostMin(b) || comboCostMax(a) - comboCostMax(b));
+    else        rows.sort((a, b) => b[stat] - a[stat]);
+    return rows;
+  });
+
+  const empty = pools.findIndex(p => !p.length);
+  if (empty >= 0) {
+    const why = target != null
+      ? `no ${DIM_LABEL.toLowerCase()} ${nodes[empty]} team at or under ${target}`
+      : `no ${DIM_LABEL.toLowerCase()} ${nodes[empty]} teams match the current filters`;
+    return { nodes, combos: [], reason: why };
+  }
+
+  // PF/Apoc/Anomaly: highest metric first — for ▼/▲ the metric is one node's
+  // value, so equal values fall back to the summed stat rather than coming back
+  // arbitrary. MOC: cheapest total cost first. The comparator is monotone (a
+  // child tuple never ranks ahead of its parent), which is what makes the
+  // best-first walk below exact.
+  function comboRank(x, y) {
+    if (IS_MOC) return (x.costMin - y.costMin) || (x.costMax - y.costMax);
+    const d = y.metric - x.metric;
+    if (d) return d;
+    if (op === 'min' || op === 'max') return y.sum - x.sum;
+    return 0;
+  }
+  const heap    = makeHeap(comboRank);
+  const visited = new Set();
+
+  function evalIdx(idx) {
+    const rows    = idx.map((i, n) => pools[n][i]);
+    const stats   = rows.map(r => r[stat]);
+    const metric  = combineStats(stats, op);
+    const sum     = combineStats(stats, 'sum');
+    const costMin = rows.reduce((s, r) => s + comboCostMin(r), 0);
+    const costMax = rows.reduce((s, r) => s + comboCostMax(r), 0);
+    return { idx, rows, stats, metric, sum, costMin, costMax };
+  }
+  function push(idx) {
+    const key = idx.join(',');
+    if (visited.has(key)) return;
+    visited.add(key);
+    heap.push(evalIdx(idx));
+  }
+
+  push(nodes.map(() => 0));
+  const combos = [];
+  let pops = 0, truncated = false;
+  while (heap.size && combos.length < k) {
+    if (pops++ > AUTOPLAN_MAX_POPS || visited.size > AUTOPLAN_MAX_VISITED) { truncated = true; break; }
+    const t = heap.pop();
+    if (!comboConflicts(t.rows)) combos.push(t);
+    for (let j = 0; j < nodes.length; j++) {
+      const ni = t.idx.slice();
+      ni[j]++;
+      if (ni[j] < pools[j].length) push(ni);
+    }
+  }
+  return { nodes, combos, truncated, target };
+}
+
+function renderAutoplanResults(res) {
+  const wrap = document.getElementById('autoplanResults');
+  if (!wrap) return;
+  if (!res || !res.combos.length) {
+    wrap.innerHTML = `<div class="autoplan-empty">No combinations found${res && res.reason ? ' — ' + res.reason : ''}.</div>`;
+    return;
+  }
+  const sym     = AUTOPLAN_OP_SYM[autoplanOp] || 'Σ';
+  const ranking = IS_MOC ? 'cheapest total cost first' : `${sym} ${autoplanStatLabel(autoplanStat)} first`;
+  const cap     = res.target != null ? ` · each ${DIM_LABEL.toLowerCase()} ≤ ${res.target}` : '';
+  const warn    = res.truncated ? ' · <span class="autoplan-warn">⚠️ search capped</span>' : '';
+  let html = `<div class="autoplan-empty">${res.combos.length} combination${res.combos.length === 1 ? '' : 's'} · ${ranking}${cap}${warn}</div>`;
+  res.combos.forEach((c, i) => {
+    const pinned = c.rows.every(r => plannerPins.get(r.dim_key) === r);
+    const nodesHtml = c.rows.map((r, n) =>
+      `<span class="autoplan-node"><span class="d">${DIM_LABEL[0]}${res.nodes[n]}</span><span class="s">${fmtNum(c.stats[n], 0)}</span><span class="t">${r.Team}</span></span>`
+    ).join('');
+    html += `<div class="autoplan-card${pinned ? ' pinned' : ''}" data-combo="${i}">
+      <span class="autoplan-rank">#${i + 1}</span>
+      <span class="autoplan-metric">${sym} ${autoplanStatLabel(autoplanStat)} ${fmtInt(Math.round(c.metric))}</span>
+      <span class="autoplan-cost">Cost ${fmtInt(Math.round(c.costMin))}→${fmtInt(Math.round(c.costMax))}</span>
+      <span class="autoplan-nodes">${nodesHtml}</span>
+      <button class="autoplan-pin" type="button">${pinned ? '📌 Unpin' : '📌 Pin'}</button>
+    </div>`;
+  });
+  wrap.innerHTML = html;
+}
+
+function unpinAll() {
+  clearPinsWithRestore();
+  applyPlannerState();
+  recompute();
+  if (autoplanState) renderAutoplanResults(autoplanState);
+}
+
+function pinCombo(combo) {
+  clearPinsWithRestore();
+  combo.rows.forEach(r => { plannerPins.set(r.dim_key, r); absorbPinnedRow(r); });
+  applyPlannerState();
+  recompute();
+  if (autoplanState) renderAutoplanResults(autoplanState);
+}
+
+function runAutoplan() {
+  const btn = document.getElementById('autoplanRun');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  const prev = btn.textContent;
+  btn.textContent = 'Searching…';
+  // Defer so the button repaints before the synchronous best-first search.
+  setTimeout(() => {
+    let res;
+    try { res = findTopCombos(); }
+    catch (err) { console.error('autoplan failed', err); res = { nodes: [], combos: [], reason: 'search failed' }; }
+    autoplanState   = res;
+    autoplanResults = res.combos;
+    if (res.combos.length) pinCombo(res.combos[0]);
+    else renderAutoplanResults(res);
+    btn.disabled = false;
+    btn.textContent = prev;
+  }, 0);
+}
+
+function updateAutoplanHint() {
+  const el = document.getElementById('autoplanHint');
+  if (!el) return;
+  const picked = [...autoplanNodes].filter(d => PLANNER_DIMS.includes(d)).sort((a, b) => a - b);
+  el.textContent = IS_MOC
+    ? `one team per selected ${DIM_LABEL.toLowerCase()}, every ${DIM_LABEL.toLowerCase()}'s ${autoplanStatLabel(autoplanStat)} at or under the target → cheapest cost first`
+    : `one team per selected ${DIM_LABEL.toLowerCase()} (${picked.join(' + ') || '—'}), no shared characters, ranked by ${autoplanOp} of ${autoplanStatLabel(autoplanStat)}`;
+}
+
+function setupAutoplan() {
+  const nodesWrap = document.getElementById('autoplanNodes');
+  const statSel   = document.getElementById('autoplanStat');
+  const opWrap    = document.getElementById('autoplanOp');
+  if (!nodesWrap || !statSel || !opWrap) return;
+
+  nodesWrap.innerHTML = PLANNER_DIMS.map(d =>
+    `<button class="btn-toggle active" type="button" data-dim="${d}">${DIM_LABEL[0]}${d}</button>`
+  ).join('');
+  nodesWrap.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-dim]');
+    if (!btn) return;
+    const d = parseInt(btn.dataset.dim, 10);
+    if (autoplanNodes.has(d)) {
+      if (autoplanNodes.size <= 2) return; // a combination needs at least two nodes
+      autoplanNodes.delete(d); btn.classList.remove('active');
+    } else {
+      autoplanNodes.add(d); btn.classList.add('active');
+    }
+    updateAutoplanHint();
+  });
+
+  statSel.innerHTML = AUTOPLAN_STATS.map(s => `<option value="${s.col}">${s.label}</option>`).join('');
+  statSel.value = autoplanStat;
+  const syncTargetLabel = () => {
+    const lbl = document.getElementById('autoplanTargetLabel');
+    if (lbl) lbl.textContent = `${autoplanStatLabel(autoplanStat)} ceiling per ${DIM_LABEL}`;
+  };
+  statSel.addEventListener('change', () => {
+    autoplanStat = statSel.value;
+    syncTargetLabel();
+    updateAutoplanHint();
+  });
+
+  const syncOp = () => opWrap.querySelectorAll('button[data-op]').forEach(b => b.classList.toggle('active', b.dataset.op === autoplanOp));
+  syncOp();
+  opWrap.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-op]');
+    if (!btn) return;
+    autoplanOp = btn.dataset.op;
+    syncOp();
+    updateAutoplanHint();
+  });
+
+  const tg = document.getElementById('autoplanTargetGroup');
+  if (tg) tg.style.display = IS_MOC ? '' : 'none';
+  syncTargetLabel();
+
+  document.getElementById('autoplanRun').addEventListener('click', runAutoplan);
+  document.getElementById('autoplanResults').addEventListener('click', (e) => {
+    const card = e.target.closest('.autoplan-card');
+    if (!card) return;
+    const combo = autoplanResults[parseInt(card.dataset.combo, 10)];
+    if (!combo) return;
+    const isPinned = combo.rows.every(r => plannerPins.get(r.dim_key) === r);
+    if (isPinned) unpinAll();
+    else pinCombo(combo);
+  });
+  updateAutoplanHint();
 }
 
 (function setupVirtualScroll() {
@@ -2412,13 +2797,9 @@ renderRosterManager();
 
 renderChips();
 
-document.getElementById('plannerClearBtn').addEventListener('click', () => {
-  const pins = [...plannerPins.values()];
-  plannerPins.clear();
-  pins.forEach(pin => restoreRemovedFilters(pin));
-  applyPlannerState();
-  recompute();
-});
+document.getElementById('plannerClearBtn').addEventListener('click', unpinAll);
+
+setupAutoplan();
 
 const exportWrap = document.getElementById('plannerExportWrap');
 const exportBtn  = document.getElementById('plannerExportBtn');
@@ -2650,6 +3031,10 @@ function prepareData(savedState) {
   // floors 4+5) are always locked once planner mode starts.
   plannerPins = new Map();
   _dimsBeforePlanner = null;
+  autoplanState = null;
+  autoplanResults = [];
+  const apResultsEl = document.getElementById('autoplanResults');
+  if (apResultsEl) apResultsEl.innerHTML = '';
   NON_PLANNER_DIMS = new Set(
     [...document.querySelectorAll('#dimFilters .btn-toggle')]
       .map(b => parseInt(b.dataset.dim, 10))

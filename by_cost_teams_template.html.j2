@@ -484,6 +484,24 @@
   .autoplan-pin { background: none; border: 1px solid var(--border); color: var(--text3); font-family: 'Rajdhani', sans-serif; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
   .autoplan-card:hover .autoplan-pin, .autoplan-card.pinned .autoplan-pin { border-color: var(--green); color: var(--green); }
   .autoplan-warn { color: var(--gold); }
+  /* Pressed/active highlight for the combination-planner toggles — these have
+     no dim-X class, so without this they only toggle a class with no visual. */
+  #autoplanNodes .btn-toggle.active,
+  #autoplanOp .btn-toggle.active {
+    background: rgba(56,189,248,0.18);
+    border-color: var(--accent2);
+    color: var(--accent2);
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px rgba(56,189,248,0.45), 0 0 8px rgba(56,189,248,0.22);
+  }
+  #autoplanOp .btn-toggle.active {
+    background: rgba(167,139,250,0.18);
+    border-color: var(--purple);
+    color: var(--purple);
+    box-shadow: inset 0 0 0 1px rgba(167,139,250,0.45), 0 0 8px rgba(167,139,250,0.22);
+  }
+  #autoplanNodes .btn-toggle:active,
+  #autoplanOp .btn-toggle:active { transform: translateY(1px); }
   .picker-cell.is-locked { opacity: 0.35; cursor: not-allowed; }
   .picker-cell.is-locked:hover { background: none; }
   .picker-cell .cell-lock { position: absolute; top: 1px; right: 2px; font-size: 9px; }
@@ -688,7 +706,7 @@
         <div class="ctrl-label">Team Stat</div>
         <select class="autoplan-select" id="autoplanStat"></select>
       </div>
-      <div class="ctrl-group">
+      <div class="ctrl-group" id="autoplanOpGroup">
         <div class="ctrl-label">Combine</div>
         <div class="btn-group" id="autoplanOp">
           <button class="btn-toggle" type="button" data-op="sum">Σ Sum</button>
@@ -702,7 +720,7 @@
         <input class="autoplan-input" id="autoplanK" type="number" min="1" max="1000" step="1" value="100"/>
       </div>
       <div class="ctrl-group" id="autoplanTargetGroup" style="display:none;">
-        <div class="ctrl-label" id="autoplanTargetLabel">Max ceiling per {{ dim_label }}</div>
+        <div class="ctrl-label" id="autoplanTargetLabel">Threshold per {{ dim_label }}</div>
         <input class="autoplan-input" id="autoplanTarget" type="number" step="any" placeholder="—"/>
       </div>
       <button class="autoplan-run" id="autoplanRun" type="button">Find Combinations</button>
@@ -806,7 +824,17 @@ const VIEWPORT_H = 600;
 const PLANNER_DIMS = ({{ planner_dims_json|default('[]') }}).filter(d => d !== 0);
 // MOC reports cycle counts instead of scores (all teams share one cycle counter),
 // so its pinned-teams totals show only the summed cost — no score aggregates.
-const IS_MOC = {{ 'true' if (mode_label|upper == 'MOC') else 'false' }};
+const IS_MOC     = {{ 'true' if (mode_label|upper == 'MOC') else 'false' }};
+const IS_ANOMALY = {{ 'true' if (mode_label|upper == 'ANOMALY') else 'false' }};
+const IS_APOC    = {{ 'true' if (mode_label|upper == 'APOC') else 'false' }};
+const IS_PF      = {{ 'true' if (mode_label|upper == 'PURE FICTION') else 'false' }};
+// Score direction: MOC and Anomaly read a LOWER number as better; PF/APOC read
+// a HIGHER number as better. Thresholds are per-node: MOC/Anomaly cap the score
+// (≤ target — teams under the ceiling qualify), PF/APOC floor it (≥ target —
+// teams that clear it qualify). Setting a threshold switches the ranking to
+// cheapest total cost first, exactly like MOC's ceiling.
+const SCORE_LOWER_BETTER = IS_MOC || IS_ANOMALY;
+const HAS_MIN_THRESHOLD  = IS_APOC || IS_PF;
 
 let RAW_DATA = [];
 let MAX_RATE   = 1;
@@ -1501,35 +1529,40 @@ function findTopCombos() {
   const op   = autoplanOp;
   const k    = Math.max(1, Math.min(1000, parseInt(document.getElementById('autoplanK').value, 10) || 100));
   const targetRaw = (document.getElementById('autoplanTarget')?.value || '').trim();
-  const target = IS_MOC && targetRaw !== '' ? parseFloat(targetRaw) : null;
+  const target = targetRaw !== '' ? parseFloat(targetRaw) : null;
+  // MOC always ranks cheapest-first. Every other mode does too once a threshold
+  // is set; without one they rank by the chosen combine op / score direction.
+  const rankByCost = IS_MOC || target != null;
 
   const base  = userFilteredRows();
   const pools = nodes.map(d => {
     let rows = base.filter(r => r.dim_key === d && r[stat] != null);
-    if (target != null) rows = rows.filter(r => r[stat] <= target);
-    if (IS_MOC) rows.sort((a, b) => comboCostMin(a) - comboCostMin(b) || comboCostMax(a) - comboCostMax(b));
-    else        rows.sort((a, b) => b[stat] - a[stat]);
+    if (target != null) rows = rows.filter(r => HAS_MIN_THRESHOLD ? r[stat] >= target : r[stat] <= target);
+    if (rankByCost) rows.sort((a, b) => comboCostMin(a) - comboCostMin(b) || comboCostMax(a) - comboCostMax(b));
+    else            rows.sort((a, b) => SCORE_LOWER_BETTER ? a[stat] - b[stat] : b[stat] - a[stat]);
     return rows;
   });
 
   const empty = pools.findIndex(p => !p.length);
   if (empty >= 0) {
     const why = target != null
-      ? `no ${DIM_LABEL.toLowerCase()} ${nodes[empty]} team at or under ${target}`
+      ? `no ${DIM_LABEL.toLowerCase()} ${nodes[empty]} team ${HAS_MIN_THRESHOLD ? 'at or above' : 'at or under'} ${target}`
       : `no ${DIM_LABEL.toLowerCase()} ${nodes[empty]} teams match the current filters`;
     return { nodes, combos: [], reason: why };
   }
 
-  // PF/Apoc/Anomaly: highest metric first — for ▼/▲ the metric is one node's
-  // value, so equal values fall back to the summed stat rather than coming back
-  // arbitrary. MOC: cheapest total cost first. The comparator is monotone (a
-  // child tuple never ranks ahead of its parent), which is what makes the
-  // best-first walk below exact.
+  // Cost-ranked modes (MOC always; any mode once a threshold is set) go cheapest
+  // total cost first. Otherwise the combine op over the chosen stat decides, in
+  // the mode's score direction — PF/APOC highest first, MOC/Anomaly lowest
+  // first. For ▼/▲ the metric is one node's value, so equal values fall back to
+  // the summed stat rather than coming back arbitrary. The comparator is
+  // monotone (a child tuple never ranks ahead of its parent), which is what
+  // makes the best-first walk below exact.
   function comboRank(x, y) {
-    if (IS_MOC) return (x.costMin - y.costMin) || (x.costMax - y.costMax);
-    const d = y.metric - x.metric;
+    if (rankByCost) return (x.costMin - y.costMin) || (x.costMax - y.costMax);
+    const d = SCORE_LOWER_BETTER ? x.metric - y.metric : y.metric - x.metric;
     if (d) return d;
-    if (op === 'min' || op === 'max') return y.sum - x.sum;
+    if (op === 'min' || op === 'max') return SCORE_LOWER_BETTER ? x.sum - y.sum : y.sum - x.sum;
     return 0;
   }
   const heap    = makeHeap(comboRank);
@@ -1575,8 +1608,13 @@ function renderAutoplanResults(res) {
     return;
   }
   const sym     = AUTOPLAN_OP_SYM[autoplanOp] || 'Σ';
-  const ranking = IS_MOC ? 'cheapest total cost first' : `${sym} ${autoplanStatLabel(autoplanStat)} first`;
-  const cap     = res.target != null ? ` · each ${DIM_LABEL.toLowerCase()} ≤ ${res.target}` : '';
+  const rankByCost = IS_MOC || res.target != null;
+  const ranking = rankByCost
+    ? 'cheapest total cost first'
+    : `${sym} ${autoplanStatLabel(autoplanStat)} first (${SCORE_LOWER_BETTER ? 'lowest → highest' : 'highest → lowest'})`;
+  const cap     = res.target != null
+    ? ` · each ${DIM_LABEL.toLowerCase()} ${HAS_MIN_THRESHOLD ? '≥' : '≤'} ${res.target}`
+    : '';
   const warn    = res.truncated ? ' · <span class="autoplan-warn">⚠️ search capped</span>' : '';
   let html = `<div class="autoplan-empty">${res.combos.length} combination${res.combos.length === 1 ? '' : 's'} · ${ranking}${cap}${warn}</div>`;
   res.combos.forEach((c, i) => {
@@ -1633,10 +1671,16 @@ function runAutoplan() {
 function updateAutoplanHint() {
   const el = document.getElementById('autoplanHint');
   if (!el) return;
-  const picked = [...autoplanNodes].filter(d => PLANNER_DIMS.includes(d)).sort((a, b) => a - b);
-  el.textContent = IS_MOC
-    ? `one team per selected ${DIM_LABEL.toLowerCase()}, every ${DIM_LABEL.toLowerCase()}'s ${autoplanStatLabel(autoplanStat)} at or under the target → cheapest cost first`
-    : `one team per selected ${DIM_LABEL.toLowerCase()} (${picked.join(' + ') || '—'}), no shared characters, ranked by ${autoplanOp} of ${autoplanStatLabel(autoplanStat)}`;
+  const picked  = [...autoplanNodes].filter(d => PLANNER_DIMS.includes(d)).sort((a, b) => a - b);
+  const statLbl = autoplanStatLabel(autoplanStat);
+  const nodes   = picked.join(' + ') || '—';
+  if (IS_MOC) {
+    el.textContent = `one team per selected ${DIM_LABEL.toLowerCase()}, every ${DIM_LABEL.toLowerCase()}'s ${statLbl} at or under the target → cheapest cost first`;
+  } else if (HAS_MIN_THRESHOLD) {
+    el.textContent = `one team per selected ${DIM_LABEL.toLowerCase()} (${nodes}), no shared characters — set a min ${statLbl} threshold → cheapest cost first, otherwise ${autoplanOp} of ${statLbl} (highest → lowest)`;
+  } else {
+    el.textContent = `one team per selected ${DIM_LABEL.toLowerCase()} (${nodes}), no shared characters — ${autoplanOp} of ${statLbl} (lowest → highest); set a max threshold → cheapest cost first`;
+  }
 }
 
 function setupAutoplan() {
@@ -1665,7 +1709,9 @@ function setupAutoplan() {
   statSel.value = autoplanStat;
   const syncTargetLabel = () => {
     const lbl = document.getElementById('autoplanTargetLabel');
-    if (lbl) lbl.textContent = `${autoplanStatLabel(autoplanStat)} ceiling per ${DIM_LABEL}`;
+    if (lbl) lbl.textContent = HAS_MIN_THRESHOLD
+      ? `${autoplanStatLabel(autoplanStat)} min threshold per ${DIM_LABEL}`
+      : `${autoplanStatLabel(autoplanStat)} max ceiling per ${DIM_LABEL}`;
   };
   statSel.addEventListener('change', () => {
     autoplanStat = statSel.value;
@@ -1683,8 +1729,12 @@ function setupAutoplan() {
     updateAutoplanHint();
   });
 
+  // MOC ranks by cost, so the Σ/Ø/▼/▲ combine buttons are meaningless there.
+  const opGroup = document.getElementById('autoplanOpGroup');
+  if (opGroup && IS_MOC) opGroup.style.display = 'none';
+
   const tg = document.getElementById('autoplanTargetGroup');
-  if (tg) tg.style.display = IS_MOC ? '' : 'none';
+  if (tg) tg.style.display = '';
   syncTargetLabel();
 
   document.getElementById('autoplanRun').addEventListener('click', runAutoplan);

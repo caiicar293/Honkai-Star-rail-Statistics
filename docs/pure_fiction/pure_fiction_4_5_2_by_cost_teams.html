@@ -497,6 +497,11 @@
   .autoplan-help-body b { color: var(--text); }
   .autoplan-help-note { font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
   .autoplan-comb-note { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text3); margin-top: 2px; max-width: 250px; line-height: 1.35; }
+  /* Show / hide the whole combination planner (remembered per browser) */
+  .autoplan-toggle { margin-left: auto; background: var(--bg2); border: 1px solid var(--border); color: var(--text2); font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600; border-radius: 5px; padding: 4px 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .autoplan-toggle:hover { border-color: var(--accent2); color: var(--accent2); }
+  .autoplan.collapsed > :not(.autoplan-head) { display: none; }
+  .autoplan.collapsed .autoplan-head { margin-bottom: 0; }
   /* Pressed/active highlight for the combination-planner toggles — these have
      no dim-X class, so without this they only toggle a class with no visual. */
   #autoplanNodes .btn-toggle.active,
@@ -1027,6 +1032,7 @@
     <div class="autoplan-head">
       <div class="autoplan-title">🧮 Combination Planner</div>
       <div class="autoplan-sub" id="autoplanHint"></div>
+      <button class="autoplan-toggle" id="autoplanToggle" type="button" aria-expanded="true" title="Show or hide the combination planner">Hide ▴</button>
     </div>
     <details class="autoplan-help" id="autoplanHelp">
       <summary>How to use the combination planner</summary>
@@ -1824,7 +1830,7 @@ const AUTOPLAN_MAX_POPS    = 250000; // safety valve on the best-first walk
 const AUTOPLAN_MAX_VISITED = 400000; // ...and on its visited-tuple memory
 
 let autoplanNodes   = new Set(PLANNER_DIMS);
-let autoplanStat    = IS_ANOMALY ? 'Min_Score' : 'Max_Score'; // Anomaly ranks on Min by default
+let autoplanStat    = (IS_ANOMALY || IS_MOC) ? 'Min_Score' : 'Max_Score'; // Anomaly and MOC rank on Min by default
 let autoplanOp      = 'sum';
 let autoplanResults = [];
 let autoplanState   = null;
@@ -2122,7 +2128,7 @@ function renderAutoplanHelp() {
   const steps = [];
   steps.push(`<li><b>${DIM_LABEL}s</b> — pick which ${node}s to plan (at least two). The planner picks one team per ${node} and never reuses a character across them.</li>`);
   if (IS_MOC) {
-    steps.push(`<li><b>Team Stat</b> — the column each team is judged on.</li>`);
+    steps.push(`<li><b>Team Stat</b> — the column each team is judged on. MOC defaults to <b>Min</b>.</li>`);
     steps.push(`<li><b>Threshold per ${DIM_LABEL}</b> (optional) — every team must be at or under this cycle count; combinations are then ranked cheapest total cost first.</li>`);
   } else {
     steps.push(`<li><b>Team Stat</b> — the score column each team is judged on (Min, P25, Avg, Median, P75, Max)${IS_ANOMALY ? '. Anomaly defaults to <b>Min</b>' : ''}.</li>`);
@@ -2198,6 +2204,24 @@ function setupAutoplan() {
   syncTargetLabel();
 
   document.getElementById('autoplanRun').addEventListener('click', runAutoplan);
+
+  // Show / hide the whole planner body. Only the header row stays visible when
+  // hidden; pins, results and settings are kept. The choice is remembered.
+  const apPanel  = document.getElementById('autoplanPanel');
+  const apToggle = document.getElementById('autoplanToggle');
+  if (apPanel && apToggle) {
+    const AP_COLLAPSE_KEY = 'hsr_autoplan_collapsed_v1';
+    const setCollapsed = (collapsed, persist) => {
+      apPanel.classList.toggle('collapsed', collapsed);
+      apToggle.textContent = collapsed ? 'Show ▾' : 'Hide ▴';
+      apToggle.setAttribute('aria-expanded', String(!collapsed));
+      if (persist) { try { localStorage.setItem(AP_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch (e) {} }
+    };
+    let startCollapsed = false;
+    try { startCollapsed = localStorage.getItem(AP_COLLAPSE_KEY) === '1'; } catch (e) {}
+    setCollapsed(startCollapsed, false);
+    apToggle.addEventListener('click', () => setCollapsed(!apPanel.classList.contains('collapsed'), true));
+  }
   document.getElementById('autoplanResults').addEventListener('click', (e) => {
     const card = e.target.closest('.autoplan-card');
     if (!card) return;

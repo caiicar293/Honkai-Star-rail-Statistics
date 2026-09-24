@@ -213,6 +213,7 @@
 {% include "_version_switch_style.html.j2" %}
   {% include "_column_filter_style.html.j2" %}
   {% include "_distribution_modal_style.html.j2" %}
+  {% include "_prev_diff_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -275,6 +276,12 @@
       </div>
     </div>
 
+    <!-- Previous-version difference: ▲/▼ next to every metric vs the earlier version -->
+    <div class="ctrl-group">
+      <div class="ctrl-label">Version Compare</div>
+      <button class="btn-toggle pd-btn" id="prevDiffBtn" type="button" aria-pressed="false" title="Load the previous version and show how every metric changed. Green = improved, red = worse, grey = neutral metric.">Show previous version difference</button>
+    </div>
+
   </div>
 
   <!-- Cost range filter (cost tab only) -->
@@ -302,6 +309,7 @@
   </div>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
+  <div class="pd-legend" id="prevDiffLegend" hidden></div>
   <div class="active-filters-bar" id="activeFiltersBar"></div>
 
   <div class="table-wrap">
@@ -490,23 +498,23 @@ function cellHtml(r, key, rank) {
     case 'dim_key': return `<td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>`;
     case 'cost_key': return `<td><span class="cost-badge">${r.estimated_min_cost}<span class="cost-sep">→</span>${r.estimated_max_cost}</span></td>`;
     case 'max_eidolon': return `<td class="num"><span class="meid-badge e${Math.round(r.max_eidolon)}">E${Math.round(r.max_eidolon)}</span></td>`;
-    case '__name': return `<td><div class="char-cell">${r.__iconHtml}<span class="char-name">${r.__base}</span>${r.__eid != null ? `<span class="char-eid-tag">E${r.__eid}</span>` : ''}</div></td>`;
+    case '__name': return `<td><div class="char-cell">${r.__iconHtml}<span class="char-name">${r.__base}</span>${r.__eid != null ? `<span class="char-eid-tag">E${r.__eid}</span>` : ''}${PrevDiff.newBadge(r)}</div></td>`;
     case 'Appearance_Rate_pct': {
       const pct = MAX_RATE[activeTab] > 0 ? Math.min(100, (r.Appearance_Rate_pct / MAX_RATE[activeTab]) * 100) : 0;
-      return `<td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${pct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct)}</span></div></td>`;
+      return `<td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${pct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct)}</span>${PrevDiff.delta(r,'Appearance_Rate_pct',2)}</div></td>`;
     }
-    case 'Samples': return `<td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>`;
-    case 'Sustain_Percentage': return `<td class="num"><span class="sustain-txt">${fmtPct(r.Sustain_Percentage)}</span></td>`;
-    case 'Sustain_Samples': return `<td class="num"><span class="score-num samp">${fmtInt(r.Sustain_Samples)}</span></td>`;
-    case 'Full_Clear_Rate_pct': return `<td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>`;
-    case 'Total_Full_Clears': return `<td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>`;
-    case 'Min_Score': return `<td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>`;
-    case 'Percentile_25': return `<td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>`;
-    case 'Median_Score': return `<td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>`;
-    case 'Percentile_75': return `<td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span></td>`;
-    case 'Average_Score': return `<td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>`;
-    case 'Max_Score': return `<td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>`;
-    case 'Std_Dev': return `<td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>`;
+    case 'Samples': return `<td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span>${PrevDiff.delta(r,'Samples',0)}</td>`;
+    case 'Sustain_Percentage': return `<td class="num"><span class="sustain-txt">${fmtPct(r.Sustain_Percentage)}</span>${PrevDiff.delta(r,'Sustain_Percentage',2)}</td>`;
+    case 'Sustain_Samples': return `<td class="num"><span class="score-num samp">${fmtInt(r.Sustain_Samples)}</span>${PrevDiff.delta(r,'Sustain_Samples',0)}</td>`;
+    case 'Full_Clear_Rate_pct': return `<td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span>${PrevDiff.delta(r,'Full_Clear_Rate_pct',2)}</td>`;
+    case 'Total_Full_Clears': return `<td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span>${PrevDiff.delta(r,'Total_Full_Clears',0)}</td>`;
+    case 'Min_Score': return `<td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span>${PrevDiff.delta(r,'Min_Score',1)}</td>`;
+    case 'Percentile_25': return `<td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span>${PrevDiff.delta(r,'Percentile_25',1)}</td>`;
+    case 'Median_Score': return `<td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span>${PrevDiff.delta(r,'Median_Score',1)}</td>`;
+    case 'Percentile_75': return `<td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span>${PrevDiff.delta(r,'Percentile_75',1)}</td>`;
+    case 'Average_Score': return `<td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span>${PrevDiff.delta(r,'Average_Score',2)}</td>`;
+    case 'Max_Score': return `<td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span>${PrevDiff.delta(r,'Max_Score',1)}</td>`;
+    case 'Std_Dev': return `<td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span>${PrevDiff.delta(r,'Std_Dev',2)}</td>`;
     case '__dist': {
       const hasDist = r && Array.isArray(r.Scores_Distributions) && r.Scores_Distributions.length > 0;
       return `<td class="num"><button class="dist-btn${hasDist ? '' : ' disabled'}" data-fidx="${rank.fIdx}" type="button" title="View score distribution"${hasDist ? '' : ' disabled'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>Dist</button></td>`;
@@ -831,6 +839,7 @@ async function loadDatasets(costFilename, eidFilename) {
   document.getElementById('costResetBtn')?.classList.toggle('active', costMinFilter === MIN_COST_G && costMaxFilter === MAX_COST_G);
 
   HAS_LOADED = true;
+  await PrevDiff.onLoaded(costFilename); // re-fetch/annotate the previous version if the diff is switched on
   recompute();
 }
 
@@ -960,7 +969,26 @@ async function initializeApp() {
 </script>
 {% include "_column_filter_script.html.j2" %}
 {% include "_distribution_modal_script.html.j2" %}
+{% include "_prev_diff_script.html.j2" %}
 <script>
+PrevDiff.configure({
+  prefix: '{{ file_prefix }}',
+  manifest: '{{ file_prefix }}_by_cost_characters_versions.json',
+  lowerIsBetter: /^(moc|anomaly)/i.test('{{ mode_label }}'),
+  onChange: renderViewport,
+  datasets: {
+    cost: {
+      rows: () => RAW.cost,
+      filenameFor: safe => `{{ file_prefix }}_${safe}_by_cost_characters_data.json.br`,
+      keyOf: r => `${r.Character}|${r[DIM_FIELD]}|${r.estimated_min_cost}|${r.estimated_max_cost}|${Math.round(r.max_eidolon)}`,
+    },
+    eid: {
+      rows: () => RAW.eid,
+      filenameFor: safe => `{{ file_prefix }}_${safe}_by_cost_characters_by_eidolon_data.json.br`,
+      keyOf: r => `${r.Character_Eidolon}|${r[DIM_FIELD]}`,
+    },
+  },
+});
 initializeApp();
 </script>
 </body>

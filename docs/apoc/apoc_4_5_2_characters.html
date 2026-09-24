@@ -500,6 +500,22 @@
   .dist-tooltip .pct { color: var(--gold); }
 
   .dist-empty { text-align: center; padding: 60px 20px; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  
+  /* ── Previous-version difference (▲/▼ vs the earlier version) ───────────
+     Shared by the character templates. Needs --green / --red / --gold /
+     --text2 / --text3 to exist on :root (both character pages define them). */
+  .pd-delta { display: inline-block; margin-left: 6px; font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; vertical-align: middle; cursor: help; }
+  .pd-good    { color: var(--green); }
+  .pd-bad     { color: var(--red); }
+  .pd-neutral { color: var(--text2); }
+  .pd-flat    { color: var(--text3); font-weight: 400; }
+  .pd-new { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 3px; border: 1px solid rgba(251,191,36,0.4); background: rgba(251,191,36,0.1); color: var(--gold); font-family: 'Share Tech Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; vertical-align: middle; cursor: help; }
+  .btn-toggle.pd-btn.active { background: rgba(74,222,128,0.10); border-color: var(--green); color: var(--green); }
+  .btn-toggle.pd-btn:disabled { opacity: 0.45; cursor: not-allowed; border-color: var(--border); color: var(--text3); }
+  .pd-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 10px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text3); letter-spacing: 0.04em; }
+  .pd-legend[hidden] { display: none; }
+  .pd-legend b { color: var(--accent2); }
+  .pd-legend .pd-delta, .pd-legend .pd-new { margin-left: 0; cursor: default; }
 </style>
 </head>
 <body>
@@ -580,9 +596,16 @@
       </div>
     </div>
 
+    <!-- Previous-version difference: ▲/▼ next to every metric vs the earlier version -->
+    <div class="ctrl-group">
+      <div class="ctrl-label">Version Compare</div>
+      <button class="btn-toggle pd-btn" id="prevDiffBtn" type="button" aria-pressed="false" title="Load the previous version and show how every metric changed. Green = improved, red = worse, grey = neutral metric.">Show previous version difference</button>
+    </div>
+
   </div>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
+  <div class="pd-legend" id="prevDiffLegend" hidden></div>
   <div class="active-filters-bar" id="activeFiltersBar"></div>
 
   <div class="table-wrap">
@@ -769,27 +792,27 @@ function rowHTML(r, rank, fIdx) {
   const at = r.at_eidolon_level, upto = r.up_to_eidolon_level;
   const eidRangeCell = IS_LEGACY ? '' : `<td><span class="${eidCls(at,upto)}">${eidLabel(at,upto)}</span></td>`;
   const eidCols = IS_LEGACY ? '' : `
-    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_0_pct'])}</span></td>
+    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_0_pct'])}</span>${PrevDiff.delta(r,'Eidolon_0_pct',1)}</td>
     <td>${eidDistHtml(r)}</td>
-    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_6_pct'])}</span></td>`;
+    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_6_pct'])}</span>${PrevDiff.delta(r,'Eidolon_6_pct',1)}</td>`;
 
   return `<tr>
     <td class="rank-cell${rank<=3?' top3':''}">${rank}</td>
     <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
     ${eidRangeCell}
-    <td><div class="char-cell">${r._iconHtml}<div class="char-info"><span class="char-name">${r.Character}</span><div class="char-tags">${rarityTag(r.rarity)}${elTag(r.element)}${pathTag(r.path)}${roleTag(r.role)}</div></div></div></td>
-    <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct,2)}</span></div></td>
-    <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
-    <td class="num"><span class="sustain-pct">${fmtPct(r.Sustain_Percentage)}</span></td>
-    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>
-    <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>
-    <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
-    <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
-    <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>
-    <td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span></td>
-    <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
-    <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
-    <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+    <td><div class="char-cell">${r._iconHtml}<div class="char-info"><span class="char-name">${r.Character}${PrevDiff.newBadge(r)}</span><div class="char-tags">${rarityTag(r.rarity)}${elTag(r.element)}${pathTag(r.path)}${roleTag(r.role)}</div></div></div></td>
+    <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct,2)}</span>${PrevDiff.delta(r,'Appearance_Rate_pct',2)}</div></td>
+    <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span>${PrevDiff.delta(r,'Samples',0)}</td>
+    <td class="num"><span class="sustain-pct">${fmtPct(r.Sustain_Percentage)}</span>${PrevDiff.delta(r,'Sustain_Percentage',1)}</td>
+    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span>${PrevDiff.delta(r,'Full_Clear_Rate_pct',1)}</td>
+    <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span>${PrevDiff.delta(r,'Total_Full_Clears',0)}</td>
+    <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span>${PrevDiff.delta(r,'Min_Score',1)}</td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span>${PrevDiff.delta(r,'Percentile_25',1)}</td>
+    <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span>${PrevDiff.delta(r,'Median_Score',1)}</td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span>${PrevDiff.delta(r,'Percentile_75',1)}</td>
+    <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span>${PrevDiff.delta(r,'Average_Score',2)}</td>
+    <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span>${PrevDiff.delta(r,'Max_Score',1)}</td>
+    <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span>${PrevDiff.delta(r,'Std_Dev',2)}</td>
     ${eidCols}
     ${distBtnHTML(r, fIdx)}
   </tr>`;
@@ -1052,6 +1075,7 @@ async function loadDataset(filename) {
   RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
   prepareData(HAS_LOADED ? captureState() : null); // first load → defaults; version switch → carry over state
   HAS_LOADED = true;
+  await PrevDiff.onLoaded(filename); // re-fetch/annotate the previous version if the diff is switched on
   recompute();
 }
 
@@ -1851,7 +1875,243 @@ const ColumnFilter = (() => {
 })();
 </script>
 <script>
+// ── Previous-version difference (Prydwen-style ▲/▼ vs the earlier version) ──
+// Shared by the character templates. The page calls PrevDiff.configure(...)
+// once, then PrevDiff.onLoaded(filename) every time a dataset finishes
+// loading (first load AND version switches), and renders each metric through
+// PrevDiff.delta(row, metricKey, decimals) / PrevDiff.newBadge(row).
+//
+// Turning the "Show previous version difference" button on lazily fetches the
+// data of the next-older version from the same versions manifest the version
+// switcher uses, matches rows by a page-supplied key, and shows the change
+// next to every metric:
+//   green ▲/▼ = the metric improved, red ▲/▼ = it got worse,
+//   grey  ▲/▼ = a neutral metric (samples, sustain, σ, eidolon mix).
+// "Improved" for score metrics depends on the mode (lower is better in
+// MOC / Anomaly, higher in Apoc / Pure Fiction) — see META + cfg.lowerIsBetter.
+const PrevDiff = (() => {
+  // metric key -> how to colour a change:
+  //   'score' → better = lower in MOC/Anomaly, higher in Apoc/PF
+  //   1       → higher is better (usage, full-star rate)
+  //   0       → neutral (population size, sustain, spread, eidolon mix)
+  const META = {
+    Appearance_Rate_pct: 1, Full_Clear_Rate_pct: 1,
+    Min_Score: 'score', Percentile_25: 'score', Median_Score: 'score',
+    Percentile_75: 'score', Average_Score: 'score', Max_Score: 'score',
+    Samples: 0, Sustain_Samples: 0, Sustain_Percentage: 0, Total_Full_Clears: 0,
+    Std_Dev: 0, Eidolon_0_pct: 0, Eidolon_6_pct: 0,
+  };
+
+  let cfg = null;
+  let manifest = null;   // [{label, safe}] newest-first; [] if it could not be fetched
+  let curSafe = null;    // version currently shown, e.g. "4_5_1"
+  let prev = null;       // { label, safe, maps: { datasetName: Map | null } } | null
+  let wantOn = false;    // the user's toggle
+  let busy = false;
+  let failed = false;
+  let token = 0;         // cancels stale async work when the user toggles / switches version
+  const cache = new Map();
+
+  function safeFrom(filename) {
+    const m = String(filename).match(new RegExp('^' + cfg.prefix + '_(\\d+(?:_\\d+)*)_'));
+    return m ? m[1] : null;
+  }
+
+  async function loadManifest() {
+    if (manifest) return manifest;
+    try {
+      const res = await fetch(cfg.manifest);
+      manifest = res.ok ? await res.json() : [];
+    } catch (e) {
+      manifest = [];
+    }
+    if (!Array.isArray(manifest)) manifest = [];
+    return manifest;
+  }
+
+  function findPrev() {
+    if (!manifest || !curSafe) return null;
+    const i = manifest.findIndex(v => v.safe === curSafe);
+    return (i >= 0 && i + 1 < manifest.length) ? manifest[i + 1] : null;
+  }
+
+  async function fetchRows(filename) {
+    const res = await fetch(filename);
+    if (!res.ok) throw new Error('Failed to fetch ' + filename);
+    const buf = await res.arrayBuffer();
+    const brotli = await getBrotli();
+    return JSON.parse(new TextDecoder().decode(brotli.decompress(new Uint8Array(buf))));
+  }
+
+  // Keep only the metrics we diff — the old version's score distributions etc.
+  // would just sit in memory. Eidolon %s arrive as "<key>_pct" on raw rows.
+  function slim(row) {
+    const o = {};
+    for (const k in META) o[k] = row[k] != null ? row[k] : (row[k + '_pct'] != null ? row[k + '_pct'] : null);
+    return o;
+  }
+
+  async function loadPrev() {
+    const info = findPrev();
+    if (!info) return null;
+    if (cache.has(info.safe)) return cache.get(info.safe);
+    const maps = {};
+    let ok = 0;
+    await Promise.all(Object.entries(cfg.datasets).map(async ([name, ds]) => {
+      try {
+        const rows = await fetchRows(ds.filenameFor(info.safe));
+        const m = new Map();
+        for (const r of rows) m.set(ds.keyOf(r), slim(r));
+        maps[name] = m;
+        ok++;
+      } catch (e) {
+        console.warn('Previous-version dataset unavailable:', name, e);
+        maps[name] = null;
+      }
+    }));
+    if (!ok) throw new Error('No previous-version data could be loaded');
+    const result = { label: info.label, safe: info.safe, maps };
+    if (cache.size >= 2) cache.clear();
+    cache.set(info.safe, result);
+    return result;
+  }
+
+  function annotate() {
+    for (const [name, ds] of Object.entries(cfg.datasets)) {
+      const map = prev && prev.maps[name];
+      for (const r of (ds.rows() || [])) {
+        r._pdOk   = !!map;
+        r._prev   = map ? (map.get(ds.keyOf(r)) || null) : null;
+      }
+    }
+  }
+
+  function syncUi() {
+    const btn    = document.getElementById('prevDiffBtn');
+    const legend = document.getElementById('prevDiffLegend');
+    const noPrev = !!manifest && !findPrev();
+    const active = wantOn && !!prev && !busy;
+    if (btn) {
+      btn.disabled = busy || noPrev;
+      btn.classList.toggle('active', wantOn && !noPrev);
+      btn.setAttribute('aria-pressed', String(active));
+      btn.textContent = busy ? 'Loading previous version…'
+        : noPrev ? 'No earlier version to compare'
+        : failed ? 'Couldn\u2019t load previous version — retry'
+        : wantOn ? 'Hide previous version difference'
+        : 'Show previous version difference';
+    }
+    if (legend) {
+      if (active) {
+        legend.hidden = false;
+        legend.innerHTML =
+          `<span>vs <b>${prev.label}</b></span>` +
+          `<span><span class="pd-delta pd-good">▲▼</span> improved</span>` +
+          `<span><span class="pd-delta pd-bad">▲▼</span> worse</span>` +
+          `<span><span class="pd-delta pd-neutral">▲▼</span> neutral (samples, sustain, σ, eidolon mix)</span>` +
+          `<span>scores: ${cfg.lowerIsBetter ? 'lower' : 'higher'} is better</span>` +
+          `<span><span class="pd-new">NEW</span> not in ${prev.label}</span>`;
+      } else {
+        legend.hidden = true;
+      }
+    }
+  }
+
+  async function ensure() {
+    if (!wantOn) { syncUi(); return; }
+    const tok = ++token;
+    busy = true; syncUi();
+    try {
+      await loadManifest();
+      const p = await loadPrev();
+      if (tok !== token) return;
+      prev = p;
+      annotate();
+      failed = false;
+    } catch (err) {
+      if (tok !== token) return;
+      console.warn('Previous-version load failed:', err);
+      prev = null; wantOn = false; failed = true;
+    }
+    busy = false;
+    syncUi();
+  }
+
+  async function toggle() {
+    if (busy) return;
+    if (wantOn) {
+      wantOn = false; token++;
+      syncUi();
+      cfg.onChange();
+      return;
+    }
+    wantOn = true; failed = false;
+    await ensure();
+    cfg.onChange();
+  }
+
+  // Call after every dataset (re)load. Rows are fresh objects at this point,
+  // so if the diff is on we re-fetch/annotate against the new version's predecessor.
+  async function onLoaded(filename) {
+    try {
+      curSafe = safeFrom(filename);
+      prev = null;
+      await loadManifest();
+      if (wantOn) await ensure(); else syncUi();
+    } catch (err) {
+      // never let the comparison feature break the page's own data load
+      console.warn('PrevDiff.onLoaded failed:', err);
+    }
+  }
+
+  function delta(r, key, dec) {
+    if (!wantOn || !prev || !r._prev) return '';
+    const cur = r[key], old = r._prev[key];
+    if (cur == null || old == null || isNaN(cur) || isNaN(old)) return '';
+    const fmtAbs = v => dec === 0 ? Math.abs(v).toLocaleString() : Math.abs(v).toFixed(dec);
+    const oldTxt = dec === 0 ? old.toLocaleString() : old.toFixed(dec);
+    const tip    = `vs ${prev.label}: ${oldTxt}`;
+    const shown  = Number((cur - old).toFixed(dec));
+    if (shown === 0) return `<span class="pd-delta pd-flat" title="${tip} (unchanged)">=</span>`;
+    const up   = shown > 0;
+    const kind = META[key];
+    let cls = 'pd-neutral';
+    if (kind) {
+      const sign = kind === 'score' ? (cfg.lowerIsBetter ? -1 : 1) : kind;
+      cls = (up ? sign > 0 : sign < 0) ? 'pd-good' : 'pd-bad';
+    }
+    return `<span class="pd-delta ${cls}" title="${tip}">${up ? '▲' : '▼'}${fmtAbs(shown)}</span>`;
+  }
+
+  function newBadge(r) {
+    if (!wantOn || !prev || !r._pdOk || r._prev) return '';
+    return `<span class="pd-new" title="No matching row in ${prev.label}">NEW</span>`;
+  }
+
+  function configure(c) {
+    cfg = c;
+    const btn = document.getElementById('prevDiffBtn');
+    if (btn) btn.addEventListener('click', toggle);
+  }
+
+  return { configure, onLoaded, delta, newBadge };
+})();
+</script>
+<script>
 ColumnFilter.attach('#mainTable', () => RAW_DATA, recompute);
+PrevDiff.configure({
+  prefix: 'apoc',
+  manifest: 'apoc_characters_versions.json',
+  lowerIsBetter: /^(moc|anomaly)/i.test('APOC'),
+  onChange: renderViewport,
+  datasets: {
+    main: {
+      rows: () => RAW_DATA,
+      filenameFor: safe => `apoc_${safe}_characters_data.json.br`,
+      keyOf: r => `${r.Character}|${r[DIM_FIELD]}|${r.at_eidolon_level}|${r.up_to_eidolon_level}`,
+    },
+  },
+});
 initializeApp();
 </script>
 <script>

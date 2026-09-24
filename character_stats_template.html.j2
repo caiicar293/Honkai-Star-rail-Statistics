@@ -203,6 +203,7 @@
 {% include "_version_switch_style.html.j2" %}
   {% include "_column_filter_style.html.j2" %}
   {% include "_distribution_modal_style.html.j2" %}
+  {% include "_prev_diff_style.html.j2" %}
 </style>
 </head>
 <body>
@@ -262,9 +263,16 @@
       </div>
     </div>
 
+    <!-- Previous-version difference: ▲/▼ next to every metric vs the earlier version -->
+    <div class="ctrl-group">
+      <div class="ctrl-label">Version Compare</div>
+      <button class="btn-toggle pd-btn" id="prevDiffBtn" type="button" aria-pressed="false" title="Load the previous version and show how every metric changed. Green = improved, red = worse, grey = neutral metric.">Show previous version difference</button>
+    </div>
+
   </div>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
+  <div class="pd-legend" id="prevDiffLegend" hidden></div>
   <div class="active-filters-bar" id="activeFiltersBar"></div>
 
   <div class="table-wrap">
@@ -427,27 +435,27 @@ function rowHTML(r, rank, fIdx) {
   const at = r.at_eidolon_level, upto = r.up_to_eidolon_level;
   const eidRangeCell = IS_LEGACY ? '' : `<td><span class="${eidCls(at,upto)}">${eidLabel(at,upto)}</span></td>`;
   const eidCols = IS_LEGACY ? '' : `
-    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_0_pct'])}</span></td>
+    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_0_pct'])}</span>${PrevDiff.delta(r,'Eidolon_0_pct',1)}</td>
     <td>${eidDistHtml(r)}</td>
-    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_6_pct'])}</span></td>`;
+    <td class="num"><span class="score-num">${fmtPct(r['Eidolon_6_pct'])}</span>${PrevDiff.delta(r,'Eidolon_6_pct',1)}</td>`;
 
   return `<tr>
     <td class="rank-cell${rank<=3?' top3':''}">${rank}</td>
     <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
     ${eidRangeCell}
-    <td><div class="char-cell">${r._iconHtml}<div class="char-info"><span class="char-name">${r.Character}</span><div class="char-tags">${rarityTag(r.rarity)}${elTag(r.element)}${pathTag(r.path)}${roleTag(r.role)}</div></div></div></td>
-    <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct,2)}</span></div></td>
-    <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
-    <td class="num"><span class="sustain-pct">${fmtPct(r.Sustain_Percentage)}</span></td>
-    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span></td>
-    <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span></td>
-    <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span></td>
-    <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span></td>
-    <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span></td>
-    <td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span></td>
-    <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span></td>
-    <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span></td>
-    <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span></td>
+    <td><div class="char-cell">${r._iconHtml}<div class="char-info"><span class="char-name">${r.Character}${PrevDiff.newBadge(r)}</span><div class="char-tags">${rarityTag(r.rarity)}${elTag(r.element)}${pathTag(r.path)}${roleTag(r.role)}</div></div></div></td>
+    <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct,2)}</span>${PrevDiff.delta(r,'Appearance_Rate_pct',2)}</div></td>
+    <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span>${PrevDiff.delta(r,'Samples',0)}</td>
+    <td class="num"><span class="sustain-pct">${fmtPct(r.Sustain_Percentage)}</span>${PrevDiff.delta(r,'Sustain_Percentage',1)}</td>
+    <td class="num"><span class="fullstar-pct ${fullStarCls(r.Full_Clear_Rate_pct)}">${fmtPct(r.Full_Clear_Rate_pct)}</span>${PrevDiff.delta(r,'Full_Clear_Rate_pct',1)}</td>
+    <td class="num"><span class="score-num">${fmtInt(r.Total_Full_Clears)}</span>${PrevDiff.delta(r,'Total_Full_Clears',0)}</td>
+    <td class="num"><span class="score-num">${fmtNum(r.Min_Score,1)}</span>${PrevDiff.delta(r,'Min_Score',1)}</td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_25,1)}</span>${PrevDiff.delta(r,'Percentile_25',1)}</td>
+    <td class="num"><span class="score-num median">${fmtNum(r.Median_Score,1)}</span>${PrevDiff.delta(r,'Median_Score',1)}</td>
+    <td class="num"><span class="score-num">${fmtNum(r.Percentile_75,1)}</span>${PrevDiff.delta(r,'Percentile_75',1)}</td>
+    <td class="num"><span class="score-num avg">${fmtNum(r.Average_Score,2)}</span>${PrevDiff.delta(r,'Average_Score',2)}</td>
+    <td class="num"><span class="score-num maxv">${fmtNum(r.Max_Score,1)}</span>${PrevDiff.delta(r,'Max_Score',1)}</td>
+    <td class="num"><span class="score-num std">${fmtNum(r.Std_Dev,2)}</span>${PrevDiff.delta(r,'Std_Dev',2)}</td>
     ${eidCols}
     ${distBtnHTML(r, fIdx)}
   </tr>`;
@@ -710,6 +718,7 @@ async function loadDataset(filename) {
   RAW_DATA = JSON.parse(new TextDecoder().decode(decompressed));
   prepareData(HAS_LOADED ? captureState() : null); // first load → defaults; version switch → carry over state
   HAS_LOADED = true;
+  await PrevDiff.onLoaded(filename); // re-fetch/annotate the previous version if the diff is switched on
   recompute();
 }
 
@@ -733,8 +742,22 @@ async function initializeApp() {
 </script>
 {% include "_column_filter_script.html.j2" %}
 {% include "_distribution_modal_script.html.j2" %}
+{% include "_prev_diff_script.html.j2" %}
 <script>
 ColumnFilter.attach('#mainTable', () => RAW_DATA, recompute);
+PrevDiff.configure({
+  prefix: '{{ file_prefix }}',
+  manifest: '{{ file_prefix }}_{{ page_suffix }}_versions.json',
+  lowerIsBetter: /^(moc|anomaly)/i.test('{{ mode_label }}'),
+  onChange: renderViewport,
+  datasets: {
+    main: {
+      rows: () => RAW_DATA,
+      filenameFor: safe => `{{ file_prefix }}_${safe}_{{ page_suffix }}_data.json.br`,
+      keyOf: r => `${r.Character}|${r[DIM_FIELD]}|${r.at_eidolon_level}|${r.up_to_eidolon_level}`,
+    },
+  },
+});
 initializeApp();
 </script>
 {% include "_version_switch_script.html.j2" %}

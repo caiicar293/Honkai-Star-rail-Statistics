@@ -1,0 +1,16 @@
+
+  /* ── Previous-version difference (▲/▼ vs the earlier version) ───────────
+     Shared by the character templates. Needs --green / --red / --gold /
+     --text2 / --text3 to exist on :root (both character pages define them). */
+  .pd-delta { display: inline-block; margin-left: 6px; font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; vertical-align: middle; cursor: help; }
+  .pd-good    { color: var(--green); }
+  .pd-bad     { color: var(--red); }
+  .pd-neutral { color: var(--text2); }
+  .pd-flat    { color: var(--text3); font-weight: 400; }
+  .pd-new { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 3px; border: 1px solid rgba(251,191,36,0.4); background: rgba(251,191,36,0.1); color: var(--gold); font-family: 'Share Tech Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; vertical-align: middle; cursor: help; }
+  .btn-toggle.pd-btn.active { background: rgba(74,222,128,0.10); border-color: var(--green); color: var(--green); }
+  .btn-toggle.pd-btn:disabled { opacity: 0.45; cursor: not-allowed; border-color: var(--border); color: var(--text3); }
+  .pd-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 10px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text3); letter-spacing: 0.04em; }
+  .pd-legend[hidden] { display: none; }
+  .pd-legend b { color: var(--accent2); }
+  .pd-legend .pd-delta, .pd-legend .pd-new { margin-left: 0; cursor: default; }

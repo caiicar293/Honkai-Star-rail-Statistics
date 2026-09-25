@@ -585,6 +585,115 @@ class DashboardGenerator:
                 self.generate_jsons(mode, version)
 
     def generate_mode(self, mode_key: str, version: str):
+        """Back-compat wrapper: data step followed by the pages step, same as
+        calling both separately. Prefer generate_data / generate_pages directly
+        when you only need one half (see --step on the CLI)."""
+        self.generate_data(mode_key, version)
+        self.generate_pages(mode_key, version)
+
+    # -- Step A: *_data.json.br only (no HTML) --------------------------------
+    # Mirrors generate_pages page-for-page. Split out so the pipeline can
+    # regenerate data without re-rendering templates, and vice versa — the
+    # same split database_trends_export.py / generate_trends_dashboard.py
+    # already have.
+
+    def generate_data(self, mode_key: str, version: str):
+        cfg = self.MODE_CONFIG[mode_key]
+        print(f"\n[INFO] Generating data (.json.br) for {cfg['full_name']} ({version})...")
+
+        safe_version = version.replace(".", "_")
+        mode_dir = self.output_base / cfg["folder"]
+
+        # 1. Characters
+        if self._has_data(self.CHAR_TABLE, version, "mode", cfg["char_db_mode"]):
+            data = self.fetch_characters(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_characters_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No character data found for {cfg['char_db_mode']}.")
+        self._write_versions_manifest(mode_dir, cfg["file_prefix"], "characters")
+
+        # 2. Archetypes
+        if self._has_data(cfg["arch_table"], version):
+            data = self.fetch_archetypes(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_archetypes_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No archetype data found in {cfg['arch_table']}.")
+        self._write_versions_manifest(mode_dir, cfg["file_prefix"], "archetypes")
+
+        # 3. Teams
+        if self._has_data(cfg["team_table"], version):
+            data = self.fetch_teams(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_teams_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No team data found in {cfg['team_table']}.")
+        self._write_versions_manifest(mode_dir, cfg["file_prefix"], "teams")
+
+        # 4. Duos
+        duo_table = cfg.get("duo_table")
+        if duo_table and self._has_data(duo_table, version):
+            data = self.fetch_duos(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_duos_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No duo data found for {mode_key}.")
+        if duo_table:
+            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "duos")
+
+        # 5. By-Cost Teams
+        cost_table = cfg.get("cost_team_table")
+        if cost_table and self._has_data(cost_table, version):
+            data = self.fetch_cost_teams(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_teams_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"   [SKIP] No by-cost team data found for {mode_key}.")
+        if cost_table:
+            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_teams")
+
+        # 6. By-Cost Archetypes
+        cost_arch_table = cfg.get("cost_archetype_table")
+        if cost_arch_table and self._has_data(cost_arch_table, version):
+            data = self.fetch_cost_archetypes(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"   [SKIP] No by-cost archetype data found for {mode_key}.")
+        if cost_arch_table:
+            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_archetypes")
+
+        # 7/8. By-Cost Characters (cost-bracket view + max-eidolon view)
+        cost_char_table = cfg.get("cost_char_table")
+        cost_char_eid_table = cfg.get("cost_char_eidolon_table")
+        if (
+            cost_char_table and cost_char_eid_table
+            and self._has_data(cost_char_table, version)
+            and self._has_data(cost_char_eid_table, version)
+        ):
+            cost_data = self.fetch_cost_chars(cfg, version)
+            eid_data = self.fetch_cost_chars_by_eidolon(cfg, version)
+            cost_filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_data.json.br"
+            eid_filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_by_eidolon_data.json.br"
+            self._write_brotli_json(mode_dir, cost_filename, cost_data)
+            self._write_brotli_json(mode_dir, eid_filename, eid_data)
+            print(f"  [DONE] {cost_filename} ({len(cost_data)} records)")
+            print(f"  [DONE] {eid_filename} ({len(eid_data)} records)")
+        else:
+            print(f"   [SKIP] No by-cost character data found for {mode_key}.")
+        if cost_char_table:
+            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_characters")
+
+    # -- Step B: HTML templates only (assumes *_data.json.br already exist) ---
+
+    def generate_pages(self, mode_key: str, version: str):
         cfg = self.MODE_CONFIG[mode_key]
         print(f"\n[INFO] Processing {cfg['full_name']} ({version})...")
 
@@ -611,10 +720,8 @@ class DashboardGenerator:
 
         # 1. Characters
         if self._has_data(self.CHAR_TABLE, version, "mode", cfg["char_db_mode"]):
-            data = self.fetch_characters(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_characters.html"
             filename = f"{cfg['file_prefix']}_{safe_version}_characters_data.json.br"
-            self._write_brotli_json(mode_dir, filename, data)
             self.render_file("character_stats_template.html.j2", out_file, {
                 **base_context,
                 "is_legacy": cfg["is_legacy"],
@@ -623,14 +730,11 @@ class DashboardGenerator:
             })
         else:
             print(f"  [SKIP] No character data found for {cfg['char_db_mode']}.")
-        self._write_versions_manifest(mode_dir, cfg["file_prefix"], "characters")
 
         # 2. Archetypes
         if self._has_data(cfg["arch_table"], version):
-            data = self.fetch_archetypes(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_archetypes.html"
             filename = f"{cfg['file_prefix']}_{safe_version}_archetypes_data.json.br"
-            self._write_brotli_json(mode_dir, filename, data)
             self.render_file("archetypes_template.html.j2", out_file, {
                 **base_context,
                 "data_filename": filename,
@@ -638,14 +742,11 @@ class DashboardGenerator:
             })
         else:
             print(f"  [SKIP] No archetype data found in {cfg['arch_table']}.")
-        self._write_versions_manifest(mode_dir, cfg["file_prefix"], "archetypes")
 
         # 3. Teams
         if self._has_data(cfg["team_table"], version):
-            data = self.fetch_teams(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_teams.html"
             filename = f"{cfg['file_prefix']}_{safe_version}_teams_data.json.br"
-            self._write_brotli_json(mode_dir, filename, data)
             self.render_file("teams_template.html.j2", out_file, {
                 **base_context,
                 "data_filename": filename,
@@ -653,15 +754,12 @@ class DashboardGenerator:
             })
         else:
             print(f"  [SKIP] No team data found in {cfg['team_table']}.")
-        self._write_versions_manifest(mode_dir, cfg["file_prefix"], "teams")
 
         # 4. Duos
         duo_table = cfg.get("duo_table")
         if duo_table and self._has_data(duo_table, version):
-            data = self.fetch_duos(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_duos.html"
             filename = f"{cfg['file_prefix']}_{safe_version}_duos_data.json.br"
-            self._write_brotli_json(mode_dir, filename, data)
             self.render_file("duos_template.html.j2", out_file, {
                 **base_context,
                 "data_filename": filename,
@@ -669,56 +767,33 @@ class DashboardGenerator:
             })
         else:
             print(f"  [SKIP] No duo data found for {mode_key}.")
-        if duo_table:
-            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "duos")
 
         cost_table = cfg.get("cost_team_table")
         if cost_table and self._has_data(cost_table, version):
-            data = self.fetch_cost_teams(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_teams.html"
-            
-            # 1. Update extension to .json.br
             filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_teams_data.json.br"
-            
-            # 2. Write the file locally using gzip compression
-            self._write_brotli_json(mode_dir, filename, data)
-                
-            # 3. Pass just the filename to your Jinja template context
             self.render_file("by_cost_teams_template.html.j2", out_file, {
                 **base_context,
-                "data_filename": filename,  # Pass it as a clean template variable
+                "data_filename": filename,
                 "page_suffix": "by_cost_teams"
             })
         else:
             print(f"   [SKIP] No by-cost team data found for {mode_key}.")
-        if cost_table:
-            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_teams")
-            
+
         cost_arch_table = cfg.get("cost_archetype_table")
         if cost_arch_table and self._has_data(cost_arch_table, version):
-            data = self.fetch_cost_archetypes(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes.html"
-            
-            # 1. Update extension to .json.br
             filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_archetypes_data.json.br"
-            
-            # 2. Write the file locally using gzip compression
-            self._write_brotli_json(mode_dir, filename, data)
-                
-            # 3. Pass just the filename to your Jinja template context
             self.render_file("by_cost_archetypes_template.html.j2", out_file, {
                 **base_context,
-                "data_filename": filename,  # Pass it as a clean template variable
+                "data_filename": filename,
                 "page_suffix": "by_cost_archetypes"
             })
         else:
             print(f"   [SKIP] No by-cost archetype data found for {mode_key}.")
-        if cost_arch_table:
-            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_archetypes")
 
         # 7/8. By-Cost Characters — single page, tab-switchable between the
-        # cost-bracketed view (cost_char_table) and the cost/max-eidolon-agnostic
-        # per-(Character, Eidolon) view (cost_char_eidolon_table).
+        # cost-bracketed view and the max-eidolon view.
         cost_char_table = cfg.get("cost_char_table")
         cost_char_eid_table = cfg.get("cost_char_eidolon_table")
         if (
@@ -726,15 +801,9 @@ class DashboardGenerator:
             and self._has_data(cost_char_table, version)
             and self._has_data(cost_char_eid_table, version)
         ):
-            cost_data = self.fetch_cost_chars(cfg, version)
-            eid_data = self.fetch_cost_chars_by_eidolon(cfg, version)
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_characters.html"
-
             cost_filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_data.json.br"
             eid_filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_by_eidolon_data.json.br"
-            self._write_brotli_json(mode_dir, cost_filename, cost_data)
-            self._write_brotli_json(mode_dir, eid_filename, eid_data)
-
             self.render_file("by_cost_characters_template.html.j2", out_file, {
                 **base_context,
                 "data_filename_cost": cost_filename,
@@ -743,8 +812,6 @@ class DashboardGenerator:
             })
         else:
             print(f"   [SKIP] No by-cost character data found for {mode_key}.")
-        if cost_char_table:
-            self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_characters")
 
     def generate_index(self, version: str):
         print(f"\n[INFO] Generating Hub Index for {version}...")
@@ -835,7 +902,13 @@ def main():
     parser.add_argument("--icons", default="character_icons.json", help="Path to character icons JSON")
     parser.add_argument("--template-dir", default=str(Path(__file__).parent), help="Dir containing .j2 templates")
     parser.add_argument("--output", "-o", default="./docs", help="Root output directory (docs/)")
-    
+    parser.add_argument(
+        "--step", choices=["data", "pages", "all"], default="all",
+        help="'data': write *_data.json.br only. 'pages': render HTML templates only "
+             "(the matching *_data.json.br files must already exist). 'all' (default): both, "
+             "same as the old single-pass behavior."
+    )
+
     args = parser.parse_args()
 
     generator = DashboardGenerator(
@@ -848,14 +921,18 @@ def main():
     try:
         for mode in generator.MODE_CONFIG:
             if not generator.MODE_CONFIG[mode]["is_legacy"]:
-                generator.generate_mode(mode, args.version)
+                if args.step in ("data", "all"):
+                    generator.generate_data(mode, args.version)
+                if args.step in ("pages", "all"):
+                    generator.generate_pages(mode, args.version)
 
-        
-        # Generate the root routing hub
-        generator.generate_index(args.version)
+        # Index/character-database steps only make sense once pages exist.
+        if args.step in ("pages", "all"):
+            # Generate the root routing hub
+            generator.generate_index(args.version)
 
-        # Generate the Character Database browser (docs/characters/index.html)
-        generator.generate_characters_index(args.version)
+            # Generate the Character Database browser (docs/characters/index.html)
+            generator.generate_characters_index(args.version)
 
         print("\n[SUCCESS] Pipeline complete.")
     finally:

@@ -221,8 +221,9 @@ class FrontendOrchestrator:
             self.replace_newest_versions()
 
         # ---------------------------------------------------------------- 2
-        print("[2/7] Generate Dashboards")
-        self.run(["Generate_Dashboards.py", "--version", self.version])
+        print("[2/7] Generate Dashboards (data, then pages)")
+        self.run(["Generate_Dashboards.py", "--version", self.version, "--step", "data"])
+        self.run(["Generate_Dashboards.py", "--version", self.version, "--step", "pages"])
 
         # ---------------------------------------------------------------- 3
         print("[3/7] character dashboards orchestrator")

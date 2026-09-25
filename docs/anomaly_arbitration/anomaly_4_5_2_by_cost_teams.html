@@ -167,6 +167,22 @@
   .picker-eid-btn.eid-active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .picker-eid-btn.eid-active.mode-exclude { background: var(--red); border-color: var(--red); color: var(--bg); }
 
+  /* Node/floor-scope row — same look as the eidolon row, shown beneath it for
+     whichever chip is open. Lets an include/exclude filter apply to only some
+     nodes (e.g. exclude Castorice on Node 1 only, default = all nodes). */
+  .picker-node-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--border2); }
+  .picker-node-row-label { width: 100%; font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; margin-bottom: 2px; }
+  .picker-node-btn {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 10.5px; font-weight: 700;
+    border-radius: 4px; padding: 3px 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .picker-node-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .picker-node-btn.any { border-color: var(--accent2); color: var(--accent2); }
+  .picker-node-btn.node-active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .picker-node-btn.node-active.mode-exclude { background: var(--red); border-color: var(--red); color: var(--bg); }
+  .picker-chip .chip-node { font-size: 10px; opacity: 0.75; font-family: 'Share Tech Mono', monospace; color: var(--accent2); }
+
   .search-wrap { position: relative; min-width: 240px; max-width: 400px; flex: 1; }
   .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; width:14px; height:14px; }
   #searchInput { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 13px; padding: 7px 12px 7px 32px; outline: none; transition: border-color 0.15s; }
@@ -992,13 +1008,14 @@
   <div class="picker-panel">
     <div class="picker-panel-title">Character Filters — unlimited include/exclude</div>
     <div class="picker-panel-hint">
-      Click a character to <b style="color:var(--green)">include</b> (any eidolon). Right-click to <b style="color:var(--red)">exclude</b> (any eidolon). Click the chip to open the eidolon row and select one or more exact eidolons, e.g. exclude <kbd>E2, E3, E4, E5, E6</kbd> at once.
+      Click a character to <b style="color:var(--green)">include</b> (any eidolon). Right-click to <b style="color:var(--red)">exclude</b> (any eidolon). Click the chip to open the eidolon row and select one or more exact eidolons, e.g. exclude <kbd>E2, E3, E4, E5, E6</kbd> at once. Below that, the node/floor row scopes the filter to specific nodes instead of all of them — e.g. exclude Castorice on <kbd>N1</kbd> only, or include her on <kbd>N1, N2</kbd> but not N3.
     </div>
 
     <div class="picker-chips" id="pickerChips">
       <span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>
     </div>
     <div class="picker-eid-row" id="pickerEidRow" style="display:none;"></div>
+    <div class="picker-node-row" id="pickerNodeRow" style="display:none;"></div>
 
     <div class="picker-search-row">
       <div class="picker-search-wrap">
@@ -1269,8 +1286,10 @@ let costMinFilter = MIN_COST_G;
 let costMaxFilter = MAX_COST_G;
 let sortCol       = 'Appearance_Rate_pct';
 let sortAsc       = false;
-// Character filters: Map<base, {base, mode, eids: Set('e0'..'e6') | null}>
+// Character filters: Map<base, {base, mode, eids: Set('e0'..'e6') | null, nodes: Set(dim_key) | null}>
 // eids === null means "any eidolon" (no narrowing). A non-null Set means only those exact eidolons count.
+// nodes === null means "applies to every node/floor" (the default). A non-null Set scopes the filter to
+// only those dim_key values — e.g. exclude Castorice on node 1 only, or include her on nodes 1+2 but not 3.
 let charFilters  = new Map();
 let filteredData = [];
 let OWNED_ROSTER = new Map(); // baseNameLower -> highest owned eidolon (0-6)
@@ -1314,6 +1333,10 @@ function userFilteredRows() {
   if (activeFilters.length) {
     candidate = candidate.filter(r => {
       for (const f of activeFilters) {
+        // Node-scoped filter: if this filter is restricted to specific nodes
+        // and the current row isn't on one of them, the filter simply doesn't
+        // apply to this row — skip to the next filter rather than reject/keep.
+        if (f.nodes && f.nodes.size && !f.nodes.has(r.dim_key)) continue;
         let present;
         if (!f.eids || f.eids.size === 0) {
           present = r._membersBase.includes(f.base);
@@ -2391,12 +2414,24 @@ function eidLabelFor(f) {
   return [...f.eids].sort().map(e => e.toUpperCase()).join(',');
 }
 
+// Node/floor labels for a filter's scope, using the same button text
+// already rendered for the main dim filter row (e.g. "N1", "F2").
+function nodeLabelFor(f) {
+  if (!f.nodes || f.nodes.size === 0) return '';
+  const dimBtns = [...document.querySelectorAll('#dimFilters .btn-toggle')];
+  return [...f.nodes].sort((a, b) => a - b).map(d => {
+    const btn = dimBtns.find(b => parseInt(b.dataset.dim, 10) === d);
+    return btn ? btn.textContent.trim() : (DIM_LABEL[0] + d);
+  }).join(',');
+}
+
 function renderChips() {
   const wrap = document.getElementById('pickerChips');
   if (charFilters.size === 0) {
     wrap.innerHTML = `<span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>`;
     openEidBase = null;
     renderEidRow();
+    renderNodeRow();
     return;
   }
   const locked = pinnedMemberBases();
@@ -2409,12 +2444,14 @@ function renderChips() {
     const modeIcon = f.mode === 'include' ? '✓' : '✕';
     const eidText = eidLabelFor(f);
     const eidLabel = eidText ? `<span class="chip-eid">${eidText}</span>` : '';
+    const nodeText = nodeLabelFor(f);
+    const nodeLabel = nodeText ? `<span class="chip-node" title="Applies only to ${DIM_LABEL.toLowerCase()}(s): ${nodeText}">${nodeText}</span>` : '';
     const isLocked = locked.has(f.base);
     const lockIcon = isLocked ? '<span title="Locked — used by a pinned team">🔒</span>' : '';
     const removeBtn = isLocked
       ? `<button class="chip-remove" disabled title="Locked — unpin the team to edit this character" style="opacity:0.35;cursor:not-allowed;">×</button>`
       : `<button class="chip-remove" data-remove="${f.base}" title="Remove">×</button>`;
-    return `<span class="picker-chip ${f.mode}${isLocked ? ' is-locked' : ''}" data-base="${f.base}" title="${isLocked ? 'Locked — used by a pinned team' : 'Click to set exact eidolon(s)'}">${iconHtml}<span>${display}</span>${eidLabel}<span class="chip-mode">${modeIcon}</span>${lockIcon}${removeBtn}</span>`;
+    return `<span class="picker-chip ${f.mode}${isLocked ? ' is-locked' : ''}" data-base="${f.base}" title="${isLocked ? 'Locked — used by a pinned team' : 'Click to set exact eidolon(s) / node scope'}">${iconHtml}<span>${display}</span>${eidLabel}${nodeLabel}<span class="chip-mode">${modeIcon}</span>${lockIcon}${removeBtn}</span>`;
   }).join('');
 
   wrap.querySelectorAll('.picker-chip').forEach(chip => {
@@ -2424,6 +2461,7 @@ function renderChips() {
       if (pinnedMemberBases().has(base)) return; // locked while in planner mode
       openEidBase = (openEidBase === base) ? null : base;
       renderEidRow();
+      renderNodeRow();
     });
   });
 
@@ -2439,6 +2477,7 @@ function renderChips() {
   });
 
   renderEidRow();
+  renderNodeRow();
 }
 
 // Render the eidolon multi-select row for whichever character chip is currently open
@@ -2488,6 +2527,59 @@ function renderEidRow() {
   });
 }
 
+// Render the node/floor scope row for whichever character chip is currently
+// open — same shape as the eidolon row, one row lower. Default (no selection,
+// "All <dim>s" active) means the filter applies everywhere, unchanged from
+// before this feature existed.
+function renderNodeRow() {
+  const row = document.getElementById('pickerNodeRow');
+  if (openEidBase && pinnedMemberBases().has(openEidBase)) openEidBase = null; // locked while in planner mode
+  if (!openEidBase) { row.style.display = 'none'; row.innerHTML = ''; return; }
+
+  const f = charFilters.get(openEidBase);
+  if (!f) { row.style.display = 'none'; row.innerHTML = ''; return; }
+
+  const display = BASE_NAME_DISPLAY.get(openEidBase) || openEidBase;
+  const dimBtns = [...document.querySelectorAll('#dimFilters .btn-toggle')].map(b => ({
+    dim: parseInt(b.dataset.dim, 10), label: b.textContent.trim(),
+  }));
+  const selected = f.nodes || new Set();
+
+  const anyActive = !f.nodes || f.nodes.size === 0;
+  const modeCls = f.mode === 'exclude' ? 'mode-exclude' : '';
+  const anyBtn = `<button class="picker-node-btn any ${anyActive ? 'node-active ' + modeCls : ''}" data-node="any">All ${DIM_LABEL}s</button>`;
+  const nodeButtons = dimBtns.map(({ dim, label }) => {
+    const isActive = selected.has(dim);
+    return `<button class="picker-node-btn ${isActive ? 'node-active ' + modeCls : ''}" data-node="${dim}">${label}</button>`;
+  }).join('');
+
+  row.style.display = 'flex';
+  row.innerHTML = `<div class="picker-node-row-label">${display} — which ${DIM_LABEL.toLowerCase()}(s) this ${f.mode === 'include' ? 'include' : 'exclude'} filter applies to (multi-select, default = all)</div>${anyBtn}${nodeButtons}`;
+
+  row.querySelectorAll('.picker-node-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.node;
+      const current = charFilters.get(openEidBase);
+      if (!current) return;
+      if (val === 'any') {
+        current.nodes = null; // clear scoping, applies to every node/floor again
+      } else {
+        const d = parseInt(val, 10);
+        if (!current.nodes) current.nodes = new Set();
+        if (current.nodes.has(d)) {
+          current.nodes.delete(d);
+          if (current.nodes.size === 0) current.nodes = null;
+        } else {
+          current.nodes.add(d);
+        }
+      }
+      renderChips(); // re-renders chips and re-opens both rows for openEidBase automatically
+      renderPickerGrid(document.getElementById('charPickerInput').value.trim());
+      recompute();
+    });
+  });
+}
+
 // Toggle a base character on/off at a given mode ('include' | 'exclude'), any eidolon by default
 function setCharFilter(base, mode) {
   if (pinnedMemberBases().has(base)) return; // locked while in planner mode
@@ -2495,7 +2587,7 @@ function setCharFilter(base, mode) {
   if (existing && existing.mode === mode) {
     charFilters.delete(base); // clicking same mode again removes it
   } else {
-    charFilters.set(base, { base, mode, eids: null });
+    charFilters.set(base, { base, mode, eids: null, nodes: null });
   }
   renderChips();
   renderPickerGrid(document.getElementById('charPickerInput').value.trim());
@@ -3192,6 +3284,7 @@ function prepareData(savedState) {
             base: f.base,
             mode: f.mode === 'exclude' ? 'exclude' : 'include',
             eids: Array.isArray(f.eids) && f.eids.length ? new Set(f.eids) : null,
+            nodes: Array.isArray(f.nodes) && f.nodes.length ? new Set(f.nodes) : null,
           });
         }
       });
@@ -3253,7 +3346,7 @@ function captureState() {
     sortCol:     sortCol,
     sortAsc:     sortAsc,
     ownedOnly:   ownedOnlyActive,
-    charFilters: [...charFilters.values()].map(f => ({ base: f.base, mode: f.mode, eids: f.eids ? [...f.eids] : null })),
+    charFilters: [...charFilters.values()].map(f => ({ base: f.base, mode: f.mode, eids: f.eids ? [...f.eids] : null, nodes: f.nodes ? [...f.nodes] : null })),
   };
 }
 

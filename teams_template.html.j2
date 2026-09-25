@@ -146,6 +146,22 @@
   .picker-cell.is-exclude img, .picker-cell.is-exclude .cell-icon-ph { border-color: var(--red); box-shadow: 0 0 0 2px rgba(248,113,113,0.35); }
   .picker-grid-empty { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 16px; text-align: center; }
 
+  /* Node/floor-scope row — shown beneath the chips for whichever chip is open.
+     Lets an include/exclude filter apply to only some nodes instead of all of
+     them (e.g. exclude Castorice on Node 1 only, default = all nodes). */
+  .picker-node-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px; padding-top: 8px; border-top: 1px dashed var(--border2); }
+  .picker-node-row-label { width: 100%; font-size: 10px; color: var(--text3); font-family: 'Share Tech Mono', monospace; margin-bottom: 2px; }
+  .picker-node-btn {
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text2);
+    font-family: 'Share Tech Mono', monospace; font-size: 10.5px; font-weight: 700;
+    border-radius: 4px; padding: 3px 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .picker-node-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .picker-node-btn.any { border-color: var(--accent2); color: var(--accent2); }
+  .picker-node-btn.node-active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .picker-node-btn.node-active.mode-exclude { background: var(--red); border-color: var(--red); color: var(--bg); }
+  .picker-chip .chip-node { font-size: 10px; opacity: 0.75; font-family: 'Share Tech Mono', monospace; color: var(--accent2); }
+
   .results-info { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text3); padding: 4px 0 8px; letter-spacing: 0.06em; }
   .results-info span { color: var(--accent); }
 
@@ -311,12 +327,13 @@
   <div class="picker-panel">
     <div class="picker-panel-title">Character Filters — unlimited include/exclude</div>
     <div class="picker-panel-hint">
-      Click a character below to <b style="color:var(--green)">include</b> it (team must contain). Right-click (or long-press) to <b style="color:var(--red)">exclude</b> it (team must not contain). Click again to remove.
+      Click a character below to <b style="color:var(--green)">include</b> it (team must contain). Right-click (or long-press) to <b style="color:var(--red)">exclude</b> it (team must not contain). Click again to remove. Click an existing chip to scope it to specific {{ dim_label|lower }}s instead of all of them — e.g. exclude Castorice on <kbd>N1</kbd> only, or include her on <kbd>N1, N2</kbd> but not N3.
     </div>
 
     <div class="picker-chips" id="pickerChips">
       <span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>
     </div>
+    <div class="picker-node-row" id="pickerNodeRow" style="display:none;"></div>
 
     <div class="picker-search-row">
       <div class="picker-search-wrap">
@@ -417,8 +434,11 @@ let searchTerm    = '';
 let sortCol       = 'Appearance_Rate_pct';
 let sortAsc       = false;
 
-// Character filters: Map<charNameLower, { name, mode: 'include'|'exclude' }> — unlimited entries
+// Character filters: Map<charNameLower, { name, mode: 'include'|'exclude', nodes: Set(dim_key)|null }>
+// nodes === null means "applies to every node/floor" (the default). A non-null Set scopes the filter to
+// only those dim_key values — e.g. exclude Castorice on node 1 only, or include her on nodes 1+2 but not 3.
 const charFilters = new Map();
+let openNodeKey = null; // which chip currently has the node-scope row open
 
 let filteredData = [];
 
@@ -444,6 +464,10 @@ function recompute() {
   if (activeFilters.length > 0) {
     candidate = candidate.filter(r => {
       for (const f of activeFilters) {
+        // Node-scoped filter: if this filter is restricted to specific nodes
+        // and the current row isn't on one of them, the filter simply doesn't
+        // apply to this row — skip to the next filter rather than reject/keep.
+        if (f.nodes && f.nodes.size && !f.nodes.has(r.dim_key)) continue;
         const present = r._membersLower.includes(f.name.toLowerCase());
         if (f.mode === 'include' && !present) return false;
         if (f.mode === 'exclude' && present)  return false;
@@ -644,10 +668,21 @@ document.getElementById('searchInput').addEventListener('input', debounce(e => {
 
 // ---- Unified character picker (unlimited include/exclude) ----
 
+function nodeLabelFor(f) {
+  if (!f.nodes || f.nodes.size === 0) return '';
+  const dimBtns = [...document.querySelectorAll('#dimFilters .btn-toggle')];
+  return [...f.nodes].sort((a, b) => a - b).map(d => {
+    const btn = dimBtns.find(b => parseInt(b.dataset.dim, 10) === d);
+    return btn ? btn.textContent.trim() : (DIM_LABEL[0] + d);
+  }).join(',');
+}
+
 function renderChips() {
   const wrap = document.getElementById('pickerChips');
   if (charFilters.size === 0) {
     wrap.innerHTML = `<span class="picker-chips-empty" id="pickerChipsEmpty">No characters selected.</span>`;
+    openNodeKey = null;
+    renderNodeRow();
     return;
   }
   wrap.innerHTML = [...charFilters.values()].map(f => {
@@ -656,13 +691,78 @@ function renderChips() {
       ? `<img src="${url}" alt="${f.name}" onerror="this.style.display='none'"/>`
       : `<span class="chip-icon-ph">${f.name.slice(0,2).toUpperCase()}</span>`;
     const modeIcon = f.mode === 'include' ? '✓' : '✕';
-    return `<span class="picker-chip ${f.mode}" data-chip="${f.name.toLowerCase()}">${iconHtml}<span>${f.name}</span><span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${f.name.toLowerCase()}" title="Remove">×</button></span>`;
+    const nodeText = nodeLabelFor(f);
+    const nodeLabel = nodeText ? `<span class="chip-node" title="Applies only to ${DIM_LABEL.toLowerCase()}(s): ${nodeText}">${nodeText}</span>` : '';
+    return `<span class="picker-chip ${f.mode}" data-chip="${f.name.toLowerCase()}" title="Click to scope to specific ${DIM_LABEL.toLowerCase()}s">${iconHtml}<span>${f.name}</span>${nodeLabel}<span class="chip-mode">${modeIcon}</span><button class="chip-remove" data-remove="${f.name.toLowerCase()}" title="Remove">×</button></span>`;
   }).join('');
 
+  wrap.querySelectorAll('.picker-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      if (e.target.closest('.chip-remove')) return;
+      const key = chip.dataset.chip;
+      openNodeKey = (openNodeKey === key) ? null : key;
+      renderNodeRow();
+    });
+  });
+
   wrap.querySelectorAll('.chip-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       charFilters.delete(btn.dataset.remove);
+      if (openNodeKey === btn.dataset.remove) openNodeKey = null;
       renderChips();
+      renderPickerGrid(document.getElementById('charPickerInput').value.trim().toLowerCase());
+      recompute();
+    });
+  });
+
+  renderNodeRow();
+}
+
+// Render the node/floor scope row for whichever chip is currently open.
+// Default (no selection, "All <dim>s" active) means the filter applies
+// everywhere, unchanged from before this feature existed.
+function renderNodeRow() {
+  const row = document.getElementById('pickerNodeRow');
+  if (!openNodeKey) { row.style.display = 'none'; row.innerHTML = ''; return; }
+
+  const f = charFilters.get(openNodeKey);
+  if (!f) { row.style.display = 'none'; row.innerHTML = ''; return; }
+
+  const dimBtns = [...document.querySelectorAll('#dimFilters .btn-toggle')].map(b => ({
+    dim: parseInt(b.dataset.dim, 10), label: b.textContent.trim(),
+  }));
+  const selected = f.nodes || new Set();
+
+  const anyActive = !f.nodes || f.nodes.size === 0;
+  const modeCls = f.mode === 'exclude' ? 'mode-exclude' : '';
+  const anyBtn = `<button class="picker-node-btn any ${anyActive ? 'node-active ' + modeCls : ''}" data-node="any">All ${DIM_LABEL}s</button>`;
+  const nodeButtons = dimBtns.map(({ dim, label }) => {
+    const isActive = selected.has(dim);
+    return `<button class="picker-node-btn ${isActive ? 'node-active ' + modeCls : ''}" data-node="${dim}">${label}</button>`;
+  }).join('');
+
+  row.style.display = 'flex';
+  row.innerHTML = `<div class="picker-node-row-label">${f.name} — which ${DIM_LABEL.toLowerCase()}(s) this ${f.mode === 'include' ? 'include' : 'exclude'} filter applies to (multi-select, default = all)</div>${anyBtn}${nodeButtons}`;
+
+  row.querySelectorAll('.picker-node-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.node;
+      const current = charFilters.get(openNodeKey);
+      if (!current) return;
+      if (val === 'any') {
+        current.nodes = null; // clear scoping, applies to every node/floor again
+      } else {
+        const d = parseInt(val, 10);
+        if (!current.nodes) current.nodes = new Set();
+        if (current.nodes.has(d)) {
+          current.nodes.delete(d);
+          if (current.nodes.size === 0) current.nodes = null;
+        } else {
+          current.nodes.add(d);
+        }
+      }
+      renderChips(); // re-renders chips and re-opens the node row for openNodeKey automatically
       renderPickerGrid(document.getElementById('charPickerInput').value.trim().toLowerCase());
       recompute();
     });
@@ -673,9 +773,9 @@ function cycleCharFilter(name) {
   const key = name.toLowerCase();
   const existing = charFilters.get(key);
   if (!existing) {
-    charFilters.set(key, { name, mode: 'include' });
+    charFilters.set(key, { name, mode: 'include', nodes: null });
   } else if (existing.mode === 'include') {
-    charFilters.set(key, { name, mode: 'exclude' });
+    charFilters.set(key, { name, mode: 'exclude', nodes: existing.nodes });
   } else {
     charFilters.delete(key);
   }
@@ -690,7 +790,7 @@ function setCharFilterMode(name, mode) {
   if (existing && existing.mode === mode) {
     charFilters.delete(key); // clicking same mode again removes it
   } else {
-    charFilters.set(key, { name, mode });
+    charFilters.set(key, { name, mode, nodes: null });
   }
   renderChips();
   renderPickerGrid(document.getElementById('charPickerInput').value.trim().toLowerCase());
@@ -859,6 +959,7 @@ function prepareData(savedState) {
   showSustain   = true;
   showNoSustain = true;
   charFilters.clear();
+  openNodeKey = null;
   searchTerm = '';
   sortCol    = 'Appearance_Rate_pct';
   sortAsc    = false;
@@ -887,7 +988,11 @@ function prepareData(savedState) {
     if (Array.isArray(savedState.charFilters)) {
       savedState.charFilters.forEach(f => {
         if (f && f.name && ALL_CHAR_NAMES.some(n => n.toLowerCase() === f.name.toLowerCase())) {
-          charFilters.set(f.name.toLowerCase(), { name: f.name, mode: f.mode === 'exclude' ? 'exclude' : 'include' });
+          charFilters.set(f.name.toLowerCase(), {
+            name: f.name,
+            mode: f.mode === 'exclude' ? 'exclude' : 'include',
+            nodes: Array.isArray(f.nodes) && f.nodes.length ? new Set(f.nodes) : null,
+          });
         }
       });
     }
@@ -918,7 +1023,7 @@ function captureState() {
     search:      document.getElementById('searchInput')?.value || '',
     sortCol:     sortCol,
     sortAsc:     sortAsc,
-    charFilters: [...charFilters.values()].map(f => ({ name: f.name, mode: f.mode })),
+    charFilters: [...charFilters.values()].map(f => ({ name: f.name, mode: f.mode, nodes: f.nodes ? [...f.nodes] : null })),
   };
 }
 

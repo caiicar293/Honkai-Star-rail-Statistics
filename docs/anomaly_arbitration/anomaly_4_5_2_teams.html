@@ -1564,8 +1564,12 @@ const ColumnFilter = (() => {
     });
     const clearAllBtn = document.getElementById('afClearAll');
     if (clearAllBtn) clearAllBtn.addEventListener('click', () => {
-      [...state.keys()].forEach(syncButtonState);
+      // Capture the columns that were active, clear the state FIRST, then sync —
+      // syncButtonState() reads isActive(), so syncing before clearing re-set the
+      // gold .active / .has-filter highlight instead of removing it.
+      const cols = [...state.keys()];
       state.clear();
+      cols.forEach(syncButtonState);
       renderActiveBar();
       onChange();
     });
@@ -1757,7 +1761,9 @@ const ColumnFilter = (() => {
   // don't silently hide rows on columns that no longer mean the same thing.
   function reset() {
     closePopover();
+    const cols = [...state.keys()];
     state.clear();
+    if (table) cols.forEach(syncButtonState); // drop the gold highlight left on the headers too
     renderActiveBar();
   }
 

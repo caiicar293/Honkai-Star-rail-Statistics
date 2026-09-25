@@ -413,7 +413,11 @@ function prepareDataset(key, nameField) {
     r.dim_key  = r[DIM_FIELD];
     r.__full   = r[nameField];
     r.__base   = baseNameOf(r.__full);
-    r.__eid    = (key === 'eid') ? eidOf(r.__full) : Math.round(r.max_eidolon);
+    // Both name fields already encode the character's OWN eidolon, e.g.
+    // "Hyacine(E0)" / "Hyacine(E0)" — parse that. Falling back to the team's
+    // max_eidolon made every row show the team maximum instead of the
+    // character's actual eidolon (so two different Hyacine rows both read E1).
+    r.__eid    = eidOf(r.__full);
     r.__lower  = r.__full.toLowerCase();
     r.__iconHtml = iconEl(r.__base);
     if (key === 'cost') r.cost_key = r.estimated_min_cost + '_' + r.estimated_max_cost;
@@ -459,6 +463,15 @@ function recompute() {
 
   filteredData = candidate.slice();
   filteredData.sort((a, b) => {
+    // The Cost Range column is stored as a "min_max" key, but it has to sort by
+    // its numeric min cost (ties broken by max cost) — exactly like the trends
+    // page. A lexical sort on "9_13" put the 9→13 bucket before 17→21 etc.
+    if (sortCol === 'cost_key' || sortCol === 'estimated_min_cost') {
+      const dmin = (a.estimated_min_cost ?? 0) - (b.estimated_min_cost ?? 0);
+      if (dmin !== 0) return sortAsc ? dmin : -dmin;
+      const dmax = (a.estimated_max_cost ?? 0) - (b.estimated_max_cost ?? 0);
+      return sortAsc ? dmax : -dmax;
+    }
     let av = a[sortCol], bv = b[sortCol];
     if (typeof av === 'string') av = av.toLowerCase();
     if (typeof bv === 'string') bv = bv.toLowerCase();

@@ -744,6 +744,15 @@ function recompute() {
 
   filteredData = candidate;
   filteredData.sort((a, b) => {
+    // The Cost Range column is stored as a "min_max" key, but it has to sort by
+    // its numeric min cost (ties broken by max cost) — exactly like the trends
+    // page. A lexical sort on "9_13" put the 9→13 bucket before 17→21 etc.
+    if (sortCol === 'cost_key' || sortCol === 'estimated_min_cost') {
+      const dmin = (a.estimated_min_cost ?? 0) - (b.estimated_min_cost ?? 0);
+      if (dmin !== 0) return sortAsc ? dmin : -dmin;
+      const dmax = (a.estimated_max_cost ?? 0) - (b.estimated_max_cost ?? 0);
+      return sortAsc ? dmax : -dmax;
+    }
     let av = a[sortCol], bv = b[sortCol];
     if (typeof av === 'string') av = av.toLowerCase();
     if (typeof bv === 'string') bv = bv.toLowerCase();
@@ -1259,8 +1268,12 @@ const ColumnFilter = (() => {
     });
     const clearAllBtn = document.getElementById('afClearAll');
     if (clearAllBtn) clearAllBtn.addEventListener('click', () => {
-      [...state.keys()].forEach(syncButtonState);
+      // Capture the columns that were active, clear the state FIRST, then sync —
+      // syncButtonState() reads isActive(), so syncing before clearing re-set the
+      // gold .active / .has-filter highlight instead of removing it.
+      const cols = [...state.keys()];
       state.clear();
+      cols.forEach(syncButtonState);
       renderActiveBar();
       onChange();
     });
@@ -1452,7 +1465,9 @@ const ColumnFilter = (() => {
   // don't silently hide rows on columns that no longer mean the same thing.
   function reset() {
     closePopover();
+    const cols = [...state.keys()];
     state.clear();
+    if (table) cols.forEach(syncButtonState); // drop the gold highlight left on the headers too
     renderActiveBar();
   }
 

@@ -299,9 +299,11 @@
   @media (max-width: 1100px) { .layout-grid { grid-template-columns: 1fr; } }
 
   #status-line { text-align: center; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px 0; }
+{% include "_site_nav_style.html.j2" %}
 </style>
 </head>
 <body>
+{% include "_site_nav_html.html.j2" %}
 <div class="container">
   <div class="header">
     <div>
@@ -1907,5 +1909,6 @@
     loadCurrentSlice();
   })();
 </script>
+{% include "_site_nav_script.html.j2" %}
 </body>
 </html>

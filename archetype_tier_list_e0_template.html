@@ -103,9 +103,11 @@
   ::-webkit-scrollbar-track { background: var(--bg2); }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+$$SITE_NAV_STYLE$$
 </style>
 </head>
 <body>
+$$SITE_NAV_HTML$$
 <canvas id="particleCanvas" aria-hidden="true"></canvas>
 <div class="container">
 
@@ -315,5 +317,6 @@
     document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
   })();
 </script>
+$$SITE_NAV_SCRIPT$$
 </body>
 </html>

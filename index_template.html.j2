@@ -365,9 +365,11 @@
       .card, .hero h1, .version-badge, .subhead { opacity: 1 !important; transform: none !important; }
       #particle-canvas { display: none; }
     }
+  {% include "_site_nav_style.html.j2" %}
   </style>
 </head>
 <body>
+{% include "_site_nav_html.html.j2" %}
 <canvas id="particle-canvas"></canvas>
 
 <div class="container">
@@ -743,5 +745,6 @@
     animateParticles();
   }
 </script>
+{% include "_site_nav_script.html.j2" %}
 </body>
 </html>

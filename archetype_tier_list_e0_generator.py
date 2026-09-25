@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import argparse
 from dotenv import load_dotenv
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 # Load environment variables to get the database file path
 load_dotenv()
@@ -170,9 +171,24 @@ def extract_and_build_html(icons_path, template_path, output_path, version, eido
     with open(template_path, 'r', encoding='utf-8') as f:
         html_template = f.read()
 
+    # 2b. Render the shared site-navigation partials with Jinja and splice them
+    # into this (non-Jinja) template's $$SITE_NAV_*$$ placeholders. This page sits
+    # at the docs/ root, so its relative prefix is './'.
+    nav_env = Environment(
+        loader=FileSystemLoader(os.path.dirname(os.path.abspath(template_path)) or '.'),
+        autoescape=select_autoescape(disabled_extensions=["j2", "html"]),
+    )
+    nav_ctx = {"path_prefix": "./"}
+    nav_style  = nav_env.get_template("_site_nav_style.html.j2").render(**nav_ctx)
+    nav_html   = nav_env.get_template("_site_nav_html.html.j2").render(**nav_ctx)
+    nav_script = nav_env.get_template("_site_nav_script.html.j2").render(**nav_ctx)
+
     # 3. Inject the data into the template
     print("Injecting data into HTML template...")
-    final_html = html_template.replace('$$ICON_DATA$$', icons_json_str)
+    final_html = html_template.replace('$$SITE_NAV_STYLE$$', nav_style)
+    final_html = final_html.replace('$$SITE_NAV_HTML$$', nav_html)
+    final_html = final_html.replace('$$SITE_NAV_SCRIPT$$', nav_script)
+    final_html = final_html.replace('$$ICON_DATA$$', icons_json_str)
     final_html = final_html.replace('$$RAW_CSV_DATA$$', csv_data_string)
     final_html = final_html.replace('$$RAW_CSV_DATA_AMPLIFIERS$$', csv_data_string_amplifiers)
     final_html = final_html.replace('$$RAW_CSV_DATA_SUSTAINS$$', csv_data_string_sustains)

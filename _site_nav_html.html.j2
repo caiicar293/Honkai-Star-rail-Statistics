@@ -1,0 +1,46 @@
+{# ── Shared site navigation (hidden by default) ─────────────────────────────
+   Included on every page. Links are relative to `path_prefix` ("../" for
+   sub-pages, "./" for the root hub). The optional "This mode" group only
+   renders on the generated mode pages, where file_prefix + safe_version are
+   in the template context; sibling pages live in the same directory, so those
+   links need no prefix. #}
+{% set NAV = path_prefix | default('../') %}
+<div class="site-nav" id="siteNav">
+  <button class="site-nav-fab" id="siteNavBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Open site navigation — Home and other pages">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>
+    <span class="site-nav-fab-label">Menu</span>
+  </button>
+
+  <div class="site-nav-panel" id="siteNavPanel" role="dialog" aria-label="Site navigation" hidden>
+    <div class="site-nav-head">
+      <span class="site-nav-title">Navigate</span>
+      <button class="site-nav-close" id="siteNavClose" type="button" aria-label="Close navigation">×</button>
+    </div>
+
+    <a class="site-nav-home" href="{{ NAV }}index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>
+      Back to Home
+    </a>
+
+    <div class="site-nav-group">
+      <div class="site-nav-group-label">Dashboards</div>
+      <a class="site-nav-link" href="{{ NAV }}characters/index.html">Character Database</a>
+      <a class="site-nav-link" href="{{ NAV }}archetype_tierlist_interactive.html">Archetype Tier List</a>
+      <a class="site-nav-link" href="{{ NAV }}tier_list/by_cost_archetype_tier_list.html">By-Cost Tier List</a>
+      <a class="site-nav-link" href="{{ NAV }}network/index.html">Network Graphs</a>
+      <a class="site-nav-link" href="{{ NAV }}trends/index.html">Trends</a>
+    </div>
+{% if file_prefix is defined and safe_version is defined %}
+    <div class="site-nav-group">
+      <div class="site-nav-group-label">{{ mode_label | default(version | default('This mode')) }}</div>
+      <a class="site-nav-link" href="{{ file_prefix }}_{{ safe_version }}_characters.html">Characters</a>
+      <a class="site-nav-link" href="{{ file_prefix }}_{{ safe_version }}_archetypes.html">Archetypes</a>
+      <a class="site-nav-link" href="{{ file_prefix }}_{{ safe_version }}_teams.html">Teams</a>
+      <a class="site-nav-link" href="{{ file_prefix }}_{{ safe_version }}_duos.html">Duos</a>
+      <a class="site-nav-link" href="{{ file_prefix }}_{{ safe_version }}_by_cost_teams.html">By-Cost Teams</a>
+      <a class="site-nav-link" href="{{ file_prefix }}_{{ safe_version }}_by_cost_archetypes.html">By-Cost Archetypes</a>
+      <a class="site-nav-link" href="{{ file_prefix }}_{{ safe_version }}_by_cost_characters.html">By-Cost Characters</a>
+    </div>
+{% endif %}
+  </div>
+</div>

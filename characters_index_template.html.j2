@@ -302,9 +302,11 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
     }
+  {% include "_site_nav_style.html.j2" %}
   </style>
 </head>
 <body>
+{% include "_site_nav_html.html.j2" %}
 <div class="container">
 
   <header class="hero" role="banner">
@@ -435,5 +437,6 @@
 
   render();
 </script>
+{% include "_site_nav_script.html.j2" %}
 </body>
 </html>

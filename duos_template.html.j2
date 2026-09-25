@@ -190,9 +190,11 @@
 {% include "_version_switch_style.html.j2" %}
   {% include "_column_filter_style.html.j2" %}
   {% include "_distribution_modal_style.html.j2" %}
+  {% include "_site_nav_style.html.j2" %}
 </style>
 </head>
 <body>
+{% include "_site_nav_html.html.j2" %}
 <canvas id="particleCanvas" aria-hidden="true"></canvas>
 <div class="container">
 
@@ -709,5 +711,6 @@ ColumnFilter.attach('#mainTable', () => RAW_DATA, recompute);
 initializeApp();
 </script>
 {% include "_version_switch_script.html.j2" %}
+{% include "_site_nav_script.html.j2" %}
 </body>
 </html>

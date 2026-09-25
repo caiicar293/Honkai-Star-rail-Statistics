@@ -315,9 +315,11 @@
     .controls { gap: 10px; }
     .cost-panel { padding: 12px; gap: 12px; }
   }
+  {% include "_site_nav_style.html.j2" %}
 </style>
 </head>
 <body>
+{% include "_site_nav_html.html.j2" %}
 <canvas id="particleCanvas" aria-hidden="true"></canvas>
 <div class="container">
 
@@ -1393,5 +1395,6 @@ function updateVersionNav() {
 
 initializeApp();
 </script>
+{% include "_site_nav_script.html.j2" %}
 </body>
 </html>

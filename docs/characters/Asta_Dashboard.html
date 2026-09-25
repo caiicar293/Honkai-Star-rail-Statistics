@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Asta — Character Dashboard</title>
+<link rel="icon" type="image/jpeg" href="../favicon.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300&display=swap" rel="stylesheet">
@@ -301,9 +302,88 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
   #nav{padding:0 0.8rem;overflow-x:auto;}
   .main-stats-row{grid-template-columns:repeat(2,1fr);}
 }
+  /* ── Shared site navigation (floating, hidden by default) ─────────────── */
+  /* Self-contained: defines its own colours so it looks the same on every
+     page regardless of that page's theme variables. */
+  .site-nav {
+    --sn-bg: #141c2e; --sn-bg2: #1a2338; --sn-border: #243552;
+    --sn-accent: #38bdf8; --sn-text: #e2eaf6; --sn-text2: #8fa3c0;
+    --sn-text3: #506070; --sn-teal: #2dd4bf;
+  }
+  .site-nav-fab {
+    position: fixed; right: 16px; bottom: 16px; z-index: 940;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--sn-bg); border: 1px solid var(--sn-border); color: var(--sn-accent);
+    font-family: 'Rajdhani', 'Inter', sans-serif; font-size: 14px; font-weight: 700;
+    letter-spacing: 0.03em; padding: 9px 14px; border-radius: 22px; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    transition: border-color 0.15s, background 0.15s, transform 0.12s;
+  }
+  .site-nav-fab:hover { border-color: var(--sn-accent); background: rgba(56,189,248,0.1); transform: translateY(-1px); }
+  .site-nav-fab svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .site-nav-fab[aria-expanded="true"] { border-color: var(--sn-accent); background: rgba(56,189,248,0.14); }
+  .site-nav-panel {
+    position: fixed; right: 16px; bottom: 68px; z-index: 941;
+    width: 244px; max-height: min(70vh, 540px); overflow-y: auto;
+    background: var(--sn-bg2); border: 1px solid var(--sn-border); border-radius: 10px;
+    box-shadow: 0 16px 44px rgba(0,0,0,0.6); padding: 10px;
+  }
+  .site-nav-panel[hidden] { display: none; }
+  .site-nav-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .site-nav-title { font-family: 'Share Tech Mono', 'Inter', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sn-text3); }
+  .site-nav-close { background: none; border: none; color: var(--sn-text3); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+  .site-nav-close:hover { color: var(--sn-text); }
+  .site-nav-home {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.3); color: var(--sn-accent);
+    border-radius: 7px; padding: 9px 10px; text-decoration: none;
+    font-family: 'Rajdhani', 'Inter', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.03em;
+  }
+  .site-nav-home:hover { background: rgba(56,189,248,0.15); }
+  .site-nav-home svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .site-nav-group { margin-top: 10px; }
+  .site-nav-group-label { font-family: 'Share Tech Mono', 'Inter', monospace; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sn-text3); margin-bottom: 5px; }
+  .site-nav-link {
+    display: block; padding: 6px 9px; border-radius: 6px; text-decoration: none;
+    color: var(--sn-text2); font-family: 'Exo 2', 'Inter', sans-serif; font-size: 12.5px;
+    transition: background 0.12s, color 0.12s;
+  }
+  .site-nav-link:hover { background: rgba(56,189,248,0.09); color: var(--sn-accent); }
+  .site-nav-link.is-current { color: var(--sn-teal); }
+  @media (max-width: 520px) { .site-nav-fab-label { display: none; } }
 </style>
 </head>
 <body>
+
+
+<div class="site-nav" id="siteNav">
+  <button class="site-nav-fab" id="siteNavBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Open site navigation — Home and other pages">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>
+    <span class="site-nav-fab-label">Menu</span>
+  </button>
+
+  <div class="site-nav-panel" id="siteNavPanel" role="dialog" aria-label="Site navigation" hidden>
+    <div class="site-nav-head">
+      <span class="site-nav-title">Navigate</span>
+      <button class="site-nav-close" id="siteNavClose" type="button" aria-label="Close navigation">×</button>
+    </div>
+
+    <a class="site-nav-home" href="../index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>
+      Back to Home
+    </a>
+
+    <div class="site-nav-group">
+      <div class="site-nav-group-label">Dashboards</div>
+      <a class="site-nav-link" href="../characters/index.html">Character Database</a>
+      <a class="site-nav-link" href="../archetype_tierlist_interactive.html">Archetype Tier List</a>
+      <a class="site-nav-link" href="../tier_list/by_cost_archetype_tier_list.html">By-Cost Tier List</a>
+      <a class="site-nav-link" href="../network/index.html">Network Graphs</a>
+      <a class="site-nav-link" href="../trends/index.html">Trends</a>
+    </div>
+
+  </div>
+</div>
 
 <canvas id="particles" aria-hidden="true"></canvas>
 
@@ -702,7 +782,7 @@ const ICONS = {"Asta": "assets/icons/asta.webp", "Aventurine": "assets/icons/ave
 //            → { Relics, Planar_Set, Lightcones }
 //            → [ { name, rate (0–1 decimal), score } ]
 // rate is a decimal (0.847 = 84.7%). score unit depends on mode.
-const GEAR = {"ANOMALY_F0": {"E6": {"Lightcones": [{"name": "Dance! Dance! Dance!", "rate": 0.3684, "score": 1.57}, {"name": "Memories of the Past", "rate": 0.3684, "score": 2.57}, {"name": "Meshing Cogs", "rate": 0.2105, "score": 4.25}, {"name": "Poised to Bloom", "rate": 0.0526, "score": 1.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.7368, "score": 2.07}, {"name": "Broken Keel", "rate": 0.2105, "score": 4.0}, {"name": "Fleet of the Ageless", "rate": 0.0526, "score": 2.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.8421, "score": 2.5}, {"name": "Eagle of Twilight Line", "rate": 0.1053, "score": 1.5}, {"name": "Watchmaker, Master of Dream Machinations", "rate": 0.0526, "score": 4.0}]}}, "ANOMALY_F4": {"E6": {"Lightcones": [{"name": "Poised to Bloom", "rate": 0.3333, "score": 0.0}, {"name": "Memories of the Past", "rate": 0.3333, "score": 2.0}, {"name": "Earthly Escapade", "rate": 0.1667, "score": 0.0}, {"name": "Dance! Dance! Dance!", "rate": 0.1667, "score": 2.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.6667, "score": 1.5}, {"name": "Broken Keel", "rate": 0.1667, "score": 0.0}, {"name": "Lushaka, the Sunken Seas", "rate": 0.1667, "score": 6.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.8571, "score": 1.0}, {"name": "Diviner of Distant Reach", "rate": 0.1429, "score": 6.0}]}}, "APOC": {"E6": {"Lightcones": [{"name": "Dance! Dance! Dance!", "rate": 0.4848, "score": 3316.88}, {"name": "Memories of the Past", "rate": 0.197, "score": 3546.38}, {"name": "Meshing Cogs", "rate": 0.1515, "score": 3376.4}, {"name": "Planetary Rendezvous", "rate": 0.0606, "score": 2335.5}, {"name": "Poised to Bloom", "rate": 0.0455, "score": 3699.33}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.2623, "score": 3663.06}, {"name": "Broken Keel", "rate": 0.2131, "score": 3100.77}, {"name": "Fleet of the Ageless", "rate": 0.2131, "score": 3152.0}, {"name": "Penacony, Land of the Dreams", "rate": 0.1639, "score": 3165.4}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0656, "score": 3533.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.6154, "score": 3414.8}, {"name": "Eagle of Twilight Line", "rate": 0.0769, "score": 3006.8}, {"name": "Messenger Traversing Hackerspace, Sacerdos\u0027 Relived Ordeal", "rate": 0.0615, "score": 3458.5}, {"name": "Watchmaker, Master of Dream Machinations", "rate": 0.0462, "score": 3642.67}, {"name": "Thief of Shooting Meteor", "rate": 0.0308, "score": 3434.5}]}}, "MOC": {"E0": {"Lightcones": [{"name": "Dance! Dance! Dance!", "rate": 0.3333, "score": 18.4}, {"name": "Chorus", "rate": 0.2667, "score": 24.0}, {"name": "Meshing Cogs", "rate": 0.2, "score": 15.33}, {"name": "Memories of the Past", "rate": 0.0667, "score": 16.0}, {"name": "Planetary Rendezvous", "rate": 0.0667, "score": 25.0}], "Planar_Set": [{"name": "Fleet of the Ageless", "rate": 0.6923, "score": 20.78}, {"name": "Sprightly Vonwacq", "rate": 0.1538, "score": 26.0}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0769, "score": 14.0}, {"name": "Broken Keel", "rate": 0.0769, "score": 9.0}], "Relics": [{"name": "Musketeer of Wild Wheat", "rate": 0.4, "score": 21.17}, {"name": "Messenger Traversing Hackerspace", "rate": 0.4, "score": 16.67}, {"name": "Thief of Shooting Meteor", "rate": 0.1333, "score": 24.0}, {"name": "Guard of Wuthering Snow", "rate": 0.0667, "score": 28.0}]}, "E1": {"Lightcones": [{"name": "Memories of the Past", "rate": 0.3462, "score": 15.779999999999998}, {"name": "Meshing Cogs", "rate": 0.1923, "score": 12.6}, {"name": "Carve the Moon, Weave the Clouds", "rate": 0.1538, "score": 16.25}, {"name": "Dance! Dance! Dance!", "rate": 0.1154, "score": 17.83}, {"name": "Planetary Rendezvous", "rate": 0.0962, "score": 14.2}], "Planar_Set": [{"name": "Fleet of the Ageless", "rate": 0.5476, "score": 15.739999999999998}, {"name": "Broken Keel", "rate": 0.1429, "score": 15.67}, {"name": "Sprightly Vonwacq", "rate": 0.0952, "score": 20.75}, {"name": "Rutilant Arena", "rate": 0.0476, "score": 12.5}, {"name": "Inert Salsotto", "rate": 0.0476, "score": 13.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.3462, "score": 15.279999999999998}, {"name": "Thief of Shooting Meteor", "rate": 0.25, "score": 17.0}, {"name": "Flex", "rate": 0.0962, "score": 11.4}, {"name": "Firesmith of Lava-Forging, Knight of Purity Palace", "rate": 0.0577, "score": 19.67}, {"name": "Longevous Disciple, Flex", "rate": 0.0385, "score": 15.0}]}, "E2": {"Lightcones": [{"name": "Meshing Cogs", "rate": 0.3361, "score": 11.37}, {"name": "Memories of the Past", "rate": 0.2017, "score": 14.96}, {"name": "Dance! Dance! Dance!", "rate": 0.1765, "score": 13.76}, {"name": "Carve the Moon, Weave the Clouds", "rate": 0.1345, "score": 15.31}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.0756, "score": 20.22}], "Planar_Set": [{"name": "Fleet of the Ageless", "rate": 0.4336, "score": 14.220000000000002}, {"name": "Sprightly Vonwacq", "rate": 0.2655, "score": 14.2}, {"name": "Broken Keel", "rate": 0.177, "score": 11.4}, {"name": "Belobog of the Architects", "rate": 0.0619, "score": 12.709999999999999}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0265, "score": 25.67}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.4706, "score": 12.7}, {"name": "Thief of Shooting Meteor", "rate": 0.1345, "score": 16.75}, {"name": "Musketeer of Wild Wheat", "rate": 0.0924, "score": 18.73}, {"name": "Knight of Purity Palace, Messenger Traversing Hackerspace", "rate": 0.042, "score": 12.0}, {"name": "Messenger Traversing Hackerspace, Flex", "rate": 0.0336, "score": 16.5}]}, "E6": {"Lightcones": [{"name": "Memories of the Past", "rate": 0.2942, "score": 9.81}, {"name": "Dance! Dance! Dance!", "rate": 0.2397, "score": 10.7}, {"name": "Meshing Cogs", "rate": 0.2331, "score": 10.08}, {"name": "Planetary Rendezvous", "rate": 0.0909, "score": 11.33}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.0727, "score": 11.02}], "Planar_Set": [{"name": "Broken Keel", "rate": 0.2722, "score": 9.24}, {"name": "Fleet of the Ageless", "rate": 0.2705, "score": 10.47}, {"name": "Sprightly Vonwacq", "rate": 0.2278, "score": 10.1}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0765, "score": 13.81}, {"name": "Space Sealing Station", "rate": 0.0445, "score": 12.2}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.4883, "score": 9.88}, {"name": "Thief of Shooting Meteor", "rate": 0.1383, "score": 11.89}, {"name": "Musketeer of Wild Wheat", "rate": 0.0933, "score": 11.040000000000001}, {"name": "Messenger Traversing Hackerspace, Flex", "rate": 0.04, "score": 10.67}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.0267, "score": 9.81}]}}, "PURE_FICTION": {"E0": {"Lightcones": [{"name": "Planetary Rendezvous", "rate": 1.0, "score": 33591.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 1.0, "score": 33591.0}], "Relics": [{"name": "Thief of Shooting Meteor", "rate": 1.0, "score": 33591.0}]}, "E1": {"Lightcones": [{"name": "Meshing Cogs", "rate": 0.4, "score": 30600.0}, {"name": "Planetary Rendezvous", "rate": 0.4, "score": 16173.5}, {"name": "Memories of the Past", "rate": 0.2, "score": 23695.0}], "Planar_Set": [{"name": "Fleet of the Ageless", "rate": 0.5, "score": 30600.0}, {"name": "Penacony, Land of the Dreams", "rate": 0.25, "score": 20068.0}, {"name": "Sprightly Vonwacq", "rate": 0.25, "score": 12279.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 1.0, "score": 23448.4}]}, "E2": {"Lightcones": [{"name": "Meshing Cogs", "rate": 0.2857, "score": 35575.0}, {"name": "Planetary Rendezvous", "rate": 0.2857, "score": 22274.0}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.1429, "score": 35735.0}, {"name": "Memories of the Past", "rate": 0.1429, "score": 29330.0}, {"name": "Carve the Moon, Weave the Clouds", "rate": 0.1429, "score": 40000.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.4286, "score": 35628.33}, {"name": "Fleet of the Ageless", "rate": 0.2857, "score": 26639.0}, {"name": "Broken Keel", "rate": 0.1429, "score": 40000.0}, {"name": "Space Sealing Station", "rate": 0.1429, "score": 20600.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.5714, "score": 33774.5}, {"name": "Messenger Traversing Hackerspace, Flex", "rate": 0.1429, "score": 29330.0}, {"name": "Musketeer of Wild Wheat", "rate": 0.1429, "score": 20600.0}, {"name": "Watchmaker, Master of Dream Machinations", "rate": 0.1429, "score": 35735.0}]}, "E6": {"Lightcones": [{"name": "Dance! Dance! Dance!", "rate": 0.3611, "score": 30536.62}, {"name": "Meshing Cogs", "rate": 0.2389, "score": 29083.56}, {"name": "Memories of the Past", "rate": 0.1667, "score": 30764.73}, {"name": "Planetary Rendezvous", "rate": 0.1389, "score": 29006.0}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.0278, "score": 26314.4}], "Planar_Set": [{"name": "Broken Keel", "rate": 0.3184, "score": 28430.7}, {"name": "Fleet of the Ageless", "rate": 0.3017, "score": 29508.61}, {"name": "Sprightly Vonwacq", "rate": 0.1397, "score": 32632.52}, {"name": "Penacony, Land of the Dreams", "rate": 0.1229, "score": 33356.45}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0503, "score": 27014.56}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.5191, "score": 30369.93}, {"name": "Musketeer of Wild Wheat", "rate": 0.082, "score": 30442.87}, {"name": "Thief of Shooting Meteor", "rate": 0.082, "score": 27904.27}, {"name": "Firesmith of Lava-Forging", "rate": 0.0601, "score": 24119.64}, {"name": "Watchmaker, Master of Dream Machinations", "rate": 0.0383, "score": 32709.860000000004}]}}};
+const GEAR = {"ANOMALY_F0": {"E6": {"Lightcones": [{"name": "Dance! Dance! Dance!", "rate": 0.3684, "score": 1.57}, {"name": "Memories of the Past", "rate": 0.3684, "score": 2.57}, {"name": "Meshing Cogs", "rate": 0.2105, "score": 4.25}, {"name": "Poised to Bloom", "rate": 0.0526, "score": 1.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.7368, "score": 2.07}, {"name": "Broken Keel", "rate": 0.2105, "score": 4.0}, {"name": "Fleet of the Ageless", "rate": 0.0526, "score": 2.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.8421, "score": 2.5}, {"name": "Eagle of Twilight Line", "rate": 0.1053, "score": 1.5}, {"name": "Watchmaker, Master of Dream Machinations", "rate": 0.0526, "score": 4.0}]}}, "ANOMALY_F4": {"E6": {"Lightcones": [{"name": "Memories of the Past", "rate": 0.3333, "score": 2.0}, {"name": "Poised to Bloom", "rate": 0.3333, "score": 0.0}, {"name": "Dance! Dance! Dance!", "rate": 0.1667, "score": 2.0}, {"name": "Earthly Escapade", "rate": 0.1667, "score": 0.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.6667, "score": 1.5}, {"name": "Broken Keel", "rate": 0.1667, "score": 0.0}, {"name": "Lushaka, the Sunken Seas", "rate": 0.1667, "score": 6.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.8571, "score": 1.0}, {"name": "Diviner of Distant Reach", "rate": 0.1429, "score": 6.0}]}}, "APOC": {"E6": {"Lightcones": [{"name": "Dance! Dance! Dance!", "rate": 0.4848, "score": 3316.88}, {"name": "Memories of the Past", "rate": 0.197, "score": 3546.38}, {"name": "Meshing Cogs", "rate": 0.1515, "score": 3376.4}, {"name": "Planetary Rendezvous", "rate": 0.0606, "score": 2335.5}, {"name": "Poised to Bloom", "rate": 0.0455, "score": 3699.33}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.2623, "score": 3663.06}, {"name": "Broken Keel", "rate": 0.2131, "score": 3100.77}, {"name": "Fleet of the Ageless", "rate": 0.2131, "score": 3152.0}, {"name": "Penacony, Land of the Dreams", "rate": 0.1639, "score": 3165.4}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0656, "score": 3533.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.6154, "score": 3414.8}, {"name": "Eagle of Twilight Line", "rate": 0.0769, "score": 3006.8}, {"name": "Messenger Traversing Hackerspace, Sacerdos\u0027 Relived Ordeal", "rate": 0.0615, "score": 3458.5}, {"name": "Watchmaker, Master of Dream Machinations", "rate": 0.0462, "score": 3642.67}, {"name": "Thief of Shooting Meteor", "rate": 0.0308, "score": 3434.5}]}}, "MOC": {"E0": {"Lightcones": [{"name": "Dance! Dance! Dance!", "rate": 0.3333, "score": 18.4}, {"name": "Chorus", "rate": 0.2667, "score": 24.0}, {"name": "Meshing Cogs", "rate": 0.2, "score": 15.33}, {"name": "Memories of the Past", "rate": 0.0667, "score": 16.0}, {"name": "Planetary Rendezvous", "rate": 0.0667, "score": 25.0}], "Planar_Set": [{"name": "Fleet of the Ageless", "rate": 0.6923, "score": 20.78}, {"name": "Sprightly Vonwacq", "rate": 0.1538, "score": 26.0}, {"name": "Broken Keel", "rate": 0.0769, "score": 9.0}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0769, "score": 14.0}], "Relics": [{"name": "Musketeer of Wild Wheat", "rate": 0.4, "score": 21.17}, {"name": "Messenger Traversing Hackerspace", "rate": 0.4, "score": 16.67}, {"name": "Thief of Shooting Meteor", "rate": 0.1333, "score": 24.0}, {"name": "Guard of Wuthering Snow", "rate": 0.0667, "score": 28.0}]}, "E1": {"Lightcones": [{"name": "Memories of the Past", "rate": 0.3462, "score": 15.779999999999998}, {"name": "Meshing Cogs", "rate": 0.1923, "score": 12.6}, {"name": "Carve the Moon, Weave the Clouds", "rate": 0.1538, "score": 16.25}, {"name": "Dance! Dance! Dance!", "rate": 0.1154, "score": 17.83}, {"name": "Planetary Rendezvous", "rate": 0.0962, "score": 14.2}], "Planar_Set": [{"name": "Fleet of the Ageless", "rate": 0.5476, "score": 15.739999999999998}, {"name": "Broken Keel", "rate": 0.1429, "score": 15.67}, {"name": "Sprightly Vonwacq", "rate": 0.0952, "score": 20.75}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0476, "score": 16.0}, {"name": "Inert Salsotto", "rate": 0.0476, "score": 13.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.3462, "score": 15.279999999999998}, {"name": "Thief of Shooting Meteor", "rate": 0.25, "score": 17.0}, {"name": "Flex", "rate": 0.0962, "score": 11.4}, {"name": "Firesmith of Lava-Forging, Knight of Purity Palace", "rate": 0.0577, "score": 19.67}, {"name": "Messenger Traversing Hackerspace, Flex", "rate": 0.0385, "score": 12.0}]}, "E2": {"Lightcones": [{"name": "Meshing Cogs", "rate": 0.3361, "score": 11.37}, {"name": "Memories of the Past", "rate": 0.2017, "score": 14.96}, {"name": "Dance! Dance! Dance!", "rate": 0.1765, "score": 13.76}, {"name": "Carve the Moon, Weave the Clouds", "rate": 0.1345, "score": 15.31}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.0756, "score": 20.22}], "Planar_Set": [{"name": "Fleet of the Ageless", "rate": 0.4336, "score": 14.220000000000002}, {"name": "Sprightly Vonwacq", "rate": 0.2655, "score": 14.2}, {"name": "Broken Keel", "rate": 0.177, "score": 11.4}, {"name": "Belobog of the Architects", "rate": 0.0619, "score": 12.709999999999999}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0265, "score": 25.67}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.4706, "score": 12.7}, {"name": "Thief of Shooting Meteor", "rate": 0.1345, "score": 16.75}, {"name": "Musketeer of Wild Wheat", "rate": 0.0924, "score": 18.73}, {"name": "Knight of Purity Palace, Messenger Traversing Hackerspace", "rate": 0.042, "score": 12.0}, {"name": "Longevous Disciple, Messenger Traversing Hackerspace", "rate": 0.0336, "score": 15.25}]}, "E6": {"Lightcones": [{"name": "Memories of the Past", "rate": 0.2942, "score": 9.81}, {"name": "Dance! Dance! Dance!", "rate": 0.2397, "score": 10.7}, {"name": "Meshing Cogs", "rate": 0.2331, "score": 10.08}, {"name": "Planetary Rendezvous", "rate": 0.0909, "score": 11.33}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.0727, "score": 11.02}], "Planar_Set": [{"name": "Broken Keel", "rate": 0.2722, "score": 9.24}, {"name": "Fleet of the Ageless", "rate": 0.2705, "score": 10.47}, {"name": "Sprightly Vonwacq", "rate": 0.2278, "score": 10.1}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0765, "score": 13.81}, {"name": "Space Sealing Station", "rate": 0.0445, "score": 12.2}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.4883, "score": 9.88}, {"name": "Thief of Shooting Meteor", "rate": 0.1383, "score": 11.89}, {"name": "Musketeer of Wild Wheat", "rate": 0.0933, "score": 11.040000000000001}, {"name": "Messenger Traversing Hackerspace, Flex", "rate": 0.04, "score": 10.67}, {"name": "Messenger Traversing Hackerspace, Thief of Shooting Meteor", "rate": 0.0267, "score": 9.81}]}}, "PURE_FICTION": {"E0": {"Lightcones": [{"name": "Planetary Rendezvous", "rate": 1.0, "score": 33591.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 1.0, "score": 33591.0}], "Relics": [{"name": "Thief of Shooting Meteor", "rate": 1.0, "score": 33591.0}]}, "E1": {"Lightcones": [{"name": "Planetary Rendezvous", "rate": 0.4, "score": 16173.5}, {"name": "Meshing Cogs", "rate": 0.4, "score": 30600.0}, {"name": "Memories of the Past", "rate": 0.2, "score": 23695.0}], "Planar_Set": [{"name": "Fleet of the Ageless", "rate": 0.5, "score": 30600.0}, {"name": "Penacony, Land of the Dreams", "rate": 0.25, "score": 20068.0}, {"name": "Sprightly Vonwacq", "rate": 0.25, "score": 12279.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 1.0, "score": 23448.4}]}, "E2": {"Lightcones": [{"name": "Planetary Rendezvous", "rate": 0.2857, "score": 22274.0}, {"name": "Meshing Cogs", "rate": 0.2857, "score": 35575.0}, {"name": "Memories of the Past", "rate": 0.1429, "score": 29330.0}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.1429, "score": 35735.0}, {"name": "Carve the Moon, Weave the Clouds", "rate": 0.1429, "score": 40000.0}], "Planar_Set": [{"name": "Sprightly Vonwacq", "rate": 0.4286, "score": 35628.33}, {"name": "Fleet of the Ageless", "rate": 0.2857, "score": 26639.0}, {"name": "Space Sealing Station", "rate": 0.1429, "score": 20600.0}, {"name": "Broken Keel", "rate": 0.1429, "score": 40000.0}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.5714, "score": 33774.5}, {"name": "Messenger Traversing Hackerspace, Flex", "rate": 0.1429, "score": 29330.0}, {"name": "Musketeer of Wild Wheat", "rate": 0.1429, "score": 20600.0}, {"name": "Watchmaker, Master of Dream Machinations", "rate": 0.1429, "score": 35735.0}]}, "E6": {"Lightcones": [{"name": "Dance! Dance! Dance!", "rate": 0.3611, "score": 30536.62}, {"name": "Meshing Cogs", "rate": 0.2389, "score": 29083.56}, {"name": "Memories of the Past", "rate": 0.1667, "score": 30764.73}, {"name": "Planetary Rendezvous", "rate": 0.1389, "score": 29006.0}, {"name": "But the Battle Isn\u0027t Over", "rate": 0.0278, "score": 26314.4}], "Planar_Set": [{"name": "Broken Keel", "rate": 0.3184, "score": 28430.7}, {"name": "Fleet of the Ageless", "rate": 0.3017, "score": 29508.61}, {"name": "Sprightly Vonwacq", "rate": 0.1397, "score": 32632.52}, {"name": "Penacony, Land of the Dreams", "rate": 0.1229, "score": 33356.45}, {"name": "Talia: Kingdom of Banditry", "rate": 0.0503, "score": 27014.56}], "Relics": [{"name": "Messenger Traversing Hackerspace", "rate": 0.5191, "score": 30369.93}, {"name": "Thief of Shooting Meteor", "rate": 0.082, "score": 27904.27}, {"name": "Musketeer of Wild Wheat", "rate": 0.082, "score": 30442.87}, {"name": "Firesmith of Lava-Forging", "rate": 0.0601, "score": 24119.64}, {"name": "Messenger Traversing Hackerspace, Flex", "rate": 0.0383, "score": 27280.71}]}}};
 // ══ END INJECT:GEAR ══
 
 // ══ INJECT:TEAMS ══
@@ -992,6 +1072,36 @@ initParticles();
 renderGear();
 renderMeta();
 renderDuos();
+</script>
+<script>
+// ── Shared site navigation toggle ─────────────────────────────────────────
+// The panel is hidden by default and only appears when the floating button is
+// clicked. It closes on its own ×, an outside click, or Escape. The open/closed
+// state is deliberately NOT persisted, so it is always hidden on page load.
+(function () {
+  var nav   = document.getElementById('siteNav');
+  var btn   = document.getElementById('siteNavBtn');
+  var panel = document.getElementById('siteNavPanel');
+  var close = document.getElementById('siteNavClose');
+  if (!nav || !btn || !panel) return;
+
+  function setOpen(open) {
+    panel.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    setOpen(panel.hidden);
+  });
+  if (close) close.addEventListener('click', function () { setOpen(false); });
+  document.addEventListener('click', function (e) {
+    if (!panel.hidden && !nav.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !panel.hidden) setOpen(false);
+  });
+})();
 </script>
 </body>
 </html>

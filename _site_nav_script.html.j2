@@ -1,0 +1,30 @@
+<script>
+// ── Shared site navigation toggle ─────────────────────────────────────────
+// The panel is hidden by default and only appears when the floating button is
+// clicked. It closes on its own ×, an outside click, or Escape. The open/closed
+// state is deliberately NOT persisted, so it is always hidden on page load.
+(function () {
+  var nav   = document.getElementById('siteNav');
+  var btn   = document.getElementById('siteNavBtn');
+  var panel = document.getElementById('siteNavPanel');
+  var close = document.getElementById('siteNavClose');
+  if (!nav || !btn || !panel) return;
+
+  function setOpen(open) {
+    panel.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    setOpen(panel.hidden);
+  });
+  if (close) close.addEventListener('click', function () { setOpen(false); });
+  document.addEventListener('click', function (e) {
+    if (!panel.hidden && !nav.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !panel.hidden) setOpen(false);
+  });
+})();
+</script>

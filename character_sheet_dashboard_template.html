@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{CHAR_NAME}} — Character Dashboard</title>
+<link rel="icon" type="image/jpeg" href="../favicon.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300&display=swap" rel="stylesheet">
@@ -301,9 +302,11 @@ body{font-family:'Nunito Sans',sans-serif;background:var(--bg0);color:var(--text
   #nav{padding:0 0.8rem;overflow-x:auto;}
   .main-stats-row{grid-template-columns:repeat(2,1fr);}
 }
+{% include "_site_nav_style.html.j2" %}
 </style>
 </head>
 <body>
+{% include "_site_nav_html.html.j2" %}
 
 <canvas id="particles" aria-hidden="true"></canvas>
 
@@ -850,6 +853,7 @@ renderGear();
 renderMeta();
 renderDuos();
 </script>
+{% include "_site_nav_script.html.j2" %}
 </body>
 </html>
 

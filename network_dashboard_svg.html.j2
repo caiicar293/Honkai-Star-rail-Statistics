@@ -289,9 +289,11 @@
     .sidebar, .synergy-panel { height: auto; }
     .chart-container, .synergy-panel-list { max-height: 50vh; }
   }
+{% include "_site_nav_style.html.j2" %}
 </style>
 </head>
 <body>
+{% include "_site_nav_html.html.j2" %}
 <div class="container">
   <div class="header">
     <div>
@@ -1359,5 +1361,6 @@
     }
   })();
 </script>
+{% include "_site_nav_script.html.j2" %}
 </body>
 </html>

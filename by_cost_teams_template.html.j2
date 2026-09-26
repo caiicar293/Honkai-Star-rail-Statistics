@@ -378,6 +378,7 @@
   }
   .owned-pop-toggle:hover { border-color: var(--accent); color: var(--accent); }
   .owned-pop-toggle.active { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.08); }
+  .owned-pop-toggle.strict-toggle.active { border-color: var(--gold); color: var(--gold); background: rgba(251,191,36,0.10); }
   .owned-pop-check { display: inline-block; width: 13px; text-align: center; font-family: 'Share Tech Mono', monospace; }
   .owned-pop-close { background: none; border: none; color: var(--text3); font-size: 16px; cursor: pointer; line-height: 1; padding: 2px 4px; }
   .owned-pop-close:hover { color: var(--text); }
@@ -625,6 +626,10 @@
           <button class="owned-pop-toggle" id="ownedPopToggle" type="button" title="Show only teams where you own every character at a high-enough eidolon">
             <span>Only show my characters</span>
             <span class="owned-pop-check" id="ownedPopCheck">◻</span>
+          </button>
+          <button class="owned-pop-toggle strict-toggle" id="ownedStrictToggle" type="button" title="Exact eidolons — an E2 Acheron only matches E2 Acheron teams, not E0/E1">
+            <span>Exact eidolons</span>
+            <span class="owned-pop-check" id="ownedStrictCheck">◻</span>
           </button>
           <button class="owned-pop-close" id="ownedPopClose" type="button" aria-label="Close">×</button>
         </div>
@@ -951,6 +956,7 @@ let filteredData = [];
 let OWNED_ROSTER = new Map(); // baseNameLower -> highest owned eidolon (0-6)
 let OWNED_ROSTER_BASE = new Map(); // baseline from the last import — "reset to imported roster" restores this
 let ownedOnlyActive = false;
+let ownedStrictActive = false; // when true (with ownedOnlyActive), a character must be owned at *exactly* the eidolon the team uses, not at least that much
 // Planner state: plannerPins maps a dim to its one pinned team row. While at
 // least one team is pinned (planner mode), locked dims (non-planner dims and
 // any dim with a pin) are greyed out and teams that reuse a pinned team's
@@ -1019,7 +1025,10 @@ function userFilteredRows() {
         const em = ml.match(/\((e\d)\)/i);
         const required = em ? parseInt(em[1].slice(1)) : 0;
         const owned = OWNED_ROSTER.get(base);
-        return owned !== undefined && owned >= required;
+        if (owned === undefined) return false;
+        // Default: owning a higher eidolon still counts (owned >= required).
+        // Strict mode: the team's eidolon must match the owned one exactly.
+        return ownedStrictActive ? owned === required : owned >= required;
       })
     );
   }
@@ -2507,6 +2516,11 @@ function syncOwnedActive() {
   document.getElementById('btnOwnedOnly')?.classList.toggle('active', ownedOnlyActive);
   ownedPopToggle.classList.toggle('active', ownedOnlyActive);
   document.getElementById('ownedPopCheck').textContent = ownedOnlyActive ? '✓' : '◻';
+  const strict = document.getElementById('ownedStrictToggle');
+  if (strict) {
+    strict.classList.toggle('active', ownedStrictActive);
+    document.getElementById('ownedStrictCheck').textContent = ownedStrictActive ? '✓' : '◻';
+  }
 }
 
 // Fallback display name for characters not present in this dataset (no icon,
@@ -2670,6 +2684,7 @@ document.getElementById('rosterClearBtn').addEventListener('click', () => {
   OWNED_ROSTER = new Map();
   OWNED_ROSTER_BASE = new Map();
   ownedOnlyActive = false;
+  ownedStrictActive = false;
   try { localStorage.removeItem(ROSTER_STORAGE_KEY); } catch (e) {}
   try { localStorage.removeItem(ROSTER_BASE_STORAGE_KEY); } catch (e) {}
   syncOwnedActive();
@@ -2731,6 +2746,20 @@ document.getElementById('btnOwnedOnly').addEventListener('click', () => {
 ownedPopToggle.addEventListener('click', (e) => {
   e.stopPropagation();
   ownedOnlyActive = !ownedOnlyActive;
+  syncOwnedActive();
+  recompute();
+});
+
+document.getElementById('ownedStrictToggle').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (OWNED_ROSTER.size === 0) {
+    document.getElementById('rosterModalOverlay').classList.add('open');
+    return;
+  }
+  ownedStrictActive = !ownedStrictActive;
+  // Exact-eidolon matching only makes sense while the roster filter is on, so
+  // switching it on also switches on "Only show my characters".
+  if (ownedStrictActive) ownedOnlyActive = true;
   syncOwnedActive();
   recompute();
 });
@@ -2942,6 +2971,7 @@ function prepareData(savedState) {
     if (savedState.sortCol && RAW_DATA[0] && (savedState.sortCol in RAW_DATA[0] || savedState.sortCol === 'Rank')) sortCol = savedState.sortCol;
     if (typeof savedState.sortAsc === 'boolean') sortAsc = savedState.sortAsc;
     if (typeof savedState.ownedOnly === 'boolean') ownedOnlyActive = savedState.ownedOnly && OWNED_ROSTER.size > 0;
+    if (typeof savedState.ownedStrict === 'boolean') ownedStrictActive = savedState.ownedStrict && ownedOnlyActive;
     if (Array.isArray(savedState.charFilters)) {
       savedState.charFilters.forEach(f => {
         if (f && f.base && BASE_NAME_DISPLAY.has(f.base)) {
@@ -3011,6 +3041,7 @@ function captureState() {
     sortCol:     sortCol,
     sortAsc:     sortAsc,
     ownedOnly:   ownedOnlyActive,
+    ownedStrict: ownedStrictActive,
     charFilters: [...charFilters.values()].map(f => ({ base: f.base, mode: f.mode, eids: f.eids ? [...f.eids] : null, nodes: f.nodes ? [...f.nodes] : null })),
   };
 }

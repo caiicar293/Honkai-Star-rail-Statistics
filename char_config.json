@@ -3127,5 +3127,39 @@
       "Dataset Versions",
       "Latest Version"
     ]
+  },
+  {
+    "character_name": "Pearl",
+    "element": "Ice",
+    "path": "Elation",
+    "subtitle": "IPC Strategic Investment Department",
+    "theme_c1": "#6eb4f7",
+    "theme_c2": "#a8d4ff",
+    "theme_c3": "#3a7acc",
+    "theme_p1": "#6eb4f7",
+    "theme_p2": "#a8d4ff",
+    "theme_glow": "rgba(110,180,247,0.4)",
+    "defining_stats": [
+      "SPD",
+      "DEF"
+    ],
+    "supporting_stats": [
+      "HP",
+      "ATK",
+      "DEF",
+      "CRIT DMG",
+      "DMG Boost",
+      "Energy Regeneration Rate"
+    ],
+    "sidebar_spread_stats": [
+      "SPD",
+      "DEF",
+      "HP"
+    ],
+    "sidebar_metadata": [
+      "Total Samples",
+      "Dataset Versions",
+      "Latest Version"
+    ]
   }
 ]

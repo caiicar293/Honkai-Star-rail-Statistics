@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Interactive Tier List — E0 | v4.5.2</title>
+<title>Interactive Tier List — E0 | v4.6.1</title>
 <link rel="icon" type="image/jpeg" href="favicon.jpg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
@@ -192,12 +192,12 @@
     <div class="header-left">
       <div class="header-badge">Static Tier List · E0 Baseline</div>
       <h1>Interactive <span>Tier List</span></h1>
-      <div class="header-sub">Data covers the past 3 phases across all game modes · <span id="eidBadge">E0</span> · v4.5.2</div>
+      <div class="header-sub">Data covers the past 3 phases across all game modes · <span id="eidBadge">E0</span> · v4.6.1</div>
     </div>
     <div class="header-meta">
       <div class="meta-chip"><span class="val" id="visibleCount">—</span><div class="lbl">Entries</div></div>
       <div class="meta-chip"><span class="val">E0</span><div class="lbl">Eidolon</div></div>
-      <div class="meta-chip"><span class="val">4.5.2</span><div class="lbl">Version</div></div>
+      <div class="meta-chip"><span class="val">4.6.1</span><div class="lbl">Version</div></div>
     </div>
   </div>
 
@@ -323,349 +323,344 @@
     "Rin Tohsaka": "assets/icons/rin_tohsaka.webp",
     "Gilgamesh": "assets/icons/gilgamesh.webp",
     "Robin \u2022 Summeretto": "assets/icons/robin_summeretto.webp",
-    "Aventurine \u2022 Waveflair": "assets/icons/aventurine_waveflair.webp"
+    "Aventurine \u2022 Waveflair": "assets/icons/aventurine_waveflair.webp",
+    "Pearl": "assets/icons/pearl.webp"
 };
   const rawCsvDataArchetypes = `Game_Mode,Archetype_Core,Weighted_Avg_Score,Tier
 ANOMALY_F0,Rin Tohsaka,0.0,T0
-ANOMALY_F0,Welt + Sparxie + Silver Wolf LV.999,1.53,T0
-ANOMALY_F0,Ashveil + Aventurine • Waveflair,2.64,T0.5
-ANOMALY_F0,Acheron + Ashveil,2.8,T0.5
-ANOMALY_F0,Sparxie + Silver Wolf LV.999,2.85,T0.5
-ANOMALY_F0,Welt + Himeko • Nova,3.15,T1
-ANOMALY_F0,Sparxie + Evanescia,3.15,T1
-ANOMALY_F0,Archer + Rin Tohsaka,3.16,T1
-ANOMALY_F0,Castorice + Evernight,3.17,T1
-ANOMALY_F0,Welt + Ashveil,3.23,T1
-ANOMALY_F0,Ashveil,3.26,T1
-ANOMALY_F0,Evernight,3.26,T1
-ANOMALY_F0,Himeko • Nova,3.34,T1
-ANOMALY_F0,Silver Wolf LV.999 + Evanescia,3.49,T1
-ANOMALY_F0,Evanescia,3.57,T1
-ANOMALY_F0,Silver Wolf LV.999,3.66,T1
-ANOMALY_F0,Welt + Silver Wolf LV.999,3.77,T1
-ANOMALY_F0,Aventurine • Waveflair,3.78,T1
-ANOMALY_F0,Firefly,3.89,T1
-ANOMALY_F0,Feixiao + Ashveil,4.18,T1.5
-ANOMALY_F0,Kafka + Black Swan + Hysilens,4.18,T1.5
-ANOMALY_F0,Sparxie,4.21,T1.5
-ANOMALY_F0,Acheron,4.3,T1.5
-ANOMALY_F0,Saber + Gilgamesh,4.31,T1.5
-ANOMALY_F0,Castorice,4.4,T1.5
-ANOMALY_F0,Gilgamesh,4.56,T1.5
-ANOMALY_F0,Seele,4.59,T1.5
-ANOMALY_F0,Kafka + Hysilens,4.8,T1.5
-ANOMALY_F0,Phainon,4.82,T1.5
+ANOMALY_F0,Ashveil + Aventurine • Waveflair,2.46,T0.5
+ANOMALY_F0,Sparxie + Silver Wolf LV.999,2.49,T0.5
+ANOMALY_F0,Welt + Silver Wolf LV.999,2.8,T0.5
+ANOMALY_F0,Sparxie + Evanescia,2.9,T0.5
+ANOMALY_F0,Welt + Ashveil,2.94,T0.5
+ANOMALY_F0,Welt + Himeko • Nova,2.98,T0.5
+ANOMALY_F0,Himeko • Nova,3.12,T1
+ANOMALY_F0,Archer + Rin Tohsaka,3.15,T1
+ANOMALY_F0,Castorice + Evernight,3.15,T1
+ANOMALY_F0,Evernight,3.16,T1
+ANOMALY_F0,Silver Wolf LV.999 + Evanescia,3.19,T1
+ANOMALY_F0,Evanescia,3.2,T1
+ANOMALY_F0,Silver Wolf LV.999,3.24,T1
+ANOMALY_F0,Ashveil,3.28,T1
+ANOMALY_F0,Aventurine • Waveflair,3.67,T1
+ANOMALY_F0,Acheron + Ashveil,3.73,T1
+ANOMALY_F0,Firefly,3.84,T1
+ANOMALY_F0,Saber + Gilgamesh,3.95,T1
+ANOMALY_F0,Sparxie,4.01,T1.5
+ANOMALY_F0,Castorice,4.37,T1.5
+ANOMALY_F0,Boothill,4.46,T1.5
+ANOMALY_F0,Gilgamesh,4.54,T1.5
+ANOMALY_F0,Kafka + Black Swan + Hysilens,4.57,T1.5
+ANOMALY_F0,Feixiao + Ashveil,4.73,T1.5
+ANOMALY_F0,Phainon,4.76,T1.5
+ANOMALY_F0,Seele,4.83,T1.5
+ANOMALY_F0,Acheron,4.84,T1.5
 ANOMALY_F0,Mydei,4.85,T1.5
-ANOMALY_F0,Anaxa,4.95,T1.5
-ANOMALY_F0,Boothill,4.95,T1.5
-ANOMALY_F0,Aglaea,5.1,T2
-ANOMALY_F0,Archer,5.4,T2
-ANOMALY_F0,Rappa,5.5,T2
-ANOMALY_F0,Feixiao,5.67,T2
-ANOMALY_F0,The Herta + Anaxa,5.72,T2
+ANOMALY_F0,Aglaea,4.92,T1.5
+ANOMALY_F0,Anaxa,4.94,T1.5
+ANOMALY_F0,Kafka + Hysilens,5.13,T2
+ANOMALY_F0,Rappa,5.3,T2
+ANOMALY_F0,Archer,5.44,T2
+ANOMALY_F0,The Herta + Anaxa,5.83,T2
 ANOMALY_F0,Saber,6.0,T2
-ANOMALY_F0,Jade + The Herta,6.0,T2
+ANOMALY_F0,Feixiao,6.0,T2
 ANOMALY_F0,Herta + The Herta,6.0,T2
-ANOMALY_F4,Welt + Sparxie + Silver Wolf LV.999,0.0,T0
-ANOMALY_F4,Welt + Himeko • Nova,3.99,T0.5
-ANOMALY_F4,Ashveil + Aventurine • Waveflair,4.04,T1
-ANOMALY_F4,Ashveil,4.35,T1
-ANOMALY_F4,Welt + Ashveil,4.5,T1.5
+ANOMALY_F4,Silver Wolf LV.999,3.83,T0.5
+ANOMALY_F4,Ashveil + Aventurine • Waveflair,3.85,T0.5
+ANOMALY_F4,Sparxie + Silver Wolf LV.999,3.9,T0.5
+ANOMALY_F4,Welt + Ashveil,4.0,T1
+ANOMALY_F4,Welt + Himeko • Nova,4.02,T1
+ANOMALY_F4,Ashveil,4.08,T1
+ANOMALY_F4,Aventurine • Waveflair,4.54,T1.5
+ANOMALY_F4,Evanescia,4.6,T1.5
 ANOMALY_F4,Himeko • Nova,4.6,T1.5
-ANOMALY_F4,Evernight,4.72,T1.5
+ANOMALY_F4,Silver Wolf LV.999 + Evanescia,4.61,T1.5
+ANOMALY_F4,Evernight,4.63,T1.5
 ANOMALY_F4,Archer + Rin Tohsaka,4.72,T1.5
-ANOMALY_F4,Sparxie + Silver Wolf LV.999,4.77,T1.5
-ANOMALY_F4,Silver Wolf LV.999 + Evanescia,4.81,T1.5
-ANOMALY_F4,Aventurine • Waveflair,4.89,T1.5
-ANOMALY_F4,Welt + Silver Wolf LV.999,5.0,T1.5
+ANOMALY_F4,Sparxie + Evanescia,4.88,T1.5
 ANOMALY_F4,Rin Tohsaka,5.0,T1.5
-ANOMALY_F4,Castorice + Evernight,5.11,T1.5
-ANOMALY_F4,Sparxie + Evanescia,5.14,T1.5
+ANOMALY_F4,Castorice + Evernight,5.08,T1.5
 ANOMALY_F4,Gilgamesh,5.15,T1.5
-ANOMALY_F4,Evanescia,5.23,T1.5
-ANOMALY_F4,Silver Wolf LV.999,5.35,T1.5
+ANOMALY_F4,Sparxie,5.19,T1.5
+ANOMALY_F4,Acheron + Ashveil,5.33,T1.5
 ANOMALY_F4,Saber + Gilgamesh,5.37,T1.5
-ANOMALY_F4,Acheron + Ashveil,5.38,T1.5
-ANOMALY_F4,Castorice,5.48,T1.5
-ANOMALY_F4,Firefly,5.57,T2
-ANOMALY_F4,Acheron,5.59,T2
+ANOMALY_F4,Firefly,5.47,T1.5
+ANOMALY_F4,Castorice,5.47,T1.5
+ANOMALY_F4,Acheron,5.56,T2
 ANOMALY_F4,Archer,5.67,T2
-ANOMALY_F4,Phainon,5.67,T2
-ANOMALY_F4,Sparxie,5.67,T2
-ANOMALY_F4,Feixiao + Ashveil,6.0,T2
 ANOMALY_F4,Kafka + Black Swan + Hysilens,6.0,T2
-APOC,Yunli,637.75,T2
-APOC,Herta + The Herta,1577.55,T2
+ANOMALY_F4,Phainon,6.0,T2
+APOC,Yunli,573.83,T2
+APOC,Herta + The Herta,1592.7,T2
 APOC,Rin Tohsaka,1640.4,T2
+APOC,Saber,2063.75,T2
 APOC,Feixiao,2074.28,T2
-APOC,Saber,2084.96,T2
-APOC,Aglaea,2306.52,T2
-APOC,Jade + The Herta,2326.28,T2
+APOC,Aglaea,2207.43,T2
+APOC,Jade + The Herta,2335.39,T2
 APOC,Mydei,2391.64,T2
-APOC,The Herta + Anaxa,2411.17,T2
+APOC,The Herta + Anaxa,2407.67,T2
+APOC,Serval + The Herta,2459.05,T2
 APOC,Rappa,2520.53,T1.5
-APOC,Serval + The Herta,2576.15,T1.5
-APOC,Seele,2790.8,T1.5
-APOC,Castorice,2829.69,T1
-APOC,Phainon,2898.29,T1
-APOC,Boothill,2915.09,T1
-APOC,Archer,3023.72,T1
-APOC,Acheron,3033.34,T1
-APOC,Welt + Silver Wolf LV.999,3058.95,T1
-APOC,Anaxa,3067.35,T1
-APOC,Ashveil + Aventurine • Waveflair,3092.86,T1
-APOC,Gilgamesh,3097.99,T1
-APOC,Feixiao + Ashveil,3122.19,T0.5
-APOC,Archer + Rin Tohsaka,3150.03,T0.5
-APOC,Silver Wolf LV.999,3160.06,T0.5
-APOC,Aventurine • Waveflair,3172.18,T0.5
-APOC,Kafka + Hysilens,3180.58,T0.5
-APOC,Silver Wolf LV.999 + Evanescia,3196.15,T0.5
-APOC,Evernight,3200.18,T0.5
-APOC,Sparxie,3235.04,T0.5
-APOC,Evanescia,3250.08,T0.5
-APOC,Firefly,3287.19,T0.5
-APOC,Castorice + Evernight,3292.16,T0.5
-APOC,Sparxie + Evanescia,3296.88,T0.5
-APOC,Kafka + Black Swan + Hysilens,3297.87,T0.5
-APOC,Welt + Ashveil,3311.72,T0.5
-APOC,Saber + Gilgamesh,3377.85,T0.5
-APOC,Ashveil,3390.6,T0.5
-APOC,Sparxie + Silver Wolf LV.999,3407.55,T0
-APOC,Himeko • Nova,3422.33,T0
-APOC,Acheron + Ashveil,3423.88,T0
-APOC,Welt + Himeko • Nova,3466.4,T0
-APOC,Welt + Sparxie + Silver Wolf LV.999,3499.42,T0
-MOC,Welt + Sparxie + Silver Wolf LV.999,2.65,T0
-MOC,Rin Tohsaka,7.57,T0
-MOC,Welt + Ashveil,8.34,T0
-MOC,Ashveil + Aventurine • Waveflair,8.82,T0.5
-MOC,Sparxie + Silver Wolf LV.999,9.06,T0.5
-MOC,Seele,9.39,T0.5
-MOC,Archer + Rin Tohsaka,9.41,T0.5
-MOC,Sparxie + Evanescia,9.59,T1
-MOC,Evanescia,9.6,T1
-MOC,Castorice + Evernight,9.62,T1
-MOC,Ashveil,9.83,T1
-MOC,Evernight,9.89,T1
-MOC,Kafka + Black Swan + Hysilens,9.96,T1
-MOC,Silver Wolf LV.999,10.1,T1
-MOC,Welt + Himeko • Nova,10.16,T1
-MOC,Welt + Silver Wolf LV.999,10.2,T1
-MOC,Feixiao,10.2,T1
-MOC,Anaxa,10.31,T1
-MOC,Firefly,10.35,T1
-MOC,Acheron + Ashveil,10.5,T1.5
-MOC,Sparxie,10.71,T1.5
-MOC,Himeko • Nova,10.86,T1.5
-MOC,Kafka + Hysilens,10.9,T1.5
-MOC,Gilgamesh,11.07,T1.5
-MOC,Aventurine • Waveflair,11.27,T1.5
-MOC,Silver Wolf LV.999 + Evanescia,11.36,T1.5
-MOC,Saber + Gilgamesh,11.5,T2
-MOC,Acheron,11.7,T2
-MOC,Archer,12.19,T2
-MOC,Feixiao + Ashveil,12.21,T2
-MOC,Castorice,12.33,T2
-MOC,Mydei,12.39,T2
-MOC,Rappa,12.43,T2
-MOC,Boothill,13.35,T2
-MOC,Phainon,13.6,T2
-MOC,Jade + The Herta,14.0,T2
-MOC,The Herta + Anaxa,14.68,T2
-MOC,Herta + The Herta,15.58,T2
-MOC,Saber,15.67,T2
-MOC,Aglaea,16.4,T2
+APOC,Seele,2814.74,T1
+APOC,Castorice,2829.11,T1
+APOC,Phainon,2910.03,T1
+APOC,Boothill,2915.95,T1
+APOC,Archer,3016.44,T1
+APOC,Welt + Silver Wolf LV.999,3025.11,T1
+APOC,Gilgamesh,3030.36,T1
+APOC,Acheron,3032.82,T1
+APOC,Aventurine • Waveflair,3072.76,T1
+APOC,Anaxa,3074.05,T1
+APOC,Feixiao + Ashveil,3091.39,T1
+APOC,Archer + Rin Tohsaka,3156.82,T0.5
+APOC,Silver Wolf LV.999,3177.76,T0.5
+APOC,Evernight,3183.12,T0.5
+APOC,Kafka + Hysilens,3184.24,T0.5
+APOC,Ashveil + Aventurine • Waveflair,3211.6,T0.5
+APOC,Silver Wolf LV.999 + Evanescia,3216.59,T0.5
+APOC,Sparxie,3250.67,T0.5
+APOC,Evanescia,3258.9,T0.5
+APOC,Firefly,3279.31,T0.5
+APOC,Sparxie + Evanescia,3291.73,T0.5
+APOC,Castorice + Evernight,3293.42,T0.5
+APOC,Kafka + Black Swan + Hysilens,3308.83,T0.5
+APOC,Welt + Ashveil,3308.89,T0.5
+APOC,Saber + Gilgamesh,3372.94,T0.5
+APOC,Ashveil,3397.97,T0.5
+APOC,Sparxie + Silver Wolf LV.999,3413.25,T0
+APOC,Acheron + Ashveil,3424.38,T0
+APOC,Himeko • Nova,3424.54,T0
+APOC,Welt + Himeko • Nova,3462.98,T0
+MOC,Rin Tohsaka,8.12,T0
+MOC,Ashveil + Aventurine • Waveflair,8.39,T0
+MOC,Welt + Ashveil,8.95,T0.5
+MOC,Archer + Rin Tohsaka,9.46,T0.5
+MOC,Evernight,9.53,T1
+MOC,Seele,9.71,T1
+MOC,Sparxie + Silver Wolf LV.999,9.85,T1
+MOC,Welt + Himeko • Nova,9.89,T1
+MOC,Aventurine • Waveflair,10.1,T1
+MOC,Castorice + Evernight,10.11,T1
+MOC,Sparxie + Evanescia,10.29,T1
+MOC,Himeko • Nova,10.38,T1
+MOC,Ashveil,10.4,T1
+MOC,Gilgamesh,10.5,T1.5
+MOC,Saber + Gilgamesh,10.66,T1.5
+MOC,Evanescia,10.75,T1.5
+MOC,Anaxa,10.77,T1.5
+MOC,Acheron + Ashveil,11.25,T1.5
+MOC,Silver Wolf LV.999,11.28,T1.5
+MOC,Feixiao,11.33,T1.5
+MOC,Sparxie,11.4,T1.5
+MOC,Welt + Silver Wolf LV.999,11.43,T1.5
+MOC,Firefly,11.59,T2
+MOC,Archer,12.26,T2
+MOC,Silver Wolf LV.999 + Evanescia,12.57,T2
+MOC,Acheron,12.57,T2
+MOC,Kafka + Black Swan + Hysilens,12.73,T2
+MOC,Castorice,12.95,T2
+MOC,Feixiao + Ashveil,13.17,T2
+MOC,Jade + The Herta,13.9,T2
+MOC,Kafka + Hysilens,14.44,T2
+MOC,The Herta + Anaxa,14.49,T2
+MOC,Mydei,14.77,T2
+MOC,Herta + The Herta,15.46,T2
+MOC,Aglaea,15.57,T2
+MOC,Phainon,15.81,T2
+MOC,Rappa,17.27,T2
+MOC,Boothill,17.33,T2
+MOC,Saber,19.0,T2
 MOC,Serval + The Herta,24.0,T2
-PURE_FICTION,Boothill,10912.0,T2
-PURE_FICTION,Archer,19083.24,T2
-PURE_FICTION,Aglaea,19269.33,T2
-PURE_FICTION,Saber,19977.66,T2
-PURE_FICTION,Phainon,22076.11,T2
-PURE_FICTION,Rappa,23350.0,T2
+PURE_FICTION,Boothill,11182.86,T2
+PURE_FICTION,Archer,18803.37,T2
+PURE_FICTION,Aglaea,19283.64,T2
+PURE_FICTION,Saber,20031.28,T2
+PURE_FICTION,Phainon,21995.84,T2
+PURE_FICTION,Rappa,23331.61,T2
+PURE_FICTION,Mydei,23480.0,T2
 PURE_FICTION,Serval + The Herta,23836.36,T2
-PURE_FICTION,Mydei,23948.31,T2
-PURE_FICTION,Feixiao,24883.33,T1.5
-PURE_FICTION,The Herta + Anaxa,26359.19,T1.5
-PURE_FICTION,Kafka + Hysilens,26808.29,T1.5
-PURE_FICTION,Feixiao + Ashveil,27005.18,T1
-PURE_FICTION,Firefly,27213.52,T1
-PURE_FICTION,Anaxa,27230.38,T1
-PURE_FICTION,Seele,27556.32,T1
+PURE_FICTION,Feixiao,24487.4,T1.5
+PURE_FICTION,The Herta + Anaxa,26212.49,T1.5
+PURE_FICTION,Feixiao + Ashveil,26518.59,T1.5
+PURE_FICTION,Kafka + Hysilens,26695.55,T1.5
+PURE_FICTION,Firefly,27061.57,T1
+PURE_FICTION,Anaxa,27068.46,T1
+PURE_FICTION,Seele,27187.85,T1
+PURE_FICTION,Yunli,27468.57,T1
 PURE_FICTION,Welt + Ashveil,27942.61,T1
-PURE_FICTION,Sparxie,28085.74,T1
-PURE_FICTION,Yunli,28278.0,T1
-PURE_FICTION,Gilgamesh,28416.66,T1
-PURE_FICTION,Herta + The Herta,28798.15,T1
+PURE_FICTION,Sparxie,28135.68,T1
+PURE_FICTION,Gilgamesh,28174.65,T1
+PURE_FICTION,Herta + The Herta,28768.08,T1
+PURE_FICTION,Archer + Rin Tohsaka,28771.3,T1
 PURE_FICTION,Rin Tohsaka,28920.0,T1
-PURE_FICTION,Acheron,28992.58,T1
-PURE_FICTION,Archer + Rin Tohsaka,29080.85,T1
-PURE_FICTION,Jade + The Herta,29754.33,T1
-PURE_FICTION,Kafka + Black Swan + Hysilens,30361.59,T0.5
-PURE_FICTION,Castorice,30375.57,T0.5
-PURE_FICTION,Welt + Silver Wolf LV.999,30886.66,T0.5
-PURE_FICTION,Silver Wolf LV.999,30938.52,T0.5
-PURE_FICTION,Saber + Gilgamesh,31561.15,T0.5
-PURE_FICTION,Aventurine • Waveflair,31828.87,T0.5
-PURE_FICTION,Silver Wolf LV.999 + Evanescia,33040.36,T0.5
-PURE_FICTION,Sparxie + Silver Wolf LV.999,33288.99,T0.5
-PURE_FICTION,Acheron + Ashveil,33921.02,T0.5
-PURE_FICTION,Sparxie + Evanescia,34009.63,T0.5
-PURE_FICTION,Welt + Himeko • Nova,34062.2,T0.5
-PURE_FICTION,Ashveil + Aventurine • Waveflair,34610.33,T0.5
-PURE_FICTION,Castorice + Evernight,34635.2,T0.5
-PURE_FICTION,Evanescia,34753.47,T0.5
-PURE_FICTION,Himeko • Nova,35042.58,T0
-PURE_FICTION,Evernight,35490.48,T0
-PURE_FICTION,Ashveil,35574.67,T0
-PURE_FICTION,Welt + Sparxie + Silver Wolf LV.999,35636.36,T0
+PURE_FICTION,Acheron,28955.1,T1
+PURE_FICTION,Jade + The Herta,29765.13,T1
+PURE_FICTION,Castorice,30050.36,T0.5
+PURE_FICTION,Kafka + Black Swan + Hysilens,30261.82,T0.5
+PURE_FICTION,Welt + Silver Wolf LV.999,30592.5,T0.5
+PURE_FICTION,Silver Wolf LV.999,31055.06,T0.5
+PURE_FICTION,Saber + Gilgamesh,31343.12,T0.5
+PURE_FICTION,Aventurine • Waveflair,31509.92,T0.5
+PURE_FICTION,Silver Wolf LV.999 + Evanescia,33249.07,T0.5
+PURE_FICTION,Sparxie + Silver Wolf LV.999,33529.45,T0.5
+PURE_FICTION,Acheron + Ashveil,33920.97,T0.5
+PURE_FICTION,Welt + Himeko • Nova,33935.78,T0.5
+PURE_FICTION,Sparxie + Evanescia,34182.53,T0.5
+PURE_FICTION,Castorice + Evernight,34392.72,T0.5
+PURE_FICTION,Ashveil + Aventurine • Waveflair,34600.09,T0.5
+PURE_FICTION,Evanescia,34765.4,T0.5
+PURE_FICTION,Himeko • Nova,34776.42,T0.5
+PURE_FICTION,Evernight,35183.21,T0
+PURE_FICTION,Ashveil,35550.89,T0
 `;
   const rawCsvDataAmplifiers = `Game_Mode,Archetype_Core,Weighted_Avg_Score,Versions_Count,Tier
-ANOMALY_F0,Yao Guang,3.08,3,T1
-ANOMALY_F0,Robin • Summeretto*,3.24,1,T1
-ANOMALY_F0,Cyrene,3.25,3,T1
-ANOMALY_F0,Sparkle,3.5,3,T1
-ANOMALY_F0,Mortenax Blade,3.52,3,T1
-ANOMALY_F0,Lightning Trailblazer,3.69,3,T1
-ANOMALY_F0,Cipher,3.71,3,T1
-ANOMALY_F0,Sunday,3.72,3,T1
-ANOMALY_F0,Tribbie,3.77,3,T1
-ANOMALY_F0,Fugue,3.8,3,T1
-ANOMALY_F0,Imaginary Trailblazer,3.81,3,T1
-ANOMALY_F0,Ice Trailblazer,3.85,3,T1
-ANOMALY_F0,The Dahlia,3.93,3,T1
-ANOMALY_F0,Ruan Mei,3.96,3,T1
-ANOMALY_F0,Cerydra,4.68,3,T1.5
-ANOMALY_F0,Jiaoqiu,4.71,3,T1.5
-ANOMALY_F0,Robin,4.72,3,T1.5
-ANOMALY_F0,Asta,4.76,3,T1.5
-ANOMALY_F0,Silver Wolf,4.85,3,T1.5
-ANOMALY_F0,Bronya,5.15,3,T2
-ANOMALY_F4,Ice Trailblazer,4.25,3,T1
-ANOMALY_F4,Mortenax Blade,4.35,3,T1
-ANOMALY_F4,Robin • Summeretto*,4.56,1,T1.5
-ANOMALY_F4,Sparkle,4.57,3,T1.5
-ANOMALY_F4,Tribbie,4.59,3,T1.5
-ANOMALY_F4,Sunday,4.61,3,T1.5
-ANOMALY_F4,Yao Guang,4.94,3,T1.5
-ANOMALY_F4,Cyrene,5.21,3,T1.5
-ANOMALY_F4,Cerydra*,5.23,2,T1.5
-ANOMALY_F4,Cipher*,5.29,2,T1.5
-ANOMALY_F4,Lightning Trailblazer,5.32,3,T1.5
-ANOMALY_F4,Fugue*,5.54,2,T2
-ANOMALY_F4,The Dahlia*,5.57,2,T2
-ANOMALY_F4,Imaginary Trailblazer*,5.83,1,T2
+ANOMALY_F0,Yao Guang,2.69,3,T0.5
+ANOMALY_F0,Robin • Summeretto*,2.75,2,T0.5
+ANOMALY_F0,Sparkle,3.17,3,T1
+ANOMALY_F0,Cyrene,3.28,3,T1
+ANOMALY_F0,Lightning Trailblazer,3.3,3,T1
+ANOMALY_F0,Mortenax Blade,3.32,3,T1
+ANOMALY_F0,Sunday,3.32,3,T1
+ANOMALY_F0,Ruan Mei,3.71,3,T1
+ANOMALY_F0,Ice Trailblazer,3.72,3,T1
+ANOMALY_F0,Fugue,3.75,3,T1
+ANOMALY_F0,Imaginary Trailblazer,3.8,3,T1
+ANOMALY_F0,The Dahlia,3.87,3,T1
+ANOMALY_F0,Tribbie,3.95,3,T1
+ANOMALY_F0,Cipher,4.19,3,T1.5
+ANOMALY_F0,Robin,4.35,3,T1.5
+ANOMALY_F0,Cerydra,4.46,3,T1.5
+ANOMALY_F0,Bronya,4.89,3,T1.5
+ANOMALY_F0,Silver Wolf,5.35,3,T2
+ANOMALY_F4,Yao Guang,3.92,3,T0.5
+ANOMALY_F4,Lightning Trailblazer,4.08,3,T1
+ANOMALY_F4,Mortenax Blade,4.14,3,T1
+ANOMALY_F4,Ice Trailblazer,4.17,3,T1
+ANOMALY_F4,Tribbie,4.43,3,T1
+ANOMALY_F4,Sparkle,4.54,3,T1.5
+ANOMALY_F4,Sunday*,4.58,2,T1.5
+ANOMALY_F4,Robin • Summeretto*,4.59,2,T1.5
+ANOMALY_F4,Cipher*,5.08,2,T1.5
+ANOMALY_F4,Cerydra*,5.15,2,T1.5
+ANOMALY_F4,Cyrene,5.18,3,T1.5
+ANOMALY_F4,Fugue*,5.47,1,T1.5
+ANOMALY_F4,The Dahlia*,5.47,1,T1.5
+ANOMALY_F4,Robin*,6.0,1,T2
 APOC,Pela,1615.73,3,T2
-APOC,Robin,2323.44,3,T2
-APOC,Jiaoqiu,2386.74,3,T2
-APOC,Bronya,2401.99,3,T2
+APOC,Robin,2316.43,3,T2
+APOC,Jiaoqiu,2391.23,3,T2
+APOC,Bronya,2431.49,3,T2
 APOC,Tingyun,2761.33,3,T1.5
-APOC,Silver Wolf,2916.34,3,T1
-APOC,Ruan Mei,2922.08,3,T1
-APOC,Asta,3042.82,3,T1
-APOC,Cipher,3056.65,3,T1
-APOC,Tribbie,3080.14,3,T1
-APOC,Cerydra,3087.04,3,T1
-APOC,Ice Trailblazer,3136.44,3,T0.5
-APOC,Lightning Trailblazer,3182.06,3,T0.5
-APOC,Sparkle,3184.1,3,T0.5
-APOC,Sunday,3195.8,3,T0.5
-APOC,Imaginary Trailblazer,3202.87,3,T0.5
-APOC,Cyrene,3268.29,3,T0.5
-APOC,Fugue,3287.28,3,T0.5
-APOC,The Dahlia,3289.34,3,T0.5
-APOC,Mortenax Blade,3298.81,3,T0.5
-APOC,Yao Guang,3343.56,3,T0.5
-APOC,Robin • Summeretto*,3386.09,1,T0.5
-MOC,Tingyun,6.52,3,T0
-MOC,Asta,9.22,3,T0.5
-MOC,Yao Guang,9.38,3,T0.5
-MOC,Cyrene,9.68,3,T1
-MOC,Robin • Summeretto*,9.77,1,T1
-MOC,Lightning Trailblazer,9.94,3,T1
-MOC,Imaginary Trailblazer,9.96,3,T1
-MOC,Fugue,10.12,3,T1
-MOC,Mortenax Blade,10.28,3,T1
-MOC,The Dahlia,10.38,3,T1
-MOC,Cipher,10.46,3,T1
-MOC,Sparkle,10.51,3,T1.5
-MOC,Ice Trailblazer,10.66,3,T1.5
-MOC,Tribbie,10.95,3,T1.5
-MOC,Ruan Mei,11.03,3,T1.5
-MOC,Sunday,11.2,3,T1.5
-MOC,Robin,11.9,3,T2
-MOC,Cerydra,11.91,3,T2
-MOC,Silver Wolf,12.23,3,T2
-MOC,Jiaoqiu,14.65,3,T2
-MOC,Bronya,16.56,3,T2
-PURE_FICTION,Pela*,16797.65,2,T2
-PURE_FICTION,Bronya,20214.12,3,T2
-PURE_FICTION,Silver Wolf,21537.55,3,T2
-PURE_FICTION,Ruan Mei,23907.83,3,T2
-PURE_FICTION,Robin,23931.33,3,T2
-PURE_FICTION,Tingyun,24835.93,3,T1.5
-PURE_FICTION,Jiaoqiu,25242.26,3,T1.5
-PURE_FICTION,Cerydra,25454.65,3,T1.5
-PURE_FICTION,The Dahlia,27307.86,3,T1
-PURE_FICTION,Fugue,27391.46,3,T1
-PURE_FICTION,Imaginary Trailblazer,27591.29,3,T1
-PURE_FICTION,Cipher,28251.6,3,T1
-PURE_FICTION,Asta,30913.41,3,T0.5
-PURE_FICTION,Sunday,31653.36,3,T0.5
-PURE_FICTION,Sparkle,31669.98,3,T0.5
-PURE_FICTION,Ice Trailblazer,32214.61,3,T0.5
-PURE_FICTION,Lightning Trailblazer,32517.28,3,T0.5
-PURE_FICTION,Robin • Summeretto*,32948.91,2,T0.5
-PURE_FICTION,Mortenax Blade,33111.02,3,T0.5
-PURE_FICTION,Tribbie,33375.67,3,T0.5
-PURE_FICTION,Yao Guang,33379.48,3,T0.5
-PURE_FICTION,Cyrene,34033.4,3,T0.5
+APOC,Ruan Mei,2917.47,3,T1
+APOC,Silver Wolf,2919.3,3,T1
+APOC,Cipher,3055.13,3,T1
+APOC,Asta,3078.77,3,T1
+APOC,Tribbie,3084.1,3,T1
+APOC,Cerydra,3092.54,3,T1
+APOC,Ice Trailblazer,3133.7,3,T0.5
+APOC,Sparkle,3186.71,3,T0.5
+APOC,Lightning Trailblazer,3194.01,3,T0.5
+APOC,Sunday,3200.96,3,T0.5
+APOC,Imaginary Trailblazer,3202.49,3,T0.5
+APOC,Cyrene,3269.45,3,T0.5
+APOC,The Dahlia,3281.35,3,T0.5
+APOC,Fugue,3281.7,3,T0.5
+APOC,Mortenax Blade,3303.36,3,T0.5
+APOC,Yao Guang,3351.53,3,T0.5
+APOC,Robin • Summeretto*,3393.45,1,T0.5
+MOC,Tingyun,6.5,3,T0
+MOC,Robin • Summeretto*,9.05,2,T0.5
+MOC,Cyrene,10.18,3,T1
+MOC,Yao Guang,10.21,3,T1
+MOC,Mortenax Blade,10.32,3,T1
+MOC,Sparkle,10.41,3,T1
+MOC,Ice Trailblazer,10.78,3,T1.5
+MOC,Sunday,10.87,3,T1.5
+MOC,Imaginary Trailblazer,10.88,3,T1.5
+MOC,Cipher,10.92,3,T1.5
+MOC,Lightning Trailblazer,11.08,3,T1.5
+MOC,Fugue,11.34,3,T1.5
+MOC,Tribbie,11.59,3,T2
+MOC,The Dahlia,11.62,3,T2
+MOC,Robin,11.86,3,T2
+MOC,Ruan Mei,12.38,3,T2
+MOC,Silver Wolf,12.78,3,T2
+MOC,Cerydra,13.04,3,T2
+MOC,Bronya,16.87,3,T2
+MOC,Jiaoqiu*,17.22,2,T2
+PURE_FICTION,Pela,16382.64,3,T2
+PURE_FICTION,Bronya,19882.26,3,T2
+PURE_FICTION,Silver Wolf,20899.01,3,T2
+PURE_FICTION,Ruan Mei,23741.13,3,T2
+PURE_FICTION,Robin,23753.14,3,T2
+PURE_FICTION,Tingyun,24407.74,3,T1.5
+PURE_FICTION,Jiaoqiu,25187.88,3,T1.5
+PURE_FICTION,Cerydra,25450.55,3,T1.5
+PURE_FICTION,The Dahlia,27171.9,3,T1
+PURE_FICTION,Fugue,27245.26,3,T1
+PURE_FICTION,Imaginary Trailblazer,27354.21,3,T1
+PURE_FICTION,Cipher,28067.59,3,T1
+PURE_FICTION,Asta,31063.58,3,T0.5
+PURE_FICTION,Sparkle,31494.68,3,T0.5
+PURE_FICTION,Sunday,31604.27,3,T0.5
+PURE_FICTION,Ice Trailblazer,32029.24,3,T0.5
+PURE_FICTION,Lightning Trailblazer,32568.1,3,T0.5
+PURE_FICTION,Robin • Summeretto*,32910.47,2,T0.5
+PURE_FICTION,Mortenax Blade,33083.22,3,T0.5
+PURE_FICTION,Tribbie,33196.96,3,T0.5
+PURE_FICTION,Yao Guang,33554.37,3,T0.5
+PURE_FICTION,Cyrene,33783.01,3,T0.5
 `;
   const rawCsvDataSustains = `Game_Mode,Archetype_Core,Weighted_Avg_Score,Versions_Count,Tier
-ANOMALY_F0,Fu Xuan,3.24,3,T1
-ANOMALY_F0,Huohuo,3.24,3,T1
-ANOMALY_F0,Hyacine,3.31,3,T1
-ANOMALY_F0,Dan Heng • Permansor Terrae,3.73,3,T1
-ANOMALY_F0,Lingsha,3.79,3,T1
-ANOMALY_F0,Aventurine,3.92,3,T1
-ANOMALY_F0,Bailu,4.15,3,T1.5
-ANOMALY_F0,Gallagher,4.43,3,T1.5
-ANOMALY_F0,Luocha,4.46,3,T1.5
-ANOMALY_F4,Aventurine*,4.67,2,T1.5
+ANOMALY_F0,Pearl*,1.27,1,T0
+ANOMALY_F0,Huohuo,3.17,3,T1
+ANOMALY_F0,Hyacine,3.28,3,T1
+ANOMALY_F0,Dan Heng • Permansor Terrae,3.47,3,T1
+ANOMALY_F0,Fu Xuan,3.57,3,T1
+ANOMALY_F0,Lingsha,3.71,3,T1
+ANOMALY_F0,Aventurine,3.89,3,T1
+ANOMALY_F0,Bailu,4.16,3,T1.5
+ANOMALY_F0,Luocha,4.18,3,T1.5
+ANOMALY_F0,Gallagher,4.25,3,T1.5
+ANOMALY_F4,Pearl*,3.41,1,T0.5
+ANOMALY_F4,Luocha,4.28,3,T1
+ANOMALY_F4,Aventurine*,4.67,1,T1.5
+ANOMALY_F4,Dan Heng • Permansor Terrae*,4.74,2,T1.5
 ANOMALY_F4,Fu Xuan*,4.75,1,T1.5
-ANOMALY_F4,Dan Heng • Permansor Terrae,4.77,3,T1.5
-ANOMALY_F4,Huohuo,4.88,3,T1.5
-ANOMALY_F4,Hyacine,4.93,3,T1.5
-ANOMALY_F4,Luocha,5.0,3,T1.5
-ANOMALY_F4,Lingsha*,5.37,2,T1.5
-ANOMALY_F4,Gallagher*,5.47,2,T1.5
-APOC,Bailu,2189.48,3,T2
-APOC,Luocha,2636.27,3,T1.5
-APOC,Aventurine,2828.27,3,T1
-APOC,Fu Xuan,2861.35,3,T1
-APOC,Gallagher,3055.1,3,T1
-APOC,Lingsha,3217.35,3,T0.5
-APOC,Dan Heng • Permansor Terrae,3274.58,3,T0.5
-APOC,Huohuo,3276.92,3,T0.5
-APOC,Hyacine,3278.83,3,T0.5
-MOC,Fu Xuan,9.69,3,T1
-MOC,Huohuo,9.73,3,T1
-MOC,Hyacine,9.81,3,T1
-MOC,Dan Heng • Permansor Terrae,10.43,3,T1
-MOC,Lingsha,10.45,3,T1
-MOC,Gallagher,11.37,3,T1.5
-MOC,Aventurine,11.96,3,T2
-MOC,Bailu,12.05,3,T2
-MOC,Luocha,13.65,3,T2
-PURE_FICTION,Bailu,23768.95,3,T2
-PURE_FICTION,Luocha,26363.66,3,T1.5
-PURE_FICTION,Gallagher,26384.28,3,T1.5
-PURE_FICTION,Aventurine,27291.5,3,T1
-PURE_FICTION,Lingsha,28476.68,3,T1
-PURE_FICTION,Fu Xuan,28989.8,3,T1
-PURE_FICTION,Dan Heng • Permansor Terrae,31437.91,3,T0.5
-PURE_FICTION,Huohuo,32542.0,3,T0.5
-PURE_FICTION,Hyacine,34250.52,3,T0.5
+ANOMALY_F4,Hyacine,4.83,3,T1.5
+ANOMALY_F4,Huohuo,4.94,3,T1.5
+ANOMALY_F4,Lingsha*,5.23,1,T1.5
+ANOMALY_F4,Gallagher*,5.4,1,T1.5
+APOC,Bailu,2181.57,3,T2
+APOC,Luocha,2642.69,3,T1.5
+APOC,Fu Xuan,2827.78,3,T1
+APOC,Aventurine,2832.35,3,T1
+APOC,Gallagher,3051.62,3,T1
+APOC,Lingsha,3214.7,3,T0.5
+APOC,Dan Heng • Permansor Terrae,3278.7,3,T0.5
+APOC,Huohuo,3279.48,3,T0.5
+APOC,Hyacine,3280.58,3,T0.5
+APOC,Pearl*,3408.21,1,T0
+MOC,Pearl*,8.12,1,T0
+MOC,Fu Xuan,10.26,3,T1
+MOC,Hyacine,10.28,3,T1
+MOC,Huohuo,10.79,3,T1.5
+MOC,Dan Heng • Permansor Terrae,10.9,3,T1.5
+MOC,Lingsha,11.53,3,T2
+MOC,Bailu,11.92,3,T2
+MOC,Gallagher,12.34,3,T2
+MOC,Aventurine,12.42,3,T2
+MOC,Luocha,13.66,3,T2
+PURE_FICTION,Bailu,23021.76,3,T2
+PURE_FICTION,Luocha,26178.71,3,T1.5
+PURE_FICTION,Gallagher,26235.77,3,T1.5
+PURE_FICTION,Aventurine,27142.44,3,T1
+PURE_FICTION,Lingsha,28325.92,3,T1
+PURE_FICTION,Fu Xuan,28834.42,3,T1
+PURE_FICTION,Dan Heng • Permansor Terrae,31339.96,3,T0.5
+PURE_FICTION,Huohuo,32405.86,3,T0.5
+PURE_FICTION,Hyacine,34039.9,3,T0.5
+PURE_FICTION,Pearl*,36860.55,1,T0
 `;
 
   function parseCsv(rawCsv) {

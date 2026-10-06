@@ -1126,6 +1126,10 @@ const ColumnFilter = (() => {
   const state   = new Map(); // col -> { excluded: Set<label>, valueRule: {op,value}, range: {min,max} }
   let openPopover = null;
   let openCol      = null;
+  // Optional scope: when a page calls setScope(), only filters on those columns
+  // are applied/shown. Filters on other columns are kept (not deleted) and
+  // re-apply when their column is back in scope — e.g. across tab switches.
+  let activeCols  = null;
 
   const OPTS = [
     ['equals',        'Equals'],
@@ -1190,9 +1194,15 @@ const ColumnFilter = (() => {
     return true;
   }
 
+  function inScope(col) { return !activeCols || activeCols.has(col); }
+
+  function setScope(cols) {
+    activeCols = cols ? new Set(cols) : null;
+  }
+
   function passes(row) {
     for (const [col, f] of state.entries()) {
-      if (!f) continue;
+      if (!f || !inScope(col)) continue;
       const v = row[col];
       if (f.excluded && f.excluded.size > 0 && f.excluded.has(fmtVal(v))) return false;
       if (f.valueRule && !valueRulePasses(v, f.valueRule)) return false;
@@ -1239,7 +1249,7 @@ const ColumnFilter = (() => {
   function renderActiveBar() {
     const bar = document.getElementById('activeFiltersBar');
     if (!bar) return;
-    const cols = [...state.keys()].filter(c => isActive(c));
+    const cols = [...state.keys()].filter(c => isActive(c) && inScope(c));
     if (cols.length === 0) { bar.innerHTML = ''; return; }
     let html = cols.map(col => {
       const desc = ruleDesc(state.get(col));
@@ -1446,7 +1456,9 @@ const ColumnFilter = (() => {
         openPopoverFor(col, btn);
       });
       th.appendChild(btn);
+      syncButtonState(col); // header is rebuilt on every render — restore the active highlight
     });
+    renderActiveBar();
   }
 
   // Clear all active filters — used when the underlying column set changes
@@ -1460,7 +1472,7 @@ const ColumnFilter = (() => {
     renderActiveBar();
   }
 
-  return { attach, passes, isActive, reset };
+  return { attach, passes, isActive, reset, setScope };
 })();
 </script>
 <script>

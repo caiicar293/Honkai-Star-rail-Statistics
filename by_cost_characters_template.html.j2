@@ -416,6 +416,8 @@ function applyTabChrome() {
   document.getElementById('costPanel').style.display = usesCostFilters(activeTab) ? '' : 'none';
   document.getElementById('meidCtrlGroup').style.display = activeTab === 'cost' ? '' : 'none';
   document.getElementById('tabDesc').textContent = TAB_DESC[activeTab];
+  // Column filters on columns this tab doesn't have are paused (kept, not applied).
+  ColumnFilter.setScope(cols().map(c => c[0]));
   document.getElementById('searchLabel').textContent = activeTab === 'noeid'
     ? 'Search (character name)'
     : 'Search (name or Acheron(E2) for exact eid)';
@@ -453,6 +455,7 @@ function prepareDataset(key, nameField) {
     // character's actual eidolon (so two different Hyacine rows both read E1).
     r.__eid    = eidOf(r.__full);
     r.__lower  = r.__full.toLowerCase();
+    r.__name   = r.__full; // lets the Character column's sort + column filter read a real value
     r.__iconHtml = iconEl(r.__base);
     if (key === 'cost' || key === 'noeid') r.cost_key = r.estimated_min_cost + '_' + r.estimated_max_cost;
   });
@@ -663,12 +666,17 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 function setTab(tab) {
   if (activeTab === tab) return;
   activeTab = tab;
-  ColumnFilter.reset(); // cost/eid tabs have different columns — stale filters don't carry over
-  applyTabChrome();
-  sortCol = 'Appearance_Rate_pct';
-  sortAsc = false;
-  activeDims = new Set(RAW[tab].map(r => r.dim_key));
-  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => btn.classList.add('active'));
+  applyTabChrome(); // also re-scopes ColumnFilter to this tab's columns; active filters are kept
+  // Keep the current sort if this tab has that column, otherwise fall back to the default.
+  const sortable = cols().some(([k]) => k === sortCol && k !== 'Rank' && k !== '__dist');
+  if (!sortable) { sortCol = 'Appearance_Rate_pct'; sortAsc = false; }
+  // Keep the user's node/floor selection across tabs. Only drop dims the target
+  // tab doesn't have; if nothing is left, fall back to every dim in that tab.
+  const tabDims = new Set(RAW[tab].map(r => r.dim_key));
+  const kept = new Set([...activeDims].filter(d => tabDims.has(d)));
+  activeDims = kept.size ? kept : tabDims;
+  document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn =>
+    btn.classList.toggle('active', activeDims.has(parseInt(btn.dataset.dim))));
   recompute();
 }
 document.getElementById('tabCostBtn').addEventListener('click', () => setTab('cost'));

@@ -248,6 +248,7 @@
   .legend-row .swatch { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
   .legend-row .name { flex: 1; min-width: 0; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .legend-row .val { font-family: 'Share Tech Mono', monospace; font-size: 11.5px; color: var(--accent2); flex-shrink: 0; }
+  .legend-row .avg { font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--gold); flex-shrink: 0; padding: 1px 6px; border: 1px solid rgba(251,191,36,0.3); border-radius: 4px; background: rgba(251,191,36,0.07); }
   .legend-row .remove-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; flex-shrink: 0; }
   .legend-row .remove-btn:hover { color: var(--red); }
 
@@ -1636,7 +1637,11 @@
       const removeIds = selectedEntities
         .filter(e => baseEntityKey(entityLabel(e)) === key)
         .map(e => entityKey(e));
-      return { label: baseLabelByKey.get(key) || key, values, color: colorFor(i), removeIds };
+      // Average of the minimum-cost line across every version where the base
+      // entity actually reaches the target (null gaps are skipped, not counted as 0).
+      const costNums = values.filter(v => typeof v === "number");
+      const avg = costNums.length ? costNums.reduce((a, b) => a + b, 0) / costNums.length : null;
+      return { label: baseLabelByKey.get(key) || key, values, color: colorFor(i), removeIds, avg, avgCount: costNums.length };
     });
 
     renderTrendChart(series, "Minimum Cost", versions);
@@ -1770,12 +1775,16 @@
           if (s.values[i] !== null && s.values[i] !== undefined) { latestVal = s.values[i]; break; }
         }
       }
+      const avgHtml = (s.avg !== undefined)
+        ? `<span class="avg" title="Average minimum cost across the ${s.avgCount} version(s) where it reaches the target">avg ${s.avg === null ? "—" : (Number.isInteger(s.avg) ? s.avg : s.avg.toFixed(1))}</span>`
+        : "";
       const row = document.createElement("div");
       row.className = "legend-row";
       row.innerHTML = `
         <span class="swatch" style="background:${s.color}"></span>
         ${iconStripHtml(s.label)}
         <span class="name">${s.label}</span>
+        ${avgHtml}
         <span class="val">${latestVal === null ? "—" : fmtValue(latestVal)}</span>
         <button class="remove-btn" title="Remove">✕</button>
       `;

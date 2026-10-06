@@ -530,6 +530,9 @@ class HonkaiDataPlatform:
             self._standardize(scraper.get_chars_by_individual_eidolons_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_chars_by_eidolon")
         self._db_save(conn,
+            self._standardize(scraper.get_chars_by_cost_no_individual_eidolons_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
+            f"{prefix}_by_cost_chars_no_eidolon")
+        self._db_save(conn,
             self._standardize(scraper.get_duos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_by_cost_duos")
 

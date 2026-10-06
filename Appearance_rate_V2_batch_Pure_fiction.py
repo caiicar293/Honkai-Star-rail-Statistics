@@ -1,6 +1,6 @@
 import polars as pl
 from appearance_stats_helpers import (
-    list_stats_exprs, gear_stats_exprs,
+    gear_on_chars, list_stats_exprs, gear_stats_exprs,
     appearance_rate_expr, usage_rate_expr,
     sustain_pct_expr, full_clear_rate_expr, sustain_flag_expr,
     eidolon_pct_exprs,
@@ -785,7 +785,10 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
 
         df = df.sort(["version", "Total_Samples"], descending=[True, True]).with_row_index("Rank", offset=1)
         eidolon_perc_cols = sorted([c for c in df.columns if "Eidolon" in c and "%" in c])
-
+        
+        index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character","Total_Samples"]
+        df = gear_on_chars(index_cols, "Points", "Scores", df)
+                
         return df.select([
             "Rank", "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Appearance Rate (%)",
             pl.col("Total_Samples").alias("Samples"),
@@ -793,7 +796,7 @@ class HonkaiStatistics_V2_Pure_fiction_Batch:
             "75th Percentile Points", "Average Points", "Std Dev Points", "Max Points", "Points Distributions",
             pl.col("Total_Sustains").alias("Sustain Samples"), "Sustain_Percentage",
             "Total_Full_Clears", "Full_Clear_Rate",
-            *eidolon_perc_cols
+            *eidolon_perc_cols,"Lightcones_right", "Relics_right", "Planar_Set_right"
         ])
 
     def get_eidolon_performance_df(self):

@@ -165,3 +165,26 @@ def eidolon_pct_exprs(sample_cols: list[str], total_col: str = "Total_Samples") 
         ((pl.col(c) / pl.col(total_col)) * 100).round(2).alias(f"{c.replace('Samples_', '')} %")
         for c in sample_cols
     ]
+
+def gear_on_chars(gear_col: str, label: str ,style:str, df:pl.DataFrame) -> pl.Expr:
+    """Count of unique characters that have a given gear item."""
+    for col in ["Lightcones", "Relics", "Planar_Set"]:
+        processed_col = (
+            df.select(gear_col + [col])
+            .explode(col)
+            .drop_nulls(col) # Prevent unnesting errors on empty slots
+            .unnest(col)
+            .with_columns([
+                pl.col('count').alias("Samples"),
+                appearance_rate_expr("count", "Total_Samples"),
+                *list_stats_exprs(label, style)
+            ])
+        )
+        
+        new_processed = processed_col.group_by(gear_col).agg(
+            **{col: pl.struct([x for x in processed_col.columns if x not in gear_col and x !=label])}
+        )
+        
+        
+        df = df.join(new_processed, on=gear_col)     
+    return df 

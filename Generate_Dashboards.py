@@ -52,6 +52,7 @@ class DashboardGenerator:
             "cost_team_table": "moc_by_cost_teams",
             "cost_char_table": "moc_by_cost_chars",
             "cost_char_eidolon_table": "moc_by_cost_chars_by_eidolon",
+            "cost_char_no_eidolon_table": "moc_by_cost_chars_no_eidolon",
             "duo_table": "moc_stats_duos",
             "mode_label": "MOC",
             "full_name": "Memory of Chaos",
@@ -111,6 +112,7 @@ class DashboardGenerator:
             "cost_archetype_table": "apoc_by_cost_archetypes",
             "cost_char_table": "apoc_by_cost_chars",
             "cost_char_eidolon_table": "apoc_by_cost_chars_by_eidolon",
+            "cost_char_no_eidolon_table": "apoc_by_cost_chars_no_eidolon",
             "duo_table": "apoc_stats_duos",
             "mode_label": "APOC",
             "full_name": "Apocalyptic Shadow",
@@ -136,6 +138,7 @@ class DashboardGenerator:
             "cost_archetype_table": "pure_fiction_by_cost_archetypes",
             "cost_char_table": "pure_fiction_by_cost_chars",
             "cost_char_eidolon_table": "pure_fiction_by_cost_chars_by_eidolon",
+            "cost_char_no_eidolon_table": "pure_fiction_by_cost_chars_no_eidolon",
             "duo_table": "pure_fiction_stats_duos",
             "mode_label": "Pure Fiction",
             "full_name": "Pure Fiction",
@@ -181,6 +184,7 @@ class DashboardGenerator:
             "cost_archetype_table": "anomaly_by_cost_archetypes",
             "cost_char_table": "anomaly_by_cost_chars",
             "cost_char_eidolon_table": "anomaly_by_cost_chars_by_eidolon",
+            "cost_char_no_eidolon_table": "anomaly_by_cost_chars_no_eidolon",
             "duo_table": "anomaly_stats_duos",
             "mode_label": "Anomaly",
             "full_name": "Anomaly Arbitration",
@@ -389,6 +393,29 @@ class DashboardGenerator:
         params = [version] + cfg["dim_values"]
         return self._bin_distributions(self._clean_rows(self.conn.execute(sql, params)), cfg)
 
+    def fetch_cost_chars_no_eidolon(self, cfg: dict, version: str) -> list[dict]:
+        """By-cost characters with every eidolon dimension stripped out: one row
+        per (Character, cost bracket, node/floor). Equivalent to grouping
+        by_cost_chars by (Character base name, cost bracket) while pooling over
+        max_eidolon AND the character's own eidolon. The source table has no
+        max_eidolon column and Character is the bare name (no '(E#)' suffix)."""
+        dim_field = cfg['dim_field']
+        placeholders = ', '.join(['?' for _ in cfg['dim_values']])
+        sql = f"""
+            SELECT
+                Rank, version, estimated_min_cost, estimated_max_cost,
+                {dim_field}, Character,
+                Appearance_Rate_pct, Samples, Total_Full_Clears,
+                Full_Clear_Rate_pct, Sustain_Samples, Sustain_Percentage,
+                Min_Score, Percentile_25, Median_Score,
+                Percentile_75, Average_Score, Std_Dev, Max_Score, Scores_Distributions
+            FROM {cfg['cost_char_no_eidolon_table']}
+            WHERE version = ? AND {dim_field} IN ({placeholders}) AND Character IS NOT NULL
+            ORDER BY {dim_field}, estimated_min_cost, Rank
+        """
+        params = [version] + cfg['dim_values']
+        return self._bin_distributions(self._clean_rows(self.conn.execute(sql, params)), cfg)
+
     def fetch_duos(self, cfg: dict, version: str) -> list[dict]:
         dim_field = cfg["dim_field"]
         placeholders = ", ".join(["?" for _ in cfg["dim_values"]])
@@ -579,6 +606,16 @@ class DashboardGenerator:
         else:
             print(f"  [SKIP] No by-cost character (by eidolon) data found for {mode_key}.")
 
+        # 9. By-Cost Characters, no eidolons (character-only, pooled over every eidolon)
+        no_eid_table = cfg.get("cost_char_no_eidolon_table")
+        if no_eid_table and self._has_data(no_eid_table, version):
+            data = self.fetch_cost_chars_no_eidolon(cfg, version)
+            filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_no_eidolon_data.json.br"
+            self._write_brotli_json(mode_dir, filename, data)
+            print(f"  [DONE] {filename} ({len(data)} records)")
+        else:
+            print(f"  [SKIP] No by-cost character (no eidolon) data found for {mode_key}.")
+
     def orchestrate_json_generation(self):
         for mode in self.MODE_CONFIG.keys():
             for version in self.MODE_CONFIG[mode]["versions"]:
@@ -688,6 +725,17 @@ class DashboardGenerator:
             print(f"  [DONE] {eid_filename} ({len(eid_data)} records)")
         else:
             print(f"   [SKIP] No by-cost character data found for {mode_key}.")
+        # 9. By-Cost Characters, no eidolons (character-only, pooled over every eidolon).
+        # Optional: the page hides its third tab when this file is absent.
+        no_eid_table = cfg.get("cost_char_no_eidolon_table")
+        if no_eid_table and self._has_data(no_eid_table, version):
+            no_eid_data = self.fetch_cost_chars_no_eidolon(cfg, version)
+            no_eid_filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_no_eidolon_data.json.br"
+            self._write_brotli_json(mode_dir, no_eid_filename, no_eid_data)
+            print(f"  [DONE] {no_eid_filename} ({len(no_eid_data)} records)")
+        else:
+            print(f"   [SKIP] No by-cost character (no eidolon) data found for {mode_key}.")
+
         if cost_char_table:
             self._write_versions_manifest(mode_dir, cfg["file_prefix"], "by_cost_characters")
 
@@ -804,10 +852,16 @@ class DashboardGenerator:
             out_file = mode_dir / f"{cfg['file_prefix']}_{safe_version}_by_cost_characters.html"
             cost_filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_data.json.br"
             eid_filename = f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_by_eidolon_data.json.br"
+            no_eid_table = cfg.get("cost_char_no_eidolon_table")
+            no_eid_filename = (
+                f"{cfg['file_prefix']}_{safe_version}_by_cost_characters_no_eidolon_data.json.br"
+                if no_eid_table and self._has_data(no_eid_table, version) else None
+            )
             self.render_file("by_cost_characters_template.html.j2", out_file, {
                 **base_context,
                 "data_filename_cost": cost_filename,
                 "data_filename_eidolon": eid_filename,
+                "data_filename_no_eidolon": no_eid_filename,
                 "page_suffix": "by_cost_characters",
             })
         else:

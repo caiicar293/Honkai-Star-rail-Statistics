@@ -60,6 +60,7 @@
   .tab-btn:hover { color: var(--accent); }
   .tab-btn.active { color: var(--accent); background: var(--panel2); border-color: var(--border2); border-bottom-color: var(--accent); }
   .tab-btn.active.eid-tab { border-bottom-color: var(--emerald); color: var(--emerald); }
+  .tab-btn.active.noeid-tab { border-bottom-color: var(--purple); color: var(--purple); }
   .tab-desc { font-size: 11px; color: var(--text3); font-family: 'Share Tech Mono', monospace; padding: 2px 0 14px; letter-spacing: 0.03em; }
 
   /* CONTROLS */
@@ -658,6 +659,9 @@
     <button class="tab-btn eid-tab" id="tabEidBtn" type="button" data-tab="eid">
       <span class="tab-icon">🧬</span> By Max Eidolon (All Costs)
     </button>
+    <button class="tab-btn noeid-tab" id="tabNoEidBtn" type="button" data-tab="noeid">
+      <span class="tab-icon">👤</span> No Eidolons (Character Only)
+    </button>
   </div>
   <div class="tab-desc" id="tabDesc">Cost bracket view — one row per (Character, cost bracket, max eidolon in team). Filter by cost range and max team eidolon below.</div>
 
@@ -692,7 +696,7 @@
     </div>
 
     <div class="ctrl-group" style="flex:1; min-width:240px; max-width:420px;">
-      <div class="ctrl-label">Search (name or Acheron(E2) for exact eid)</div>
+      <div class="ctrl-label" id="searchLabel">Search (name or Acheron(E2) for exact eid)</div>
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input id="searchInput" type="text" placeholder="Acheron · Acheron(E2) · Robin(E0)…"/>
@@ -821,8 +825,11 @@ const COLS_EID = [
   ['__dist','Dist','num', false],
 ];
 
-let RAW      = { cost: [], eid: [] };
-let MAX_RATE = { cost: 1, eid: 1 };
+// No-eidolon view: same columns as the cost view minus the team max-eidolon column.
+const COLS_NOEID = COLS_COST.filter(c => c[0] !== 'max_eidolon');
+
+let RAW      = { cost: [], eid: [], noeid: [] };
+let MAX_RATE = { cost: 1, eid: 1, noeid: 1 };
 let MIN_COST_G = 0, MAX_COST_G = 32;
 
 let activeTab   = 'cost';
@@ -835,7 +842,32 @@ let sortCol       = 'Appearance_Rate_pct';
 let sortAsc       = false;
 let filteredData  = [];
 
-function cols() { return activeTab === 'cost' ? COLS_COST : COLS_EID; }
+function cols() { return activeTab === 'cost' ? COLS_COST : activeTab === 'noeid' ? COLS_NOEID : COLS_EID; }
+
+// Cost-range filters (sliders / presets) apply to every view that is bucketed by cost.
+function usesCostFilters(tab) { return tab === 'cost' || tab === 'noeid'; }
+
+const TAB_DESC = {
+  cost:  'Cost bracket view — one row per (Character, cost bracket, max eidolon in team). Filter by cost range and max team eidolon below.',
+  eid:   'Max eidolon view — pooled across ALL cost brackets and team eidolon combos, one row per (Character, Character\u2019s own eidolon). Cost/team-eidolon filters do not apply here.',
+  noeid: 'No-eidolon view — one row per (Character, cost bracket), pooled across every character eidolon and every team max eidolon (same as grouping the cost bracket view by character name). Filter by cost range below.',
+};
+
+// Syncs tab buttons, filter panels, description and search hints with activeTab.
+function applyTabChrome() {
+  document.getElementById('tabCostBtn').classList.toggle('active', activeTab === 'cost');
+  document.getElementById('tabEidBtn').classList.toggle('active', activeTab === 'eid');
+  document.getElementById('tabNoEidBtn').classList.toggle('active', activeTab === 'noeid');
+  document.getElementById('costPanel').style.display = usesCostFilters(activeTab) ? '' : 'none';
+  document.getElementById('meidCtrlGroup').style.display = activeTab === 'cost' ? '' : 'none';
+  document.getElementById('tabDesc').textContent = TAB_DESC[activeTab];
+  document.getElementById('searchLabel').textContent = activeTab === 'noeid'
+    ? 'Search (character name)'
+    : 'Search (name or Acheron(E2) for exact eid)';
+  document.getElementById('searchInput').placeholder = activeTab === 'noeid'
+    ? 'Acheron · Robin · Welt…'
+    : 'Acheron · Acheron(E2) · Robin(E0)…';
+}
 
 function iconEl(name) {
   let url = ICONS[name] || ICONS[name.replace(/\s+LV\.\d+$/,'').trim()];
@@ -867,7 +899,7 @@ function prepareDataset(key, nameField) {
     r.__eid    = eidOf(r.__full);
     r.__lower  = r.__full.toLowerCase();
     r.__iconHtml = iconEl(r.__base);
-    if (key === 'cost') r.cost_key = r.estimated_min_cost + '_' + r.estimated_max_cost;
+    if (key === 'cost' || key === 'noeid') r.cost_key = r.estimated_min_cost + '_' + r.estimated_max_cost;
   });
   MAX_RATE[key] = Math.max(1, ...rows.map(r => r.Appearance_Rate_pct || 0));
   if (key === 'cost' && rows.length) {
@@ -888,7 +920,8 @@ function recompute() {
 
   let candidate = rows;
   if (searchTerm.length) {
-    const eidMatch = searchTerm.match(/^(.+?)\s*\(?(e\d)\)?$/i);
+    // The no-eidolon rows carry no (E#) tag, so the "Name(E2)" search form is skipped there.
+    const eidMatch = activeTab === 'noeid' ? null : searchTerm.match(/^(.+?)\s*\(?(e\d)\)?$/i);
     let tokens, eidTag = null;
     if (eidMatch) {
       tokens = eidMatch[1].trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -900,9 +933,9 @@ function recompute() {
   }
 
   candidate = candidate.filter(r => activeDims.has(r.dim_key) && ColumnFilter.passes(r));
-  if (key === 'cost') {
+  if (usesCostFilters(key)) {
     candidate = candidate.filter(r =>
-      activeMeids.has(Math.round(r.max_eidolon)) &&
+      (key !== 'cost' || activeMeids.has(Math.round(r.max_eidolon))) &&
       r.estimated_min_cost >= costMinFilter &&
       r.estimated_max_cost <= costMaxFilter
     );
@@ -937,7 +970,11 @@ function updateMeta() {
   const ssum = filteredData.reduce((s,r) => s + (r.Samples||0), 0);
   document.getElementById('visibleSamples').textContent = ssum > 9999 ? (ssum/1000).toFixed(0)+'K' : ssum.toLocaleString();
   const costChip = document.getElementById('costRangeChip');
-  if (activeTab === 'cost') {
+  if (activeTab === 'noeid') {
+    costChip.style.display = '';
+    document.getElementById('costRangeDisplay').textContent = costMinFilter + '–' + costMaxFilter;
+    document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> characters · cost bracket <span>${costMinFilter}→${costMaxFilter}</span> (all eidolons pooled)`;
+  } else if (activeTab === 'cost') {
     costChip.style.display = '';
     document.getElementById('costRangeDisplay').textContent = costMinFilter + '–' + costMaxFilter;
     document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> rows · cost bracket <span>${costMinFilter}→${costMaxFilter}</span>`;
@@ -1059,6 +1096,9 @@ document.getElementById('tableBody').addEventListener('click', (e) => {
   if (activeTab === 'cost') {
     meta += `<div class="dist-meta-chip"><span class="v">E${Math.round(r.max_eidolon)}</span><div class="l">Max Eid.</div></div><div class="dist-meta-chip"><span class="v">${r.estimated_min_cost}→${r.estimated_max_cost}</span><div class="l">Cost</div></div>`;
   }
+  if (activeTab === 'noeid') {
+    meta += `<div class="dist-meta-chip"><span class="v">${r.estimated_min_cost}→${r.estimated_max_cost}</span><div class="l">Cost</div></div>`;
+  }
   window.openDistribution(r, label, meta);
 });
 
@@ -1069,13 +1109,7 @@ function setTab(tab) {
   if (activeTab === tab) return;
   activeTab = tab;
   ColumnFilter.reset(); // cost/eid tabs have different columns — stale filters don't carry over
-  document.getElementById('tabCostBtn').classList.toggle('active', tab === 'cost');
-  document.getElementById('tabEidBtn').classList.toggle('active', tab === 'eid');
-  document.getElementById('costPanel').style.display = tab === 'cost' ? '' : 'none';
-  document.getElementById('meidCtrlGroup').style.display = tab === 'cost' ? '' : 'none';
-  document.getElementById('tabDesc').textContent = tab === 'cost'
-    ? 'Cost bracket view — one row per (Character, cost bracket, max eidolon in team). Filter by cost range and max team eidolon below.'
-    : 'Max eidolon view — pooled across ALL cost brackets and team eidolon combos, one row per (Character, Character\u2019s own eidolon). Cost/team-eidolon filters do not apply here.';
+  applyTabChrome();
   sortCol = 'Appearance_Rate_pct';
   sortAsc = false;
   activeDims = new Set(RAW[tab].map(r => r.dim_key));
@@ -1084,6 +1118,7 @@ function setTab(tab) {
 }
 document.getElementById('tabCostBtn').addEventListener('click', () => setTab('cost'));
 document.getElementById('tabEidBtn').addEventListener('click', () => setTab('eid'));
+document.getElementById('tabNoEidBtn').addEventListener('click', () => setTab('noeid'));
 
 // ---- Listeners ----
 document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn => {
@@ -1231,16 +1266,26 @@ function captureState() {
 
 let HAS_LOADED = false;
 
-async function loadDatasets(costFilename, eidFilename) {
+async function loadDatasets(costFilename, eidFilename, noEidFilename) {
   const savedState = HAS_LOADED ? captureState() : null; // first load → defaults; version switch → carry over state
-  const [costData, eidData] = await Promise.all([
+  // The no-eidolon file is optional (older versions may not have it) — a missing
+  // file just hides the third tab instead of failing the whole page load.
+  const [costData, eidData, noEidData] = await Promise.all([
     fetchBrotliJson(costFilename),
     fetchBrotliJson(eidFilename),
+    noEidFilename
+      ? fetchBrotliJson(noEidFilename).catch(err => { console.warn('No-eidolon dataset unavailable:', noEidFilename, err); return []; })
+      : Promise.resolve([]),
   ]);
-  RAW.cost = costData;
-  RAW.eid  = eidData;
+  RAW.cost  = costData;
+  RAW.eid   = eidData;
+  RAW.noeid = noEidData;
   prepareDataset('cost', 'Character');
   prepareDataset('eid', 'Character_Eidolon');
+  prepareDataset('noeid', 'Character');
+  const hasNoEid = RAW.noeid.length > 0;
+  document.getElementById('tabNoEidBtn').style.display = hasNoEid ? '' : 'none';
+  if (!hasNoEid && activeTab === 'noeid') activeTab = 'cost';
 
   // Defaults for a fresh page load: all dims, all max-eidolons, full cost range.
   const validDims  = new Set([...RAW.cost, ...RAW.eid].map(r => r.dim_key));
@@ -1257,15 +1302,8 @@ async function loadDatasets(costFilename, eidFilename) {
   // Carry over the user's state from the version we're leaving — dropping
   // anything that doesn't exist in the newly loaded dataset (carry-over mode).
   if (savedState) {
-    if (savedState.tab === 'eid' || savedState.tab === 'cost') {
+    if (savedState.tab === 'eid' || savedState.tab === 'cost' || (savedState.tab === 'noeid' && hasNoEid)) {
       activeTab = savedState.tab;
-      document.getElementById('tabCostBtn').classList.toggle('active', activeTab === 'cost');
-      document.getElementById('tabEidBtn').classList.toggle('active', activeTab === 'eid');
-      document.getElementById('costPanel').style.display = activeTab === 'cost' ? '' : 'none';
-      document.getElementById('meidCtrlGroup').style.display = activeTab === 'cost' ? '' : 'none';
-      document.getElementById('tabDesc').textContent = activeTab === 'cost'
-        ? 'Cost bracket view — one row per (Character, cost bracket, max eidolon in team). Filter by cost range and max team eidolon below.'
-        : 'Max eidolon view — pooled across ALL cost brackets and team eidolon combos, one row per (Character, Character\u2019s own eidolon). Cost/team-eidolon filters do not apply here.';
     }
     if (Array.isArray(savedState.dims)) {
       activeDims = new Set(savedState.dims.filter(d => validDims.has(d)));
@@ -1298,6 +1336,7 @@ async function loadDatasets(costFilename, eidFilename) {
   clearPresets();
   document.getElementById('costResetBtn')?.classList.toggle('active', costMinFilter === MIN_COST_G && costMaxFilter === MAX_COST_G);
 
+  applyTabChrome();
   HAS_LOADED = true;
   await PrevDiff.onLoaded(costFilename); // re-fetch/annotate the previous version if the diff is switched on
   recompute();
@@ -1310,7 +1349,7 @@ function updateHeaderVersion(label) {
 
 async function initializeApp() {
   try {
-    await loadDatasets("apoc_4_6_1_by_cost_characters_data.json.br", "apoc_4_6_1_by_cost_characters_by_eidolon_data.json.br");
+    await loadDatasets("apoc_4_6_1_by_cost_characters_data.json.br", "apoc_4_6_1_by_cost_characters_by_eidolon_data.json.br", "apoc_4_6_1_by_cost_characters_no_eidolon_data.json.br");
   } catch (err) {
     console.error('Data load error:', err);
     const info = document.getElementById('resultsInfo');
@@ -1333,6 +1372,8 @@ async function initializeApp() {
 
   function costFilenameFor(safe)  { return `${VS_FILE_PREFIX}_${safe}_by_cost_characters_data.json.br`; }
   function eidFilenameFor(safe)   { return `${VS_FILE_PREFIX}_${safe}_by_cost_characters_by_eidolon_data.json.br`; }
+
+  function noEidFilenameFor(safe) { return `${VS_FILE_PREFIX}_${safe}_by_cost_characters_no_eidolon_data.json.br`; }
 
   function vsItemHtml(v) {
     const isCurrent = v.safe === vsLiveSafe;
@@ -1402,7 +1443,7 @@ async function initializeApp() {
     if (btnLabel) btnLabel.textContent = '…';
     panel?.classList.remove('open');
     try {
-      await loadDatasets(costFilenameFor(safe), eidFilenameFor(safe));
+      await loadDatasets(costFilenameFor(safe), eidFilenameFor(safe), noEidFilenameFor(safe));
       vsLiveSafe = safe;
       if (btnLabel) btnLabel.textContent = label;
       document.querySelectorAll('.version-item').forEach(el => {
@@ -2449,6 +2490,11 @@ PrevDiff.configure({
       rows: () => RAW.eid,
       filenameFor: safe => `apoc_${safe}_by_cost_characters_by_eidolon_data.json.br`,
       keyOf: r => `${r.Character_Eidolon}|${r[DIM_FIELD]}`,
+    },
+    noeid: {
+      rows: () => RAW.noeid,
+      filenameFor: safe => `apoc_${safe}_by_cost_characters_no_eidolon_data.json.br`,
+      keyOf: r => `${r.Character}|${r[DIM_FIELD]}|${r.estimated_min_cost}|${r.estimated_max_cost}`,
     },
   },
 });

@@ -501,6 +501,46 @@
   .autoplan-pin { background: none; border: 1px solid var(--border); color: var(--text3); font-family: 'Rajdhani', sans-serif; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
   .autoplan-card:hover .autoplan-pin, .autoplan-card.pinned .autoplan-pin { border-color: var(--green); color: var(--green); }
   .autoplan-warn { color: var(--gold); }
+  .autoplan-cost.assumed { color: var(--gold); }
+  .autoplan-node .flag { color: var(--gold); cursor: help; }
+  /* Assumptions — manual min-cost overrides used by the planner's cost ranking */
+  .autoplan-assume { margin-top: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); }
+  .autoplan-assume > summary { cursor: pointer; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--gold); letter-spacing: 0.05em; user-select: none; list-style: none; }
+  .autoplan-assume > summary::-webkit-details-marker { display: none; }
+  .autoplan-assume > summary::before { content: '▸ '; }
+  .autoplan-assume[open] > summary::before { content: '▾ '; }
+  .assume-count { color: var(--text3); margin-left: 4px; }
+  .assume-body { padding: 4px 12px 10px; }
+  .assume-note { font-family: 'Share Tech Mono', monospace; font-size: 10.5px; color: var(--text3); line-height: 1.5; margin-bottom: 8px; }
+  .assume-note b { color: var(--text2); }
+  .assume-list { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+  .assume-item { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text2); }
+  .assume-item .t { color: var(--text); flex: 1; min-width: 180px; }
+  .assume-item .sc { color: var(--text3); }
+  .assume-item .r { color: var(--teal); display: inline-flex; align-items: center; gap: 6px; }
+  .assume-item .r input { width: 64px; }
+  .assume-del { background: none; border: 1px solid var(--border); color: var(--text3); font-size: 11px; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  .assume-del:hover { border-color: var(--red); color: var(--red); }
+  .assume-foot { display: flex; align-items: center; gap: 12px; margin-top: 8px; font-family: 'Share Tech Mono', monospace; font-size: 10.5px; }
+  .assume-msg { color: var(--gold); }
+  /* ⚙ gear beside every team — opens the min-cost popover */
+  .cost-gear { background: none; border: 1px solid transparent; color: var(--text3); font-size: 13px; line-height: 1; border-radius: 4px; padding: 2px 4px; cursor: pointer; flex: none; opacity: 0.55; transition: all 0.12s; }
+  tr:hover .cost-gear, .autoplan-card:hover .cost-gear { opacity: 1; }
+  .cost-gear:hover { color: var(--gold); border-color: var(--gold); }
+  .cost-gear.on { color: var(--gold); opacity: 1; }
+  .cost-badge.assumed { color: var(--gold); }
+  .cost-badge .cost-listed { text-decoration: line-through; color: var(--text3); margin-right: 4px; }
+  .assume-pop { display: none; position: fixed; z-index: 200; width: 300px; background: var(--panel); border: 1px solid var(--border2); border-radius: 8px; padding: 12px 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.55); font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text2); }
+  .ap-title { color: var(--text); font-weight: 700; font-size: 12px; margin-bottom: 2px; word-break: break-word; }
+  .ap-sub { color: var(--teal); margin-bottom: 10px; }
+  .ap-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .ap-row .autoplan-input { width: 80px; }
+  .ap-hint { color: var(--text3); font-size: 10px; line-height: 1.4; margin-bottom: 6px; }
+  .ap-msg { color: var(--gold); min-height: 14px; margin-bottom: 6px; }
+  .ap-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ap-actions .planner-clear { margin-left: 0; }
+  .autoplan-run.ap-apply { margin-left: 0; }
+  #apNodes .btn-toggle.active { background: rgba(251,191,36,0.16); border-color: var(--gold); color: var(--gold); font-weight: 700; box-shadow: inset 0 0 0 1px rgba(251,191,36,0.4); }
   /* How-to-use help + combined-threshold note */
   .autoplan-help { margin-bottom: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); }
   .autoplan-help > summary { cursor: pointer; padding: 6px 10px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent2); letter-spacing: 0.05em; user-select: none; list-style: none; }
@@ -777,7 +817,33 @@
       </div>
       <button class="autoplan-run" id="autoplanRun" type="button">Find Combinations</button>
     </div>
+    <details class="autoplan-assume" id="autoplanAssume">
+      <summary>⚙️ Assumptions <span class="assume-count" id="assumeCount"></span></summary>
+      <div class="assume-body">
+        <div class="assume-note">Click the ⚙ beside any team (in the table or on a result card) to raise its <b>min cost</b>. A team listed at 4→8 can be assumed 7→8 or 6→8; the new min can't go below the listed min or above the team's max cost. Choose which {{ dim_label|lower }}s it applies to (none = every {{ dim_label|lower }}). Editing a team pins it, and it stays pinned when you press Find Combinations, which re-ranks the other {{ dim_label|lower }}s around it. Costs only change the order when the planner is ranking by cost (a threshold is set).</div>
+        <div class="assume-list" id="assumeList"></div>
+        <div class="assume-foot">
+          <button class="planner-clear" id="assumeClear" type="button" style="margin-left:0" disabled>Clear all</button>
+          <span class="assume-msg" id="assumeMsg"></span>
+        </div>
+      </div>
+    </details>
     <div class="autoplan-results" id="autoplanResults"></div>
+  </div>
+
+  <!-- ⚙ popover: manually raise a team's min cost -->
+  <div class="assume-pop" id="assumePop" role="dialog" aria-label="Assume a higher min cost">
+    <div class="ap-title" id="apTitle"></div>
+    <div class="ap-sub" id="apSub"></div>
+    <div class="ap-row"><span>New min cost</span><input class="autoplan-input" id="apMin" type="number" step="any"/></div>
+    <div class="ap-row"><span>Applies to {{ dim_label|lower }}s</span><div class="btn-group" id="apNodes"></div></div>
+    <div class="ap-hint">none selected = every {{ dim_label|lower }} · applying also pins this team</div>
+    <div class="ap-msg" id="apMsg"></div>
+    <div class="ap-actions">
+      <button class="autoplan-run ap-apply" id="apApply" type="button">Apply &amp; pin</button>
+      <button class="planner-clear" id="apRemove" type="button">Remove</button>
+      <button class="planner-clear" id="apCancel" type="button">Cancel</button>
+    </div>
   </div>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
@@ -1112,6 +1178,7 @@ function distBtnHTML(r) {
 function rowHTML(r, attrs, rank) {
   const ratePct = Math.min(100, (r.Appearance_Rate_pct / MAX_RATE) * 100);
   const eid     = Math.round(r.max_eidolon);
+  const assumed = isAssumed(r);
   const sustHtml = r.has_sustain
     ? `<span class="sustain-pill yes">Sustain</span>`
     : `<span class="sustain-pill no">No Sustain</span>`;
@@ -1121,9 +1188,9 @@ function rowHTML(r, attrs, rank) {
   return `<tr${attrs ? ' ' + attrs : ''}>
     <td class="rank-cell${rank<=3?' top3':''}">${rank}</td>
     <td><span class="dim-badge d${r.dim_key}">${r.dim_key}</span></td>
-    <td><span class="cost-badge">${r.estimated_min_cost}<span class="cost-sep">→</span>${r.estimated_max_cost}</span></td>
+    <td><span class="cost-badge${assumed ? ' assumed' : ''}"${assumed ? ` title="Assumed min cost — listed ${r.estimated_min_cost}→${r.estimated_max_cost}"` : ''}>${assumed ? `<span class="cost-listed">${r.estimated_min_cost}</span>${comboCostMin(r)}` : r.estimated_min_cost}<span class="cost-sep">→</span>${r.estimated_max_cost}</span></td>
     <td class="num"><span class="meid-badge e${eid}">E${eid}</span></td>
-    <td><div class="team-cell"><div class="team-icons">${r._iconsHtml}</div><span class="team-name" title="${r.Team}">${r.Team}</span></div></td>
+    <td><div class="team-cell"><div class="team-icons">${r._iconsHtml}</div><span class="team-name" title="${r.Team}">${r.Team}</span>${PLANNER_DIMS.includes(r.dim_key) ? `<button class="cost-gear${assumed ? ' on' : ''}" type="button" data-gear title="Assume a higher min cost for this team">⚙</button>` : ''}</div></td>
     <td>${archHtml}</td>
     <td class="num"><div class="rate-bar-wrap"><div class="rate-bar-bg"><div class="rate-bar-fill" style="width:${ratePct.toFixed(1)}%"></div></div><span class="rate-val">${fmtPct(r.Appearance_Rate_pct)}</span></div></td>
     <td class="num"><span class="score-num samp">${fmtInt(r.Samples)}</span></td>
@@ -1257,7 +1324,7 @@ function applyPlannerState() {
 function plannerTotalsData() {
   const t = { cMin: 0, cMax: 0, sMin: 0, sMed: 0, sAvg: 0, sMax: 0 };
   plannerPins.forEach(p => {
-    t.cMin += p.estimated_min_cost || 0;
+    t.cMin += comboCostMin(p);
     t.cMax += p.estimated_max_cost || 0;
     if (!IS_MOC) {
       t.sMin += p.Min_Score || 0;
@@ -1302,7 +1369,7 @@ function plannerPlanText() {
     const eid = Math.round(p.max_eidolon);
     lines.push(`${i + 1}. ${lbl}`);
     lines.push(`   Team      : ${p.Team}`);
-    lines.push(`   Cost      : ${Math.round(p.estimated_min_cost || 0)}→${Math.round(p.estimated_max_cost || 0)}`);
+    lines.push(`   Cost      : ${Math.round(comboCostMin(p))}→${Math.round(p.estimated_max_cost || 0)}` + (isAssumed(p) ? ` (assumed min; listed ${Math.round(p.estimated_min_cost || 0)}→${Math.round(p.estimated_max_cost || 0)})` : ''));
     lines.push(`   Max Eid   : E${eid}`);
     if (p.Appearance_Rate_pct != null) lines.push(`   App Rate  : ${fmtPct(p.Appearance_Rate_pct)}`);
     if (p.Full_Clear_Rate_pct != null) lines.push(`   Full Star : ${fmtPct(p.Full_Clear_Rate_pct)}`);
@@ -1344,8 +1411,9 @@ function plannerJSON() {
       const em = m.match(/\s*\((E\d)\)$/i);
       return { name: m.replace(/\s*\((E\d)\)$/i, '').trim(), eid: em ? parseInt(em[1].slice(1), 10) : 0 };
     }),
-    cost_min: Math.round(p.estimated_min_cost || 0),
+    cost_min: Math.round(comboCostMin(p)),
     cost_max: Math.round(p.estimated_max_cost || 0),
+    ...(isAssumed(p) ? { cost_min_listed: Math.round(p.estimated_min_cost || 0), cost_min_assumed: true } : {}),
     max_eidolon: Math.round(p.max_eidolon),
     appearance_rate_pct: p.Appearance_Rate_pct ?? null,
     full_clear_rate_pct: p.Full_Clear_Rate_pct ?? null,
@@ -1592,8 +1660,260 @@ function makeHeap(cmp) {
   };
 }
 
-function comboCostMin(r) { return r.estimated_min_cost || 0; }
+// ── Cost assumptions ─────────────────────────────────────────────────────
+// What-if overrides for a team's *minimum* estimated cost. Used only by the
+// combination planner (cost ranking, result-card costs, pinned-plan totals): a
+// team listed at 4→8 can be assumed to cost 7→8 or 6→8. The new min can only
+// be raised (never below the listed min) and never above the team's max cost.
+// Optionally scoped to specific nodes/floors; no scope = every node.
+let costAssumptions  = [];        // [{ id, akey, team, meid, lo, hi, newMin, nodes: Set|null }]
+let assumptionIndex  = new Map(); // akey -> assumptions that mention that team
+let _assumeSeq       = 0;
+let assumeDirty      = false;     // results on screen predate the latest change
+let gearRow          = null;      // row whose ⚙ popover is open
+let gearRange        = { lo: 0, hi: 0 };
+let gearNodes        = new Set(); // scope chosen in the popover (empty = all)
+let gearEditing      = null;      // existing assumption being edited, if any
+
+function apEsc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+// A team's identity for assumptions: same team string + same max eidolon.
+function assumeKey(r) { return r.Team + '||' + Math.round(r.max_eidolon); }
+function assumeSig(nodes) { return nodes ? [...nodes].sort((a, b) => a - b).join(',') : '*'; }
+function assumeScopeText(a) {
+  return a.nodes ? [...a.nodes].sort((x, y) => x - y).map(d => DIM_LABEL[0] + d).join(' ') : 'all ' + DIM_LABEL.toLowerCase() + 's';
+}
+
+function rebuildAssumptionIndex() {
+  assumptionIndex = new Map();
+  costAssumptions.forEach(a => {
+    if (!assumptionIndex.has(a.akey)) assumptionIndex.set(a.akey, []);
+    assumptionIndex.get(a.akey).push(a);
+  });
+}
+
+// Assumed min cost for this row (clamped to the row's own listed range), or
+// null when no assumption applies to it. If several apply, the highest wins.
+function assumedMinCost(r) {
+  if (!assumptionIndex.size) return null;
+  const list = assumptionIndex.get(r._akey || (r._akey = assumeKey(r)));
+  if (!list) return null;
+  const lo = r.estimated_min_cost || 0, hi = r.estimated_max_cost || 0;
+  let best = null;
+  for (const a of list) {
+    if (a.nodes && !a.nodes.has(r.dim_key)) continue;
+    const v = Math.min(hi, Math.max(lo, a.newMin));
+    if (best == null || v > best) best = v;
+  }
+  return best;
+}
+function isAssumed(r) {
+  const v = assumedMinCost(r);
+  return v != null && v > (r.estimated_min_cost || 0);
+}
+
+function comboCostMin(r) {
+  const a = assumedMinCost(r);
+  return a != null ? a : (r.estimated_min_cost || 0);
+}
 function comboCostMax(r) { return r.estimated_max_cost || 0; }
+
+function syncAssumeMsg(msg) {
+  const el = document.getElementById('assumeMsg');
+  if (!el) return;
+  el.textContent = msg || (assumeDirty ? '↻ Assumptions changed — press Find Combinations to re-rank.' : '');
+}
+
+function renderAssumptions() {
+  const list = document.getElementById('assumeList');
+  if (!list) return;
+  const cnt = document.getElementById('assumeCount');
+  if (cnt) cnt.textContent = costAssumptions.length ? `(${costAssumptions.length} active)` : '';
+  const clr = document.getElementById('assumeClear');
+  if (clr) clr.disabled = !costAssumptions.length;
+  list.innerHTML = costAssumptions.map(a =>
+    `<div class="assume-item" data-id="${a.id}">
+      <span class="t">${apEsc(a.team)} <span class="sc">· E${a.meid}</span></span>
+      <span class="r">min <input class="autoplan-input" type="number" step="any" min="${a.lo}" max="${a.hi}" value="${a.newMin}" data-edit="${a.id}"/> <span class="sc">listed ${fmtInt(Math.round(a.lo))}→${fmtInt(Math.round(a.hi))}</span></span>
+      <span class="sc">${apEsc(assumeScopeText(a))}</span>
+      <button class="assume-del" type="button" data-del="${a.id}" title="Remove this assumption">✕</button>
+    </div>`
+  ).join('');
+}
+
+function assumeChanged() {
+  rebuildAssumptionIndex();
+  renderAssumptions();
+  assumeDirty = !!autoplanState;
+  syncAssumeMsg();
+  updatePlannerBanner(); // pinned-plan totals use the assumed cost
+}
+
+// Widest listed cost range of a team (same team + max eidolon) across the planner nodes.
+function assumeRange(akey) {
+  let lo = Infinity, hi = -Infinity;
+  for (const r of RAW_DATA) {
+    if (!PLANNER_DIMS.includes(r.dim_key)) continue;
+    if ((r._akey || (r._akey = assumeKey(r))) !== akey) continue;
+    lo = Math.min(lo, r.estimated_min_cost || 0);
+    hi = Math.max(hi, r.estimated_max_cost || 0);
+  }
+  return { lo, hi };
+}
+
+function closeGear() {
+  const pop = document.getElementById('assumePop');
+  if (pop) pop.style.display = 'none';
+  gearRow = null; gearEditing = null;
+}
+
+// ⚙ popover for one team row: raise its min cost, pick the nodes it applies to.
+function openGear(row, anchor) {
+  const pop = document.getElementById('assumePop');
+  if (!pop || !row || !PLANNER_DIMS.includes(row.dim_key)) return;
+  const akey = row._akey || (row._akey = assumeKey(row));
+  gearRow   = row;
+  gearRange = assumeRange(akey);
+  gearEditing = (assumptionIndex.get(akey) || [])
+    .filter(a => !a.nodes || a.nodes.has(row.dim_key))
+    .sort((a, b) => b.newMin - a.newMin)[0] || null;
+  // Editing an existing assumption keeps its scope; a new one starts on this team's own node.
+  gearNodes = gearEditing ? new Set(gearEditing.nodes || []) : new Set([row.dim_key]);
+  const $ = id => document.getElementById(id);
+  $('apTitle').textContent = row.Team;
+  $('apSub').textContent = `E${Math.round(row.max_eidolon)} · listed ${fmtInt(Math.round(gearRange.lo))}→${fmtInt(Math.round(gearRange.hi))}`;
+  const m = $('apMin');
+  m.min = gearRange.lo; m.max = gearRange.hi;
+  m.value = gearEditing ? gearEditing.newMin : '';
+  m.placeholder = `${Math.round(gearRange.lo)}–${Math.round(gearRange.hi)}`;
+  $('apMsg').textContent = '';
+  $('apRemove').style.display = gearEditing ? '' : 'none';
+  document.querySelectorAll('#apNodes .btn-toggle').forEach(b => b.classList.toggle('active', gearNodes.has(parseInt(b.dataset.dim, 10))));
+  pop.style.display = 'block';
+  const b = anchor.getBoundingClientRect();
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.left = Math.min(Math.max(8, b.left), Math.max(8, window.innerWidth - pw - 8)) + 'px';
+  let top = b.bottom + 6;
+  if (top + ph > window.innerHeight - 8) top = Math.max(8, b.top - ph - 6);
+  pop.style.top = top + 'px';
+  m.focus(); m.select();
+}
+
+// Pin an edited team (replacing whatever is pinned on its node) so the next
+// Find Combinations keeps it and re-ranks the other nodes around it.
+function pinForAssumption(row) {
+  if (!PLANNER_DIMS.includes(row.dim_key)) return;
+  const cur = plannerPins.get(row.dim_key);
+  if (cur === row) return;
+  if (cur) { plannerPins.delete(row.dim_key); restoreRemovedFilters(cur); }
+  plannerPins.set(row.dim_key, row);
+  absorbPinnedRow(row);
+  applyPlannerState();
+}
+
+function applyGear() {
+  const row = gearRow;
+  if (!row) return;
+  const { lo, hi } = gearRange;
+  const msg = (t) => { document.getElementById('apMsg').textContent = t; };
+  const raw = parseFloat(document.getElementById('apMin').value);
+  if (!Number.isFinite(raw)) { msg(`enter a min cost between ${Math.round(lo)} and ${Math.round(hi)}`); return; }
+  const v = Math.min(hi, raw);
+  if (v <= lo) { msg(`must be above the listed min (${Math.round(lo)})`); return; }
+  const nodes = gearNodes.size ? new Set(gearNodes) : null;
+  const akey = row._akey || (row._akey = assumeKey(row));
+  if (gearEditing && costAssumptions.includes(gearEditing)) {
+    gearEditing.newMin = v; gearEditing.nodes = nodes;
+  } else {
+    const sig = assumeSig(nodes);
+    const ex = costAssumptions.find(a => a.akey === akey && assumeSig(a.nodes) === sig);
+    if (ex) ex.newMin = v;
+    else costAssumptions.push({ id: ++_assumeSeq, akey, team: row.Team, meid: Math.round(row.max_eidolon), lo, hi, newMin: v, nodes });
+  }
+  closeGear();
+  assumeChanged();
+  if (!nodes || nodes.has(row.dim_key)) pinForAssumption(row);
+  recompute();
+  if (autoplanState) renderAutoplanResults(autoplanState);
+}
+
+function removeGear() {
+  if (gearEditing) costAssumptions = costAssumptions.filter(a => a !== gearEditing);
+  closeGear();
+  assumeChanged();
+  recompute();
+  if (autoplanState) renderAutoplanResults(autoplanState);
+}
+
+// Re-create carried-over assumptions after a version switch (teams that no
+// longer exist in the new dataset are dropped).
+function assumeRestore(saved) {
+  saved.forEach(s => {
+    if (!s || typeof s.team !== 'string' || !Number.isFinite(s.newMin)) return;
+    let lo = Infinity, hi = -Infinity;
+    for (const r of RAW_DATA) {
+      if (r.Team !== s.team || Math.round(r.max_eidolon) !== s.meid || !PLANNER_DIMS.includes(r.dim_key)) continue;
+      lo = Math.min(lo, r.estimated_min_cost || 0);
+      hi = Math.max(hi, r.estimated_max_cost || 0);
+    }
+    if (!Number.isFinite(lo)) return;
+    const nodes = Array.isArray(s.nodes) && s.nodes.length ? new Set(s.nodes.filter(d => PLANNER_DIMS.includes(d))) : null;
+    if (nodes && !nodes.size) return;
+    costAssumptions.push({ id: ++_assumeSeq, akey: s.team + '||' + s.meid, team: s.team, meid: s.meid, lo, hi, newMin: Math.min(hi, Math.max(lo, s.newMin)), nodes });
+  });
+}
+
+function setupAssumptions() {
+  const $ = id => document.getElementById(id);
+  if (!$('assumePop')) return;
+
+  $('apNodes').innerHTML = PLANNER_DIMS.map(d =>
+    `<button class="btn-toggle" type="button" data-dim="${d}">${DIM_LABEL[0]}${d}</button>`
+  ).join('');
+  $('apNodes').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-dim]');
+    if (!btn) return;
+    const d = parseInt(btn.dataset.dim, 10);
+    if (gearNodes.has(d)) { gearNodes.delete(d); btn.classList.remove('active'); }
+    else { gearNodes.add(d); btn.classList.add('active'); }
+  });
+  $('apApply').addEventListener('click', applyGear);
+  $('apRemove').addEventListener('click', removeGear);
+  $('apCancel').addEventListener('click', closeGear);
+  $('apMin').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') applyGear();
+    else if (e.key === 'Escape') closeGear();
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#assumePop, [data-gear]')) closeGear();
+  });
+  // The popover is anchored to a row that re-renders on scroll, so close it.
+  document.addEventListener('scroll', (e) => {
+    const t = e.target;
+    if (!(t && t.nodeType === 1 && t.closest('#assumePop'))) closeGear();
+  }, true);
+
+  $('assumeList').addEventListener('click', (e) => {
+    const del = e.target.closest('[data-del]');
+    if (!del) return;
+    const id = parseInt(del.dataset.del, 10);
+    costAssumptions = costAssumptions.filter(a => a.id !== id);
+    assumeChanged();
+  });
+  $('assumeList').addEventListener('change', (e) => {
+    const inp = e.target.closest('[data-edit]');
+    if (!inp) return;
+    const a = costAssumptions.find(x => x.id === parseInt(inp.dataset.edit, 10));
+    const v = parseFloat(inp.value);
+    if (!a || !Number.isFinite(v)) { renderAssumptions(); return; }
+    a.newMin = Math.min(a.hi, Math.max(a.lo, v));
+    assumeChanged();
+  });
+  $('assumeClear').addEventListener('click', () => { costAssumptions = []; assumeChanged(); });
+
+  renderAssumptions();
+}
 
 // Best-first walk over the node combinations. Each step only raises one node's
 // index, and every pool is sorted so its value can only get worse — so a
@@ -1617,6 +1937,10 @@ function findTopCombos() {
   const combTarget = Number.isFinite(combParsed) ? combParsed : null;
   const rankByCost = target != null || combTarget != null;
 
+  // Teams edited with ⚙ that are still pinned stay fixed on their node: the
+  // search only varies the other nodes around them.
+  const keptNodes = new Set(nodes.filter(d => { const p = plannerPins.get(d); return p && isAssumed(p); }));
+
   const base  = userFilteredRows();
   const pools = nodes.map(d => {
     let rows = base.filter(r => r.dim_key === d && r[stat] != null);
@@ -1625,6 +1949,8 @@ function findTopCombos() {
     else            rows.sort((a, b) => SCORE_LOWER_BETTER ? a[stat] - b[stat] : b[stat] - a[stat]);
     return rows;
   });
+
+  nodes.forEach((d, i) => { if (keptNodes.has(d)) pools[i] = [plannerPins.get(d)]; });
 
   const empty = pools.findIndex(p => !p.length);
   if (empty >= 0) {
@@ -1695,7 +2021,7 @@ function findTopCombos() {
     const sum     = combineStats(stats, 'sum');
     const costMin = rows.reduce((s, r) => s + comboCostMin(r), 0);
     const costMax = rows.reduce((s, r) => s + comboCostMax(r), 0);
-    return { idx, rows, stats, metric, sum, costMin, costMax };
+    return { idx, rows, stats, metric, sum, costMin, costMax, assumed: rows.map(r => isAssumed(r)) };
   }
   function push(idx) {
     const key = idx.join(',');
@@ -1722,7 +2048,7 @@ function findTopCombos() {
   if (!combos.length && combTarget != null) {
     reason = `no combination reaches a combined ${AUTOPLAN_OP_SYM[op] || 'Σ'} ${autoplanStatLabel(stat)} ${HAS_MIN_THRESHOLD ? '≥' : '≤'} ${combTarget}` + (truncated ? ' before the search cap was hit' : '');
   }
-  return { nodes, combos, truncated, target, combTarget, reason };
+  return { nodes, combos, truncated, target, combTarget, reason, kept: keptNodes.size };
 }
 
 function renderAutoplanResults(res) {
@@ -1741,17 +2067,23 @@ function renderAutoplanResults(res) {
     ? ` · each ${DIM_LABEL.toLowerCase()} ${HAS_MIN_THRESHOLD ? '≥' : '≤'} ${res.target}`
     : '';
   if (res.combTarget != null) cap += ` · combined ${sym} ${autoplanStatLabel(autoplanStat)} ${HAS_MIN_THRESHOLD ? '≥' : '≤'} ${res.combTarget}`;
+  if (costAssumptions.length) {
+    cap += rankByCost
+      ? ` · ${costAssumptions.length} cost assumption${costAssumptions.length === 1 ? '' : 's'} applied`
+      : ' · <span class="autoplan-warn">assumptions only reorder cost-ranked results (set a threshold)</span>';
+  }
+  if (res.kept) cap += ` · ${res.kept} edited team${res.kept === 1 ? '' : 's'} kept pinned`;
   const warn    = res.truncated ? ' · <span class="autoplan-warn">⚠️ search capped</span>' : '';
   let html = `<div class="autoplan-empty">${res.combos.length} combination${res.combos.length === 1 ? '' : 's'} · ${ranking}${cap}${warn}</div>`;
   res.combos.forEach((c, i) => {
     const pinned = c.rows.every(r => plannerPins.get(r.dim_key) === r);
     const nodesHtml = c.rows.map((r, n) =>
-      `<span class="autoplan-node"><span class="d">${DIM_LABEL[0]}${res.nodes[n]}</span><span class="s">${fmtNum(c.stats[n], 0)}</span><span class="t">${r.Team}</span></span>`
+      `<span class="autoplan-node"><span class="d">${DIM_LABEL[0]}${res.nodes[n]}</span><span class="s">${fmtNum(c.stats[n], 0)}</span><span class="t">${r.Team}</span><button class="cost-gear" type="button" data-gear data-node="${n}" title="Assume a higher min cost for this team">⚙</button>${c.assumed && c.assumed[n] ? `<span class="flag" title="Assumed min cost ${fmtInt(Math.round(comboCostMin(r)))} (listed ${fmtInt(Math.round(r.estimated_min_cost || 0))})">⚑</span>` : ''}</span>`
     ).join('');
     html += `<div class="autoplan-card${pinned ? ' pinned' : ''}" data-combo="${i}">
       <span class="autoplan-rank">#${i + 1}</span>
       <span class="autoplan-metric">${sym} ${autoplanStatLabel(autoplanStat)} ${fmtInt(Math.round(c.metric))}</span>
-      <span class="autoplan-cost">Cost ${fmtInt(Math.round(c.costMin))}→${fmtInt(Math.round(c.costMax))}</span>
+      <span class="autoplan-cost${c.assumed && c.assumed.some(Boolean) ? ' assumed' : ''}">Cost ${fmtInt(Math.round(c.costMin))}→${fmtInt(Math.round(c.costMax))}${c.assumed && c.assumed.some(Boolean) ? ' ⚑' : ''}</span>
       <span class="autoplan-nodes">${nodesHtml}</span>
       <button class="autoplan-pin" type="button">${pinned ? '📌 Unpin' : '📌 Pin'}</button>
     </div>`;
@@ -1787,6 +2119,8 @@ function runAutoplan() {
     catch (err) { console.error('autoplan failed', err); res = { nodes: [], combos: [], reason: 'search failed' }; }
     autoplanState   = res;
     autoplanResults = res.combos;
+    assumeDirty     = false;
+    syncAssumeMsg();
     if (res.combos.length) pinCombo(res.combos[0]);
     else renderAutoplanResults(res);
     btn.disabled = false;
@@ -1833,6 +2167,7 @@ function renderAutoplanHelp() {
   steps.push(`<li><b>Threshold per ${DIM_LABEL}</b> (optional) — every individual team must be ${cmp} this value${IS_MOC ? ' (cycle count)' : ''}.</li>`);
   steps.push(`<li><b>Combined ${floor ? 'min' : 'max'} threshold</b> (optional) — the ${floor ? 'floor' : 'ceiling'} applies to the <i>combined</i> number the Combine buttons produce, not to each team. Its label follows your Combine and Team Stat choices. Example: with <b>${IS_MOC ? 'Ø Avg' : 'Σ Sum'}</b> and a combined ${floor ? 'min' : 'max'} of X, only combinations whose per-${node} stats ${IS_MOC ? 'average' : 'add up'} ${cmp} X are kept. It stacks with the per-${node} threshold when both are set.</li>`);
   steps.push(`<li><b>Top K → Find Combinations</b> — shows the best K results and pins the top one. Click any result card to pin or unpin it; the table below then locks those ${node}s.</li>`);
+  steps.push(`<li><b>⚙ Assumptions</b> (optional) — click the ⚙ beside any team (table or result card) to raise its <b>min cost</b> (e.g. listed 4→8, assume 7→8), capped at its max cost, and choose which ${node}s it applies to (none = all). Applying pins the team; press Find Combinations again and it stays pinned while the other ${node}s are re-ranked around it with the new cost.</li>`);
   const rankNote = `Ranking: with no threshold, combinations are ordered by the combined value (${SCORE_LOWER_BETTER ? 'lowest first' : 'highest first'}). Setting either threshold switches the ordering to cheapest total cost first among combinations that pass.`;
   el.innerHTML = `<ol>${steps.join('')}</ol><div class="autoplan-help-note">${rankNote} The filters above (${node}s, cost range, characters, roster) also shrink the pool the planner searches.</div>`;
 }
@@ -1920,6 +2255,14 @@ function setupAutoplan() {
     apToggle.addEventListener('click', () => setCollapsed(!apPanel.classList.contains('collapsed'), true));
   }
   document.getElementById('autoplanResults').addEventListener('click', (e) => {
+    const gearBtn = e.target.closest('[data-gear]');
+    if (gearBtn) {
+      const gc = gearBtn.closest('.autoplan-card');
+      const cb = gc && autoplanResults[parseInt(gc.dataset.combo, 10)];
+      const rw = cb && cb.rows[parseInt(gearBtn.dataset.node, 10)];
+      if (rw) openGear(rw, gearBtn);
+      return;
+    }
     const card = e.target.closest('.autoplan-card');
     if (!card) return;
     const combo = autoplanResults[parseInt(card.dataset.combo, 10)];
@@ -2778,6 +3121,7 @@ renderChips();
 document.getElementById('plannerClearBtn').addEventListener('click', unpinAll);
 
 setupAutoplan();
+setupAssumptions();
 
 const exportWrap = document.getElementById('plannerExportWrap');
 const exportBtn  = document.getElementById('plannerExportBtn');
@@ -2811,6 +3155,14 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 document.getElementById('tableBody').addEventListener('click', (e) => {
   const tr = e.target.closest('tr');
   if (!tr) return;
+  const gearBtn = e.target.closest('[data-gear]');
+  if (gearBtn) {
+    const gr = tr.classList.contains('pinned-row')
+      ? plannerPins.get(parseInt(tr.dataset.dim, 10))
+      : filteredData[parseInt(tr.dataset.idx, 10)];
+    if (gr) openGear(gr, gearBtn);
+    return;
+  }
   if (e.target.closest('.dist-btn')) {
     e.stopPropagation();
     const r = tr.classList.contains('pinned-row')
@@ -3015,6 +3367,13 @@ function prepareData(savedState) {
   autoplanResults = [];
   const apResultsEl = document.getElementById('autoplanResults');
   if (apResultsEl) apResultsEl.innerHTML = '';
+  // Cost assumptions carry over a version switch (dropping teams that no longer exist).
+  costAssumptions = [];
+  assumeDirty = false;
+  if (savedState && Array.isArray(savedState.assumptions)) assumeRestore(savedState.assumptions);
+  rebuildAssumptionIndex();
+  renderAssumptions();
+  closeGear();
   NON_PLANNER_DIMS = new Set(
     [...document.querySelectorAll('#dimFilters .btn-toggle')]
       .map(b => parseInt(b.dataset.dim, 10))
@@ -3043,6 +3402,7 @@ function captureState() {
     ownedOnly:   ownedOnlyActive,
     ownedStrict: ownedStrictActive,
     charFilters: [...charFilters.values()].map(f => ({ base: f.base, mode: f.mode, eids: f.eids ? [...f.eids] : null, nodes: f.nodes ? [...f.nodes] : null })),
+    assumptions: costAssumptions.map(a => ({ team: a.team, meid: a.meid, newMin: a.newMin, nodes: a.nodes ? [...a.nodes] : null })),
   };
 }
 

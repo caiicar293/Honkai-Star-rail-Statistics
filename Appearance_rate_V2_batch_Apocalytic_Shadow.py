@@ -419,7 +419,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 pl.col("round_num").alias("Scores" if is_eidolon else "Total_Scores"),
                 pl.col("has_sustain").sum().alias("Sustains" if is_eidolon else "Total_Sustains"),
                 pl.col("is_full_clear").sum().alias("Full_Clears" if is_eidolon else "Total_Full_Clears"),
-                pl.col("uid").unique().alias("uids")
+            
             ])
 
             return (
@@ -473,12 +473,12 @@ class HonkaiStatistics_V2_APOC_Batch:
         header_cols = [
             "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", 
             "Total_Samples", "Total_Scores", "Total_Sustains", "Total_Full_Clears",
-            "uids", "Lightcones", "Relics", "Planar_Set"
+             "Lightcones", "Relics", "Planar_Set"
         ]
         self.char_stats = final_df.select(header_cols + eidolon_cols).collect()
 
         self.team_stats = (
-            lf.with_columns(pl.concat_list(char_cols).alias("temp_team"))
+            lf.with_columns(pl.concat_list(char_cols).list.drop_nulls().alias("temp_team"))
             .with_columns(
                 pl.col("temp_team").list.eval(
                     pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))
@@ -488,7 +488,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("round_num").alias("Scores"),
-                pl.col("uid").unique().alias("uids"),
+              
                 pl.col("is_full_clear").sum().alias("Total_Full_Clears"),
                 pl.col("has_sustain").sum().alias("Total_Sustains")
             ]).with_columns(
@@ -505,27 +505,71 @@ class HonkaiStatistics_V2_APOC_Batch:
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
-                pl.col("uids").list.explode().unique().alias("uids"),
+         
                 pl.col("Total_Full_Clears").sum(),
                 pl.col("Total_Sustains").sum()
                 
             ])
         )
 
-        new = self.team_stats.with_columns(pl.col('team_key').alias("Consequent"))
-        result = new.explode('team_key').explode('Consequent')
-        result = result.filter(pl.col("team_key") != pl.col("Consequent"))
+        new = self.team_stats.with_columns(pl.col('team_key').alias("Consequent") , pl.col('team_key').alias("Consequent2"))
+        self.result = new.explode('team_key')
+        result2 = self.result.explode('Consequent')
+        result3 = result2.filter(pl.col("team_key") < pl.col("Consequent"))
+        new1 = result3.with_columns(pl.concat_list("team_key","Consequent").alias("duo"))
 
-        self.duos = result.group_by(
+        self.d1 = result3.group_by(
             ["version", "at_eidolon_level", "up_to_eidolon_level", "node", pl.col('team_key').alias('Antecedent'), "Consequent"]
         ).agg([
             pl.col("Samples").sum(),
-            pl.col("Scores").list.explode().alias("Scores"),
-            pl.col("uids").list.explode().unique().alias("uids"),
+            pl.col("Scores").list.explode(),
+       
             pl.col("Total_Sustains").sum(),
             pl.col("Total_Full_Clears").sum()
         ])
 
+        self.new2=new1.drop(["archetype_key","team_key","Consequent"])
+        self.d2 = self.new2.with_columns(Consequent3 = pl.col("Consequent2").list.set_difference(pl.col("duo")))
+        
+        
+        self.d25 = self.d2.explode("Consequent3")
+        self.d3 = self.d25.with_columns(
+            pl.col("duo").list.join(",")
+        )
+        
+
+        self.d4 = self.d3.group_by(
+                    ["version", "at_eidolon_level", "up_to_eidolon_level", "node", pl.col('Consequent3').alias('Antecedent'), pl.col('duo').alias('Consequent')]
+                ).agg([
+                    pl.col("Samples").sum(),
+                    pl.col("Scores").list.explode(),
+                
+                    pl.col("Total_Sustains").sum(),
+                    pl.col("Total_Full_Clears").sum()
+                ])
+        
+
+        self.d5 = self.result.with_columns(Consequent = pl.col("Consequent").list.set_difference(pl.concat_list("team_key"))).with_columns(pl.col("Consequent").list.join(",")).drop(["archetype_key","Scores"]).rename({"team_key":"Antecedent"})
+        self.d6 = self.d2.rename({"Consequent3":"Consequent","duo":"Antecedent"}).with_columns(pl.col("Consequent").list.join(","),pl.col("Antecedent").list.join(",")).drop(["Scores"])
+        # Swap both the data and column names, keeping any other columns intact
+        self.duos_copy = self.d1.with_columns(
+            Consequent=pl.col("Antecedent"),
+            Antecedent=pl.col("Consequent"),
+        )
+        
+        self.trios_copy = self.d4.with_columns(
+            Consequent=pl.col("Antecedent"),
+            Antecedent=pl.col("Consequent"),
+        )
+        
+        self.quos_copy = self.d5.with_columns(
+            Consequent=pl.col("Antecedent"),
+            Antecedent=pl.col("Consequent"),
+        )
+        
+        self.duos = pl.concat([self.d1,self.duos_copy], how="diagonal")
+        self.trios = pl.concat([self.d4, self.trios_copy], how="diagonal")
+        self.quos = pl.concat([self.d6, self.d5,self.quos_copy], how="diagonal")
         if self.node == "all":
             index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "Character"]
             self.char_stats = agg_with_node_all(self.char_stats, index_cols)
@@ -538,6 +582,15 @@ class HonkaiStatistics_V2_APOC_Batch:
 
             index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "Antecedent", "Consequent"]
             self.duos = agg_with_node_all(self.duos, index_cols)
+            self.d1 = agg_with_node_all(self.d1, index_cols)
+            
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "Antecedent", "Consequent"]
+            self.trios = agg_with_node_all(self.trios, index_cols)
+            self.d4 = agg_with_node_all(self.d4, index_cols)
+
+            index_cols = ["version", "at_eidolon_level", "up_to_eidolon_level", "Antecedent", "Consequent", "Consequent2"]
+            self.quos = agg_with_node_all(self.quos, index_cols)
+           
 
             df = self.lf.with_columns(pl.lit(0, dtype=pl.Int64).alias("node"))
             self.lf = pl.concat([df, self.lf], how="vertical")
@@ -570,7 +623,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("total_Scores").alias("Scores"),
-                pl.col("uid").unique().alias("uids"),
+
                 pl.col("is_full_clear").sum().alias("Total_Full_Clears"),
                 cs.ends_with("_has_sustain").sum()
                 
@@ -586,7 +639,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
-                pl.col("uids").list.explode().unique().alias("uids"),
+              
                  pl.col("Total_Full_Clears").sum(),
                 cs.ends_with("_has_sustain").sum()
             ])
@@ -858,7 +911,7 @@ class HonkaiStatistics_V2_APOC_Batch:
 
     def get_duos_stats(self):
         char_freq = (
-            self.char_stats.lazy()
+            self.char_stats.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Total_Samples"]).lazy()
             .join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left")
             .select([
                 "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character",
@@ -876,7 +929,12 @@ class HonkaiStatistics_V2_APOC_Batch:
             .rename({"char_support": "support_C"})
             .join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left")
         )
-
+        df_copy = self.d1.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent","Consequent","Scores"]).with_columns(*list_stats_exprs("Scores", "Scores")).lazy()
+        df_copy1 = df_copy.with_columns(
+            Consequent=pl.col("Antecedent"),
+            Antecedent=pl.col("Consequent"),
+        )
+        scores = pl.concat([df_copy,df_copy1], how = "diagonal").drop(["Scores"])
         return rules.with_columns([
             (pl.col("Samples") / pl.col("version_total_samples")).alias("support"),
         ]).with_columns([
@@ -900,7 +958,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             (
                 pl.col("support") / (pl.col("support_A") + pl.col("support_C") - pl.col("support") + 1e-7)
             ).alias("jaccard"),
-            *list_stats_exprs("Scores", "Scores"),
+       
         ]).select([
             "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", "Samples",
             appearance_rate_expr("Samples", "version_total_samples"),
@@ -915,10 +973,179 @@ class HonkaiStatistics_V2_APOC_Batch:
             sustain_pct_expr("Total_Sustains", "Samples"),
             pl.col("Total_Full_Clears"),
             full_clear_rate_expr("Total_Full_Clears", "Samples"),
-            "25th Percentile Scores", "Median Scores", "75th Percentile Scores",
-            "Std Dev Scores", "Min Scores", "Average Scores", "Max Scores", "Scores Distributions",
-        ]).sort(["version", "node", "Lift"], descending=[True, False, True]).collect()
+            
+        ]).join(scores, on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent","Consequent"]).collect()
 
+
+    def get_trios_stats(self):
+            char_freq = (
+                self.char_stats.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Total_Samples"]).lazy()
+                
+            )
+            duo_freq = (
+                self.duos.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character")).with_columns(
+            pl.col("Character").list.join(",")
+        ).lazy()
+                
+            )
+
+            supports = pl.concat([char_freq, duo_freq], how="vertical").join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left").select([
+                                "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character",
+                                (pl.col("Total_Samples") / pl.col("version_total_samples")).alias("char_support")
+                            ])
+            rules = (
+                self.trios.lazy()
+                .join(supports, left_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent"],
+                      right_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"], how="left")
+                .rename({"char_support": "support_A"})
+                .join(supports, left_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Consequent"],
+                      right_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"], how="left")
+                .rename({"char_support": "support_C"})
+                
+                .join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left")
+            )
+            
+            df_copy = self.d4.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent","Consequent","Scores"]).with_columns(*list_stats_exprs("Scores", "Scores")).lazy()
+            df_copy1 = df_copy.with_columns(
+                        Consequent=pl.col("Antecedent"),
+                        Antecedent=pl.col("Consequent"),
+                    )
+            scores = pl.concat([df_copy,df_copy1], how = "diagonal").drop(["Scores"])        
+            return rules.with_columns([
+                (pl.col("Samples") / pl.col("version_total_samples")).alias("support"),
+            ]).with_columns([
+                (pl.col("support") / pl.col("support_A")).alias("confidence"),
+            ]).with_columns([
+                (pl.col("confidence") / pl.col("support_C")).alias("lift"),
+                (pl.col("support") - (pl.col("support_A") * pl.col("support_C"))).alias("leverage"),
+                ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction"),
+                (
+                    (pl.col("support") - pl.col("support_A") * pl.col("support_C")) /
+                    pl.max_horizontal(
+                        pl.col("support") * (1 - pl.col("support_A")),
+                        pl.col("support_A") * (pl.col("support_C") - pl.col("support")),
+                        1e-7
+                    )
+                ).alias("zhang"),
+                (
+                    pl.when(pl.col("confidence") >= pl.col("support_C"))
+                    .then((pl.col("confidence") - pl.col("support_C")) / pl.max_horizontal(1 - pl.col("support_C"), 1e-7))
+                    .otherwise((pl.col("confidence") - pl.col("support_C")) / pl.max_horizontal(pl.col("support_C"), 1e-7))            ).alias("certainty"),
+                (
+                    pl.col("support") / (pl.col("support_A") + pl.col("support_C") - pl.col("support") + 1e-7)
+                ).alias("jaccard"),
+            ]).select([
+                "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", "Samples",
+                appearance_rate_expr("Samples", "version_total_samples"),
+                pl.col("confidence").round(3).alias("Confidence"),
+                pl.col("lift").round(3).alias("Lift"),
+                pl.col("leverage").round(4).alias("Leverage"),
+                pl.col("conviction").round(3).alias("Conviction"),
+                pl.col("zhang").round(3).alias("Zhang"),
+                pl.col("certainty").round(3).alias("Certainty"),
+                pl.col("jaccard").round(3).alias("Jaccard"),
+                pl.col("Total_Sustains"),
+                sustain_pct_expr("Total_Sustains", "Samples"),
+                pl.col("Total_Full_Clears"),
+                full_clear_rate_expr("Total_Full_Clears", "Samples"),
+            ]).join(scores, on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent","Consequent"]).collect()
+            
+    def get_quos_stats(self):
+            char_freq = (
+            self.char_stats.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character", "Total_Samples"]).lazy()
+            )
+
+            duo_freq = (
+            self.duos.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character")).with_columns(
+            pl.col("Character").list.join(",")
+            ).lazy()
+            )
+            trio_freq = (
+            self.trios.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character") ).with_columns(
+            pl.col("Character").list.sort().list.join(",")
+                        ).lazy()
+            ).drop(["Antecedent", "Consequent"]).unique()
+
+
+            supports = pl.concat([char_freq, duo_freq,trio_freq], how="vertical").join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left").select([
+                            "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character",
+                            (pl.col("Total_Samples") / pl.col("version_total_samples")).alias("char_support")
+                        ])
+                        
+            rules = (
+            self.quos.with_columns(
+                Antecedent	= (
+                    
+                        pl.col("Antecedent")
+                        .str.split(",")
+                        .list.sort()
+                        .list.join(",")
+                    
+                    )
+                ,
+                Consequent = (
+                    
+                        pl.col("Consequent")
+                        .str.split(",")
+                        .list.sort()
+                        .list.join(",")
+                    
+                    
+                )
+            ).lazy()
+            .join(supports, left_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent"],
+                    right_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"], how="left")
+            .rename({"char_support": "support_A"})
+            .join(supports, left_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Consequent"],
+                    right_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"], how="left")
+            .rename({"char_support": "support_C"})
+
+            .join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left")
+            )
+
+
+            scores = self.team_stats.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node","team_key","Scores"]).with_columns([*list_stats_exprs("Scores", "Scores")]).lazy()
+            return rules.with_columns([
+                (pl.col("Samples") / pl.col("version_total_samples")).alias("support"),
+            ]).with_columns([
+                (pl.col("support") / pl.col("support_A")).alias("confidence"),
+            ]).with_columns([
+                (pl.col("confidence") / pl.col("support_C")).alias("lift"),
+                (pl.col("support") - (pl.col("support_A") * pl.col("support_C"))).alias("leverage"),
+                ((1 - pl.col("support_C")) / (1 - pl.col("confidence") + 1e-7)).alias("conviction"),
+                (
+                    (pl.col("support") - pl.col("support_A") * pl.col("support_C")) /
+                    pl.max_horizontal(
+                        pl.col("support") * (1 - pl.col("support_A")),
+                        pl.col("support_A") * (pl.col("support_C") - pl.col("support")),
+                        1e-7
+                    )
+                ).alias("zhang"),
+                (
+                    pl.when(pl.col("confidence") >= pl.col("support_C"))
+                    .then((pl.col("confidence") - pl.col("support_C")) / pl.max_horizontal(1 - pl.col("support_C"), 1e-7))
+                    .otherwise((pl.col("confidence") - pl.col("support_C")) / pl.max_horizontal(pl.col("support_C"), 1e-7))            ).alias("certainty"),
+                (
+                    pl.col("support") / (pl.col("support_A") + pl.col("support_C") - pl.col("support") + 1e-7)
+                ).alias("jaccard"),
+          
+            ]).select([
+                "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", "Consequent2", "Samples",
+                appearance_rate_expr("Samples", "version_total_samples"),
+                pl.col("confidence").round(3).alias("Confidence"),
+                pl.col("lift").round(3).alias("Lift"),
+                pl.col("leverage").round(4).alias("Leverage"),
+                pl.col("conviction").round(3).alias("Conviction"),
+                pl.col("zhang").round(3).alias("Zhang"),
+                pl.col("certainty").round(3).alias("Certainty"),
+                pl.col("jaccard").round(3).alias("Jaccard"),
+                pl.col("Total_Sustains"),
+                sustain_pct_expr("Total_Sustains", "Samples"),
+                pl.col("Total_Full_Clears"),
+                full_clear_rate_expr("Total_Full_Clears", "Samples"),
+               
+            ]).join(scores, left_on =["version", "at_eidolon_level", "up_to_eidolon_level", "node","Consequent2"], right_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node","team_key"],how= "left").drop(["Consequent2"]).collect()
+                      
     def get_combined_team_df(self):
         node_char_cols = self._node_char_cols
         archetype_cols = [c.replace("_chars", "_archetype") for c in node_char_cols]

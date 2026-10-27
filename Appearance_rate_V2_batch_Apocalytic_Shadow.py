@@ -163,7 +163,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             row["char"]: row["sort_index"]
             for row in self.rol.collect().to_dicts()
         }
-
+        self.char_to_index = char_to_index
         row_max_stars_expr = (
             pl.when(pl.col("is_starward").is_not_null()).then(pl.lit(4)).otherwise(pl.lit(3))
             if self._has_starward_col else pl.lit(3)
@@ -515,8 +515,10 @@ class HonkaiStatistics_V2_APOC_Batch:
         new = self.team_stats.with_columns(pl.col('team_key').alias("Consequent") , pl.col('team_key').alias("Consequent2"))
         self.result = new.explode('team_key')
         result2 = self.result.explode('Consequent')
-        result3 = result2.filter(pl.col("team_key") < pl.col("Consequent"))
-        new1 = result3.with_columns(pl.concat_list("team_key","Consequent").alias("duo"))
+        result3 = result2.filter(pl.col("team_key").replace_strict(char_to_index, default=999) < pl.col("Consequent").replace_strict(char_to_index, default=999))
+        new1 = result3.with_columns(pl.concat_list("team_key","Consequent").list.eval(
+                    pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))
+                ).alias("duo"))
 
         self.d1 = result3.group_by(
             ["version", "at_eidolon_level", "up_to_eidolon_level", "node", pl.col('team_key').alias('Antecedent'), "Consequent"]
@@ -529,7 +531,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         ])
 
         self.new2=new1.drop(["archetype_key","team_key","Consequent"])
-        self.d2 = self.new2.with_columns(Consequent3 = pl.col("Consequent2").list.set_difference(pl.col("duo"))).filter(pl.col("Consequent3").list.len() >=1)
+        self.d2 = self.new2.with_columns(Consequent3 = pl.col("Consequent2").list.set_symmetric_difference(pl.col("duo"))).filter(pl.col("Consequent3").list.len() >=1)
         
         
         self.d25 = self.d2.explode("Consequent3")
@@ -549,7 +551,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 ])
         
 
-        self.d5 = self.result.with_columns(Consequent = pl.col("Consequent").list.set_difference(pl.concat_list("team_key"))).filter(pl.col("Consequent").list.len() == 3).with_columns(pl.col("Consequent").list.join(",")).drop(["archetype_key","Scores"]).rename({"team_key":"Antecedent"})
+        self.d5 = self.result.with_columns(Consequent = pl.col("Consequent").list.set_symmetric_difference(pl.concat_list("team_key"))).filter(pl.col("Consequent").list.len() == 3).with_columns(pl.col("Consequent").list.join(",")).drop(["archetype_key","Scores"]).rename({"team_key":"Antecedent"})
         self.d6 = self.d2.rename({"Consequent3":"Consequent","duo":"Antecedent"}).with_columns(pl.col("Consequent").list.join(","),pl.col("Antecedent").list.join(",")).drop(["Scores"])
         # Swap both the data and column names, keeping any other columns intact
         self.duos_copy = self.d1.with_columns(
@@ -659,7 +661,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 pl.count("uid").alias("Samples"),
                 pl.col("total_Scores").alias("Scores")
             ])
-            .collect()
+            
         )
 
         self.combined_total_samples_df = combined.group_by(
@@ -983,7 +985,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 
             )
             duo_freq = (
-                self.duos.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character")).with_columns(
+                self.d1.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character")).with_columns(
             pl.col("Character").list.join(",")
         ).lazy()
                 
@@ -1056,15 +1058,15 @@ class HonkaiStatistics_V2_APOC_Batch:
             )
 
             duo_freq = (
-            self.duos.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character")).with_columns(
+            self.d1.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character")).with_columns(
             pl.col("Character").list.join(",")
             ).lazy()
             )
             trio_freq = (
-            self.trios.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character") ).with_columns(
-            pl.col("Character").list.sort().list.join(",")
+            self.d4.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character") ).with_columns(
+            pl.col("Character").list.join(",")
                         ).lazy()
-            ).drop(["Antecedent", "Consequent"]).unique()
+            ).drop(["Antecedent", "Consequent"])
 
 
             supports = pl.concat([char_freq, duo_freq,trio_freq], how="vertical").join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left").select([
@@ -1073,26 +1075,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                         ])
                         
             rules = (
-            self.quos.with_columns(
-                Antecedent	= (
-                    
-                        pl.col("Antecedent")
-                        .str.split(",")
-                        .list.sort()
-                        .list.join(",")
-                    
-                    )
-                ,
-                Consequent = (
-                    
-                        pl.col("Consequent")
-                        .str.split(",")
-                        .list.sort()
-                        .list.join(",")
-                    
-                    
-                )
-            ).lazy()
+            self.quos.lazy()
             .join(supports, left_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent"],
                     right_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character"], how="left")
             .rename({"char_support": "support_A"})
@@ -1144,7 +1127,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 pl.col("Total_Full_Clears"),
                 full_clear_rate_expr("Total_Full_Clears", "Samples"),
                
-            ]).join(scores, left_on =["version", "at_eidolon_level", "up_to_eidolon_level", "node","Consequent2"], right_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node","team_key"],how= "left").drop(["Consequent2"]).collect()
+            ]).join(scores, left_on =["version", "at_eidolon_level", "up_to_eidolon_level", "node","Consequent2"], right_on=["version", "at_eidolon_level", "up_to_eidolon_level", "node","team_key"],how= "left").drop(["Consequent2","Scores"]).collect()
                       
     def get_combined_team_df(self):
         node_char_cols = self._node_char_cols

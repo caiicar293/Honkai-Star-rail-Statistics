@@ -529,7 +529,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         ])
 
         self.new2=new1.drop(["archetype_key","team_key","Consequent"])
-        self.d2 = self.new2.with_columns(Consequent3 = pl.col("Consequent2").list.set_difference(pl.col("duo")))
+        self.d2 = self.new2.with_columns(Consequent3 = pl.col("Consequent2").list.set_difference(pl.col("duo"))).filter(pl.col("Consequent3").list.len() >=1)
         
         
         self.d25 = self.d2.explode("Consequent3")
@@ -549,7 +549,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 ])
         
 
-        self.d5 = self.result.with_columns(Consequent = pl.col("Consequent").list.set_difference(pl.concat_list("team_key"))).with_columns(pl.col("Consequent").list.join(",")).drop(["archetype_key","Scores"]).rename({"team_key":"Antecedent"})
+        self.d5 = self.result.with_columns(Consequent = pl.col("Consequent").list.set_difference(pl.concat_list("team_key"))).filter(pl.col("Consequent").list.len() == 3).with_columns(pl.col("Consequent").list.join(",")).drop(["archetype_key","Scores"]).rename({"team_key":"Antecedent"})
         self.d6 = self.d2.rename({"Consequent3":"Consequent","duo":"Antecedent"}).with_columns(pl.col("Consequent").list.join(","),pl.col("Antecedent").list.join(",")).drop(["Scores"])
         # Swap both the data and column names, keeping any other columns intact
         self.duos_copy = self.d1.with_columns(

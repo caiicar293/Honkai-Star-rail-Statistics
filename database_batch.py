@@ -586,6 +586,12 @@ class HonkaiDataPlatform:
             self._standardize(scraper.get_duos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
             f"{prefix}_stats_duos")
         self._db_save(conn,
+                    self._standardize(scraper.get_trios_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
+                    f"{prefix}_stats_trios")
+        self._db_save(conn,
+                            self._standardize(scraper.get_quos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
+                            f"{prefix}_stats_quos")
+        self._db_save(conn,
             self._standardize(
                 scraper.plot_statistics_all(cumulative=True, output=False),
                 db_mode, v, e, f_out, n, era, force_floor=force_floor),

@@ -453,7 +453,7 @@ class HonkaiStatistics_V2_eidolon_batch:
         self.chars_max_eidolon_cost_individual_eidolon = base_data.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "team_key", "max_eidolon"]).agg([
             pl.col("uid").count().alias("Samples"),
             pl.col("round_num").alias("Scores"),
-            pl.col("uid").unique().alias("uids"),
+    
             pl.col("has_sustain").sum().alias("Total_Sustains"),
             pl.col("is_full_clear").sum().alias("Total_Full_Clears")
         ]).collect()
@@ -461,7 +461,7 @@ class HonkaiStatistics_V2_eidolon_batch:
         self.chars_by_cost_individual_eidolon = base_data2.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "char_cons_zipped_sorted","max_eidolon"]).agg([
             pl.col("uid").count().alias("Samples"),
             pl.col("round_num").alias("Scores"),
-            pl.col("uid").unique().alias("uids"),
+     
             pl.col("has_sustain").sum().alias("Total_Sustains"),
             pl.col("is_full_clear").sum().alias("Total_Full_Clears")
         ]).collect()
@@ -469,7 +469,7 @@ class HonkaiStatistics_V2_eidolon_batch:
         self.chars_by_cost = self.chars_max_eidolon_cost_individual_eidolon.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "team_key"]).agg([
             pl.col('Samples').sum(),
             pl.col("Scores").explode(),
-            pl.col("uids").explode(),
+          
             pl.col("Total_Sustains").sum(),
             pl.col("Total_Full_Clears").sum()
         ])
@@ -477,7 +477,7 @@ class HonkaiStatistics_V2_eidolon_batch:
         self.chars_by_individual_eidolons = self.chars_by_cost_individual_eidolon.group_by(["version", self.node_or_floor_col, "char_cons_zipped_sorted"]).agg([
             pl.col('Samples').sum(),
             pl.col("Scores").explode(),
-            pl.col("uids").explode(),
+         
             pl.col("Total_Sustains").sum(),
             pl.col("Total_Full_Clears").sum()
         ])
@@ -485,7 +485,7 @@ class HonkaiStatistics_V2_eidolon_batch:
         self.teams = self.lf.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "char_cons_zipped_sorted", "team_key", "archetypes_pairs_zipped_sorted", "archetype_key", "max_eidolon"]).agg([
             pl.count("uid").alias("Samples"),
             pl.col("round_num").alias("Scores"),
-            pl.col("uid").unique().alias("uids"),
+      
             pl.col("has_sustain").sum().alias("Total_Sustains"),
             pl.col("is_full_clear").sum().alias("Total_Full_Clears")
         ]).collect()
@@ -493,7 +493,7 @@ class HonkaiStatistics_V2_eidolon_batch:
         self.archetypes = self.teams.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "archetypes_pairs_zipped_sorted", "archetype_key", "max_eidolon"]).agg([
             pl.sum("Samples"),
             pl.col("Scores").explode(),
-            pl.col("uids").explode().unique(),
+           
             pl.col("Total_Full_Clears").sum(),
             (pl.col("Total_Sustains")).sum()
         ])
@@ -527,7 +527,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("total_metric").alias("Scores"),
-                pl.col("uid").unique().alias("uids"),
+           
                 
                 cs.ends_with("_has_sustain").sum(),
            
@@ -536,7 +536,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             .collect()
         )
 
-        agg_cols = ["Samples", "Scores", "uids"]
+        agg_cols = ["Samples", "Scores"]
 
         group_keys = [
             c for c in self.combined_team_stats.collect_schema().names() 
@@ -549,7 +549,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").explode(),
-                pl.col("uids").explode().unique(),
+            
                 cs.ends_with("_has_sustain").sum(),
                 
                 cs.ends_with("_full_clear").sum(),

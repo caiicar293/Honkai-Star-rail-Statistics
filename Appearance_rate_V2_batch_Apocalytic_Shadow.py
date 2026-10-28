@@ -163,7 +163,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             row["char"]: row["sort_index"]
             for row in self.rol.collect().to_dicts()
         }
-        self.char_to_index = char_to_index
+        
         row_max_stars_expr = (
             pl.when(pl.col("is_starward").is_not_null()).then(pl.lit(4)).otherwise(pl.lit(3))
             if self._has_starward_col else pl.lit(3)
@@ -516,9 +516,7 @@ class HonkaiStatistics_V2_APOC_Batch:
         self.result = new.explode('team_key')
         result2 = self.result.explode('Consequent')
         result3 = result2.filter(pl.col("team_key").replace_strict(char_to_index, default=999) < pl.col("Consequent").replace_strict(char_to_index, default=999))
-        new1 = result3.with_columns(pl.concat_list("team_key","Consequent").list.eval(
-                    pl.element().sort_by(pl.element().replace_strict(char_to_index, default=999))
-                ).alias("duo"))
+        new1 = result3.with_columns(pl.concat_list("team_key","Consequent").alias("duo"))
 
         self.d1 = result3.group_by(
             ["version", "at_eidolon_level", "up_to_eidolon_level", "node", pl.col('team_key').alias('Antecedent'), "Consequent"]
@@ -991,7 +989,7 @@ class HonkaiStatistics_V2_APOC_Batch:
                 
             )
 
-            supports = pl.concat([char_freq, duo_freq], how="vertical").join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left").select([
+            supports = pl.concat([char_freq, duo_freq], how="diagonal").join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left").select([
                                 "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character",
                                 (pl.col("Total_Samples") / pl.col("version_total_samples")).alias("char_support")
                             ])
@@ -1066,10 +1064,10 @@ class HonkaiStatistics_V2_APOC_Batch:
             self.d4.select(["version", "at_eidolon_level", "up_to_eidolon_level", "node", "Antecedent", "Consequent", pl.col("Samples").alias("Total_Samples")]).with_columns(pl.concat_list("Antecedent", "Consequent").alias("Character") ).with_columns(
             pl.col("Character").list.join(",")
                         ).lazy()
-            ).drop(["Antecedent", "Consequent"])
+            )
 
 
-            supports = pl.concat([char_freq, duo_freq,trio_freq], how="vertical").join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left").select([
+            supports = pl.concat([char_freq, duo_freq,trio_freq], how="diagonal").join(self.total_samples_df.lazy(), on=["version", "at_eidolon_level", "up_to_eidolon_level", "node"], how="left").select([
                             "version", "at_eidolon_level", "up_to_eidolon_level", "node", "Character",
                             (pl.col("Total_Samples") / pl.col("version_total_samples")).alias("char_support")
                         ])

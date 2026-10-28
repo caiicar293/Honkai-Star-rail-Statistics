@@ -362,7 +362,7 @@ class HonkaiStatistics_Legacy:
                 pl.count("uid").alias("Total_Samples"),
                 pl.col(self.score_col).alias("Total_Scores"),
                 pl.col("has_sustain").sum().alias("Total_Sustains"),
-                pl.col("uid").unique().alias("uids"),
+             
             ])
         )
         for lf_rollup, alias in zip(rollups, aliases):
@@ -393,7 +393,7 @@ class HonkaiStatistics_Legacy:
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col(self.score_col).alias("Scores"),
-                pl.col("uid").unique().alias("uids"),
+             
                 pl.col("has_sustain").sum().alias("Total_Sustains"),
             ])
             .collect()
@@ -416,7 +416,7 @@ class HonkaiStatistics_Legacy:
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
-                pl.col("uids").list.explode().unique().alias("uids"),
+    
                 pl.col("Total_Sustains").sum(),
             ])
         )
@@ -436,7 +436,7 @@ class HonkaiStatistics_Legacy:
         ).agg([
             pl.col("Samples").sum(),
             pl.col("Scores").list.explode().alias("Scores"),
-            pl.col("uids").list.explode().unique().alias("uids"),
+        
             pl.col("Total_Sustains").sum(),
         ])
 
@@ -492,7 +492,7 @@ class HonkaiStatistics_Legacy:
                 pl.count("uid").alias("Samples"),
                 pl.col(self.score_col).alias("Scores"),
                 pl.col("has_sustain").sum().alias("Sustains"),
-                pl.col("uid").unique().alias("uids"),
+             
             ])
         )
         for lf_rollup, alias in zip(rollups_ed, aliases):
@@ -528,7 +528,7 @@ class HonkaiStatistics_Legacy:
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("total_score").alias("Scores"),
-                pl.col("uid").unique().alias("uids"),
+          
             ])
             .collect()
         )
@@ -548,7 +548,7 @@ class HonkaiStatistics_Legacy:
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
-                pl.col("uids").list.explode().unique().alias("uids"),
+        
             ])
         )
 
@@ -1291,7 +1291,7 @@ class HonkaiStatistics_Legacy_Batch:
                 pl.col(self.score_col).alias("Total_Scores"),
                 pl.col("has_sustain").sum().alias("Total_Sustains"),
                 pl.col("is_full_clear").sum().alias("Total_Full_Clears"),
-                pl.col("uid").unique().alias("uids"),
+         
             ])
             .join(w_df, on=group_keys, how="left")
             .join(a_df, on=group_keys, how="left")
@@ -1311,7 +1311,7 @@ class HonkaiStatistics_Legacy_Batch:
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col(self.score_col).alias("Scores"),
-                pl.col("uid").unique().alias("uids"),
+             
                 pl.col("is_full_clear").sum().alias("Total_Full_Clears"),
                 pl.col("has_sustain").sum().alias("Total_Sustains"),
             ]).with_columns(
@@ -1329,7 +1329,7 @@ class HonkaiStatistics_Legacy_Batch:
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
-                pl.col("uids").list.explode().unique().alias("uids"),
+              
                 pl.col("Total_Full_Clears").sum(),
                 pl.col("Total_Sustains").sum(),
             ])
@@ -1348,7 +1348,7 @@ class HonkaiStatistics_Legacy_Batch:
         ).agg([
             pl.col("Samples").sum(),
             pl.col("Scores").list.explode().alias("Scores"),
-            pl.col("uids").list.explode().unique().alias("uids"),
+         
             pl.col("Total_Sustains").sum(),
             pl.col("Total_Full_Clears").sum()
         ])
@@ -1367,7 +1367,7 @@ class HonkaiStatistics_Legacy_Batch:
             .agg([
                 pl.count("uid").alias("Samples"),
                 pl.col("total_score").alias("Scores"),
-                pl.col("uid").unique().alias("uids"),
+             
                 pl.col("is_full_clear").sum().alias("Total_Full_Clears"),
                 cs.ends_with("_has_sustain").sum()
             ]).with_columns([
@@ -1383,7 +1383,7 @@ class HonkaiStatistics_Legacy_Batch:
             .agg([
                 pl.col("Samples").sum(),
                 pl.col("Scores").list.explode().alias("Scores"),
-                pl.col("uids").list.explode().unique().alias("uids"),
+              
                 pl.col("Total_Full_Clears").sum(),
                 cs.ends_with("_has_sustain").sum()
             ])

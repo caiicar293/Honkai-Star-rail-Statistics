@@ -133,7 +133,6 @@ class HonkaiStatistics_V2_Anomaly_Batch:
         # 2. LOAD CHARACTER METADATA
         with open('characters.json', 'rb') as f:
             info = orjson.loads(f.read())
-
         # Convert metadata to a lookup LazyFrame
         self.rol = pl.DataFrame([
             {"char": k, "is_limited": v.get('availability') == 'Limited 5*',
@@ -174,7 +173,7 @@ class HonkaiStatistics_V2_Anomaly_Batch:
             (pl.col('star_num') == row_max_stars_expr).alias("is_full_clear"),
         ])
 
-        lf_single = lf
+        lf_single = lf.collect().lazy()
         if self.by_ed_inclusive:
             lf_single  = lf_single.filter(pl.col("max_eidolon") == self.by_ed).with_columns(
                 pl.lit(self.by_ed).alias("at_eidolon_level"),

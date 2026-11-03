@@ -178,7 +178,7 @@ class HonkaiStatistics_V2_APOC_Batch:
             (pl.col('star_num') == row_max_stars_expr).alias("is_full_clear"),
         ])
         
-        lf_single = lf
+        lf_single = lf.collect().lazy()
         if self.by_ed_inclusive:
             lf_single  = lf_single.filter(pl.col("max_eidolon") == self.by_ed).with_columns(
                 pl.lit(self.by_ed).alias("at_eidolon_level"),

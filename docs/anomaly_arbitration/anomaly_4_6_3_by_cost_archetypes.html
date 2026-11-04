@@ -67,6 +67,8 @@
   .btn-toggle.meid.e5.active { border-color: var(--red);   color: var(--red);   background: rgba(248,113,113,0.08); }
   .btn-toggle.meid.e6.active { border-color: var(--e6);    color: var(--e6);    background: rgba(251,191,36,0.09); }
 
+  .btn-toggle.dedupe-variant.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.1); }
+
   /* Cost panel */
   .cost-panel {
     background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
@@ -684,6 +686,10 @@
         <button class="cost-preset-btn active" id="costResetBtn">All</button>
       </div>
     </div>
+    <div style="display:flex;flex-direction:column;gap:5px;">
+      <div class="ctrl-label">Variants</div>
+      <button class="btn-toggle dedupe-variant" id="dedupeVariantBtn" title="For each archetype (ignoring its eidolon / cost-bucket variants), keep only its cheapest variant within the currently selected filters">🔻 Cheapest Variant Only</button>
+    </div>
   </div>
 
   <div class="results-info" id="resultsInfo">Loading…</div>
@@ -767,6 +773,38 @@ function parseMembers(core) {
   return core.split(/\s*[,\/\+]\s*/).map(s => s.trim()).filter(Boolean);
 }
 
+// Strips "(E0)".."(E6)" eidolon annotations (and normalises the " + " member
+// separator / whitespace) so every eidolon variant of the same archetype
+// collapses to one identity key, e.g. "Welt(E6) + Ashveil(E0)" and
+// "Welt(E0) + Ashveil(E0)" -> "welt + ashveil".
+function baseArchetypeKey(core) {
+  return core.replace(/\s*\(E\d\)/gi, '').replace(/\s*\+\s*/g, ' + ').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+// True if row `a` is a better "cheapest variant" pick than row `b`:
+// lowest estimated_min_cost, then lowest estimated_max_cost, then the more
+// widely-used / better-sampled row as the final tie-break.
+function isCheaperVariant(a, b) {
+  if (a.estimated_min_cost !== b.estimated_min_cost) return a.estimated_min_cost < b.estimated_min_cost;
+  if (a.estimated_max_cost !== b.estimated_max_cost) return a.estimated_max_cost < b.estimated_max_cost;
+  if ((a.Usage_pct || 0) !== (b.Usage_pct || 0)) return (a.Usage_pct || 0) > (b.Usage_pct || 0);
+  return (a.Samples || 0) > (b.Samples || 0);
+}
+
+// Collapses rows down to one row per archetype (per baseArchetypeKey) within
+// each dimension group, keeping whichever eidolon / cost-bucket variant has
+// the lowest cost. Scoped to whatever already passed the current filters.
+function dedupeToLowestCostVariant(rows) {
+  const bestByKey = new Map();
+  rows.forEach(r => {
+    if (r._baseKey === undefined) r._baseKey = baseArchetypeKey(r.Archetype_Core);
+    const key = r.dim_key + '|' + r._baseKey;
+    const cur = bestByKey.get(key);
+    if (!cur || isCheaperVariant(r, cur)) bestByKey.set(key, r);
+  });
+  return Array.from(bestByKey.values());
+}
+
 function iconEl(name) {
   let url = ICONS[name] || ICONS[name.replace(/\s+LV\.\d+$/,'').trim()];
   if (url) {
@@ -812,6 +850,7 @@ let costMaxFilter = MAX_COST_G;
 let sortCol       = 'Usage_pct';
 let sortAsc       = false;
 let filteredData  = [];
+let dedupeVariants = false; // "Cheapest Variant Only" toggle
 
 function recompute() {
   let candidate;
@@ -831,6 +870,8 @@ function recompute() {
     r.estimated_max_cost <= costMaxFilter &&
     ColumnFilter.passes(r)
   );
+
+  if (dedupeVariants) candidate = dedupeToLowestCostVariant(candidate);
 
   filteredData = candidate;
   filteredData.sort((a, b) => {
@@ -860,7 +901,7 @@ function updateMeta() {
   const ssum = filteredData.reduce((s,r) => s + r.Samples, 0);
   document.getElementById('visibleSamples').textContent = ssum > 9999 ? (ssum/1000).toFixed(0)+'K' : ssum.toLocaleString();
   document.getElementById('costRangeDisplay').textContent = costMinFilter + '–' + costMaxFilter;
-  document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> archetypes · cost bracket <span>${costMinFilter}→${costMaxFilter}</span>`;
+  document.getElementById('resultsInfo').innerHTML = `Showing <span>${filteredData.length}</span> archetypes · cost bracket <span>${costMinFilter}→${costMaxFilter}</span>` + (dedupeVariants ? ' · <span>cheapest variant only</span>' : '');
 }
 
 function fmtPct(v)      { return v == null ? '—' : v.toFixed(2) + '%'; }
@@ -970,6 +1011,12 @@ document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn => {
     else { activeMeids.add(e); btn.classList.add('active'); }
     recompute();
   });
+});
+
+document.getElementById('dedupeVariantBtn').addEventListener('click', function() {
+  dedupeVariants = !dedupeVariants;
+  this.classList.toggle('active', dedupeVariants);
+  recompute();
 });
 
 document.getElementById('searchInput').addEventListener('input', debounce(e => {
@@ -1113,6 +1160,8 @@ function prepareData(savedState) {
   sortCol       = 'Usage_pct';
   sortAsc       = false;
 
+  dedupeVariants = false;
+
   const searchInputEl = document.getElementById('searchInput');
 
   // Carry over the user's state from the version we're leaving — dropping
@@ -1134,6 +1183,7 @@ function prepareData(savedState) {
     if (typeof savedState.costMax === 'number') costMaxFilter = Math.max(MIN_COST_G + 4, Math.min(savedState.costMax, MAX_COST_G));
     if (savedState.sortCol && RAW_DATA[0] && (savedState.sortCol in RAW_DATA[0] || savedState.sortCol === 'Rank')) sortCol = savedState.sortCol;
     if (typeof savedState.sortAsc === 'boolean') sortAsc = savedState.sortAsc;
+    if (typeof savedState.dedupeVariants === 'boolean') dedupeVariants = savedState.dedupeVariants;
   }
 
   document.querySelectorAll('#dimFilters .btn-toggle').forEach(btn =>
@@ -1141,6 +1191,7 @@ function prepareData(savedState) {
   document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn =>
     btn.classList.toggle('active', activeMeids.has(parseInt(btn.dataset.meid))));
   document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
+  document.getElementById('dedupeVariantBtn')?.classList.toggle('active', dedupeVariants);
   const sortedTh = document.querySelector(`th[data-col="${sortCol}"]`);
   if (sortedTh) { sortedTh.classList.add('sorted'); if (sortAsc) sortedTh.classList.add('asc'); }
 
@@ -1165,6 +1216,7 @@ function captureState() {
     costMax: costMaxFilter,
     sortCol: sortCol,
     sortAsc: sortAsc,
+    dedupeVariants: dedupeVariants,
   };
 }
 

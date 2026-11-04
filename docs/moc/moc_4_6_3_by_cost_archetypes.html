@@ -69,6 +69,17 @@
 
   .btn-toggle.dedupe-variant.active { border-color: var(--teal); color: var(--teal); background: rgba(45,212,191,0.1); }
 
+  /* VIEW TABS (appear while Cheapest Variant Only is on) */
+  .view-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .view-tab {
+    background: var(--panel2); border: 1.5px solid var(--border2); color: var(--text2);
+    font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+  }
+  .view-tab:hover { border-color: var(--teal); color: var(--teal); }
+  .view-tab.active { background: rgba(45,212,191,0.14); border-color: var(--teal); color: var(--teal); box-shadow: 0 0 14px rgba(45,212,191,0.2); }
+  #avgHead th[data-avgcol] { cursor: pointer; }
+
   /* Cost panel */
   .cost-panel {
     background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
@@ -691,7 +702,12 @@
   <div class="results-info" id="resultsInfo">Loading…</div>
   <div class="active-filters-bar" id="activeFiltersBar"></div>
 
-  <div class="table-wrap">
+  <div class="view-tabs" id="viewTabs" style="display:none;">
+    <button class="view-tab active" data-view="table">📋 Archetype Table</button>
+    <button class="view-tab" data-view="avg">📊 Avg Cost Across Nodes</button>
+  </div>
+
+  <div class="table-wrap" id="mainTableWrap">
     <div class="table-scroll">
       <table id="mainTable">
         <thead>
@@ -718,6 +734,16 @@
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Avg Cost Across Nodes: inner join of cheapest-variant rows on the eidolon-free archetype key -->
+  <div class="table-wrap" id="avgTableWrap" style="display:none;">
+    <div class="avg-scroll" style="overflow:auto;max-height:600px;">
+      <table id="avgTable">
+        <thead><tr id="avgHead"></tr></thead>
+        <tbody id="avgBody"></tbody>
       </table>
     </div>
   </div>
@@ -848,6 +874,104 @@ let sortAsc       = false;
 let filteredData  = [];
 let dedupeVariants = false; // "Cheapest Variant Only" toggle
 
+// ---- "Avg Cost Across Nodes" view (tab only offered while Cheapest Variant Only is on) ----
+// Inner join on the eidolon-free archetype key: an archetype is listed only if it
+// has a (cheapest-variant) row in EVERY active node. One column per node shows
+// that node's min cost; the last column is the average of those min costs.
+let viewMode    = 'table'; // 'table' | 'avg'
+let avgSortCol  = 'avg';
+let avgSortAsc  = true;
+
+function syncViewTabs() {
+  document.getElementById('viewTabs').style.display = dedupeVariants ? 'flex' : 'none';
+  if (!dedupeVariants) viewMode = 'table';
+  document.querySelectorAll('#viewTabs .view-tab').forEach(b => b.classList.toggle('active', b.dataset.view === viewMode));
+  document.getElementById('mainTableWrap').style.display = viewMode === 'table' ? '' : 'none';
+  document.getElementById('avgTableWrap').style.display  = viewMode === 'avg'   ? '' : 'none';
+}
+
+document.querySelectorAll('#viewTabs .view-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.view === viewMode) return;
+    viewMode = btn.dataset.view;
+    syncViewTabs();
+    recompute();
+  });
+});
+
+document.getElementById('avgHead').addEventListener('click', e => {
+  const th = e.target.closest('th[data-avgcol]');
+  if (!th) return;
+  const col = th.dataset.avgcol;
+  if (avgSortCol === col) avgSortAsc = !avgSortAsc;
+  else { avgSortCol = col; avgSortAsc = true; }
+  renderAvgView();
+});
+
+function renderAvgView() {
+  if (viewMode !== 'avg') return;
+  const nodes = [...activeDims].sort((a, b) => a - b);
+  const nodeLabel = n => DIM_GROUP_LABELS[n] || `${DIM_LABEL} ${n}`;
+
+  // Build one entry per archetype key. filteredData is already reduced to the
+  // cheapest variant per (node, archetype), so each key has at most one row per node.
+  const byKey = new Map();
+  filteredData.forEach(r => {
+    if (r._baseKey === undefined) r._baseKey = baseArchetypeKey(r.Archetype_Core);
+    let e = byKey.get(r._baseKey);
+    if (!e) {
+      e = { name: r.Archetype_Core.replace(/\s*\(E\d\)/gi, '').trim(), icons: r._iconsHtml, costs: new Map(), variants: new Map() };
+      byKey.set(r._baseKey, e);
+    }
+    e.costs.set(r.dim_key, r.estimated_min_cost);
+    e.variants.set(r.dim_key, r.Archetype_Core);
+  });
+
+  // Inner join: keep only archetypes present in every node.
+  const rows = [...byKey.values()].filter(e => nodes.every(n => e.costs.has(n)));
+  rows.forEach(e => {
+    const vals = nodes.map(n => e.costs.get(n));
+    e.avg = vals.reduce((s, v) => s + v, 0) / vals.length;
+  });
+
+  let col = avgSortCol;
+  if (/^n\d+$/.test(col) && !nodes.includes(parseInt(col.slice(1), 10))) col = 'avg';
+  const getVal = e => col === 'name' ? e.name.toLowerCase()
+                    : col === 'avg'  ? e.avg
+                    : e.costs.get(parseInt(col.slice(1), 10));
+  rows.sort((a, b) => {
+    const av = getVal(a), bv = getVal(b);
+    if (av !== bv) return (av > bv ? 1 : -1) * (avgSortAsc ? 1 : -1);
+    if (a.avg !== b.avg) return a.avg - b.avg;
+    return a.name.localeCompare(b.name);
+  });
+
+  const thCls = c => (col === c ? ' sorted' + (avgSortAsc ? ' asc' : '') : '');
+  document.getElementById('avgHead').innerHTML =
+    `<th class="num">#</th>` +
+    `<th data-avgcol="name" class="${thCls('name').trim()}">Archetype</th>` +
+    nodes.map(n => `<th data-avgcol="n${n}" class="num${thCls('n' + n)}">${nodeLabel(n)} Min Cost</th>`).join('') +
+    `<th data-avgcol="avg" class="num${thCls('avg')}">Avg Cost</th>`;
+
+  const body = document.getElementById('avgBody');
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="${nodes.length + 3}"><div class="empty-state"><div class="icon">⚡</div><p>No archetype appears in all ${nodes.length} selected ${DIM_LABEL.toLowerCase()}(s) under current filters</p></div></td></tr>`;
+  } else {
+    body.innerHTML = rows.map((e, i) =>
+      `<tr>` +
+        `<td class="rank-cell${i < 3 ? ' top3' : ''}">${i + 1}</td>` +
+        `<td><div class="arch-cell"><div class="arch-icons">${e.icons}</div><span class="arch-name" title="${e.name}">${e.name}</span></div></td>` +
+        nodes.map(n => `<td class="num"><span class="cost-badge" title="${e.variants.get(n)}">${e.costs.get(n)}</span></td>`).join('') +
+        `<td class="num"><span class="score-num avg">${e.avg.toFixed(2)}</span></td>` +
+      `</tr>`
+    ).join('');
+  }
+
+  document.getElementById('visibleCount').textContent = rows.length.toLocaleString();
+  document.getElementById('resultsInfo').innerHTML =
+    `Showing <span>${rows.length}</span> archetypes present in all <span>${nodes.length}</span> ${DIM_LABEL.toLowerCase()}(s) · avg of cheapest-variant min cost · cost bracket <span>${costMinFilter}→${costMaxFilter}</span>`;
+}
+
 function recompute() {
   let candidate;
   if (searchTerm.length >= 2) {
@@ -890,6 +1014,7 @@ function recompute() {
   updateMeta();
   document.querySelector('.table-scroll').scrollTop = 0;
   renderViewport();
+  renderAvgView();
 }
 
 function updateMeta() {
@@ -1012,6 +1137,7 @@ document.querySelectorAll('#meidFilters .btn-toggle').forEach(btn => {
 document.getElementById('dedupeVariantBtn').addEventListener('click', function() {
   dedupeVariants = !dedupeVariants;
   this.classList.toggle('active', dedupeVariants);
+  syncViewTabs();
   recompute();
 });
 
@@ -1188,6 +1314,7 @@ function prepareData(savedState) {
     btn.classList.toggle('active', activeMeids.has(parseInt(btn.dataset.meid))));
   document.querySelectorAll('th').forEach(t => t.classList.remove('sorted','asc'));
   document.getElementById('dedupeVariantBtn')?.classList.toggle('active', dedupeVariants);
+  syncViewTabs();
   const sortedTh = document.querySelector(`th[data-col="${sortCol}"]`);
   if (sortedTh) { sortedTh.classList.add('sorted'); if (sortAsc) sortedTh.classList.add('asc'); }
 

@@ -256,6 +256,30 @@
   @media (max-width: 1100px) { .layout-grid { grid-template-columns: 1fr; } }
 
   #status-line { text-align: center; color: var(--text3); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 10px 0; }
+
+  /* Mobile: the four entity tabs used to be wider than the screen and the
+     last one (By Cost) got clipped by body { overflow-x: hidden }. Let the
+     toggle span the full width and share it equally between the buttons. */
+  @media (max-width: 640px) {
+    .container { padding: 14px; }
+    .header { gap: 14px; }
+    .header > div:first-child { min-width: 0; }
+    .header h1 { font-size: 28px; }
+    .entity-toggle { display: flex; width: 100%; max-width: 100%; flex-wrap: wrap; }
+    .entity-toggle button { flex: 1 1 auto; min-width: 0; padding: 8px 6px; font-size: 12px; letter-spacing: 0.02em; white-space: nowrap; }
+    .controls .ctrl-group { flex: 1 1 140px; min-width: 0; }
+    select.ctrl-select, input.ctrl-input { min-width: 0; width: 100%; }
+  }
+
+  /* Trend graph full screen */
+  body.trend-fs-open { overflow: hidden; }
+  body.trend-fs-open .container { z-index: auto; }
+  .panel.trend-fs { position: fixed; inset: 0; z-index: 9999; border-radius: 0; display: flex; flex-direction: column; background: var(--bg2); }
+  .panel.trend-fs .trend-panel { flex: 1; min-height: 0; overflow-y: auto; }
+  .panel.trend-fs .trend-chart-wrap { height: max(340px, 62vh); }
+  .panel.trend-fs #trend-svg { height: 100%; }
+  .panel.trend-fs .trend-axis-label { font-size: 12px; }
+  .panel.trend-fs .legend-list { max-height: 30vh; }
   /* ── Shared site navigation (floating, hidden by default) ─────────────── */
   /* Self-contained: defines its own colours so it looks the same on every
      page regardless of that page's theme variables. */
@@ -468,6 +492,7 @@
       <div class="panel-title">
         <div class="main">Trend Line</div>
         <div class="sub" id="trend-sub"></div>
+        <button class="clear-btn" id="trend-fullscreen-btn" title="Show the trend graph full screen (Esc to exit)">⛶ Full screen</button>
         <button class="clear-btn" id="clear-selection-btn">Clear all</button>
       </div>
       <div class="trend-panel">
@@ -478,8 +503,8 @@
             <div class="ctrl-group">
               <label class="ctrl-label" for="efficiencyStatSelect">Target Score Stat</label>
               <select id="efficiencyStatSelect" class="ctrl-select">
-                <option value="Min_Score">Min</option>
-                <option value="Average_Score" selected>Average</option>
+                <option value="Min_Score" selected>Min</option>
+                <option value="Average_Score">Average</option>
                 <option value="Max_Score">Max</option>
                 <option value="Median_Score">Median</option>
               </select>
@@ -781,7 +806,7 @@
   // target. In efficiency mode the trend chart's y-axis becomes the
   // minimum cost to reach that target at each version.
   let efficiencyMode = false;
-  let efficiencyStat = "Average_Score";
+  let efficiencyStat = "Min_Score";
   const EFFICIENCY_STAT_META = {
     Min_Score: "Min",
     Average_Score: "Average",
@@ -793,6 +818,14 @@
     APOC: 3850, PURE_FICTION: 40000,
   };
   let efficiencyTarget = { ...DEFAULT_EFFICIENCY_TARGET };
+  // Default target-score stat per game mode: MOC + Anomaly (lower is better)
+  // default to Min, APOC + Pure Fiction (higher is better) default to Max.
+  // A stat picked by the user is remembered per mode in efficiencyStatByMode.
+  const DEFAULT_EFFICIENCY_STAT = {
+    MOC: "Min_Score", ANOMALY_F0: "Min_Score", ANOMALY_F4: "Min_Score", ANOMALY_F5: "Min_Score",
+    APOC: "Max_Score", PURE_FICTION: "Max_Score",
+  };
+  let efficiencyStatByMode = {};
 
   // ── Teams-only character picker state ──────────────────────────────────
   // Map<baseLower, {base, mode: 'include'|'exclude', display}>. Rebuilt from
@@ -1127,6 +1160,8 @@
       ? "Lower score = better (cycles) — cheapest way to stay at or under the target."
       : "Higher score = better (points) — cheapest way to reach at least the target.";
     efficiencyTargetInput.value = efficiencyTarget[mode] ?? 0;
+    efficiencyStat = efficiencyStatByMode[mode] || DEFAULT_EFFICIENCY_STAT[mode] || (dir === "asc" ? "Min_Score" : "Max_Score");
+    efficiencyStatSelect.value = efficiencyStat;
   }
 
   // Math.min(...arr) / Math.max(...arr) pass every element as a separate
@@ -1901,6 +1936,16 @@
   // array [{ label, color, values, removeIds }]. Both the regular trend path
   // and the cost-efficiency path feed into this.
   function renderTrendChart(series, yLabel, versions) {
+    // Full-screen mode draws 1:1 in CSS pixels (viewBox = the SVG's real size)
+    // so text, strokes and points keep their size and the plot uses all the
+    // extra room; the normal inline view keeps the fixed 640x320 canvas.
+    const svgEl = document.getElementById("trend-svg");
+    let W = 640, H = 320;
+    if (trendFullscreen) {
+      const r = svgEl.getBoundingClientRect();
+      if (r.width > 200 && r.height > 150) { W = Math.round(r.width); H = Math.round(r.height); }
+    }
+    svgEl.setAttribute("viewBox", `0 0 ${W} ${H}`);
     const grid = document.getElementById("trend-grid");
     const lineLayer = document.getElementById("trend-line-layer");
     const areaLayer = document.getElementById("trend-area-layer");
@@ -1911,7 +1956,7 @@
     const allNums = series.flatMap(s => s.values.filter(v => typeof v === "number"));
     if (!allNums.length) {
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      t.setAttribute("x", 320); t.setAttribute("y", 160); t.setAttribute("text-anchor", "middle");
+      t.setAttribute("x", W / 2); t.setAttribute("y", H / 2); t.setAttribute("text-anchor", "middle");
       t.setAttribute("class", "trend-axis-label");
       t.textContent = "No data for this metric.";
       axisLayer.appendChild(t);
@@ -1919,34 +1964,40 @@
       return;
     }
 
-    const W = 640, H = 320, PAD_L = 46, PAD_R = 14, PAD_T = 14, PAD_B = 30;
+    const PAD_L = trendFullscreen ? 56 : 46, PAD_R = 16, PAD_T = 16, PAD_B = trendFullscreen ? 36 : 30;
     const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
 
-    const minV = Math.min(...allNums);
-    const maxV = Math.max(...allNums);
+    // Pad the y range ~8% so lines/points don't sit on the plot edges, and
+    // centre a flat line instead of pinning it to the bottom.
+    const dataMin = Math.min(...allNums);
+    const dataMax = Math.max(...allNums);
+    const yPad = (dataMax - dataMin) * 0.08 || Math.max(Math.abs(dataMax) * 0.05, 1);
+    const minV = dataMin - yPad;
+    const maxV = dataMax + yPad;
     const rangeV = (maxV - minV) || 1;
+    const BANDS = H >= 480 ? 8 : 4; // more gridlines when there's room (full screen)
     const yFor = v => PAD_T + plotH - ((v - minV) / rangeV) * plotH;
     const xFor = i => PAD_L + (versions.length === 1 ? plotW / 2 : (i / (versions.length - 1)) * plotW);
 
     // Gridlines + y-axis labels (4 bands)
-    for (let g = 0; g <= 4; g++) {
-      const y = PAD_T + (plotH / 4) * g;
+    for (let g = 0; g <= BANDS; g++) {
+      const y = PAD_T + (plotH / BANDS) * g;
       const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
       line.setAttribute("x1", PAD_L); line.setAttribute("x2", W - PAD_R);
       line.setAttribute("y1", y); line.setAttribute("y2", y);
       line.setAttribute("class", "trend-gridline");
       grid.appendChild(line);
 
-      const val = maxV - (rangeV / 4) * g;
+      const val = maxV - (rangeV / BANDS) * g;
       const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
       label.setAttribute("x", PAD_L - 6); label.setAttribute("y", y + 3);
       label.setAttribute("text-anchor", "end"); label.setAttribute("class", "trend-axis-label");
-      label.textContent = Number.isInteger(val) ? val : val.toFixed(1);
+      label.textContent = rangeV >= 20 ? Math.round(val) : (rangeV >= 2 ? val.toFixed(1) : val.toFixed(2));
       axisLayer.appendChild(label);
     }
 
     // x-axis version labels (thin out if crowded)
-    const labelStep = Math.max(1, Math.ceil(versions.length / 8));
+    const labelStep = Math.max(1, Math.ceil(versions.length / Math.max(2, Math.floor(plotW / 64))));
     versions.forEach((ver, i) => {
       if (i % labelStep !== 0 && i !== versions.length - 1) return;
       const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -1989,13 +2040,13 @@
       path.setAttribute("class", "trend-line");
       path.setAttribute("fill", "none");
       path.setAttribute("stroke", s.color);
-      path.setAttribute("stroke-width", "2.2");
+      path.setAttribute("stroke-width", trendFullscreen ? "3" : "2.2");
       lineLayer.appendChild(path);
 
       s.values.forEach((v, i) => {
         if (v === null || v === undefined) return;
         const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        c.setAttribute("cx", xFor(i)); c.setAttribute("cy", yFor(v)); c.setAttribute("r", 3.3);
+        c.setAttribute("cx", xFor(i)); c.setAttribute("cy", yFor(v)); c.setAttribute("r", trendFullscreen ? 4.5 : 3.3);
         c.setAttribute("class", "trend-point");
         c.setAttribute("fill", s.color);
         c.addEventListener("mouseenter", () => {
@@ -2096,6 +2147,7 @@
   };
   efficiencyStatSelect.onchange = () => {
     efficiencyStat = efficiencyStatSelect.value;
+    efficiencyStatByMode[activeMode || modeSelect.value] = efficiencyStat;
     drawTrend();
     persistState();
   };
@@ -2107,6 +2159,7 @@
   efficiencyResetBtn.onclick = () => {
     const mode = activeMode || modeSelect.value;
     efficiencyTarget[mode] = DEFAULT_EFFICIENCY_TARGET[mode] ?? 0;
+    delete efficiencyStatByMode[mode];
     syncEfficiencyInputs();
     drawTrend();
   };
@@ -2191,6 +2244,31 @@
     updateCostScoreNote();
     drawTrend();
   };
+
+  // ── Trend graph full screen ──────────────────────────────────────────────────────────────
+  // CSS-based (position: fixed) rather than the Fullscreen API so it also works
+  // on iPhone Safari. While open, renderTrendChart() sizes its viewBox to the
+  // SVG's real pixel size, so the chart is redrawn at the new scale.
+  let trendFullscreen = false;
+  const trendFullscreenBtn = document.getElementById("trend-fullscreen-btn");
+  const trendPanelEl = trendFullscreenBtn.closest(".panel");
+  function setTrendFullscreen(on) {
+    trendFullscreen = on;
+    trendPanelEl.classList.toggle("trend-fs", on);
+    document.body.classList.toggle("trend-fs-open", on);
+    trendFullscreenBtn.textContent = on ? "✕ Exit full screen" : "⛶ Full screen";
+    requestAnimationFrame(() => drawTrend());
+  }
+  trendFullscreenBtn.onclick = () => setTrendFullscreen(!trendFullscreen);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && trendFullscreen) setTrendFullscreen(false);
+  });
+  let _fsResizeTimer = null;
+  window.addEventListener("resize", () => {
+    if (!trendFullscreen) return;
+    clearTimeout(_fsResizeTimer);
+    _fsResizeTimer = setTimeout(drawTrend, 120);
+  });
 
   searchInput.oninput = () => { renderTableBody(); persistState(); };
 

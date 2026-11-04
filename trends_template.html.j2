@@ -461,6 +461,23 @@
             <div class="efficiency-note" id="efficiencyDirectionNote"></div>
           </div>
         </div>
+        <div class="efficiency-panel" id="costScorePanel">
+          <div class="efficiency-panel-title">Cost vs Score — x axis = cost bracket, y axis = chosen score stat</div>
+          <div class="efficiency-controls">
+            <button type="button" class="efficiency-mode-btn" id="costScoreModeBtn">📈 Cost vs Score Mode</button>
+            <div class="ctrl-group">
+              <label class="ctrl-label" for="costScoreStatSelect">Y Axis</label>
+              <select id="costScoreStatSelect" class="ctrl-select">
+                <option value="average" selected>Average Score (weighted)</option>
+                <option value="max">Max Score</option>
+                <option value="min">Min Score</option>
+                <option value="sustain">Sustain Rate</option>
+                <option value="fullclear">Full Clear Rate</option>
+              </select>
+            </div>
+            <div class="efficiency-note" id="costScoreNote"></div>
+          </div>
+        </div>
         <div id="trend-empty" class="trend-empty">Click one or more rows in the table to plot their trend.</div>
         <div id="trend-content" style="display:none;">
           <div class="trend-chart-wrap">
@@ -1026,6 +1043,9 @@
     byCostSustainGroup.classList.toggle("visible", currentEntity === "by_cost_team");
     eidolonCtrlGroup.style.display = visible ? "none" : "";
     efficiencyPanel.classList.toggle("visible", visible);
+    costScorePanel.classList.toggle("visible", visible);
+    costScoreModeBtn.classList.toggle("active", costScoreMode);
+    updateCostScoreNote();
     efficiencyModeBtn.classList.toggle("active", efficiencyMode);
     byCostTypeToggle.querySelectorAll("button").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.byCostEntity === currentEntity);
@@ -1476,6 +1496,230 @@
     persistState();
   };
 
+  // ── Cost vs Score mode (by-cost only) ────────────────────────────────────────────────
+  // x axis = cost bracket, y axis = a score stat. Works like Cost Efficiency
+  // mode: clicking any variant of a character/team/archetype pulls in EVERY
+  // cost × eidolon variant of that base entity (extra clicks on the same base
+  // entity don't add lines; they stay in the selection until you leave the
+  // mode). Variants are then grouped per cost bracket — e.g. every max-eidolon
+  // row whose cost is 3–7 lands in one "3–7" point — and each stat is
+  // recomputed across all of that group's rows and versions:
+  //   average   = Σ(avg score × samples) / Σ(samples)   (sample-weighted)
+  //   max / min = highest Max_Score / lowest Min_Score in the group
+  //   sustain / full clear = Σ counts / Σ total samples (counts when the row
+  //               carries them; otherwise Σ(percentage × samples) / Σ samples)
+  let costScoreMode = false;
+  let costScoreStat = "average";
+  const costScoreModeBtn = document.getElementById("costScoreModeBtn");
+  const costScoreStatSelect = document.getElementById("costScoreStatSelect");
+  const costScorePanel = document.getElementById("costScorePanel");
+  const costScoreNote = document.getElementById("costScoreNote");
+
+  const COST_SCORE_STATS = {
+    average:   "Average Score (sample-weighted)",
+    max:       "Max Score",
+    min:       "Min Score",
+    sustain:   "Sustain Rate %",
+    fullclear: "Full Clear Rate %",
+  };
+
+  function updateCostScoreNote() {
+    const notes = {
+      average:   "Each point = Σ(average score × samples) ÷ Σ(samples) over every variant and version in that cost bracket.",
+      max:       "Each point = the highest Max Score reached by any variant / version in that cost bracket.",
+      min:       "Each point = the lowest Min Score reached by any variant / version in that cost bracket.",
+      sustain:   isTeamEntity()
+                   ? "Each point = share of that bracket's samples that came from sustain teams (Σ sample-weighted has-sustain ÷ Σ samples)."
+                   : "Each point = Σ sustain samples ÷ Σ total samples in that cost bracket.",
+      fullclear: "Each point = Σ full clears ÷ Σ total samples in that cost bracket.",
+    };
+    costScoreNote.textContent = notes[costScoreStat] || "";
+  }
+
+  function trendArr(e, names) {
+    for (const n of names) {
+      const a = e.trend && e.trend[n];
+      if (Array.isArray(a)) return a;
+    }
+    return null;
+  }
+  function numOrNull(v) {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // Σ(value × samples) and Σ(samples) over every version of every row, using
+  // the per-version metric list aligned with the per-version Samples list.
+  function weightedFromLists(rows, metricNames) {
+    let num = 0, den = 0;
+    for (const e of rows) {
+      const vals = trendArr(e, metricNames);
+      const ns = trendArr(e, ["Samples"]);
+      if (!vals || !ns) continue;
+      for (let i = 0; i < vals.length; i++) {
+        const v = numOrNull(vals[i]), w = numOrNull(ns[i]);
+        if (v === null || w === null || w <= 0) continue;
+        num += v * w;
+        den += w;
+      }
+    }
+    return den > 0 ? { num, den } : null;
+  }
+
+  // Percentage stat for a group of rows. Prefers exact counts (summed) over
+  // the per-version percentage lists; result is in percent units.
+  function groupedRate(rows, countCol, pctNames) {
+    let num = 0, den = 0; // num is in "percent × samples"
+    for (const e of rows) {
+      const tot = numOrNull(e.summary.Total_Samples);
+      const cnt = countCol ? numOrNull(e.summary[countCol]) : null;
+      if (cnt !== null && tot !== null && tot > 0) {
+        num += 100 * cnt;
+        den += tot;
+        continue;
+      }
+      const r = weightedFromLists([e], pctNames);
+      if (r) {
+        num += r.num;
+        den += r.den;
+        continue;
+      }
+      // Teams carry has_sustain as a row dimension instead of a sustain
+      // column, so derive the sustain share from it.
+      if (countCol === "Total_Sustain_Samples" && isTeamEntity() && tot !== null && tot > 0) {
+        const hs = e.summary.has_sustain;
+        if (hs === true || hs === false || hs === 1 || hs === 0) {
+          num += (hs ? 100 : 0) * tot;
+          den += tot;
+        }
+      }
+    }
+    return den > 0 ? num / den : null;
+  }
+
+  // One stat value for all rows (variants) that share a cost bracket.
+  function costGroupValue(rows, stat) {
+    if (stat === "average") {
+      const r = weightedFromLists(rows, ["Average_Score"]);
+      if (r) return r.num / r.den;
+      // Fallback to the row-level weighted average if no per-version lists exist.
+      let num = 0, den = 0;
+      for (const e of rows) {
+        const a = numOrNull(e.summary.Weighted_Avg_Score), w = numOrNull(e.summary.Total_Samples);
+        if (a === null || w === null || w <= 0) continue;
+        num += a * w;
+        den += w;
+      }
+      return den > 0 ? num / den : null;
+    }
+    if (stat === "max" || stat === "min") {
+      const isMax = stat === "max";
+      const listName = isMax ? "Max_Score" : "Min_Score";
+      let best = null;
+      const take = v => {
+        if (v === null) return;
+        if (best === null || (isMax ? v > best : v < best)) best = v;
+      };
+      for (const e of rows) {
+        const arr = trendArr(e, [listName]);
+        if (arr) arr.forEach(x => take(numOrNull(x)));
+        else take(numOrNull(e.summary[listName]));
+      }
+      return best;
+    }
+    if (stat === "sustain") return groupedRate(rows, "Total_Sustain_Samples", ["Sustain_Percentage"]);
+    if (stat === "fullclear") return groupedRate(rows, "Total_Full_Clears", ["Full_Star_Rate_pct", "Full_Clear_Rate_pct"]);
+    return null;
+  }
+
+  function drawCostScoreTrend() {
+    const stat = costScoreStat;
+    const statLabel = COST_SCORE_STATS[stat] || stat;
+
+    trendEmpty.style.display = "none";
+    trendContent.style.display = "block";
+    trendSub.textContent = `${statLabel} by cost bracket`;
+
+    // Click order -> unique base entities (eidolon tags stripped).
+    const baseOrder = [];
+    const baseSet = new Set();
+    const baseLabelByKey = new Map();
+    const selectedEntities = [];
+    for (const id of selectedIds) {
+      const e = currentSlice.entities.find(en => entityKey(en) === id);
+      if (!e) continue;
+      selectedEntities.push(e);
+      const key = baseEntityKey(entityLabel(e));
+      if (!baseSet.has(key)) {
+        baseSet.add(key);
+        baseOrder.push(key);
+        baseLabelByKey.set(key, baseEntityLabel(entityLabel(e)));
+      }
+    }
+
+    // Every cost × eidolon variant of each selected base entity. The cost
+    // slider is ignored (the x axis IS cost); max-eidolon and sustain filters
+    // still gate which variants count.
+    const variantsByBase = new Map();
+    for (const e of currentSlice.entities) {
+      const key = baseEntityKey(entityLabel(e));
+      if (!baseSet.has(key)) continue;
+      const eid = Math.round(Number(byCostSummary(e, "max_eidolon")));
+      if (!byCostMeids.has(eid)) continue;
+      if (isTeamEntity()) {
+        const sustain = byCostSummary(e, "has_sustain");
+        if (sustain === true && !byCostShowSustain) continue;
+        if (sustain === false && !byCostShowNoSustain) continue;
+      }
+      if (!variantsByBase.has(key)) variantsByBase.set(key, []);
+      variantsByBase.get(key).push(e);
+    }
+
+    // Group each base entity's variants by cost bracket (min–max). Different
+    // max-eidolon rows with the same bracket merge into one group.
+    const bracketMap = new Map(); // "min|max" -> { min, max, label }
+    const groupsByBase = new Map(); // base -> Map("min|max" -> rows[])
+    for (const key of baseOrder) {
+      const groups = new Map();
+      for (const e of (variantsByBase.get(key) || [])) {
+        const mn = Number(byCostSummary(e, "estimated_min_cost"));
+        const mx = Number(byCostSummary(e, "estimated_max_cost"));
+        if (!Number.isFinite(mn) || !Number.isFinite(mx)) continue;
+        const bk = mn + "|" + mx;
+        if (!bracketMap.has(bk)) bracketMap.set(bk, { min: mn, max: mx, label: `${mn}–${mx}` });
+        if (!groups.has(bk)) groups.set(bk, []);
+        groups.get(bk).push(e);
+      }
+      groupsByBase.set(key, groups);
+    }
+
+    // Value per base entity per bracket; drop brackets where nothing has data.
+    const bracketKeys = Array.from(bracketMap.keys()).sort((a, b) => {
+      const A = bracketMap.get(a), B = bracketMap.get(b);
+      return (A.min - B.min) || (A.max - B.max);
+    });
+    const rawValues = baseOrder.map(key =>
+      bracketKeys.map(bk => {
+        const rows = groupsByBase.get(key).get(bk);
+        return rows ? costGroupValue(rows, stat) : null;
+      })
+    );
+    const keepIdx = bracketKeys.map((_, i) => i).filter(i => rawValues.some(vals => typeof vals[i] === "number"));
+    const labels = keepIdx.map(i => bracketMap.get(bracketKeys[i]).label);
+
+    const series = baseOrder.map((key, si) => ({
+      label: baseLabelByKey.get(key) || key,
+      values: keepIdx.map(i => rawValues[si][i]),
+      color: colorFor(si),
+      removeIds: selectedEntities
+        .filter(e => baseEntityKey(entityLabel(e)) === key)
+        .map(e => entityKey(e)),
+    }));
+
+    renderTrendChart(series, statLabel, labels);
+  }
+
   // ── Trend chart (pure SVG, redrawn on selection or metric change) ──
   // Supports 1..N overlaid series. Each entity's version axis may differ,
   // so we build a chronologically-sorted UNION of versions across every
@@ -1487,6 +1731,11 @@
       trendContent.style.display = "none";
       trendSub.textContent = "";
       legendList.innerHTML = "";
+      return;
+    }
+
+    if (costScoreMode && isByCostEntity()) {
+      drawCostScoreTrend();
       return;
     }
 
@@ -1804,6 +2053,10 @@
 
   efficiencyModeBtn.onclick = () => {
     efficiencyMode = !efficiencyMode;
+    if (efficiencyMode && costScoreMode) {
+      costScoreMode = false;
+      costScoreModeBtn.classList.remove("active");
+    }
     efficiencyModeBtn.classList.toggle("active", efficiencyMode);
     drawTrend();
     persistState();
@@ -1890,6 +2143,22 @@
     document.getElementById("byCostReset").classList.add("active");
     renderTableBody();
   };
+  costScoreModeBtn.onclick = () => {
+    costScoreMode = !costScoreMode;
+    if (costScoreMode && efficiencyMode) {
+      efficiencyMode = false;
+      efficiencyModeBtn.classList.remove("active");
+    }
+    costScoreModeBtn.classList.toggle("active", costScoreMode);
+    drawTrend();
+    persistState();
+  };
+  costScoreStatSelect.onchange = () => {
+    costScoreStat = costScoreStatSelect.value;
+    updateCostScoreNote();
+    drawTrend();
+  };
+
   searchInput.oninput = () => { renderTableBody(); persistState(); };
 
   // Teams-only character picker wiring.

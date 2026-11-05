@@ -450,7 +450,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             ])
         ).explode("char_cons_zipped_sorted")
 
-        self.chars_max_eidolon_cost_individual_eidolon = base_data.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "team_key", "max_eidolon"]).agg([
+        self.chars_by_max_eidolon_individual_eidolon = base_data.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "team_key", "max_eidolon"]).agg([
             pl.col("uid").count().alias("Samples"),
             pl.col("round_num").alias("Scores"),
     
@@ -458,7 +458,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             pl.col("is_full_clear").sum().alias("Total_Full_Clears")
         ]).collect()
 
-        self.chars_by_cost_individual_eidolon = base_data2.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "char_cons_zipped_sorted","max_eidolon"]).agg([
+        self.chars_by_cost_max_eidolon_individual_eidolon = base_data2.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "char_cons_zipped_sorted","max_eidolon"]).agg([
             pl.col("uid").count().alias("Samples"),
             pl.col("round_num").alias("Scores"),
      
@@ -466,7 +466,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             pl.col("is_full_clear").sum().alias("Total_Full_Clears")
         ]).collect()
 
-        self.chars_by_cost = self.chars_max_eidolon_cost_individual_eidolon.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "team_key"]).agg([
+        self.chars_by_cost = self.chars_by_max_eidolon_individual_eidolon.group_by(["version", "estimated_min_cost", "estimated_max_cost", self.node_or_floor_col, "team_key"]).agg([
             pl.col('Samples').sum(),
             pl.col("Scores").explode(),
           
@@ -474,7 +474,7 @@ class HonkaiStatistics_V2_eidolon_batch:
             pl.col("Total_Full_Clears").sum()
         ])
 
-        self.chars_by_individual_eidolons = self.chars_by_cost_individual_eidolon.group_by(["version", self.node_or_floor_col, "char_cons_zipped_sorted"]).agg([
+        self.chars_by_individual_eidolons = self.chars_by_cost_max_eidolon_individual_eidolon.group_by(["version", self.node_or_floor_col, "char_cons_zipped_sorted"]).agg([
             pl.col('Samples').sum(),
             pl.col("Scores").explode(),
          
@@ -608,7 +608,7 @@ class HonkaiStatistics_V2_eidolon_batch:
         
         
     def get_chars_by_cost_df(self):
-        df = self.chars_by_cost_individual_eidolon.join(
+        df = self.chars_by_cost_max_eidolon_invividual_eidolon.join(
             self.total_samples_df, on=["version", self.node_or_floor_col], how="left"
         ).with_columns([            appearance_rate_expr("Samples", "version_total_samples"),
                         sustain_pct_expr("Total_Sustains", "Samples"),

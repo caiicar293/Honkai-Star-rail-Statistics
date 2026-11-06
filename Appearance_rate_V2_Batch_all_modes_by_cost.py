@@ -408,25 +408,18 @@ class HonkaiStatistics_V2_eidolon_batch:
 
             self._process_combined_data(self.combined)
 
-            if self.mode == "anomaly":
-                standard_nodes = [1, 2, 3]
-            else:
-                standard_nodes = [1, 2, 3] if (self._has_starward_col and self.is_starward) else [1, 2]
-
-            df = self.lf.with_columns(
-                pl.when(pl.col(self.node_or_floor_col).is_in(standard_nodes))
-                .then(0)
-                .otherwise(pl.col(self.node_or_floor_col))
-                .alias(self.node_or_floor_col)
-            )
-
-            if (self.mode == "anomaly" and self.floor == "all") or (self.mode != "anomaly" and self.node == "all"):
+            if (self.mode == "anomaly" and self.floor!="all") or (self.mode != "anomaly" and self.node != "all"):
                 if self.mode == "anomaly":
-                    self.lf = pl.concat([df, self.lf.filter(pl.col("floor") != 4)], how="diagonal")
+                    df = self.lf.filter(pl.col("floor")!=4).with_columns(
+                                                        pl.lit(0,dtype=pl.Int64).alias("floor")
+                                                    )
+                            
+                    self.lf = df
                 else:
-                    self.lf = pl.concat([df, self.lf], how="diagonal")
-            else:
-                self.lf = df
+                    df = self.lf.with_columns(pl.lit(0,dtype=pl.Int64).alias(self.node_or_floor_col)
+                                                                )
+                    self.lf = df
+            
 
         self._process_data(self.lf)
 
@@ -434,6 +427,34 @@ class HonkaiStatistics_V2_eidolon_batch:
     # Per-node aggregation
     # ------------------------------------------------------------------
     def _process_data(self, lf):
+        
+        def agg_with_node_all(df, group_keys):
+            index_cols = group_keys
+            # We must ignore 'node' so it doesn't get mathematically summed (1 + 2 = 3)
+            ignore_cols = index_cols + [self.node_or_floor_col]
+            
+            # 1. Base Aggregation: safely handle numeric and list sums
+            agg_exprs = [
+                (cs.numeric() & ~cs.by_name(*ignore_cols)).sum(),
+                (cs.by_dtype(pl.List(pl.Int64)) & ~cs.by_name(*ignore_cols)).explode(),
+                (cs.by_dtype(pl.List(pl.String)) & ~cs.by_name(*ignore_cols)).explode().unique()
+            ]
+            
+            if self.mode == "anomaly":
+                df_temp = df.filter(pl.col("floor")!=4)
+                new = df_temp.group_by(index_cols).agg(agg_exprs)
+            else:
+                new = df.group_by(index_cols).agg(agg_exprs)
+
+            
+            # 3. Create the Node 0 (Combined) rows and align column order
+            res = new.with_columns(pl.lit(0, dtype=pl.Int64).alias(self.node_or_floor_col))
+            res = res.select(df.columns) # Guarantee exact schema order
+            
+            # 4. Return Original (Nodes 1 & 2) appended with Combined (Node 0)
+            return pl.concat([df, res], how="vertical")
+                
+                
         base_data = (
             self.lf.select([
                 "uid", "round_num", "has_sustain", "version",
@@ -511,7 +532,34 @@ class HonkaiStatistics_V2_eidolon_batch:
             pl.col("Total_Full_Clears").sum(),
             (pl.col("Total_Sustains")).sum()
         ])
+        
+        if (self.mode == "anomaly" and self.floor == "all") or (self.mode != "anomaly" and self.node == "all"):
+            
+            index_cols = ["version", "estimated_min_cost", "estimated_max_cost", "team_key", "max_eidolon"]
+            self.chars_by_max_eidolon_individual_eidolon = agg_with_node_all(self.chars_by_max_eidolon_individual_eidolon, index_cols)
 
+            index_cols = ["version", "estimated_min_cost", "estimated_max_cost", "char_cons_zipped_sorted","max_eidolon"]
+            self.chars_by_cost_max_eidolon_individual_eidolon = agg_with_node_all(self.chars_by_cost_max_eidolon_individual_eidolon, index_cols)
+            
+            index_cols = ["version", "estimated_min_cost", "estimated_max_cost", "team_key"]
+            self.chars_by_cost = agg_with_node_all(self.chars_by_cost, index_cols)
+                        
+            index_cols = ["version", "char_cons_zipped_sorted"]
+            self.chars_by_individual_eidolons = agg_with_node_all(self.chars_by_individual_eidolons, index_cols)
+                                    
+            index_cols = ["version", "estimated_min_cost", "estimated_max_cost", "char_cons_zipped_sorted", "team_key", "archetypes_pairs_zipped_sorted", "archetype_key", "max_eidolon"]
+            self.teams = agg_with_node_all(self.teams, index_cols)
+
+            index_cols = ["version", "estimated_min_cost", "estimated_max_cost", "archetypes_pairs_zipped_sorted", "archetype_key", "max_eidolon"]
+            self.archetypes = agg_with_node_all(self.archetypes , index_cols)
+
+            index_cols = ["version", "Antecedent", "Consequent"]
+            self.duos = agg_with_node_all(self.duos, index_cols)
+            
+
+            df = self.lf.with_columns(pl.lit(0, dtype=pl.Int64).alias(self.node_or_floor_col))
+            self.lf = pl.concat([df, self.lf], how="vertical")
+                    
         self.total_samples_df = self.lf.group_by(
             "version", self.node_or_floor_col
         ).agg(pl.col("uid").n_unique().alias("version_total_samples")).collect()
@@ -608,7 +656,7 @@ class HonkaiStatistics_V2_eidolon_batch:
         
         
     def get_chars_by_cost_df(self):
-        df = self.chars_by_cost_max_eidolon_invividual_eidolon.join(
+        df = self.chars_by_cost_max_eidolon_individual_eidolon.join(
             self.total_samples_df, on=["version", self.node_or_floor_col], how="left"
         ).with_columns([            appearance_rate_expr("Samples", "version_total_samples"),
                         sustain_pct_expr("Total_Sustains", "Samples"),

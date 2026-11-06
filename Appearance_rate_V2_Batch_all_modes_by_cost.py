@@ -408,7 +408,8 @@ class HonkaiStatistics_V2_eidolon_batch:
 
             self._process_combined_data(self.combined)
 
-            if (self.mode == "anomaly" and self.floor!="all") or (self.mode != "anomaly" and self.node != "all"):
+            
+            if (self.mode == "anomaly" and self.floor not in ("all", 4)) or (self.mode != "anomaly" and self.node != "all"):
                 if self.mode == "anomaly":
                     df = self.lf.filter(pl.col("floor")!=4).with_columns(
                                                         pl.lit(0,dtype=pl.Int64).alias("floor")
@@ -568,7 +569,7 @@ class HonkaiStatistics_V2_eidolon_batch:
     # Combined (cross-node) aggregation
     # ------------------------------------------------------------------
     def _process_combined_data(self, combined):
-        node_char_cols = [c for c in combined.collect_schema().names() if c.endswith("_zipped_sorted") or c.endswith("_key")] 
+        node_char_cols = [cs.ends_with("_zipped_sorted"),cs.ends_with("key")] 
 
         self.combined_team_stats = (
             combined.group_by(["version", "combined_max_ed", "total_min_estimated_cost", "total_max_estimated_cost"] + node_char_cols)
@@ -584,12 +585,9 @@ class HonkaiStatistics_V2_eidolon_batch:
             .collect()
         )
 
-        agg_cols = ["Samples", "Scores"]
-
         group_keys = [
-            c for c in self.combined_team_stats.collect_schema().names() 
-            if not c.endswith(("_char_cons_zipped_sorted", "_team_key")) 
-            and c not in agg_cols
+            "version", "combined_max_ed", "total_min_estimated_cost", "total_max_estimated_cost",
+            cs.ends_with("_archetypes_zipped_sorted"),cs.ends_with("_archetype_key")
         ]
 
         self.combined_archetype_stats = (

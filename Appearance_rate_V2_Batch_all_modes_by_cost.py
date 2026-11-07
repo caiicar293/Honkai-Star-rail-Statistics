@@ -59,8 +59,8 @@ class HonkaiStatistics_V2_eidolon_batch:
             self.metric_name = "Cycles"
             self.struct_metric_field = "cycles"
             self.is_lower_better = True
-            self.threshold = by_cycle if by_cycle is not None else 30
-            self.threshold_combined = by_cycles_combined if by_cycles_combined is not None else 30
+            self.threshold = by_cycle if by_cycle is not None else 45
+            self.threshold_combined = by_cycles_combined if by_cycles_combined is not None else 45
         elif self.mode == "anomaly":
             self.key = "ANOMALY_VERSIONS"
             self.folder = "raw_data"
@@ -119,7 +119,7 @@ class HonkaiStatistics_V2_eidolon_batch:
                 else:
                     floor_filter = (pl.col("floor") == self.floor) & (pl.col("node") == self.node)
 
-                stage_lf = pl.scan_parquet(path).filter(floor_filter)
+                stage_lf = pl.scan_parquet(path).filter(floor_filter).unique(subset=["uid", self.node_or_floor_col])
         else:
             url = f"https://huggingface.co/datasets/LvlUrArti/MocData/resolve/main/{version}{suffix}.csv"
             temp_df = pl.read_csv(url)
@@ -364,12 +364,20 @@ class HonkaiStatistics_V2_eidolon_batch:
                     n3 = _node_lf(3, "n3_metric", "n3_max_ed", "n3_min_estimated_cost", "n3_max_estimated_cost")
                     join_on_n3_sql = " AND ".join([f"n1.{k} = n3.{k}" for k in join_keys])
 
+                    # MOC: total_metric = just n1_metric (single-node scoring per cycle budget).
+                    # APOC / PF non-Starward: total_metric = n1_metric + n2_metric.
+                    total_metric_sql = (
+                        "n1.n1_metric AS total_metric"
+                        if self.mode == "moc"
+                        else "(n1.n1_metric + n2.n2_metric + COALESCE(n3.n3_metric, 0)) AS total_metric"
+                    )
+                                        
                     query = f"""
                     SELECT
                         n1.*,
                         n2.*,
                         n3.*,
-                        (n1.n1_metric + n2.n2_metric + COALESCE(n3.n3_metric, 0)) AS total_metric,
+                        {total_metric_sql},
                         GREATEST(n1.n1_max_ed, n2.n2_max_ed, COALESCE(n3.n3_max_ed, 0)) AS combined_max_ed,
                         (n1.n1_min_estimated_cost + n2.n2_min_estimated_cost + COALESCE(n3.n3_min_estimated_cost, 0)) AS total_min_estimated_cost,
                         (n1.n1_max_estimated_cost + n2.n2_max_estimated_cost + COALESCE(n3.n3_max_estimated_cost, 0)) AS total_max_estimated_cost

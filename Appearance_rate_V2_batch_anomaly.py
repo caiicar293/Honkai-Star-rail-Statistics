@@ -44,25 +44,24 @@ class HonkaiStatistics_V2_Anomaly_Batch:
         path = os.path.join(self.folder, f"{version}_aa.parquet")
         path2 = os.path.join(self.folder, f"{version}_char.parquet")
         
-        # --- PIPELINE 1: ACCOUNT STAGE RECORDS ---
-        if os.path.exists(path):
-            if self.floor == 0:
-                floor_filter = pl.col("floor") != 4
-            else:
-                floor_filter = (pl.col("floor") == self.floor) 
-                
-            if self.floor != "all":
-                
-                stage_lf = pl.scan_parquet(path).filter(floor_filter)
-            else:
-                stage_lf = pl.scan_parquet(path)
-        else:
+        # 1. Download and convert to parquet if it doesn't exist yet
+        if not os.path.exists(path):
             url = f"https://huggingface.co/datasets/LvlUrArti/MocData/resolve/main/{version}_aa.csv"
-            temp_df = pl.read_csv(url)
+            subset_cols =  ['uid', 'floor']
+            
             os.makedirs(self.folder, exist_ok=True)
-            temp_df.write_parquet(path)
-            stage_lf = pl.scan_parquet(path)
+            pl.scan_csv(url).unique(subset=subset_cols).sink_parquet(path)
 
+        # 2. Build the LazyFrame and apply filters
+        stage_lf = pl.scan_parquet(path)
+
+        
+        if self.floor != "all":
+            floor_filter = pl.col("floor") != 4 if self.floor == 0 else pl.col("floor") == self.floor
+            stage_lf = stage_lf.filter(floor_filter)
+
+
+        # 3. Apply common column transformations
         stage_lf = stage_lf.with_columns([
             pl.col("uid").cast(pl.String),
             cs.contains("cons").cast(pl.Float64),

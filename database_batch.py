@@ -4,7 +4,7 @@ import warnings
 import os
 import orjson
 from dotenv import load_dotenv
-
+import time
 from Appearance_rate_V2_batch import HonkaiStatistics_V2_Batch
 from Appearance_rate_V2_batch_Pure_fiction import HonkaiStatistics_V2_Pure_fiction_Batch
 from Appearance_rate_V2_batch_Apocalytic_Shadow import HonkaiStatistics_V2_APOC_Batch
@@ -102,17 +102,6 @@ class HonkaiDataPlatform:
             val = os.getenv(key)
             return val.split(",") if val else []
 
-        # -----------------------------------------------------------------
-        # Mode config
-        # era="MODERN" -> uses eidolon loop [0,1,2,6], full schema
-        # era="LEGACY" -> no eidolon loop, up_to_eidolon=6, eidolon cols NULL
-        # -----------------------------------------------------------------
-        # -----------------------------------------------------------------
-        # Cost-stratified mode config (HonkaiStatistics_V2_eidolon_batch)
-        # era="MODERN" — uses same parquet files as modern modes.
-        # All versions and all nodes/floors are always aggregated together.
-        # Results go into separate *_by_cost tables.
-        # -----------------------------------------------------------------
         self.cost_config = {
             "MOC_COST": {
                 "mode_arg": "moc",
@@ -146,8 +135,6 @@ class HonkaiDataPlatform:
                 "has_node": False,
                 "era":      "MODERN",
             },
-            # ---- Hard-mode anomaly, floor 4 (stored as floor=5 to avoid colliding
-            #      with the normal, non-hard floor=4 rows) ---------------------
             "ANOMALY_HARD_COST": {
                 "mode_arg":    "anomaly",
                 "prefix":      "anomaly",
@@ -162,7 +149,6 @@ class HonkaiDataPlatform:
         }
 
         self.config = {
-            # ---- LEGACY (pre-2.2.2, no cons cols in main parquet) --------
             "MOC_LEGACY": {
                 "class":    HonkaiStatistics_Legacy_Batch,
                 "prefix":   "moc",
@@ -190,7 +176,6 @@ class HonkaiDataPlatform:
                 "era":      "LEGACY",
                 "mode_arg": "pf_legacy",
             },
-            # ---- MODERN (2.3+, has cons cols) ----------------------------
             "MOC": {
                 "class":    HonkaiStatistics_V2_Batch,
                 "prefix":   "moc",
@@ -210,7 +195,7 @@ class HonkaiDataPlatform:
             "APOC": {
                 "class":    HonkaiStatistics_V2_APOC_Batch,
                 "prefix":   "apoc",
-                "versions": get_env_list("APOC_VERSIONS")[::-1],  # reverse to go from newest to oldest
+                "versions": get_env_list("APOC_VERSIONS")[::-1],
                 "floor":    4,
                 "has_node": True,
                 "era":      "MODERN",
@@ -223,8 +208,6 @@ class HonkaiDataPlatform:
                 "has_node": False,
                 "era":      "MODERN",
             },
-            # ---- Hard-mode anomaly, floor 4 (stored as floor=5 to avoid colliding
-            #      with the normal, non-hard floor=4 rows) ---------------------
             "ANOMALY_HARD": {
                 "class":       HonkaiStatistics_V2_Anomaly_Batch,
                 "prefix":      "anomaly",
@@ -320,12 +303,6 @@ class HonkaiDataPlatform:
 
     # ------------------------------------------------------------------
     def _check_char_metadata_coverage(self, df):
-        """Warn about dataset characters that have no characters.json entry.
-
-        The join in _standardize is how="left", so an unknown name doesn't
-        raise -- it just leaves role/availability/element/path/release_phase
-        NULL for every row of that character. Warn once per name per run.
-        """
         if self.char_metadata_pl is None or "Character" not in df.columns:
             return
         missing = missing_char_metadata(
@@ -347,7 +324,6 @@ class HonkaiDataPlatform:
             self._check_char_metadata_coverage(df)
             df = df.join(self.char_metadata_pl, on="Character", how="left")
 
-        # Normalise eidolon percentage column names
         eid_rename = {}
         for col in df.columns:
             if "Eidolon" in col and "%" in col:
@@ -356,45 +332,36 @@ class HonkaiDataPlatform:
         if eid_rename:
             df = df.rename(eid_rename)
 
-        # Apply standard rename map
         rename_dict = {k: v2 for k, v2 in self.rename_map.items() if k in df.columns}
         df = df.rename(rename_dict)
 
         node_val = None if (n is None or mode in ("ANOMALY", "ANOMALY_HARD")) else str(n)
 
-        # 1. Map out all the potential literal columns you want to add
         potential_cols = {
             'version': pl.lit(v),
             'mode': pl.lit(mode),
             'era': pl.lit(era),
             'floor': pl.lit(f),
-            'at_eidolon_level': pl.lit(0), # Default for standardization if not provided
+            'at_eidolon_level': pl.lit(0),
             'up_to_eidolon_level': pl.lit(e),
             'node': pl.lit(node_val, dtype=pl.Utf8),
         }
 
-        # 2. Filter the dictionary to only include keys NOT already in df.columns.
-        # EXCEPTION: 'floor' is force-overwritten when force_floor=True — the scraper
-        # already returns a real 'floor' column (e.g. the actual queried floor=4 for
-        # hard-mode anomaly), but we want to relabel it (e.g. to floor=5) so it
-        # doesn't collide with the normal, non-hard rows for that same real floor.
         missing_cols = [
             expr.alias(col_name) 
             for col_name, expr in potential_cols.items() 
             if col_name not in df.columns or (col_name == 'floor' and force_floor)
         ]
 
-        # 3. Only apply with_columns if there's actually something missing
         if missing_cols:
             df = df.with_columns(missing_cols)
 
-        # Final column name sanitise
         df.columns = [
             c.replace(' (%)', '_pct')
             .replace('(%)', '_pct')
             .replace(' ', '_').replace('(', '').replace(')', '')
             .replace('%', 'pct').strip('_')
-            .replace('__', '_')   # collapse double underscores
+            .replace('__', '_')
             for c in df.columns
         ]
 
@@ -410,29 +377,190 @@ class HonkaiDataPlatform:
         return df.drop([c for c in ['Skewness', 'Kurtosis'] if c in df.columns])
 
     # ------------------------------------------------------------------
-    def _db_save(self, conn, df, table):
-        if df is None:
-            return
-        conn.register('temp_df', df)
-        conn.execute(
-            f"CREATE TABLE IF NOT EXISTS {table} AS SELECT * FROM temp_df WHERE 1=0"
+    def _db_save_batch(self, conn, items):
+        """Save a list of (df, table) tuples in a single explicit transaction,
+
+        caching table existence to skip redundant CREATE TABLE checks.
+        Automatically chunks DataFrames exceeding 1M rows to prevent memory spilling.
+        """
+        valid_items = sorted(
+            [(df, table) for df, table in items if df is not None and not df.is_empty()],
+            key=lambda x: len(x[0]),
+            reverse=True
         )
+        if not valid_items:
+            return
+
+        # Lazy-load existing tables from DuckDB's information_schema once per session
+        if not hasattr(self, "_session_tables") or self._session_tables is None:
+            try:
+                rows = conn.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+                ).fetchall()
+                self._session_tables = {row[0].lower() for row in rows}
+            except Exception:
+                self._session_tables = set()
+
+        conn.execute("BEGIN TRANSACTION;")
         try:
-            conn.execute(f"INSERT INTO {table} BY NAME SELECT * FROM temp_df")
+            for idx, (df, table) in enumerate(valid_items):
+                start = time.perf_counter()
+                row_count = len(df)
+                
+                # Check cache first — create the table structure using a small header view if missing
+                if table.lower() not in self._session_tables:
+                    schema_view = f"temp_schema_{idx}"
+                    conn.register(schema_view, df.head(1))
+                    conn.execute(
+                        f"CREATE TABLE IF NOT EXISTS {table} AS SELECT * FROM {schema_view} WHERE 1=0"
+                    )
+                    conn.unregister(schema_view)
+                    self._session_tables.add(table.lower())
+
+                # Chunk insertion if row count exceeds 1 million
+                if row_count > 1_000_000:
+                    chunk_size = 1_000_000
+                    for c_idx, chunk in enumerate(df.iter_slices(n_rows=chunk_size)):
+                        chunk_view = f"temp_df_{idx}_chunk_{c_idx}"
+                        conn.register(chunk_view, chunk)
+                        try:
+                            conn.execute(f"INSERT INTO {table} BY NAME SELECT * FROM {chunk_view}")
+                        except Exception as ex:
+                            print(f"  !!! Failed to append chunk {c_idx} to {table}: {ex}")
+                        conn.unregister(chunk_view)
+                else:
+                    # Standard single-shot insertion for smaller tables
+                    view_name = f"temp_df_{idx}"
+                    conn.register(view_name, df)
+                    try:
+                        conn.execute(f"INSERT INTO {table} BY NAME SELECT * FROM {view_name}")
+                    except Exception as ex:
+                        print(f"  !!! Failed to append to {table}: {ex}")
+                    conn.unregister(view_name)
+                
+                end = time.perf_counter()
+                print(f"  [DB SAVE] {table} ({row_count:,} rows) saved in {end - start:.4f} seconds")
+                
+            conn.execute("COMMIT;")
         except Exception as ex:
-            print(f"  !!! Failed to append to {table}: {ex}")
-        conn.unregister('temp_df')
+            conn.execute("ROLLBACK;")
+            print(f"  !!! Batch save transaction failed: {ex}")
+    
+    # ------------------------------------------------------------------
+    def _get_modern_saves(self, mode, cfg, v, e, f, n):
+        era = "MODERN"
+        is_anomaly_family = mode in ("ANOMALY", "ANOMALY_HARD")
+        force_floor = "floor_label" in cfg
+        f_out = cfg.get("floor_label", f)
+        db_mode = cfg.get("db_mode", mode)
+        print(f"  [MODERN] {mode} v={v} e={e} floor={f} node={n}")
+        try:
+            scraper = self._build_modern_scraper(cfg, v, e, f, n)
+        except Exception as ex:
+            print(f"  !!! Scraper init failed: {ex}")
+            return []
+
+        prefix = cfg["prefix"]
+
+        modern_saves = [
+            (self._standardize(scraper.get_char_df(), db_mode, v, e, f_out, n, era, is_char=True, force_floor=force_floor), "character_stats"),
+            (self._standardize(scraper.get_archetype_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_archetypes"),
+            (self._standardize(scraper.get_eidolon_performance_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_eidolon_performance"),
+            (self._standardize(scraper.get_team_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_teams"),
+            (self._standardize(scraper.get_duos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_duos"),
+            (self._standardize(scraper.get_trios_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_trios"),
+            (self._standardize(scraper.get_quos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_quos"),
+            (self._standardize(scraper.plot_statistics_all(cumulative=True, output=False), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_distributions"),
+        ]
+
+        if is_anomaly_family:
+            combined_trigger = f in (0, "all")
+            gear_trigger     = f in (0, 4, "all")
+        else:
+            combined_trigger = n in (0, "all")
+            gear_trigger     = n in (0, "all")
+
+        if combined_trigger:
+            label  = "Both" if not is_anomaly_family else None
+            suffix = "dual_or_triple" if not is_anomaly_family else "triple"
+            print(f"  [MODERN] Combined {suffix.upper()} for {mode} v={v} e={e}")
+            modern_saves.extend([
+                (self._standardize(scraper.get_combined_archetype_df(), db_mode, v, e, f_out, label, era, force_floor=force_floor), f"{prefix}_stats_{suffix}_archetypes"),
+                (self._standardize(scraper.get_combined_team_df(), db_mode, v, e, f_out, label, era, force_floor=force_floor), f"{prefix}_stats_{suffix}_teams"),
+                (self._standardize(scraper.plot_statistics_all_combined(cumulative=True, output=False), db_mode, v, e, f_out, label, era, force_floor=force_floor), f"{prefix}_stats_{suffix}_distributions"),
+            ])
+
+        if gear_trigger:
+            print(f"  [MODERN] Gear for {mode} v={v} e={e}")
+            modern_saves.append(
+                (self._standardize(scraper.display_top_gear(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_gear_usage")
+            )
+
+        return modern_saves
+
+    # ------------------------------------------------------------------
+    def _get_cost_saves(self, mode, cfg, version):
+        era       = "MODERN"
+        prefix    = cfg["prefix"]
+        m_arg     = cfg["mode_arg"]
+        f         = cfg["floor"]
+        hard_mode = cfg.get("hard_mode", False)
+        v         = version
+        n         = "all" if cfg["has_node"] else None
+        if hard_mode:
+            floor_arg = f
+        else:
+            floor_arg = "all" if m_arg == "anomaly" else f
+        e = "all"
+        force_floor = "floor_label" in cfg
+        f_out = cfg.get("floor_label", f)
+        db_mode = cfg.get("db_mode", mode)
+
+        print(f"  [COST] {mode} mode={m_arg} v={v} nodes/floors=all hard_mode={hard_mode}")
+        try:
+            kwargs = {}
+            if hard_mode:
+                kwargs["hard_mode"] = hard_mode
+            
+            try:
+                scraper = HonkaiStatistics_V2_eidolon_batch(
+                    version=v,
+                    floor=floor_arg,
+                    node=n if n is not None else 0,
+                    by_ed=None,
+                    mode=m_arg,
+                    **kwargs,
+                )
+            except TypeError:
+                scraper = HonkaiStatistics_V2_eidolon_batch(
+                    version=v,
+                    floor=floor_arg,
+                    node=n if n is not None else 0,
+                    by_ed=None,
+                    mode=m_arg,
+                )
+        except Exception as ex:
+            print(f"  !!! Cost scraper init failed for {mode}: {ex}")
+            return []
+
+        return [
+            (self._standardize(scraper.get_teams_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_by_cost_teams"),
+            (self._standardize(scraper.get_archetypes_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_by_cost_archetypes"),
+            (self._standardize(scraper.get_chars_by_cost_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_by_cost_chars"),
+            (self._standardize(scraper.get_chars_by_individual_eidolons_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_by_cost_chars_by_eidolon"),
+            (self._standardize(scraper.get_chars_by_cost_no_individual_eidolons_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_by_cost_chars_no_eidolon"),
+            (self._standardize(scraper.get_duos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_by_cost_duos"),
+            (self._standardize(scraper.get_combined_team_df(), db_mode, v, e, f_out, "Both", era, force_floor=force_floor), f"{prefix}_by_cost_dual_or_triple_teams"),
+            (self._standardize(scraper.get_combined_archetype_df(), db_mode, v, e, f_out, "Both", era, force_floor=force_floor), f"{prefix}_by_cost_dual_or_triple_archetypes"),
+        ]
+
+    # ------------------------------------------------------------------
+    def _db_save(self, conn, df, table):
+        """Backward-compatible wrapper around _db_save_batch."""
+        self._db_save_batch(conn, [(df, table)])
 
     # ------------------------------------------------------------------
     def _sort_table(self, conn, table):
-        """Replace a table's contents with a version-sorted copy (duckdb).
-
-        One statement — CREATE OR REPLACE TABLE ... AS SELECT * FROM ... ORDER
-        BY ... — so the rows never leave the engine (no arrow -> polars -> arrow
-        round-trip, which bench_sort.py measures at ~2.4-2.9x slower end to end).
-        Columns absent from a table are skipped (see SORT_SPEC), so non-stats
-        tables are left untouched.
-        """
         try:
             cols = {r[0] for r in conn.execute(f"DESCRIBE {table}").fetchall()}
             clause = sort_clause(cols)
@@ -460,106 +588,46 @@ class HonkaiDataPlatform:
         cls      = cfg["class"]
         mode_arg = cfg.get("mode_arg")
         if cfg["has_node"]:
-            return cls(sub_mode=mode_arg,floor=f, node=n)
+            return cls(sub_mode=mode_arg, floor=f, node=n)
         else:
-            return cls(sub_mode=mode_arg,floor=f)
+            return cls(sub_mode=mode_arg, floor=f)
 
     # ------------------------------------------------------------------
-    def _process_cost(self, conn, mode, cfg, version="all"):
-        """Run the cost-stratified batch for one mode (all nodes/floors).
+    def _process_cost(self, conn, mode, cfg, strategy="all_at_once", target_version=None):
+        def specific_versions(c):
+            if target_version:
+                return [target_version]
+            return c["versions"]
 
-        version="all" -> the scraper loads every version and aggregates across
-            them (used by full rebuilds).
-        version=<v>   -> only that version's parquet is loaded, so just its
-            rows are computed and appended (used by incremental_update so the
-            by-cost tables increment too instead of recomputing all versions).
-        """
-        era       = "MODERN"
-        prefix    = cfg["prefix"]
-        m_arg     = cfg["mode_arg"]
-        f         = cfg["floor"]
-        hard_mode = cfg.get("hard_mode", False)
-        # "all" aggregates every version; a specific version limits the load.
-        # Node/floor are still all within that version.
-        v = version
-        n = "all" if cfg["has_node"] else None
-        # Hard-mode anomaly pass targets one specific floor (e.g. 4), so it
-        # should NOT be widened to "all" the way the normal anomaly pass is.
-        if hard_mode:
-            floor_arg = f
+        if strategy == "all_at_once":
+            saves = self._get_cost_saves(mode, cfg, version=target_version or "all")
+            self._db_save_batch(conn, saves)
+        elif strategy == "per_version":
+            table_to_dfs = {}
+            for v in specific_versions(cfg):
+                saves = self._get_cost_saves(mode, cfg, version=v)
+                for df, tbl in saves:
+                    if df is not None and not df.is_empty():
+                        table_to_dfs.setdefault(tbl, []).append(df)
+                print(f"  [COST] version {v} collected for {mode}")
+
+            final_saves = []
+            for tbl, dfs in table_to_dfs.items():
+                print("  [COST] Concatenating and saving table:", tbl)
+                if dfs:
+                    combined_df = pl.concat(dfs, how="diagonal_relaxed")
+                    final_saves.append((combined_df, tbl))
+            print("  [COST] All tables concatenated, saving to DB...")
+            self._db_save_batch(conn, final_saves)
         else:
-            floor_arg = "all" if m_arg == "anomaly" else f
-        e = "all"   # eidolon sentinel — cost scraper handles eidolon internally
-        # floor_label lets us write a different floor value into the DB than the
-        # one used to query the data (e.g. hard-mode floor 4 stored as floor 5,
-        # so it doesn't collide with the normal, non-hard floor=4 rows). force_floor
-        # tells _standardize to overwrite the scraper's own 'floor' column instead
-        # of leaving it as-is (which is what happens by default).
-        force_floor = "floor_label" in cfg
-        f_out = cfg.get("floor_label", f)
-        # db_mode lets a config's DB-written 'mode' literal differ from its own
-        # orchestration key — kept consistent with the modern-stats pass, though
-        # the by-cost tables aren't currently filtered on 'mode' downstream.
-        db_mode = cfg.get("db_mode", mode)
-
-        print(f"  [COST] {mode} mode={m_arg} v={v} nodes/floors=all hard_mode={hard_mode}")
-        try:
-            scraper = HonkaiStatistics_V2_eidolon_batch(
-                version=v,
-                floor=floor_arg,
-                node=n if n is not None else 0,
-                by_ed=None,
-                mode=m_arg,
-                hard_mode=hard_mode,
-            )
-        except Exception as ex:
-            print(f"  !!! Cost scraper init failed for {mode}: {ex}")
-            return
-
-        # Per-node/floor tables
-        self._db_save(conn,
-            self._standardize(scraper.get_teams_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_by_cost_teams")
-        self._db_save(conn,
-            self._standardize(scraper.get_archetypes_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_by_cost_archetypes")
-        self._db_save(conn,
-            self._standardize(scraper.get_chars_by_cost_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_by_cost_chars")
-        self._db_save(conn,
-            self._standardize(scraper.get_chars_by_individual_eidolons_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_by_cost_chars_by_eidolon")
-        self._db_save(conn,
-            self._standardize(scraper.get_chars_by_cost_no_individual_eidolons_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_by_cost_chars_no_eidolon")
-        self._db_save(conn,
-            self._standardize(scraper.get_duos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_by_cost_duos")
-
-        # Combined (cross-node) tables
-        print(f"  [COST] Combined tables for {mode}")
-        self._db_save(conn,
-            self._standardize(scraper.get_combined_team_df(), db_mode, v, e, f_out, "Both", era, force_floor=force_floor),
-            f"{prefix}_by_cost_dual_or_triple_teams")
-        self._db_save(conn,
-            self._standardize(scraper.get_combined_archetype_df(), db_mode, v, e, f_out, "Both", era, force_floor=force_floor),
-            f"{prefix}_by_cost_dual_or_triple_archetypes")
+            raise ValueError(f"Unknown cost_strategy: {strategy!r}")
 
     # ------------------------------------------------------------------
     def _process_modern(self, conn, mode, cfg, v, e, f, n, eidolons):
         era = "MODERN"
         is_anomaly_family = mode in ("ANOMALY", "ANOMALY_HARD")
-        # floor_label lets us write a different floor value into the DB than the
-        # one used to query the data (e.g. hard-mode floor 4 stored as floor 5,
-        # so it doesn't collide with the normal, non-hard floor=4 rows). force_floor
-        # tells _standardize to overwrite the scraper's own 'floor' column instead
-        # of leaving it as-is (which is what happens by default).
         force_floor = "floor_label" in cfg
         f_out = cfg.get("floor_label", f)
-        # db_mode lets a config's DB-written 'mode' literal differ from its own
-        # orchestration key — e.g. ANOMALY_HARD is a distinct config for scraper
-        # setup, but its rows still need mode="ANOMALY" so they show up alongside
-        # the rest of the anomaly section (distinguished only by floor=5).
         db_mode = cfg.get("db_mode", mode)
         print(f"  [MODERN] {mode} v={v} e={e} floor={f} node={n}")
         try:
@@ -570,37 +638,17 @@ class HonkaiDataPlatform:
 
         prefix = cfg["prefix"]
 
-        self._db_save(conn,
-            self._standardize(scraper.get_char_df(), db_mode, v, e, f_out, n, era, is_char=True, force_floor=force_floor),
-            "character_stats")
-        self._db_save(conn,
-            self._standardize(scraper.get_archetype_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_stats_archetypes")
-        self._db_save(conn,
-            self._standardize(scraper.get_eidolon_performance_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_stats_eidolon_performance")
-        self._db_save(conn,
-            self._standardize(scraper.get_team_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_stats_teams")
-        self._db_save(conn,
-            self._standardize(scraper.get_duos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_stats_duos")
-        self._db_save(conn,
-                    self._standardize(scraper.get_trios_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-                    f"{prefix}_stats_trios")
-        self._db_save(conn,
-                            self._standardize(scraper.get_quos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-                            f"{prefix}_stats_quos")
-        self._db_save(conn,
-            self._standardize(
-                scraper.plot_statistics_all(cumulative=True, output=False),
-                db_mode, v, e, f_out, n, era, force_floor=force_floor),
-            f"{prefix}_stats_distributions")
+        modern_saves = [
+            (self._standardize(scraper.get_char_df(), db_mode, v, e, f_out, n, era, is_char=True, force_floor=force_floor), "character_stats"),
+            (self._standardize(scraper.get_archetype_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_archetypes"),
+            (self._standardize(scraper.get_eidolon_performance_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_eidolon_performance"),
+            (self._standardize(scraper.get_team_df(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_teams"),
+            (self._standardize(scraper.get_duos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_duos"),
+            (self._standardize(scraper.get_trios_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_trios"),
+            (self._standardize(scraper.get_quos_stats(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_quos"),
+            (self._standardize(scraper.plot_statistics_all(cumulative=True, output=False), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_distributions"),
+        ]
 
-        # For non-ANOMALY: combined triggers on node=0/"all"
-        # For ANOMALY family: combined triggers on floor=0/"all" (floor is the equivalent axis).
-        # Hard-mode anomaly (floor=4, hard_mode=True) is a single fixed floor, so it
-        # never triggers the triple-floor combined pass, only the gear pass.
         if is_anomaly_family:
             combined_trigger = f in (0, "all")
             gear_trigger     = f in (0, 4, "all")
@@ -612,28 +660,24 @@ class HonkaiDataPlatform:
             label  = "Both" if not is_anomaly_family else None
             suffix = "dual_or_triple" if not is_anomaly_family else "triple"
             print(f"  [MODERN] Combined {suffix.upper()} for {mode} v={v} e={e}")
-            self._db_save(conn,
-                self._standardize(scraper.get_combined_archetype_df(), db_mode, v, e, f_out, label, era, force_floor=force_floor),
-                f"{prefix}_stats_{suffix}_archetypes")
-            self._db_save(conn,
-                self._standardize(scraper.get_combined_team_df(), db_mode, v, e, f_out, label, era, force_floor=force_floor),
-                f"{prefix}_stats_{suffix}_teams")
-            self._db_save(conn,
-                self._standardize(
-                    scraper.plot_statistics_all_combined(cumulative=True, output=False),
-                    db_mode, v, e, f_out, label, era, force_floor=force_floor),
-                f"{prefix}_stats_{suffix}_distributions")
+            modern_saves.extend([
+                (self._standardize(scraper.get_combined_archetype_df(), db_mode, v, e, f_out, label, era, force_floor=force_floor), f"{prefix}_stats_{suffix}_archetypes"),
+                (self._standardize(scraper.get_combined_team_df(), db_mode, v, e, f_out, label, era, force_floor=force_floor), f"{prefix}_stats_{suffix}_teams"),
+                (self._standardize(scraper.plot_statistics_all_combined(cumulative=True, output=False), db_mode, v, e, f_out, label, era, force_floor=force_floor), f"{prefix}_stats_{suffix}_distributions"),
+            ])
 
         if gear_trigger:
             print(f"  [MODERN] Gear for {mode} v={v} e={e}")
-            self._db_save(conn,
-                self._standardize(scraper.display_top_gear(), db_mode, v, e, f_out, n, era, force_floor=force_floor),
-                f"{prefix}_stats_gear_usage")
+            modern_saves.append(
+                (self._standardize(scraper.display_top_gear(), db_mode, v, e, f_out, n, era, force_floor=force_floor), f"{prefix}_stats_gear_usage")
+            )
+
+        self._db_save_batch(conn, modern_saves)
 
     # ------------------------------------------------------------------
     def _process_legacy(self, conn, mode, cfg, v, f, n):
         era = "LEGACY"
-        e   = 6           # sentinel: no eidolon filtering applied
+        e   = 6
         print(f"  [LEGACY] {mode} v{v} Floor{f} Node{n}")
         try:
             scraper = self._build_legacy_scraper(cfg, v, f, n)
@@ -642,71 +686,47 @@ class HonkaiDataPlatform:
             return
 
         prefix = cfg["prefix"]
-        n= None
-        self._db_save(conn,
-            self._standardize(scraper.get_char_df(), mode, v, e, f, n, era, is_char=True),
-            "character_stats")
-        self._db_save(conn,
-            self._standardize(scraper.get_archetype_df(), mode, v, e, f, n, era),
-            f"{prefix}_stats_archetypes")
-        self._db_save(conn,
-            self._standardize(scraper.get_team_df(), mode, v, e, f, n, era),
-            f"{prefix}_stats_teams")
-        self._db_save(conn,
-            self._standardize(scraper.get_duos_stats(), mode, v, e, f, n, era),
-            f"{prefix}_stats_duos")
-        self._db_save(conn,
-            self._standardize(
-                scraper.plot_statistics_all(output=False),
-                mode, v, e, f, n, era),
-            f"{prefix}_stats_distributions")
+        n = None
 
-        if n == 0 or v =="all" or n=="all":
+        legacy_saves = [
+            (self._standardize(scraper.get_char_df(), mode, v, e, f, n, era, is_char=True), "character_stats"),
+            (self._standardize(scraper.get_archetype_df(), mode, v, e, f, n, era), f"{prefix}_stats_archetypes"),
+            (self._standardize(scraper.get_team_df(), mode, v, e, f, n, era), f"{prefix}_stats_teams"),
+            (self._standardize(scraper.get_duos_stats(), mode, v, e, f, n, era), f"{prefix}_stats_duos"),
+            (self._standardize(scraper.plot_statistics_all(output=False), mode, v, e, f, n, era), f"{prefix}_stats_distributions"),
+        ]
+
+        if n == 0 or v == "all" or n == "all":
             label  = "Both"
             suffix = "dual_or_triple"
             print(f"  [LEGACY] Combined {suffix.upper()} for {mode} v{v}")
-            self._db_save(conn,
-                self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, label, era),
-                f"{prefix}_stats_{suffix}_archetypes")
-            self._db_save(conn,
-                self._standardize(scraper.get_combined_team_df(), mode, v, e, f, label, era),
-                f"{prefix}_stats_{suffix}_teams")
-            self._db_save(conn,
-                self._standardize(
-                    scraper.plot_statistics_all_combined(output=False),
-                    mode, v, e, f, label, era),
-                f"{prefix}_stats_{suffix}_distributions")
+            legacy_saves.extend([
+                (self._standardize(scraper.get_combined_archetype_df(), mode, v, e, f, label, era), f"{prefix}_stats_{suffix}_archetypes"),
+                (self._standardize(scraper.get_combined_team_df(), mode, v, e, f, label, era), f"{prefix}_stats_{suffix}_teams"),
+                (self._standardize(scraper.plot_statistics_all_combined(output=False), mode, v, e, f, label, era), f"{prefix}_stats_{suffix}_distributions"),
+            ])
 
-        if n == 0 or v =="all" or n=="all":
-          
+        if n == 0 or v == "all" or n == "all":
             print(f"  [LEGACY] Gear for {mode} v{v}")
-            self._db_save(conn,
-                self._standardize(scraper.display_top_gear(), mode, v, e, f,n, era),
-                f"{prefix}_stats_gear_usage")
+            legacy_saves.append(
+                (self._standardize(scraper.display_top_gear(), mode, v, e, f, n, era), f"{prefix}_stats_gear_usage")
+            )
+
+        self._db_save_batch(conn, legacy_saves)
 
     # ------------------------------------------------------------------
     def orchestrate_update(
         self,
         target_mode=None,
         target_version=None,
-        modern_strategy="all_at_once",  # all_at_once | per_version | per_node | per_eidolon | granular
-        legacy_strategy="all_at_once",  # all_at_once | per_version
-        run_cost=True,                  # whether to run the cost-stratified pass
-        do_legacy=True,                 # whether to run the LEGACY pass
-        run_builds=True,                # whether to run the builds pass at the end
-        sort_tables=True,               # whether to re-sort every table at the end
+        modern_strategy="all_at_once",
+        legacy_strategy="all_at_once",
+        cost_strategy="all_at_once",
+        run_cost=True,
+        do_legacy=True,
+        run_builds=True,
+        sort_tables=True,
     ):
-        """Ingest the given mode(s)/version(s).
-
-        Replace-vs-append is decided PER GAMEMODE from .env, using the same
-        keys as frontend_orchestrator.py:
-
-            MOC = replace / Pure_fiction = add / anomaly = replace / apoc = replace
-
-        A mode set to 'replace' has the version being added deleted from its
-        tables first; a mode set to 'add' is simply appended to. See
-        get_mode_strategy() — DB_STRATEGY still overrides all modes.
-        """
         conn = duckdb.connect(self.db_name)
         modes_to_run = [target_mode] if target_mode else list(self.config.keys())
         modern_modes = [m for m in modes_to_run if self.config[m]["era"] == "MODERN"]
@@ -719,14 +739,6 @@ class HonkaiDataPlatform:
 
         EIDOLONS = [0, 1, 2, 6]
 
-        # ------------------------------------------------------------------
-        # PER-MODE REPLACE / ADD — .env keys, same as frontend_orchestrator.py
-        #   MOC = replace / Pure_fiction = add / anomaly = replace / apoc = replace
-        # 'replace' modes have the version being added deleted from their tables
-        # first, so re-adding refreshes the rows instead of duplicating them.
-        # 'add' modes append only. Without target_version, each replaced
-        # gamemode's newest version is the one deleted.
-        # ------------------------------------------------------------------
         delete_modes = (modern_modes + legacy_modes) if do_legacy else modern_modes
         replace_modes = [m for m in delete_modes if self._strategy_for(m) == "replace"]
         add_modes = [m for m in delete_modes if m not in replace_modes]
@@ -744,39 +756,31 @@ class HonkaiDataPlatform:
         if add_modes:
             print(f"  [ADD] appending without delete: {', '.join(add_modes)}")
 
-        # by-cost tables carry per-version rows — delete the replaced version's
-        # rows (or the whole mode when no target_version) for cost modes whose
-        # gamemode is set to 'replace', so the cost pass re-adds them fresh
-        # instead of duplicating.
         if run_cost:
             cost_modes_to_run = []
             if target_mode:
-                # A legacy target mode owns no cost tables — skip rather than
-                # falling back to every cost mode (which would delete rows for
-                # gamemodes that were not part of this run).
                 if self.config[target_mode]["era"] != "LEGACY":
                     cost_key = target_mode + "_COST"
-                    cost_modes_to_run = [cost_key] if cost_key in self.cost_config else list(self.cost_config.keys())
+                    if cost_key in self.cost_config:
+                        cost_modes_to_run = [cost_key]
+                        if target_mode.upper() == "ANOMALY":
+                            cost_modes_to_run.append("ANOMALY_HARD_COST")
+                    else:
+                        cost_modes_to_run = list(self.cost_config.keys())
             else:
                 cost_modes_to_run = list(self.cost_config.keys())
             for mode in cost_modes_to_run:
-                if self._strategy_for(mode) != "replace":
+                if cost_strategy == "all_at_once" and self._strategy_for(mode) != "replace":
                     print(f"  [ADD] {mode}: cost rows kept (strategy=add)")
                     continue
                 self._delete_cost_rows(conn, mode, self.cost_config[mode], version=target_version)
         conn.commit()
 
-        # ------------------------------------------------------------------
-        # PASS 1 — MODERN
-        # ------------------------------------------------------------------
         print("=" * 60)
         print(f"PASS 1: MODERN  [strategy={modern_strategy}]")
         print("=" * 60)
         self._orchestrate_modern(conn, modern_modes, modern_strategy, specific_versions, EIDOLONS)
 
-        # ------------------------------------------------------------------
-        # PASS 2 — LEGACY
-        # ------------------------------------------------------------------
         print("=" * 60)
         if do_legacy:
             print(f"PASS 2: LEGACY  [strategy={legacy_strategy}]")
@@ -786,32 +790,28 @@ class HonkaiDataPlatform:
             print("PASS 2: LEGACY  [skipped — do_legacy=False]")
             print("=" * 60)
 
-        # ------------------------------------------------------------------
-        # PASS 3 — COST-STRATIFIED
-        # ------------------------------------------------------------------
         if run_cost:
             cost_scope = target_version or "all versions"
             print("=" * 60)
-            print(f"PASS 3: COST-STRATIFIED  [{cost_scope}, all nodes/floors]")
+            print(f"PASS 3: COST-STRATIFIED  [{cost_scope}, all nodes/floors, strategy={cost_strategy}]")
             print("=" * 60)
-            # Determine which cost modes to run
             cost_modes_to_run = []
             if target_mode:
-                # A legacy target mode owns no cost tables — skip rather than
-                # falling back to every cost mode (which would re-append all).
                 if self.config[target_mode]["era"] != "LEGACY":
                     cost_key = target_mode + "_COST"
-                    cost_modes_to_run = [cost_key] if cost_key in self.cost_config else list(self.cost_config.keys())
+                    if cost_key in self.cost_config:
+                        cost_modes_to_run = [cost_key]
+                        if target_mode.upper() == "ANOMALY":
+                            cost_modes_to_run.append("ANOMALY_HARD_COST")
+                    else:
+                        cost_modes_to_run = list(self.cost_config.keys())
             else:
                 cost_modes_to_run = list(self.cost_config.keys())
             for mode in cost_modes_to_run:
-                self._process_cost(conn, mode, self.cost_config[mode], version=target_version or "all")
+                self._process_cost(conn, mode, self.cost_config[mode], strategy=cost_strategy, target_version=target_version)
                 print(f"  [commit] {mode} cost pass done")
                 conn.commit()
 
-        # ------------------------------------------------------------------
-        # PASS 4 — Sort (duckdb ORDER BY)
-        # ------------------------------------------------------------------
         print("=" * 60)
         if sort_tables:
             print("PASS 4: Sorting all tables (duckdb)")
@@ -830,9 +830,6 @@ class HonkaiDataPlatform:
         conn.close()
         print("Done.")
 
-        # ------------------------------------------------------------------
-        # PASS 5 — Builds
-        # ------------------------------------------------------------------
         if run_builds:
             print("=" * 60)
             print("PASS 5: BUILDS")
@@ -842,8 +839,6 @@ class HonkaiDataPlatform:
 
     # ------------------------------------------------------------------
     def _latest_version(self, cfg):
-        """Newest version in a config's list, by numeric (major, minor) order —
-        works whether the list is stored oldest-first or newest-first."""
         versions = cfg.get("versions") or []
 
         def key(v):
@@ -856,8 +851,6 @@ class HonkaiDataPlatform:
 
     # ------------------------------------------------------------------
     def _strategy_for(self, mode, default="add"):
-        """'replace' | 'add' for a config mode key, from .env (see
-        get_mode_strategy)."""
         return get_mode_strategy(mode, default=default)
 
     # ------------------------------------------------------------------
@@ -874,11 +867,6 @@ class HonkaiDataPlatform:
 
     # ------------------------------------------------------------------
     def _delete_version(self, conn, version, modes):
-        """Delete every row for `version` from all tables owned by `modes`.
-
-        Stats tables are prefix-scoped; character_stats is shared across modes
-        and filtered by its mode column instead.
-        """
         for mode in modes:
             cfg     = self.config[mode]
             prefix  = cfg["prefix"]
@@ -909,12 +897,6 @@ class HonkaiDataPlatform:
 
     # ------------------------------------------------------------------
     def _delete_cost_rows(self, conn, mode, cfg, version=None):
-        """Delete rows of one cost-stratified mode.
-
-        version=None -> delete every row of the mode (full refresh).
-        version=<v>  -> delete only that version's rows, so an incremental
-            replace re-adds just that version instead of re-adding all.
-        """
         prefix  = cfg["prefix"]
         db_mode = cfg.get("db_mode", mode)
         tables  = [
@@ -938,7 +920,7 @@ class HonkaiDataPlatform:
                 )
         scope = "all rows" if version is None else f"version {version}"
         print(f"  [REPLACE] {mode}: removed by-cost rows ({scope})")
-
+    
     # ------------------------------------------------------------------
     def incremental_update(
         self,
@@ -947,23 +929,6 @@ class HonkaiDataPlatform:
         do_legacy=False,
         run_cost=True,
     ):
-        """Incremental addition — append only the newest version's rows instead
-        of rebuilding the whole database.
-
-        - Replace-vs-append follows .env per gamemode, exactly like the
-          frontend orchestrator: a mode set to 'replace' (e.g. MOC, anomaly,
-          apoc) has the version being added deleted first so re-adding
-          refreshes those rows instead of duplicating them (the same version's
-          by-cost rows are refreshed too); a mode set to 'add' (e.g.
-          Pure_fiction) is appended to without deleting anything.
-        - do_legacy=False (default) skips the slow legacy pass, which rarely
-          changes once written.
-        - The by-cost pass increments too: it loads only the target version's
-          rows (not all versions), matching the modern-stats pass.
-        - Sorting happens once, after the last mode's pass, instead of re-sorting
-          every table after every mode.
-        - target_version defaults to each gamemode's newest version.
-        """
         modes_to_run = [target_mode] if target_mode else list(self.config.keys())
         jobs = []
         for mode in modes_to_run:
@@ -978,8 +943,6 @@ class HonkaiDataPlatform:
             print("No versions to process.")
             return
 
-        # Snapshot the DB before any writes so a bad run can be undone.
-        # Non-fatal: if we can't back up, the append itself can still proceed.
         try:
             snapshot()
         except Exception as ex:
@@ -994,10 +957,11 @@ class HonkaiDataPlatform:
                 target_version=v,
                 modern_strategy="per_version",
                 legacy_strategy="per_version",
+                cost_strategy="per_version",
                 run_cost=run_cost,
                 do_legacy=do_legacy,
-                run_builds=(i == len(jobs) - 1),    # builds once, after the last mode
-                sort_tables=(i == len(jobs) - 1),   # sort once, after the last mode
+                run_builds=(i == len(jobs) - 1),
+                sort_tables=(i == len(jobs) - 1),
             )
 
     # ------------------------------------------------------------------
@@ -1005,16 +969,14 @@ class HonkaiDataPlatform:
         for mode in modern_modes:
             cfg = self.config[mode]
 
-            # ANOMALY iterates floors the same way non-ANOMALY iterates nodes
             if mode == "ANOMALY":
-                floors = [0, 4, "all"]   # 0=normal, 4=hard, "all"=aggregate
+                floors = [0, 4, "all"]
                 nodes  = [None]
             else:
                 floors = [cfg["floor"]]
                 nodes  = [0, 1, 2] if cfg["has_node"] else [None]
 
             if strategy == "all_at_once":
-                # Single scraper call — version/node/floor/eidolon all aggregated internally
                 if mode == "ANOMALY":
                     self._process_modern(conn, mode, cfg, v="all", e="all", f="all", n=None, eidolons="all")
                 else:
@@ -1023,19 +985,46 @@ class HonkaiDataPlatform:
                 conn.commit()
 
             elif strategy == "per_version":
+                table_to_dfs = {}
                 for v in specific_versions(cfg):
                     if mode == "ANOMALY":
-                        self._process_modern(conn, mode, cfg, v=v, e="all", f="all", n=None, eidolons="all")
+                        saves = self._get_modern_saves(mode, cfg, v=v, e="all", f="all", n=None)
                     else:
+                        saves = []
                         for f in floors:
-                            self._process_modern(conn, mode, cfg, v=v, e="all", f=f, n="all", eidolons="all")
-                    print(f"  [commit] {mode} version {v} done")
-                    conn.commit()
+                            saves.extend(self._get_modern_saves(mode, cfg, v=v, e="all", f=f, n="all"))
+                    
+                    version_immediate_saves = []
+                    for df, tbl in saves:
+                        if df is not None and not df.is_empty():
+                            if tbl.endswith("_stats_quos") or tbl.endswith("_stats_trios"):
+                                version_immediate_saves.append((df, tbl))
+                            else:
+                                table_to_dfs.setdefault(tbl, []).append(df)
+                    
+                    if version_immediate_saves:
+                        print(f"  [MODERN] Saving quos/trios immediately for version {v}...")
+                        self._db_save_batch(conn, version_immediate_saves)
+
+                    print(f"  [MODERN] version {v} collected")
+
+                final_saves = []
+                for tbl, dfs in table_to_dfs.items():
+                    print("  [MODERN] Concatenating and saving table:", tbl)
+                    if dfs:
+                        combined_df = pl.concat(dfs, how="diagonal_relaxed")
+                        final_saves.append((combined_df, tbl))
+                
+                if final_saves:
+                    print("  [MODERN] All remaining tables concatenated, saving to DB...")
+                    self._db_save_batch(conn, final_saves)
+                
+                conn.commit()
+                print(f"  [commit] {mode} per_version batch done (quos/trios saved incrementally)")
 
             elif strategy == "per_node":
-                # For ANOMALY this means per_floor
                 if mode == "ANOMALY":
-                    for f in [0, 4]:   # explicit floors, no "all"
+                    for f in [0, 4]:
                         self._process_modern(conn, mode, cfg, v="all", e="all", f=f, n=None, eidolons="all")
                 else:
                     for f in floors:
@@ -1094,7 +1083,4 @@ class HonkaiDataPlatform:
 
 if __name__ == "__main__":
     platform = HonkaiDataPlatform()
-    # Default — both use all_at_once
-    platform.incremental_update(target_version="4.5.1", run_cost=True)
-
-    
+    platform.orchestrate_update(target_mode='Anomaly', run_cost=True, sort_tables=False, modern_strategy="per_version", run_builds=False, do_legacy=False)

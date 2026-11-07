@@ -8,7 +8,7 @@ from database_character_summary import CharacterMetaAnalyzer
 from database_network_graph import build_network_tables ,build_raw_duo_network_tables
 from database_gear_eidolon_summary import HonkaiGearEidolonSummaryAnalyzer
 platform = HonkaiDataPlatform()
-platform.orchestrate_update(modern_strategy="per_version", legacy_strategy="all_at_once")
+platform.orchestrate_update(run_cost=True, sort_tables=False, modern_strategy="per_version",cost_strategy="per_version",legacy_strategy="all_at_once")
 
 analyzer = HonkaiTeamMetaAnalyzer()
 analyzer.run_analysis()
